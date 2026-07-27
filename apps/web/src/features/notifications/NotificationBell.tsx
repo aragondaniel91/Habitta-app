@@ -5,9 +5,13 @@ import { getUnreadCount } from './api';
 export function NotificationBell({ session, onOpen }: { session: Session; onOpen: () => void }) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    void getUnreadCount(session)
-      .then((rows) => setCount(rows.reduce((total, row) => total + Number(row.unread_count), 0)))
-      .catch(() => undefined);
+    const load = () =>
+      void getUnreadCount(session)
+        .then((value) => setCount(value.total))
+        .catch(() => undefined);
+    load();
+    window.addEventListener('habitta:notifications-changed', load);
+    return () => window.removeEventListener('habitta:notifications-changed', load);
   }, [session]);
   return (
     <button className="notification-bell" onClick={onOpen} aria-label="Abrir notificaciones">

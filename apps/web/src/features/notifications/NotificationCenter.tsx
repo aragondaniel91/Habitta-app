@@ -1,20 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { getNotifications, getPreferences, markAllRead, markRead, savePreference } from './api';
+import {
+  archiveNotification,
+  getNotifications,
+  getPreferences,
+  markAllRead,
+  markRead,
+} from './api';
 import type { Notification, NotificationPreference } from './types';
+import { CondominiumNotificationSettings } from './CondominiumNotificationSettings';
+import { NotificationDropdown } from './NotificationDropdown';
+import { NotificationItem } from './NotificationItem';
+import { NotificationPreferences } from './NotificationPreferences';
 
-const labels: Record<string, string> = {
-  receivable_created: 'Cargos',
-  opening_balance_created: 'Cargos',
-  payment_submitted: 'Pagos',
-  payment_correction_requested: 'Pagos',
-  payment_rejected: 'Pagos',
-  payment_approved: 'Pagos',
-  payment_reversed: 'Pagos',
-  payment_receipt_issued: 'Recibos',
-  receivable_due_soon: 'Vencimientos',
-  receivable_overdue: 'Vencimientos',
-};
+const changed = () => window.dispatchEvent(new Event('habitta:notifications-changed'));
 export function NotificationCenter({
   session,
   condominiumId,
@@ -28,76 +27,102 @@ export function NotificationCenter({
 }) {
   const [items, setItems] = useState<Notification[]>([]),
     [preferences, setPreferences] = useState<NotificationPreference[]>([]),
-    [error, setError] = useState('');
-  const load = () => {
-    if (!condominiumId) return;
-    void Promise.all([
-      getNotifications(session, condominiumId),
-      getPreferences(session, condominiumId),
-    ])
-      .then(([n, p]) => {
-        setItems(n);
-        setPreferences(p);
-      })
-      .catch(() => setError('No se pudieron cargar las notificaciones.'));
+    [unreadOnly, setUnreadOnly] = useState(false),
+    [onlyCurrent, setOnlyCurrent] = useState(true),
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(false);
+  const load = useCallback(
+    async (append = false) => {
+      setLoading(true);
+      setError('');
+      try {
+        const options: { condominiumId?: string; unreadOnly?: boolean; cursorAt?: string } = {
+          unreadOnly,
+        };
+        if (onlyCurrent && condominiumId) options.condominiumId = condominiumId;
+        const cursor = append ? items.at(-1)?.created_at : undefined;
+        if (cursor) options.cursorAt = cursor;
+        const [notifications, prefs] = await Promise.all([
+          getNotifications(session, options),
+          condominiumId ? getPreferences(session, condominiumId) : Promise.resolve([]),
+        ]);
+        setItems((current) => (append ? [...current, ...notifications] : notifications));
+        setPreferences(prefs);
+      } catch {
+        setError('No se pudieron cargar las notificaciones.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session, condominiumId, unreadOnly, onlyCurrent, items],
+  );
+  useEffect(() => {
+    if (open) void load();
+  }, [open, unreadOnly, onlyCurrent, condominiumId]);
+  const refresh = async () => {
+    changed();
+    await load();
   };
-  useEffect(load, [session, condominiumId, open]);
-  if (!open) return null;
   return (
-    <section className="notification-center" aria-label="Centro de notificaciones">
-      <header>
-        <h2>Notificaciones</h2>
-        <button onClick={onClose}>Cerrar</button>
-      </header>
-      {error && <p>{error}</p>}
+    <NotificationDropdown open={open} onClose={onClose}>
+      <div className="notification-filters">
+        <label>
+          <input
+            type="checkbox"
+            checked={unreadOnly}
+            onChange={(e) => setUnreadOnly(e.target.checked)}
+          />{' '}
+          Solo no leídas
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={onlyCurrent}
+            onChange={(e) => setOnlyCurrent(e.target.checked)}
+          />{' '}
+          Solo condominio actual
+        </label>
+      </div>
+      {error && <p role="alert">{error}</p>}
       <button
-        onClick={() => {
-          void markAllRead(session, condominiumId).then(load);
-        }}
+        onClick={() =>
+          void markAllRead(session, onlyCurrent ? condominiumId : undefined).then(refresh)
+        }
       >
         Marcar todas como leídas
       </button>
       <div>
-        {items.length ? (
-          items.map((item) => (
-            <button
-              className={item.read_at ? 'notification read' : 'notification'}
-              key={item.id}
-              onClick={() => {
-                void markRead(session, item.id).then(load);
-              }}
-            >
-              <strong>{item.title}</strong>
-              <span>{item.body}</span>
-              <small>{new Date(item.created_at).toLocaleString('es-VE')}</small>
-            </button>
-          ))
-        ) : (
-          <p className="empty">No tienes notificaciones todavía.</p>
-        )}
+        {items.map((item) => (
+          <NotificationItem
+            key={item.id}
+            item={item}
+            onRead={() => void markRead(session, item.id).then(refresh)}
+            onArchive={() => void archiveNotification(session, item.id).then(refresh)}
+            onNavigate={() => {
+              if (item.action_url?.startsWith('/app/') && !item.action_url.startsWith('//'))
+                window.location.assign(item.action_url);
+            }}
+          />
+        ))}
+        {!loading && !items.length && <p className="empty">No tienes notificaciones.</p>}
       </div>
-      <details>
-        <summary>Preferencias de correo</summary>
-        {Object.entries(labels).map(([type, label]) => {
-          const preference = preferences.find((item) => item.notification_type === type);
-          return (
-            <label key={type}>
-              <input
-                type="checkbox"
-                checked={preference?.email_enabled ?? true}
-                onChange={(event) => {
-                  void savePreference(session, condominiumId, {
-                    notification_type: type,
-                    email_enabled: event.target.checked,
-                    in_app_enabled: preference?.in_app_enabled ?? true,
-                  }).then(load);
-                }}
-              />{' '}
-              {label}
-            </label>
-          );
-        })}
-      </details>
-    </section>
+      {items.length >= 30 && (
+        <button disabled={loading} onClick={() => void load(true)}>
+          Cargar más
+        </button>
+      )}
+      {loading && <p>Cargando…</p>}
+      {condominiumId && (
+        <>
+          <NotificationPreferences
+            session={session}
+            condominiumId={condominiumId}
+            preferences={preferences}
+            onSaved={() => void load()}
+          />
+          <CondominiumNotificationSettings session={session} condominiumId={condominiumId} />
+        </>
+      )}
+    </NotificationDropdown>
   );
 }
