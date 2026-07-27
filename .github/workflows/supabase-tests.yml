@@ -25,10 +25,24 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Start local database and apply migrations
-        run: supabase db start
+        run: |
+          set -o pipefail
+          supabase db start --debug 2>&1 | tee supabase-db-start.log
 
       - name: Run pgTAP tests
-        run: supabase test db
+        run: |
+          set -o pipefail
+          supabase test db 2>&1 | tee supabase-test-db.log
+
+      - name: Upload Supabase logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-test-logs
+          path: |
+            supabase-db-start.log
+            supabase-test-db.log
+          if-no-files-found: ignore
 
       - name: Stop local Supabase services
         if: always()
