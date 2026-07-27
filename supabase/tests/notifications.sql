@@ -48,11 +48,13 @@ insert into public.condominium_payment_methods(id,condominium_id,method_type,dis
 
 set local role authenticated; select set_config('request.jwt.claim.sub','a0000000-0000-0000-0000-000000000001',true);
 select lives_ok($$select public.create_receivable_item('a2000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000001','Monthly',100,'USD',current_date,current_date+3)$$,'create charge succeeds'); -- 1
+reset role;
 select is((select count(*) from public.notification_events where event_type='receivable_created'),1::bigint,'charge creates event'); -- 2
+set local role authenticated; select set_config('request.jwt.claim.sub','a0000000-0000-0000-0000-000000000001',true);
 select lives_ok($$select public.post_charge_batch('a2000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000001','Batch','USD',current_date,current_date+10,'fixed_per_unit','[{"unit_id":"a3000000-0000-0000-0000-000000000001"}]','batch-key',25)$$,'batch posts'); -- 3
 select lives_ok($$select public.post_charge_batch('a2000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000001','Batch','USD',current_date,current_date+10,'fixed_per_unit','[{"unit_id":"a3000000-0000-0000-0000-000000000001"}]','batch-key',25)$$,'batch replay succeeds'); -- 4
-select is((select count(*) from public.notification_events e join public.receivable_items i on i.id=e.aggregate_id where i.charge_batch_id is not null),1::bigint,'idempotent batch does not duplicate event'); -- 5
 reset role;
+select is((select count(*) from public.notification_events e join public.receivable_items i on i.id=e.aggregate_id where i.charge_batch_id is not null),1::bigint,'idempotent batch does not duplicate event'); -- 5
 insert into public.receivable_items(id,condominium_id,unit_id,concept_id,item_type,description,issue_date,due_date,currency_code,original_amount,created_by) values ('a7000000-0000-0000-0000-000000000001','a2000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000001','opening_balance','Opening',current_date,current_date+4,'USD',50,'a0000000-0000-0000-0000-000000000001');
 select is((select count(*) from public.notification_events where aggregate_id='a7000000-0000-0000-0000-000000000001' and event_type='opening_balance_created'),1::bigint,'opening balance creates event'); -- 6
 do $$ begin begin insert into public.receivable_items(id,condominium_id,unit_id,concept_id,item_type,description,issue_date,currency_code,original_amount,created_by) values ('a7000000-0000-0000-0000-000000000099','a2000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000001','charge','Rollback',current_date,'USD',1,'a0000000-0000-0000-0000-000000000001'); raise exception 'rollback'; exception when others then null; end; end $$;
