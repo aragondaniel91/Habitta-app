@@ -126,7 +126,7 @@ select is((select count(*) from public.receivable_ledger_entries where payment_i
 select is((select count(*) from public.payment_receipts where payment_id=(select id from public.payments where idempotency_key='owner-proof')),1::bigint,'receipt is unique');
 select is((select count(distinct sequence_number) from public.payment_receipts),1::bigint,'receipt sequence number is unique');
 select is((select snapshot->'condominium'->>'name' from public.payment_receipts limit 1),'Condo Pay A','snapshot preserves condominium');
-select is((select snapshot->'unit'->>'code'||':'||snapshot->'method'->>'display_name' from public.payment_receipts limit 1),'A-1:Bank USD','snapshot preserves unit and method');
+select is((select (snapshot->'unit'->>'code')||':'||(snapshot->'method'->>'display_name') from public.payment_receipts limit 1),'A-1:Bank USD','snapshot preserves unit and method');
 
 reset role;
 select throws_ok($$update public.payment_allocations set payment_amount=1$$,null,'payment allocations are immutable','approved allocations are immutable');
