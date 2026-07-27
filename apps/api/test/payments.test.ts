@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { allocationSchema, approvePaymentSchema, paymentDraftSchema } from '@habitta/validation';
-import app from '../src/index';
+import { app } from '../src/index';
 
 const condo = '00000000-0000-0000-0000-000000000001';
 const payment = '00000000-0000-0000-0000-000000000002';

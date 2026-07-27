@@ -5,5 +5,17 @@
   "compatibility_date": "2026-07-26",
   "vars": { "APP_ENV": "development", "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co" },
   "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-local" }],
+  "queues": {
+    "producers": [{ "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-local" }],
+    "consumers": [
+      {
+        "queue": "habitta-notifications-local",
+        "max_batch_size": 10,
+        "max_retries": 5,
+        "dead_letter_queue": "habitta-notifications-dlq-local",
+      },
+    ],
+  },
+  "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true },
 }

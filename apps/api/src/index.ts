@@ -21,12 +21,16 @@ import {
   paymentUpdateSchema,
   paymentReasonSchema,
   approvePaymentSchema,
+  notificationPreferencesSchema,
+  notificationSettingsSchema,
   uuidSchema,
 } from '@habitta/validation';
+import { consumeNotificationQueue, runScheduled } from './notifications/worker';
+import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
-type Bindings = { SUPABASE_URL: string; SUPABASE_ANON_KEY: string; PAYMENT_PROOFS: R2Bucket };
+type Bindings = NotificationBindings;
 type Variables = { token: string; userId: string };
-const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 app.onError((error, c) =>
   c.json(
     { error: error.name === 'ZodError' ? 'Invalid identifier' : 'Request failed' },
@@ -858,4 +862,110 @@ app.get('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
     },
   });
 });
-export default app;
+
+app.get('/v1/notifications', async (c) => {
+  const condominiumId = c.req.query('condominiumId');
+  const unreadOnly = c.req.query('unreadOnly') === 'true';
+  const cursorAt = c.req.query('cursorAt') ?? null;
+  if (condominiumId) uuidSchema.parse(condominiumId);
+  const r = await rpc(c, 'get_my_notifications', {
+    target_condominium: condominiumId ?? null,
+    unread_only: unreadOnly,
+    limit_count: c.req.query('limit') ?? '30',
+    cursor_at: cursorAt,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.get('/v1/notifications/unread-count', async (c) => {
+  const r = await rpc(c, 'get_my_unread_notification_count', {});
+  return responseJson(c, r, 200, 403);
+});
+app.post('/v1/notifications/read-all', async (c) => {
+  const condominiumId = c.req.query('condominiumId');
+  if (condominiumId) uuidSchema.parse(condominiumId);
+  const r = await rpc(c, 'mark_all_notifications_read', {
+    target_condominium: condominiumId ?? null,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.post('/v1/notifications/:id/read', async (c) => {
+  const r = await rpc(c, 'mark_notification_read', { target: uuidSchema.parse(c.req.param('id')) });
+  return responseJson(c, r, 200, 404);
+});
+app.post('/v1/notifications/:id/archive', async (c) => {
+  const r = await rpc(c, 'archive_notification', { target: uuidSchema.parse(c.req.param('id')) });
+  return responseJson(c, r, 200, 404);
+});
+app.get('/v1/notification-preferences', async (c) => {
+  const condominiumId = c.req.query('condominiumId');
+  if (condominiumId) uuidSchema.parse(condominiumId);
+  const r = await rpc(c, 'get_my_notification_preferences', {
+    target_condominium: condominiumId ?? null,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.put('/v1/notification-preferences/:condominiumId', async (c) => {
+  const p = await body(c, notificationPreferencesSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_my_notification_preferences', {
+    target_condominium: uuidSchema.parse(c.req.param('condominiumId')),
+    target_type: p.notificationType,
+    target_email_enabled: p.emailEnabled,
+    target_in_app_enabled: p.inAppEnabled,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.patch('/v1/notification-preferences', async (c) => {
+  const parsed = notificationPreferencesSchema
+    .extend({ condominiumId: uuidSchema })
+    .safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  const r = await rpc(c, 'update_my_notification_preferences', {
+    target_condominium: parsed.data.condominiumId,
+    target_type: parsed.data.notificationType,
+    target_email_enabled: parsed.data.emailEnabled,
+    target_in_app_enabled: parsed.data.inAppEnabled,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.get('/v1/condominiums/:id/notification-settings', async (c) => {
+  const r = await rpc(c, 'get_condominium_notification_settings', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.put('/v1/condominiums/:id/notification-settings', async (c) => {
+  const p = await body(c, notificationSettingsSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_condominium_notification_settings', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_email_enabled: p.emailEnabled,
+    target_due_soon_enabled: p.dueSoonEnabled,
+    target_due_soon_days: p.dueSoonDays,
+    target_overdue_enabled: p.overdueEnabled,
+    target_timezone: p.timezone,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.patch('/v1/condominiums/:id/notification-settings', async (c) => {
+  const p = await body(c, notificationSettingsSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_condominium_notification_settings', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_email_enabled: p.emailEnabled,
+    target_due_soon_enabled: p.dueSoonEnabled,
+    target_due_soon_days: p.dueSoonDays,
+    target_overdue_enabled: p.overdueEnabled,
+    target_timezone: p.timezone,
+  });
+  return responseJson(c, r, 200, 403);
+});
+export default {
+  fetch: app.fetch,
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(runScheduled(env));
+  },
+  async queue(batch, env) {
+    await consumeNotificationQueue(batch, env);
+  },
+} satisfies ExportedHandler<Bindings, NotificationQueueMessage>;

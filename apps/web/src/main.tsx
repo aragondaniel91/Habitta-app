@@ -5,6 +5,8 @@ import { supabase } from './supabase';
 import { PeoplePanel } from './features/people/PeoplePanel';
 import { ReceivablesPanel } from './features/receivables/ReceivablesPanel';
 import { PaymentsPanel } from './features/payments/PaymentsPanel';
+import { NotificationBell } from './features/notifications/NotificationBell';
+import { NotificationCenter } from './features/notifications/NotificationCenter';
 import './styles.css';
 type Org = { id: string; name: string };
 type Condo = { id: string; name: string; organization_id: string };
@@ -31,7 +33,8 @@ function App() {
     [org, setOrg] = useState(''),
     [condo, setCondo] = useState(''),
     [buildings, setBuildings] = useState<Building[]>([]),
-    [units, setUnits] = useState<Unit[]>([]);
+    [units, setUnits] = useState<Unit[]>([]),
+    [notificationOpen, setNotificationOpen] = useState(false);
   useEffect(() => {
     if (!supabase) return;
     void supabase.auth.getSession().then((x) => setSession(x.data.session));
@@ -124,8 +127,15 @@ function App() {
     <main>
       <nav>
         <b>Habitta</b>
+        <NotificationBell session={session} onOpen={() => setNotificationOpen(true)} />
         <button onClick={() => void supabase?.auth.signOut()}>Salir</button>
       </nav>
+      <NotificationCenter
+        session={session}
+        condominiumId={condo}
+        open={notificationOpen}
+        onClose={() => setNotificationOpen(false)}
+      />
       <section className="app">
         <aside>
           <h2>Tu espacio</h2>

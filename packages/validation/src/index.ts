@@ -217,3 +217,28 @@ export const openingBalancesSchema = z.object({
   idempotencyKey: z.string().trim().min(1),
   filename: z.string().optional(),
 });
+
+export const notificationTypeSchema = z.enum([
+  'receivable_created',
+  'opening_balance_created',
+  'payment_submitted',
+  'payment_correction_requested',
+  'payment_rejected',
+  'payment_approved',
+  'payment_reversed',
+  'payment_receipt_issued',
+  'receivable_due_soon',
+  'receivable_overdue',
+]);
+export const notificationPreferencesSchema = z.object({
+  notificationType: notificationTypeSchema,
+  emailEnabled: z.boolean(),
+  inAppEnabled: z.boolean().default(true),
+});
+export const notificationSettingsSchema = z.object({
+  emailEnabled: z.boolean(),
+  dueSoonEnabled: z.boolean(),
+  dueSoonDays: z.number().int().min(1).max(30),
+  overdueEnabled: z.boolean(),
+  timezone: z.string().trim().min(1).max(64),
+});
