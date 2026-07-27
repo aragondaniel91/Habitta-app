@@ -1,0 +1,8 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "habitta-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-26",
+  "vars": { "APP_ENV": "development", "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co" },
+  "observability": { "enabled": true },
+}
