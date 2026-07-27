@@ -103,9 +103,10 @@ update public.condominium_notification_settings set email_enabled=false where co
 select lives_ok($$select public.expand_notification_event(id) from public.notification_events where event_type='payment_correction_requested'$$,'settings-disabled event expands'); -- 34
 select ok(exists(select 1 from public.notification_deliveries where event_id in (select id from public.notification_events where event_type='payment_correction_requested') and status='skipped' and last_error_code='condominium_email_disabled'),'condominium email disabled creates skipped'); -- 35
 update public.condominium_notification_settings set email_enabled=true where condominium_id='a2000000-0000-0000-0000-000000000001';
+update auth.users set email=null where id='a0000000-0000-0000-0000-000000000008';
 select lives_ok($$select public.expand_notification_event(id) from public.notification_events where event_type='payment_approved'$$,'missing-email event expands'); -- 36
 select ok(exists(select 1 from public.notification_deliveries where recipient_user_id='a0000000-0000-0000-0000-000000000008' and status='skipped' and last_error_code='recipient_email_unavailable'),'missing email creates skipped'); -- 37
-select is((select count(*) from public.notification_deliveries d group by d.event_id,d.recipient_user_id,d.channel having count(*)>1),0::bigint,'delivery deduplication holds'); -- 38
+select is((select count(*) from (select 1 from public.notification_deliveries d group by d.event_id,d.recipient_user_id,d.channel having count(*)>1) duplicates),0::bigint,'delivery deduplication holds'); -- 38
 
 set local role authenticated; select set_config('request.jwt.claim.sub','a0000000-0000-0000-0000-000000000006',true);
 select ok((select count(*) from public.notifications)>0,'user reads own notifications'); -- 39

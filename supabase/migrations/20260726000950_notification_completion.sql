@@ -158,6 +158,19 @@ begin
   end;
 end $$;
 
+create or replace function public.finish_notification_delivery(target uuid,provider_id text default null,error_code text default null,retryable boolean default false)
+returns void language plpgsql security definer set search_path=public set row_security=off as $$
+begin
+  update public.notification_deliveries set
+    status=(case when error_code is null then 'sent' when retryable and attempts<5 then 'retry' else 'dead' end)::public.notification_delivery_status,
+    provider_message_id=case when error_code is null and provider_id is not null then provider_id else provider_message_id end,
+    sent_at=case when error_code is null then now() else null end,
+    last_error_code=case when error_code is null then null else left(error_code,80) end,
+    next_attempt_at=case when retryable and attempts<5 then now()+make_interval(mins=>attempts*attempts) else next_attempt_at end,
+    claimed_at=null,claimed_by=null,updated_at=now()
+  where id=target and status='processing';
+end $$;
+
 drop function public.generate_due_notification_events(date);
 create function public.generate_due_notification_events(run_at timestamptz)
 returns integer language plpgsql security definer set search_path=public set row_security=off as $$
@@ -199,7 +212,8 @@ create function public.get_my_unread_notification_count() returns jsonb language
   select jsonb_build_object('total',coalesce(sum(unread_count),0),'groupedByCondominium',coalesce(jsonb_agg(jsonb_build_object('condominiumId',condominium_id,'unreadCount',unread_count)),'[]'::jsonb)) from grouped
 $$;
 
-revoke all on function public.process_notification_event(uuid),public.generate_due_notification_events(timestamptz) from public,anon,authenticated;
+revoke all on function public.process_notification_event(uuid),public.generate_due_notification_events(timestamptz),public.finish_notification_delivery(uuid,text,text,boolean) from public,anon,authenticated;
 grant execute on function public.process_notification_event(uuid),public.generate_due_notification_events(timestamptz) to service_role;
+grant execute on function public.finish_notification_delivery(uuid,text,text,boolean) to service_role;
 grant execute on function public.get_my_unread_notification_count() to authenticated,service_role;
 revoke all on public.notification_events,public.notification_deliveries from anon,authenticated;
