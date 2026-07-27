@@ -35,14 +35,14 @@ create function public.is_condominium_admin(target uuid) returns boolean languag
 revoke execute on function public.is_organization_owner(uuid), public.is_condominium_admin(uuid) from public;
 grant execute on function public.is_organization_owner(uuid), public.is_condominium_admin(uuid) to authenticated, service_role;
 
-create policy org_member_read on public.organization_memberships for select using (user_id=auth.uid() or public.is_organization_owner(organization_id));
-create policy condo_member_read on public.condominium_memberships for select using (user_id=auth.uid() or public.is_organization_owner((select organization_id from condominiums where id=condominium_id)));
-create policy org_read_v2 on public.organizations for select using (public.is_organization_owner(id) or exists(select 1 from condominiums c join condominium_memberships cm on cm.condominium_id=c.id where c.organization_id=id and cm.user_id=auth.uid()));
-create policy condo_read_v2 on public.condominiums for select using (public.is_organization_owner(organization_id) or exists(select 1 from condominium_memberships where condominium_id=id and user_id=auth.uid()));
-create policy building_read on public.buildings for select using (public.is_condominium_admin(condominium_id) or exists(select 1 from condominium_memberships where condominium_id=buildings.condominium_id and user_id=auth.uid()));
-create policy building_write on public.buildings for all using (public.is_condominium_admin(condominium_id)) with check (public.is_condominium_admin(condominium_id));
-create policy unit_read on public.units for select using (public.is_condominium_admin(condominium_id) or exists(select 1 from condominium_memberships where condominium_id=units.condominium_id and user_id=auth.uid()));
-create policy unit_write on public.units for all using (public.is_condominium_admin(condominium_id)) with check (public.is_condominium_admin(condominium_id));
+create policy org_member_read on public.organization_memberships for select using (organization_memberships.user_id=auth.uid() or public.is_organization_owner(organization_memberships.organization_id));
+create policy condo_member_read on public.condominium_memberships for select using (condominium_memberships.user_id=auth.uid() or public.is_organization_owner((select c.organization_id from public.condominiums c where c.id=condominium_memberships.condominium_id)));
+create policy org_read_v2 on public.organizations for select using (public.is_organization_owner(organizations.id) or exists(select 1 from public.condominiums c join public.condominium_memberships cm on cm.condominium_id=c.id where c.organization_id=organizations.id and cm.user_id=auth.uid()));
+create policy condo_read_v2 on public.condominiums for select using (public.is_organization_owner(condominiums.organization_id) or exists(select 1 from public.condominium_memberships cm where cm.condominium_id=condominiums.id and cm.user_id=auth.uid()));
+create policy building_read on public.buildings for select using (public.is_condominium_admin(buildings.condominium_id) or exists(select 1 from public.condominium_memberships cm where cm.condominium_id=buildings.condominium_id and cm.user_id=auth.uid()));
+create policy building_write on public.buildings for all using (public.is_condominium_admin(buildings.condominium_id)) with check (public.is_condominium_admin(buildings.condominium_id));
+create policy unit_read on public.units for select using (public.is_condominium_admin(units.condominium_id) or exists(select 1 from public.condominium_memberships cm where cm.condominium_id=units.condominium_id and cm.user_id=auth.uid()));
+create policy unit_write on public.units for all using (public.is_condominium_admin(units.condominium_id)) with check (public.is_condominium_admin(units.condominium_id));
 
 create function public.create_organization_with_condominium(organization_name text, condominium_name text default null) returns jsonb language plpgsql security definer set search_path=public as $$
 declare org public.organizations; condo public.condominiums;
@@ -58,5 +58,5 @@ begin
 end; $$;
 grant execute on function public.create_organization_with_condominium(text,text) to authenticated;
 
-create policy org_insert on public.organizations for insert with check (created_by=auth.uid());
-create policy condo_insert on public.condominiums for insert with check (created_by=auth.uid() and public.is_organization_owner(organization_id));
+create policy org_insert on public.organizations for insert with check (organizations.created_by=auth.uid());
+create policy condo_insert on public.condominiums for insert with check (condominiums.created_by=auth.uid() and public.is_organization_owner(condominiums.organization_id));
