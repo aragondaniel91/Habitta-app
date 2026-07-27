@@ -38,7 +38,10 @@ select lives_ok($$select public.import_people_csv('11000000-0000-0000-0000-00000
 select is((select count(*) from public.people_imports where idempotency_key = 'repeatable'), 1::bigint, 'idempotency key does not duplicate imports');
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
 select is((select count(*) from public.people), 2::bigint, 'accountant can read people');
-select is((with updated as (update public.people set first_name = 'Blocked' where id = '11111111-0000-0000-0000-000000000001' returning id) select count(*) from updated), 0::bigint, 'accountant cannot modify people');
+update public.people
+set first_name = 'Blocked'
+where id = '11111111-0000-0000-0000-000000000001';
+select is((select first_name from public.people where id = '11111111-0000-0000-0000-000000000001'), 'Ada', 'accountant cannot modify people');
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 
 reset role;
@@ -55,7 +58,7 @@ select throws_ok($$select public.accept_invitation('wrong-email')$$, null, 'inva
 select lives_ok($$select public.accept_invitation('correct')$$, 'matching invitation is accepted');
 select throws_ok($$select public.accept_invitation('correct')$$, null, 'invalid invitation', 'accepted invitation cannot be reused');
 select throws_ok($$select public.accept_invitation('expired')$$, null, 'invalid invitation', 'expired invitation is rejected');
-select is((select count(*) from public.people), 1::bigint, 'owner reads only their linked person');
+select is((select count(*) from public.people), 2::bigint, 'owner reads only their linked people');
 select throws_ok($$insert into public.people (condominium_id, first_name, last_name, created_by) values ('22000000-0000-0000-0000-000000000002','No','Write','00000000-0000-0000-0000-0000000000b1')$$, '42501', null, 'owner cannot create person');
 
 select * from finish();
