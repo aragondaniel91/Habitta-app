@@ -20,7 +20,8 @@ export const provisionDevelopmentResources = ({ apply = false, run = () => {}, e
   for (const resource of plan) {
     if (resource.kind === 'queue') run(['queues', 'create', resource.name]);
     if (resource.kind === 'r2') run(['r2', 'bucket', 'create', resource.name]);
-    if (resource.kind === 'pages') run(['pages', 'project', 'create', resource.name]);
+    if (resource.kind === 'pages')
+      run(['pages', 'project', 'create', resource.name, '--production-branch', 'development']);
   }
   return plan;
 };
@@ -35,6 +36,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (result.status !== 0) throw new Error('cloudflare_resource_operation_failed');
     return result.stdout;
   };
+  if (apply) run(['whoami']);
   const existing = apply
     ? {
         queues: JSON.parse(run(['queues', 'list', '--json'])).map((item) => item.name),

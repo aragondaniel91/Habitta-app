@@ -50,6 +50,8 @@ app.get('/health', (c) =>
     environment: c.env?.APP_ENV ?? 'development',
     commit: c.env?.BUILD_COMMIT ?? 'unknown',
     version: c.env?.APP_VERSION ?? 'unknown',
+    buildTimestamp: c.env?.BUILD_TIMESTAMP ?? 'unknown',
+    notificationsEmailMode: c.env?.NOTIFICATIONS_EMAIL_MODE ?? 'disabled',
   }),
 );
 app.use('/v1/*', async (c, n) => {

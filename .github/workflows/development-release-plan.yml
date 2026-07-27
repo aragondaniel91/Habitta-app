@@ -17,6 +17,7 @@ permissions:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    environment: development
     env:
       APP_ENV: development
       NOTIFICATIONS_EMAIL_MODE: disabled
@@ -26,10 +27,12 @@ jobs:
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
       CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
+      INPUT_RELEASE_REF: ${{ inputs.release_ref }}
+      INPUT_CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: '${{ inputs.release_ref }}'
+          ref: '${{ env.INPUT_RELEASE_REF }}'
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
@@ -47,7 +50,8 @@ jobs:
           test "$APP_ENV" = development
           test "$NOTIFICATIONS_EMAIL_MODE" = disabled
           test -n "$SUPABASE_PROJECT_REF"
-          test "${{ inputs.confirm_project_ref }}" = "$SUPABASE_PROJECT_REF"
+          test -n "$INPUT_CONFIRM_PROJECT_REF"
+          test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
       - run: pnpm notifications:config:check
       - run: pnpm release:dev:validate
       - run: pnpm format:check

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -57,6 +57,23 @@ describe('development release safeguards', () => {
       }),
     ).toEqual([]);
   });
+  it('keeps dispatch inputs out of shell run blocks and protects both jobs with development', async () => {
+    const root = new URL('../../../', import.meta.url);
+    const [plan, apply] = await Promise.all([
+      readFile(new URL('.github/workflows/development-release-plan.yml', root), 'utf8'),
+      readFile(new URL('.github/workflows/development-release-apply.yml', root), 'utf8'),
+    ]);
+    expect(plan).toContain('environment: development');
+    expect(apply).toContain('environment: development');
+    expect(apply).toContain('confirm_project_ref');
+    expect(apply).toContain('GH_TOKEN: ${{ github.token }}');
+    expect(
+      [...plan.matchAll(/run: \|([\s\S]*?)(?=\n      -|$)/g)].map((match) => match[1]).join('\n'),
+    ).not.toContain('${{ inputs.');
+    expect(
+      [...apply.matchAll(/run: \|([\s\S]*?)(?=\n      -|$)/g)].map((match) => match[1]).join('\n'),
+    ).not.toContain('${{ inputs.');
+  });
   it('requires worker versions and preserves the prior version for rollback', () => {
     expect(requireWorkerVersionId('')).toBe(false);
     expect(rollbackWorkerPlan('previous-version')[0]).toContain('previous-version@100%');
@@ -86,6 +103,7 @@ describe('development release safeguards', () => {
       await runDevelopmentSmoke({
         apiUrl: 'https://production.example',
         expectedCommit: 'x',
+        expectedWebOrigin: 'https://web.dev.example',
         emailMode: 'disabled',
       }),
     ).toContain('invalid_development_api_url');
@@ -95,6 +113,7 @@ describe('development release safeguards', () => {
       await runDevelopmentSmoke({
         apiUrl: 'https://api.dev.example',
         expectedCommit: 'right',
+        expectedWebOrigin: 'https://web.dev.example',
         emailMode: 'disabled',
         request,
       }),

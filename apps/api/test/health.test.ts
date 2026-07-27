@@ -10,6 +10,8 @@ describe('health endpoint', () => {
       environment: 'development',
       commit: 'unknown',
       version: 'unknown',
+      buildTimestamp: 'unknown',
+      notificationsEmailMode: 'disabled',
     });
   });
 });
