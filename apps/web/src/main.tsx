@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { createRoot } from 'react-dom/client';
 import { supabase } from './supabase';
+import { PeoplePanel } from './features/people/PeoplePanel';
 import './styles.css';
 type Org = { id: string; name: string };
 type Condo = { id: string; name: string; organization_id: string };
@@ -216,6 +217,7 @@ function App() {
                   )}
                 </section>
               </div>
+              {condo && <PeoplePanel condominiumId={condo} units={units} session={session} />}
             </>
           )}
         </article>

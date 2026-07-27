@@ -13,7 +13,8 @@
   "dependencies": {
     "@habitta/contracts": "workspace:*",
     "@habitta/validation": "workspace:*",
-    "hono": "^4.7.11"
+    "hono": "^4.7.11",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250712.0",
