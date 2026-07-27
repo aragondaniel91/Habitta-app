@@ -2,15 +2,21 @@
 
 Este entorno usa exclusivamente `development`, `habitta-api-dev`, `habitta-web-dev`, `habitta-notifications-dev`, `habitta-notifications-dlq-dev` y `habitta-payment-proofs-dev`. El correo debe permanecer en `NOTIFICATIONS_EMAIL_MODE=disabled`.
 
-## GitHub Environment
+## GitHub Free
 
-Crea el Environment `development` con aprobación manual para el workflow apply. Variables públicas: `SUPABASE_PROJECT_REF`, `SUPABASE_URL`, `VITE_SUPABASE_URL`, `VITE_API_BASE_URL`, `CLOUDFLARE_WORKER_DEV_URL`, `CLOUDFLARE_PAGES_DEV_URL` y `CLOUDFLARE_PAGES_PROJECT_NAME`. Secretos: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
+Para un repositorio privado en GitHub Free, configura las credenciales en `Settings → Secrets and variables → Actions` a nivel del repositorio. No uses Environment secrets porque requieren GitHub Pro, Team o Enterprise en repositorios privados.
+
+Variables públicas del repositorio: `SUPABASE_PROJECT_REF`, `SUPABASE_URL`, `VITE_SUPABASE_URL`, `VITE_API_BASE_URL`, `CLOUDFLARE_WORKER_DEV_URL`, `CLOUDFLARE_PAGES_DEV_URL` y `CLOUDFLARE_PAGES_PROJECT_NAME`.
+
+Secretos del repositorio: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
+
+La edición Free no ofrece el approval gate del Environment para este repositorio privado. La protección se conserva mediante `workflow_dispatch`, validación del ref, confirmación exacta del project ref, `DEPLOY-HABITTA-DEVELOPMENT`, checks completos y correo forzado a disabled.
 
 ## Plan y aplicación
 
 Ejecuta primero `Development Release Plan`, indicando `main` y confirmando el project ref. Revisa el resumen sanitizado: commit, migraciones, recursos dev y correo disabled. El workflow no crea ni modifica recursos.
 
-Después de aprobación, ejecuta `Development Release Apply` con un ref contenido en `main` y la confirmación exacta `DEPLOY-HABITTA-DEVELOPMENT`. El orden es validación, recursos idempotentes, migraciones, build, upload/promoción de Worker, smoke, Pages y smoke end-to-end. No se usan deploys automáticos por push o PR.
+Después de revisar el plan, ejecuta `Development Release Apply` con un ref contenido en `main` y la confirmación exacta `DEPLOY-HABITTA-DEVELOPMENT`. El orden es validación, recursos idempotentes, migraciones, build, upload/promoción de Worker, smoke, Pages y smoke end-to-end. No se usan deploys automáticos por push o PR.
 
 ## Smoke, Queue y correo
 
