@@ -1,56 +1,49 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { cors } from 'hono/cors';
+import { z } from 'zod';
 import {
   buildingInputSchema,
   condominiumInputSchema,
-  invitationInputSchema,
-  occupancyInputSchema,
   organizationInputSchema,
-  ownerInputSchema,
-  personInputSchema,
   unitInputSchema,
+  personInputSchema,
+  ownerInputSchema,
+  occupancyInputSchema,
+  invitationInputSchema,
   uuidSchema,
 } from '@habitta/validation';
 
 type Bindings = { SUPABASE_URL: string; SUPABASE_ANON_KEY: string };
 type Variables = { token: string; userId: string };
-type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>;
-
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
-
 app.onError((error, c) =>
   c.json(
     { error: error.name === 'ZodError' ? 'Invalid identifier' : 'Request failed' },
     error.name === 'ZodError' ? 400 : 500,
   ),
 );
-
 app.use(
   '*',
   cors({ origin: ['http://localhost:5173'], allowHeaders: ['Authorization', 'Content-Type'] }),
 );
-
 app.get('/health', (c) => c.json({ status: 'ok' as const, service: 'habitta-api' as const }));
-
-app.use('/v1/*', async (c, next) => {
-  const authorization = c.req.header('Authorization');
-  if (!authorization?.startsWith('Bearer ')) return c.json({ error: 'Unauthorized' }, 401);
-
-  const token = authorization.slice('Bearer '.length);
+app.use('/v1/*', async (c, n) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return c.json({ error: 'Unauthorized' }, 401);
-
-  const response = await fetch(`${c.env.SUPABASE_URL}/auth/v1/user`, {
+  const r = await fetch(`${c.env.SUPABASE_URL}/auth/v1/user`, {
     headers: { apikey: c.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
   });
-  if (!response.ok) return c.json({ error: 'Unauthorized' }, 401);
-
+  if (!r.ok) return c.json({ error: 'Unauthorized' }, 401);
   c.set('token', token);
-  c.set('userId', ((await response.json()) as { id: string }).id);
-  await next();
+  c.set('userId', ((await r.json()) as { id: string }).id);
+  await n();
 });
-
-const rest = (c: AppContext, path: string, init: RequestInit = {}) =>
+const rest = (
+  c: Context<{ Bindings: Bindings; Variables: Variables }>,
+  path: string,
+  init: RequestInit = {},
+) =>
   fetch(`${c.env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
     headers: {
@@ -61,64 +54,19 @@ const rest = (c: AppContext, path: string, init: RequestInit = {}) =>
       ...(init.headers ?? {}),
     },
   });
-
 // Zod schemas are intentionally supplied by each route; this keeps the response helper generic.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const body = async (c: any, schema: any) => {
-  const parsed = schema.safeParse(await c.req.json());
-  return parsed.success ? parsed.data : c.json({ error: parsed.error.flatten() }, 400);
+const body = async (c: any, s: any) => {
+  const p = s.safeParse(await c.req.json());
+  return p.success ? p.data : c.json({ error: p.error.flatten() }, 400);
 };
-
-const list =
-  (table: string, filter: string) =>
-  async (c: AppContext) => {
-    const condominiumId = c.req.param('id');
-    const unitId = c.req.param('unitId');
-    const resolvedFilter = filter
-      .replace(':id', condominiumId ? uuidSchema.parse(condominiumId) : '')
-      .replace(':unitId', unitId ? uuidSchema.parse(unitId) : '');
-    const response = await rest(c, `${table}?${resolvedFilter}&select=*`);
-    const value = await response.json();
-    return c.json(value, response.ok ? 200 : 400);
-  };
-
-app.get('/v1/organizations', async (c) => {
-  const response = await rest(c, 'organizations?select=*&order=created_at');
-  return c.json(await response.json(), response.ok ? 200 : 400);
-});
-
+app.get('/v1/organizations', async (c) =>
+  c.json(await (await rest(c, 'organizations?select=*&order=created_at')).json()),
+);
 app.post('/v1/organizations', async (c) => {
-  const parsed = await body(c, organizationInputSchema);
-  if (parsed instanceof Response) return parsed;
-
-  const response = await fetch(
-    `${c.env.SUPABASE_URL}/rest/v1/rpc/create_organization_with_condominium`,
-    {
-      method: 'POST',
-      headers: {
-        apikey: c.env.SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${c.get('token')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        organization_name: parsed.name,
-        condominium_name: parsed.condominiumName ?? null,
-      }),
-    },
-  );
-  return c.json(await response.json(), response.ok ? 201 : 400);
-});
-
-app.get('/v1/condominiums', async (c) => {
-  const response = await rest(c, 'condominiums?select=*&order=name');
-  return c.json(await response.json(), response.ok ? 200 : 400);
-});
-
-app.post('/v1/condominiums', async (c) => {
-  const parsed = await body(c, condominiumInputSchema);
-  if (parsed instanceof Response) return parsed;
-
-  const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/create_condominium`, {
+  const p = await body(c, organizationInputSchema);
+  if (p instanceof Response) return p;
+  const r = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/create_organization_with_condominium`, {
     method: 'POST',
     headers: {
       apikey: c.env.SUPABASE_ANON_KEY,
@@ -126,219 +74,266 @@ app.post('/v1/condominiums', async (c) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      target_organization_id: parsed.organizationId,
-      condominium_name: parsed.name,
+      organization_name: p.name,
+      condominium_name: p.condominiumName ?? null,
     }),
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return c.json(await r.json(), r.ok ? 201 : 400);
 });
-
-app.get('/v1/condominiums/:id', async (c) => {
-  const response = await rest(
-    c,
-    `condominiums?id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
-  );
-  return c.json(await response.json(), response.ok ? 200 : 400);
+app.get('/v1/condominiums', async (c) =>
+  c.json(await (await rest(c, 'condominiums?select=*&order=name')).json()),
+);
+app.post('/v1/condominiums', async (c) => {
+  const p = await body(c, condominiumInputSchema);
+  if (p instanceof Response) return p;
+  const r = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/create_condominium`, {
+    method: 'POST',
+    headers: {
+      apikey: c.env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${c.get('token')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      target_organization_id: p.organizationId,
+      condominium_name: p.name,
+    }),
+  });
+  const result = await r.json();
+  return c.json(result, r.ok ? 201 : 400);
 });
-
-app.get('/v1/condominiums/:id/buildings', async (c) => {
-  const response = await rest(
-    c,
-    `buildings?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*&order=name`,
-  );
-  return c.json(await response.json(), response.ok ? 200 : 400);
-});
-
+app.get('/v1/condominiums/:id', async (c) =>
+  c.json(
+    await (
+      await rest(c, `condominiums?id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`)
+    ).json(),
+  ),
+);
+app.get('/v1/condominiums/:id/buildings', async (c) =>
+  c.json(
+    await (
+      await rest(
+        c,
+        `buildings?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*&order=name`,
+      )
+    ).json(),
+  ),
+);
 app.post('/v1/condominiums/:id/buildings', async (c) => {
-  const parsed = await body(c, buildingInputSchema);
-  if (parsed instanceof Response) return parsed;
-
-  const response = await rest(c, 'buildings', {
+  const p = await body(c, buildingInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'buildings', {
     method: 'POST',
     body: JSON.stringify({
       condominium_id: uuidSchema.parse(c.req.param('id')),
-      name: parsed.name,
+      name: p.name,
       created_by: c.get('userId'),
     }),
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return c.json(await r.json(), r.ok ? 201 : 400);
 });
-
-app.get('/v1/condominiums/:id/units', async (c) => {
-  const response = await rest(
-    c,
-    `units?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*&order=code`,
-  );
-  return c.json(await response.json(), response.ok ? 200 : 400);
-});
-
+app.get('/v1/condominiums/:id/units', async (c) =>
+  c.json(
+    await (
+      await rest(
+        c,
+        `units?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*&order=code`,
+      )
+    ).json(),
+  ),
+);
 app.post('/v1/condominiums/:id/units', async (c) => {
-  const parsed = await body(c, unitInputSchema);
-  if (parsed instanceof Response) return parsed;
-
-  const response = await rest(c, 'units', {
+  const p = await body(c, unitInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'units', {
     method: 'POST',
     body: JSON.stringify({
       condominium_id: uuidSchema.parse(c.req.param('id')),
-      building_id: parsed.buildingId ?? null,
-      code: parsed.code,
-      type: parsed.type,
-      floor: parsed.floor ?? null,
-      ownership_percentage: parsed.ownershipPercentage ?? null,
-      status: parsed.status,
+      building_id: p.buildingId ?? null,
+      code: p.code,
+      type: p.type,
+      floor: p.floor ?? null,
+      ownership_percentage: p.ownershipPercentage ?? null,
+      status: p.status,
       created_by: c.get('userId'),
     }),
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return c.json(await r.json(), r.ok ? 201 : 400);
 });
-
+const list =
+  (table: string, filter: string) =>
+  async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
+    const resolved = filter
+      .replace(':unitId', uuidSchema.parse(c.req.param('unitId')))
+      .replace(':id', uuidSchema.parse(c.req.param('id')));
+    const r = await rest(c, `${table}?${resolved}&select=*`);
+    const value = await r.json();
+    return c.json(value, r.ok ? 200 : 400);
+  };
 app.get('/v1/condominiums/:id/people', list('people', 'condominium_id=eq.:id'));
-
 app.post('/v1/condominiums/:id/people', async (c) => {
-  const parsed = await body(c, personInputSchema);
-  if (parsed instanceof Response) return parsed;
-
-  const response = await rest(c, 'people', {
+  const p = await body(c, personInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'people', {
     method: 'POST',
     body: JSON.stringify({
       condominium_id: uuidSchema.parse(c.req.param('id')),
-      first_name: parsed.firstName,
-      last_name: parsed.lastName,
-      document_type: parsed.documentType ?? null,
-      document_number: parsed.documentNumber ?? null,
-      email: parsed.email ?? null,
-      phone: parsed.phone ?? null,
-      status: parsed.status,
+      first_name: p.firstName,
+      last_name: p.lastName,
+      email: p.email ?? null,
+      phone: p.phone ?? null,
+      status: p.status,
       created_by: c.get('userId'),
     }),
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return c.json(await r.json(), r.ok ? 201 : 400);
 });
-
 app.get('/v1/condominiums/:id/people/:personId', async (c) => {
-  const response = await rest(
+  const r = await rest(
     c,
     `people?id=eq.${uuidSchema.parse(c.req.param('personId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
   );
-  return c.json(await response.json(), response.ok ? 200 : 400);
+  return c.json(await r.json(), r.ok ? 200 : 400);
 });
-
 app.patch('/v1/condominiums/:id/people/:personId', async (c) => {
-  const parsed = await body(c, personInputSchema.partial());
-  if (parsed instanceof Response) return parsed;
-
-  const response = await rest(
+  const p = await body(c, personInputSchema.partial());
+  if (p instanceof Response) return p;
+  const r = await rest(
     c,
     `people?id=eq.${uuidSchema.parse(c.req.param('personId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
     {
       method: 'PATCH',
       body: JSON.stringify({
-        first_name: parsed.firstName,
-        last_name: parsed.lastName,
-        document_type: parsed.documentType,
-        document_number: parsed.documentNumber,
-        email: parsed.email,
-        phone: parsed.phone,
-        status: parsed.status,
+        first_name: p.firstName,
+        last_name: p.lastName,
+        email: p.email,
+        phone: p.phone,
+        status: p.status,
       }),
     },
   );
-  return c.json(await response.json(), response.ok ? 200 : 400);
+  return c.json(await r.json(), r.ok ? 200 : 400);
 });
-
-app.get(
-  '/v1/condominiums/:id/units/:unitId/owners',
-  list('unit_owners', 'unit_id=eq.:unitId'),
-);
-
+app.get('/v1/condominiums/:id/units/:unitId/owners', list('unit_owners', 'unit_id=eq.:unitId'));
 app.post('/v1/condominiums/:id/units/:unitId/owners', async (c) => {
-  const parsed = await body(c, ownerInputSchema);
-  if (parsed instanceof Response) return parsed;
-
-  const response = await rest(c, 'unit_owners', {
+  const p = await body(c, ownerInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'unit_owners', {
     method: 'POST',
     body: JSON.stringify({
       unit_id: uuidSchema.parse(c.req.param('unitId')),
-      person_id: parsed.personId,
-      ownership_percentage: parsed.ownershipPercentage ?? null,
-      is_primary_contact: parsed.isPrimaryContact,
-      starts_at: parsed.startsAt ?? undefined,
+      person_id: p.personId,
+      ownership_percentage: p.ownershipPercentage ?? null,
+      is_primary_contact: p.isPrimaryContact,
+      starts_at: p.startsAt ?? undefined,
       created_by: c.get('userId'),
     }),
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return c.json(await r.json(), r.ok ? 201 : 400);
 });
-
 app.get(
   '/v1/condominiums/:id/units/:unitId/occupancies',
   list('unit_occupancies', 'unit_id=eq.:unitId'),
 );
-
 app.post('/v1/condominiums/:id/units/:unitId/occupancies', async (c) => {
-  const parsed = await body(c, occupancyInputSchema);
-  if (parsed instanceof Response) return parsed;
-
-  const response = await rest(c, 'unit_occupancies', {
+  const p = await body(c, occupancyInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'unit_occupancies', {
     method: 'POST',
     body: JSON.stringify({
       unit_id: uuidSchema.parse(c.req.param('unitId')),
-      person_id: parsed.personId,
-      occupancy_type: parsed.occupancyType,
-      is_primary_contact: parsed.isPrimaryContact,
-      starts_at: parsed.startsAt ?? undefined,
-      ends_at: parsed.endsAt ?? undefined,
+      person_id: p.personId,
+      occupancy_type: p.occupancyType,
+      is_primary_contact: p.isPrimaryContact,
+      starts_at: p.startsAt ?? undefined,
       created_by: c.get('userId'),
     }),
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return c.json(await r.json(), r.ok ? 201 : 400);
 });
-
+const assignmentPatchSchema = z.object({
+  isPrimaryContact: z.boolean().optional(),
+  ownershipPercentage: z.number().positive().max(100).optional(),
+  endsAt: z.string().date().optional(),
+});
+async function patchAssignment(
+  c: Context<{ Bindings: Bindings; Variables: Variables }>,
+  table: 'unit_owners' | 'unit_occupancies',
+  owner: boolean,
+) {
+  const p = await body(c, assignmentPatchSchema);
+  if (p instanceof Response) return p;
+  const assignmentId = uuidSchema.parse(c.req.param('assignmentId'));
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const check = await rest(
+    c,
+    `${table}?id=eq.${assignmentId}&select=unit_id,starts_at,units!inner(condominium_id)`,
+  );
+  const rows = (await check.json()) as {
+    unit_id: string;
+    starts_at: string;
+    units: { condominium_id: string };
+  }[];
+  if (!check.ok || !rows[0] || rows[0].units.condominium_id !== condominiumId)
+    return c.json({ error: 'Assignment not found' }, 404);
+  if (p.endsAt && p.endsAt < rows[0].starts_at)
+    return c.json({ error: 'ends_at must not precede starts_at' }, 400);
+  const r = await rest(c, `${table}?id=eq.${assignmentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      is_primary_contact: p.isPrimaryContact,
+      ends_at: p.endsAt,
+      ...(owner ? { ownership_percentage: p.ownershipPercentage } : {}),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+}
+app.patch('/v1/condominiums/:id/unit-owners/:assignmentId', (c) =>
+  patchAssignment(c, 'unit_owners', true),
+);
+app.patch('/v1/condominiums/:id/unit-occupancies/:assignmentId', (c) =>
+  patchAssignment(c, 'unit_occupancies', false),
+);
 app.post('/v1/condominiums/:id/invitations', async (c) => {
-  const parsed = await body(c, invitationInputSchema);
-  if (parsed instanceof Response) return parsed;
-
+  const p = await body(c, invitationInputSchema);
+  if (p instanceof Response) return p;
   const token = crypto.randomUUID().replaceAll('-', '');
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
-  const tokenHash = [...new Uint8Array(hash)]
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('');
-
-  const response = await rest(c, 'invitations', {
+  const tokenHash = [...new Uint8Array(hash)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  const r = await rest(c, 'invitations', {
     method: 'POST',
     body: JSON.stringify({
       condominium_id: uuidSchema.parse(c.req.param('id')),
-      person_id: parsed.personId,
-      unit_id: parsed.unitId ?? null,
-      email: parsed.email,
-      intended_role: parsed.intendedRole,
+      person_id: p.personId,
+      unit_id: p.unitId ?? null,
+      email: p.email,
+      intended_role: p.intendedRole,
       token_hash: tokenHash,
-      expires_at: parsed.expiresAt ?? new Date(Date.now() + 604800000).toISOString(),
+      expires_at: p.expiresAt ?? new Date(Date.now() + 604800000).toISOString(),
       invited_by: c.get('userId'),
     }),
   });
-  const result = await response.json();
+  const result = await r.json();
   return c.json(
     {
       invitation: result,
       developmentUrl: c.env.SUPABASE_URL.includes('localhost') ? `/invite/${token}` : undefined,
     },
-    response.ok ? 201 : 400,
+    r.ok ? 201 : 400,
   );
 });
-
 app.post('/v1/invitations/:token/accept', async (c) => {
-  const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/accept_invitation`, {
+  const email = ((await c.req.json()) as { email: string }).email;
+  const r = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/accept_invitation`, {
     method: 'POST',
     headers: {
       apikey: c.env.SUPABASE_ANON_KEY,
       Authorization: `Bearer ${c.get('token')}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ raw_token: c.req.param('token') }),
+    body: JSON.stringify({ raw_token: c.req.param('token'), claimant_email: email }),
   });
-  return c.json(await response.json(), response.ok ? 200 : 400);
+  return c.json(await r.json(), r.ok ? 200 : 400);
 });
-
 app.post('/v1/condominiums/:id/people/import/preview', async (c) => {
   const { csv } = (await c.req.json()) as { csv: string };
   const [header, ...rows] = csv
@@ -356,19 +351,13 @@ app.post('/v1/condominiums/:id/people/import/preview', async (c) => {
   ];
   if (!header || expected.some((value, index) => header[index] !== value))
     return c.json({ error: 'Invalid CSV headers' }, 400);
-
-  const unitsResponse = await rest(
-    c,
-    `units?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=code`,
-  );
-  if (!unitsResponse.ok) return c.json({ error: 'Unable to validate units' }, 400);
-
-  const units = (await unitsResponse.json()) as { code: string }[];
+  const units = (await (
+    await rest(c, `units?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=code`)
+  ).json()) as { code: string }[];
   const known = new Set(units.map((unit) => unit.code));
   const seen = new Set<string>();
   const valid: unknown[] = [];
   const errors: unknown[] = [];
-
   rows.forEach((row, index) => {
     const email = row[3]?.toLowerCase();
     const issue = !known.has(row[0] ?? '')
@@ -378,19 +367,31 @@ app.post('/v1/condominiums/:id/people/import/preview', async (c) => {
         : email && seen.has(email)
           ? 'Duplicate email'
           : undefined;
-
     if (issue) errors.push({ row: index + 2, error: issue });
     else {
       if (email) seen.add(email);
       valid.push(row);
     }
   });
-
   return c.json({ valid, errors });
 });
-
-app.post('/v1/condominiums/:id/people/import/commit', async (c) =>
-  c.json({ error: 'Use validated preview rows to commit imports' }, 501),
-);
-
+app.post('/v1/condominiums/:id/people/import/commit', async (c) => {
+  const payload = (await c.req.json()) as { rows: unknown[]; idempotencyKey: string };
+  if (!Array.isArray(payload.rows) || !payload.idempotencyKey)
+    return c.json({ error: 'rows and idempotencyKey are required' }, 400);
+  const r = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/import_people_csv`, {
+    method: 'POST',
+    headers: {
+      apikey: c.env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${c.get('token')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      rows: payload.rows,
+      key: payload.idempotencyKey,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
 export default app;
