@@ -22,12 +22,20 @@ jobs:
             pnpm exec prettier --list-different . > prettier-files.txt
             exit 1
           }
+      - name: Prepare formatting diagnostics
+        if: failure()
+        run: |
+          pnpm format
+          mkdir -p formatted-files
+          xargs -a prettier-files.txt cp --parents --target-directory=formatted-files
       - name: Upload formatting diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: prettier-files
-          path: prettier-files.txt
+          name: prettier-diagnostics
+          path: |
+            prettier-files.txt
+            formatted-files
           if-no-files-found: ignore
       - run: pnpm lint
       - run: pnpm typecheck
