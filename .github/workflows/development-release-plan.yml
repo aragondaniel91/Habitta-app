@@ -17,7 +17,6 @@ permissions:
 jobs:
   plan:
     runs-on: ubuntu-latest
-    environment: development
     env:
       APP_ENV: development
       NOTIFICATIONS_EMAIL_MODE: disabled
