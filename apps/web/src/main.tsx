@@ -217,7 +217,7 @@ function App() {
                   )}
                 </section>
               </div>
-              <PeoplePanel />
+              {condo && <PeoplePanel condominiumId={condo} units={units} session={session} />}
             </>
           )}
         </article>
