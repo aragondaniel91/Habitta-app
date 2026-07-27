@@ -2,13 +2,16 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import wranglerFixture from './wrangler-fixtures.json';
 import {
   isMainReleaseRef,
   requireApplyConfirmation,
   requireWorkerVersionId,
   rollbackWorkerPlan,
+  activeWorkerVersion,
   sanitizedMetadata,
   validateDevelopmentRelease,
+  workerVersionForTag,
 } from '../../../scripts/release/release-utils.mjs';
 import {
   createWorkerSecretsFile,
@@ -77,6 +80,22 @@ describe('development release safeguards', () => {
   it('requires worker versions and preserves the prior version for rollback', () => {
     expect(requireWorkerVersionId('')).toBe(false);
     expect(rollbackWorkerPlan('previous-version')[0]).toContain('previous-version@100%');
+    expect(activeWorkerVersion(wranglerFixture)).toBe('previous-version');
+    expect(
+      activeWorkerVersion({
+        versions: [
+          { version_id: 'a', percentage: 50 },
+          { version_id: 'b', percentage: 50 },
+        ],
+      }),
+    ).toBeNull();
+    expect(workerVersionForTag(wranglerFixture.versionList, 'release-abc')).toBe('new-version');
+    expect(
+      workerVersionForTag(
+        [{ id: 'new', annotations: { 'workers/tag': 'other' } }],
+        'release-commit',
+      ),
+    ).toBeNull();
   });
   it('keeps secret content out of metadata and reports missing secrets safely', async () => {
     expect(() => workerSecretsContent({})).toThrow('worker_secrets_missing');

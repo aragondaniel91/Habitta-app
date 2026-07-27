@@ -31,6 +31,19 @@ import type { NotificationBindings, NotificationQueueMessage } from './notificat
 type Bindings = NotificationBindings;
 type Variables = { token: string; userId: string };
 export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+export const allowedCorsOrigins = (raw?: string) =>
+  new Set(
+    ['http://localhost:5173', ...(raw ?? '').split(',')]
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+      .flatMap((origin) => {
+        try {
+          return [new URL(origin).origin];
+        } catch {
+          return [];
+        }
+      }),
+  );
 app.onError((error, c) =>
   c.json(
     { error: error.name === 'ZodError' ? 'Invalid identifier' : 'Request failed' },
@@ -40,7 +53,8 @@ app.onError((error, c) =>
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:5173'],
+    origin: (origin, c) =>
+      allowedCorsOrigins(c.env?.CORS_ALLOWED_ORIGINS).has(origin) ? origin : undefined,
     allowHeaders: ['Authorization', 'Content-Type', 'X-Filename'],
   }),
 );

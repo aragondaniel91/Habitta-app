@@ -43,3 +43,13 @@ export const requireWorkerVersionId = (versionId) =>
 
 export const rollbackWorkerPlan = (previousVersion) =>
   previousVersion ? [`wrangler versions deploy ${previousVersion}@100% --env dev`] : [];
+
+export const activeWorkerVersion = (status) => {
+  const active = (status.versions ?? []).filter((entry) => entry.percentage === 100);
+  return active.length === 1 ? active[0].version_id : null;
+};
+
+export const workerVersionForTag = (versions, tag) => {
+  const matches = versions.filter((entry) => entry.annotations?.['workers/tag'] === tag);
+  return matches.length === 1 ? matches[0].id : null;
+};

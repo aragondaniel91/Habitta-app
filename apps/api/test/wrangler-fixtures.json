@@ -1,0 +1,4 @@
+{
+  "versions": [{ "version_id": "previous-version", "percentage": 100 }],
+  "versionList": [{ "id": "new-version", "annotations": { "workers/tag": "release-abc" } }]
+}

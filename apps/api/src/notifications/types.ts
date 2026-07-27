@@ -7,6 +7,7 @@ export type NotificationBindings = {
   BUILD_COMMIT?: string;
   BUILD_TIMESTAMP?: string;
   APP_VERSION?: string;
+  CORS_ALLOWED_ORIGINS?: string;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;

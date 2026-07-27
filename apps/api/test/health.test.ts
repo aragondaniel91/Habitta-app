@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { app } from '../src/index';
+import { allowedCorsOrigins, app } from '../src/index';
 
 describe('health endpoint', () => {
   it('reports the API health', async () => {
@@ -13,5 +13,13 @@ describe('health endpoint', () => {
       buildTimestamp: 'unknown',
       notificationsEmailMode: 'disabled',
     });
+  });
+});
+
+describe('development CORS origins', () => {
+  it('normalizes configured Pages origins and rejects wildcard input', () => {
+    expect(allowedCorsOrigins(' https://preview.pages.dev/path,not-a-url,* ')).toEqual(
+      new Set(['http://localhost:5173', 'https://preview.pages.dev']),
+    );
   });
 });
