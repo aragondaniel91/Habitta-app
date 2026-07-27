@@ -97,6 +97,7 @@ select lives_ok($$select public.submit_payment('81100000-0000-0000-0000-00000000
 select throws_ok($$select public.record_payment_proof('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'81150000-0000-0000-0000-000000000003','payments/81150000-0000-0000-0000-000000000003','three.pdf','application/pdf',12,'ghi')$$,null,null,'proof cannot be replaced after submit');
 select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='owner-proof')),0::bigint,'creating and submitting payment does not change ledger');
 
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000007',true);
 select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'));
 select throws_ok($$select public.payment_transition('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'under_review',null)$$,null,null,'assistant cannot review');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
