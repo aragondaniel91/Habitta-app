@@ -31,6 +31,9 @@
         "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
         "NOTIFICATIONS_EMAIL_MODE": "disabled",
       },
+      "r2_buckets": [
+        { "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-dev" },
+      ],
       "queues": {
         "producers": [{ "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-dev" }],
         "consumers": [
