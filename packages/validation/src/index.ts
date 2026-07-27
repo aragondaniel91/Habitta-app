@@ -56,7 +56,15 @@ export const invitationInputSchema = z.object({
   intendedRole: z.enum(['owner', 'tenant']),
   expiresAt: z.string().datetime().optional(),
 });
-const money = z.coerce.number().positive().finite();
+export const decimalAmountSchema = z
+  .string()
+  .regex(/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/)
+  .refine((value) => value !== '0' && value !== '0.0' && value !== '0.00')
+  .transform((value) => {
+    const [whole, fraction = ''] = value.split('.');
+    return `${whole}.${fraction.padEnd(2, '0')}`;
+  });
+const money = decimalAmountSchema;
 export const chargeConceptSchema = z.object({
   code: z.string().trim().min(1).max(32),
   name: z.string().trim().min(1),
@@ -93,9 +101,11 @@ export const batchSchema = z.object({
   issueDate: z.string().date(),
   dueDate: z.string().date(),
   distributionMethod: z.enum(['fixed_per_unit', 'custom_per_unit']),
-  rows: z.array(z.object({ unitId: uuidSchema, amount: money })).min(1),
+  fixedAmount: money.optional(),
+  rows: z.array(z.object({ unitId: uuidSchema, amount: money.optional() })).min(1),
   idempotencyKey: z.string().min(1),
 });
+export const reverseReceivableSchema = z.object({ reason: z.string().trim().min(3).max(500) });
 export const openingBalancesSchema = z.object({
   rows: z
     .array(

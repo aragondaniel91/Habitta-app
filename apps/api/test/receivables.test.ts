@@ -20,10 +20,11 @@ describe('receivables validation', () => {
         issueDate: '2026-07-01',
         dueDate: '2026-07-10',
         distributionMethod: 'fixed_per_unit',
-        rows: [{ unitId: '00000000-0000-0000-0000-000000000002', amount: '10.50' }],
+        fixedAmount: '10.50',
+        rows: [{ unitId: '00000000-0000-0000-0000-000000000002' }],
         idempotencyKey: 'x',
-      }).rows[0]!.amount,
-    ).toBe(10.5));
+      }).fixedAmount,
+    ).toBe('10.50'));
   it('normalizes opening-balance currency', () =>
     expect(
       openingBalancesSchema.parse({
