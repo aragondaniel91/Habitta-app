@@ -6,6 +6,9 @@ create type public.receivable_lifecycle_status as enum ('active','reversed');
 create type public.ledger_entry_type as enum ('charge','opening_debit','opening_credit','adjustment_debit','adjustment_credit','reversal');
 create type public.ledger_direction as enum ('debit','credit');
 
+alter table public.units
+  add constraint units_id_condominium_unique unique(id,condominium_id);
+
 create table public.charge_concepts (
  id uuid primary key default gen_random_uuid(), condominium_id uuid not null references public.condominiums(id) on delete cascade,
  code text not null, name text not null, description text, category public.charge_concept_category not null,
