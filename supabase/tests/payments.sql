@@ -1,0 +1,11 @@
+begin;
+select plan(8);
+select has_table('public','payments','payments table exists');
+select has_table('public','payment_allocations','allocations table exists');
+select has_table('public','payment_receipts','receipts table exists');
+select has_function('public','create_payment_draft','draft RPC exists');
+select has_function('public','approve_payment','approval RPC exists');
+select has_function('public','reverse_payment','reversal RPC exists');
+select has_function('public','record_payment_proof','private proof RPC exists');
+select col_is_null('public','receivable_ledger_entries','payment_id','ledger payment relation is optional');
+select * from finish(); rollback;

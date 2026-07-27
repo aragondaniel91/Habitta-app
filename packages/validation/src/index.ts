@@ -116,6 +116,55 @@ export const batchSchema = z
     path: ['dueDate'],
   });
 export const reverseReceivableSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+export const paymentMethodSchema = z.object({
+  methodType: z.enum([
+    'bank_transfer',
+    'pago_movil',
+    'zelle',
+    'cash',
+    'international_transfer',
+    'paypal_manual',
+    'other',
+  ]),
+  displayName: z.string().trim().min(1),
+  currencyCode: z.string().regex(/^[A-Z]{3}$/),
+  accountHolder: z.string().optional(),
+  bankName: z.string().optional(),
+  accountIdentifierMasked: z.string().optional(),
+  phoneMasked: z.string().optional(),
+  emailMasked: z.string().email().optional(),
+  instructions: z.string().optional(),
+  requiresReference: z.boolean().optional(),
+  requiresProof: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
+export const paymentDraftSchema = z.object({
+  unitId: uuidSchema,
+  paymentMethodId: uuidSchema,
+  paymentDate: z.string().date(),
+  originalAmount: decimalAmountSchema,
+  originalCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
+  payerName: z.string().trim().min(1),
+  reference: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
+  idempotencyKey: z.string().min(1),
+});
+export const paymentUpdateSchema = paymentDraftSchema.omit({ unitId: true, idempotencyKey: true });
+export const paymentReasonSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+export const allocationSchema = z.object({
+  receivableItemId: uuidSchema,
+  paymentAmount: decimalAmountSchema,
+  receivableAmount: decimalAmountSchema,
+  paymentCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
+  receivableCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
+  receivablePerPaymentRate: z
+    .string()
+    .regex(/^(0|[1-9][0-9]{0,13})(\.[0-9]{1,10})?$/)
+    .optional(),
+  fxRateSource: z.string().trim().optional(),
+  fxRateAt: z.string().datetime().optional(),
+});
+export const approvePaymentSchema = z.object({ allocations: z.array(allocationSchema) });
 export const openingBalancesSchema = z.object({
   rows: z
     .array(

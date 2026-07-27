@@ -16,10 +16,15 @@ import {
   batchSchema,
   openingBalancesSchema,
   reverseReceivableSchema,
+  paymentMethodSchema,
+  paymentDraftSchema,
+  paymentUpdateSchema,
+  paymentReasonSchema,
+  approvePaymentSchema,
   uuidSchema,
 } from '@habitta/validation';
 
-type Bindings = { SUPABASE_URL: string; SUPABASE_ANON_KEY: string };
+type Bindings = { SUPABASE_URL: string; SUPABASE_ANON_KEY: string; PAYMENT_PROOFS: R2Bucket };
 type Variables = { token: string; userId: string };
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 app.onError((error, c) =>
@@ -575,5 +580,242 @@ app.get('/v1/condominiums/:id/receivables/:receivableId', async (c) => {
     `receivable_balances?id=eq.${uuidSchema.parse(c.req.param('receivableId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
   );
   return c.json(await r.json(), r.ok ? 200 : 400);
+});
+const rpc = (
+  c: Context<{ Bindings: Bindings; Variables: Variables }>,
+  name: string,
+  payload: unknown,
+) => rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) });
+app.get(
+  '/v1/condominiums/:id/payment-methods',
+  financeList('condominium_payment_methods', 'display_name.asc'),
+);
+app.post('/v1/condominiums/:id/payment-methods', async (c) => {
+  const p = await body(c, paymentMethodSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'condominium_payment_methods', {
+    method: 'POST',
+    body: JSON.stringify({
+      condominium_id: uuidSchema.parse(c.req.param('id')),
+      method_type: p.methodType,
+      display_name: p.displayName,
+      currency_code: p.currencyCode,
+      account_holder: p.accountHolder,
+      bank_name: p.bankName,
+      account_identifier_masked: p.accountIdentifierMasked,
+      phone_masked: p.phoneMasked,
+      email_masked: p.emailMasked,
+      instructions: p.instructions,
+      requires_reference: p.requiresReference ?? false,
+      requires_proof: p.requiresProof ?? false,
+      is_active: p.isActive ?? true,
+      created_by: c.get('userId'),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 403);
+});
+app.patch('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
+  const p = await body(c, paymentMethodSchema.partial());
+  if (p instanceof Response) return p;
+  const r = await rest(
+    c,
+    `condominium_payment_methods?id=eq.${uuidSchema.parse(c.req.param('methodId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        method_type: p.methodType,
+        display_name: p.displayName,
+        currency_code: p.currencyCode,
+        instructions: p.instructions,
+        requires_reference: p.requiresReference,
+        requires_proof: p.requiresProof,
+        is_active: p.isActive,
+      }),
+    },
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
+  const r = await rest(
+    c,
+    `payments?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&status=in.(submitted,under_review)&select=*&order=submitted_at.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/payments', financeList('payments', 'created_at.desc'));
+app.post('/v1/condominiums/:id/payments', async (c) => {
+  const p = await body(c, paymentDraftSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'create_payment_draft', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_unit: p.unitId,
+    target_method: p.paymentMethodId,
+    payment_on: p.paymentDate,
+    amount: p.originalAmount,
+    currency: p.originalCurrencyCode,
+    payer: p.payerName,
+    reference_value: p.reference ?? null,
+    notes_value: p.notes ?? null,
+    key: p.idempotencyKey,
+  });
+  return c.json(await r.json(), r.ok ? 201 : 403);
+});
+app.get('/v1/condominiums/:id/payments/:paymentId', async (c) => {
+  const r = await rest(
+    c,
+    `payments?id=eq.${uuidSchema.parse(c.req.param('paymentId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 404);
+});
+app.patch('/v1/condominiums/:id/payments/:paymentId', async (c) => {
+  const p = await body(c, paymentUpdateSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_payment_draft', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_payment: uuidSchema.parse(c.req.param('paymentId')),
+    target_method: p.paymentMethodId,
+    payment_on: p.paymentDate,
+    amount: p.originalAmount,
+    currency: p.originalCurrencyCode,
+    payer: p.payerName,
+    reference_value: p.reference ?? null,
+    notes_value: p.notes ?? null,
+  });
+  return c.json(await r.json(), r.ok ? 200 : 409);
+});
+app.post('/v1/condominiums/:id/payments/:paymentId/submit', async (c) => {
+  const r = await rpc(c, 'submit_payment', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_payment: uuidSchema.parse(c.req.param('paymentId')),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 409);
+});
+const paymentTransition =
+  (state: 'under_review' | 'correction_requested' | 'rejected') =>
+  async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
+    const p = state === 'under_review' ? {} : await body(c, paymentReasonSchema);
+    if (p instanceof Response) return p;
+    const r = await rpc(c, 'payment_transition', {
+      target: uuidSchema.parse(c.req.param('id')),
+      target_payment: uuidSchema.parse(c.req.param('paymentId')),
+      next_status: state,
+      reason: 'reason' in p ? p.reason : null,
+    });
+    return c.json(await r.json(), r.ok ? 200 : 409);
+  };
+app.post(
+  '/v1/condominiums/:id/payments/:paymentId/start-review',
+  paymentTransition('under_review'),
+);
+app.post(
+  '/v1/condominiums/:id/payments/:paymentId/request-correction',
+  paymentTransition('correction_requested'),
+);
+app.post('/v1/condominiums/:id/payments/:paymentId/reject', paymentTransition('rejected'));
+app.post('/v1/condominiums/:id/payments/:paymentId/approve', async (c) => {
+  const p = await body(c, approvePaymentSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'approve_payment', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_payment: uuidSchema.parse(c.req.param('paymentId')),
+    allocations: p.allocations.map(
+      (a: {
+        receivableItemId: string;
+        paymentAmount: string;
+        receivableAmount: string;
+        paymentCurrencyCode: string;
+        receivableCurrencyCode: string;
+        receivablePerPaymentRate?: string;
+        fxRateSource?: string;
+        fxRateAt?: string;
+      }) => ({
+        receivable_item_id: a.receivableItemId,
+        payment_amount: a.paymentAmount,
+        receivable_amount: a.receivableAmount,
+        payment_currency_code: a.paymentCurrencyCode,
+        receivable_currency_code: a.receivableCurrencyCode,
+        receivable_per_payment_rate: a.receivablePerPaymentRate ?? null,
+        fx_rate_source: a.fxRateSource ?? null,
+        fx_rate_at: a.fxRateAt ?? null,
+      }),
+    ),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 409);
+});
+app.post('/v1/condominiums/:id/payments/:paymentId/reverse', async (c) => {
+  const p = await body(c, paymentReasonSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'reverse_payment', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_payment: uuidSchema.parse(c.req.param('paymentId')),
+    reason: p.reason,
+  });
+  return c.json(await r.json(), r.ok ? 200 : 409);
+});
+app.post('/v1/condominiums/:id/payments/:paymentId/allocation-preview', async (c) => {
+  const p = await body(c, approvePaymentSchema);
+  if (p instanceof Response) return p;
+  return c.json({
+    allocations: p.allocations,
+    warning: 'Review duplicate payment details before approval',
+  });
+});
+app.get('/v1/condominiums/:id/payments/:paymentId/receipt', async (c) => {
+  const r = await rest(
+    c,
+    `payment_receipts?payment_id=eq.${uuidSchema.parse(c.req.param('paymentId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 404);
+});
+const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'proof';
+app.put('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
+  const type = c.req.header('Content-Type') ?? '';
+  if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(type))
+    return c.json({ error: 'Unsupported proof type' }, 415);
+  const bytes = await c.req.raw.arrayBuffer();
+  if (bytes.byteLength > 10485760) return c.json({ error: 'Proof exceeds 10 MB' }, 413);
+  const id = uuidSchema.parse(c.req.param('id')),
+    payment = uuidSchema.parse(c.req.param('paymentId')),
+    hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+      .map((x) => x.toString(16).padStart(2, '0'))
+      .join(''),
+    key = `payments/${crypto.randomUUID()}`;
+  await c.env.PAYMENT_PROOFS.put(key, bytes, { httpMetadata: { contentType: type } });
+  const r = await rpc(c, 'record_payment_proof', {
+    target: id,
+    target_payment: payment,
+    key_value: key,
+    filename: safeName(c.req.header('X-Filename') ?? 'proof'),
+    mime: type,
+    bytes: bytes.byteLength,
+    hash,
+  });
+  if (!r.ok) {
+    await c.env.PAYMENT_PROOFS.delete(key);
+    return c.json({ error: 'Proof metadata could not be saved' }, 403);
+  }
+  return c.json({ id: ((await r.json()) as { id: string }).id }, 201);
+});
+app.get('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id')),
+    payment = uuidSchema.parse(c.req.param('paymentId'));
+  const r = await rest(
+    c,
+    `payment_proofs?condominium_id=eq.${id}&payment_id=eq.${payment}&superseded_at=is.null&select=object_key,original_filename,content_type`,
+  );
+  const rows = (await r.json()) as {
+    object_key: string;
+    original_filename: string;
+    content_type: string;
+  }[];
+  if (!r.ok || !rows[0]) return c.json({ error: 'Proof not found' }, 404);
+  const object = await c.env.PAYMENT_PROOFS.get(rows[0].object_key);
+  if (!object) return c.json({ error: 'Proof unavailable' }, 404);
+  return new Response(object.body, {
+    headers: {
+      'Content-Type': rows[0].content_type,
+      'Content-Disposition': `attachment; filename="${safeName(rows[0].original_filename)}"`,
+    },
+  });
 });
 export default app;

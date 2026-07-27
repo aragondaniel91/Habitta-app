@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { supabase } from './supabase';
 import { PeoplePanel } from './features/people/PeoplePanel';
 import { ReceivablesPanel } from './features/receivables/ReceivablesPanel';
+import { PaymentsPanel } from './features/payments/PaymentsPanel';
 import './styles.css';
 type Org = { id: string; name: string };
 type Condo = { id: string; name: string; organization_id: string };
@@ -220,6 +221,7 @@ function App() {
               </div>
               {condo && <PeoplePanel condominiumId={condo} units={units} session={session} />}
               {condo && <ReceivablesPanel condominiumId={condo} units={units} session={session} />}
+              {condo && <PaymentsPanel condominiumId={condo} units={units} session={session} />}
             </>
           )}
         </article>
