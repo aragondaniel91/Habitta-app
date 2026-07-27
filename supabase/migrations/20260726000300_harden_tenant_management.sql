@@ -9,7 +9,7 @@ drop type if exists public.membership_role;
 
 alter table public.buildings add constraint buildings_id_condominium_unique unique (id, condominium_id);
 alter table public.units drop constraint if exists units_building_id_fkey;
-alter table public.units add constraint units_building_condominium_fkey foreign key (building_id, condominium_id) references public.buildings(id, condominium_id) on delete set null;
+alter table public.units add constraint units_building_condominium_fkey foreign key (building_id, condominium_id) references public.buildings(id, condominium_id) on delete set null (building_id);
 
 create or replace function public.can_manage_condominium_structure(target uuid) returns boolean language sql stable security definer set search_path=public as $$
  select public.is_organization_owner((select organization_id from public.condominiums where id=target))
