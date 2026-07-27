@@ -1,0 +1,19 @@
+{
+  "name": "@habitta/contracts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@habitta/shared-types": "workspace:*",
+    "zod": "^3.25.76"
+  }
+}
