@@ -21,12 +21,25 @@ import {
   paymentUpdateSchema,
   paymentReasonSchema,
   approvePaymentSchema,
+  notificationPreferencesSchema,
+  notificationSettingsSchema,
   uuidSchema,
 } from '@habitta/validation';
 
-type Bindings = { SUPABASE_URL: string; SUPABASE_ANON_KEY: string; PAYMENT_PROOFS: R2Bucket };
+type Bindings = {
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+  PAYMENT_PROOFS: R2Bucket;
+  NOTIFICATION_QUEUE: Queue<NotificationQueueMessage>;
+  RESEND_API_KEY: string;
+  NOTIFICATIONS_FROM_EMAIL: string;
+  NOTIFICATIONS_FROM_NAME: string;
+  APP_BASE_URL: string;
+};
 type Variables = { token: string; userId: string };
-const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+type NotificationQueueMessage = { deliveryId: string };
+export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 app.onError((error, c) =>
   c.json(
     { error: error.name === 'ZodError' ? 'Invalid identifier' : 'Request failed' },
@@ -858,4 +871,215 @@ app.get('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
     },
   });
 });
-export default app;
+
+app.get('/v1/notifications', async (c) => {
+  const condominiumId = c.req.query('condominiumId');
+  const unreadOnly = c.req.query('unreadOnly') === 'true';
+  const cursorAt = c.req.query('cursorAt') ?? null;
+  if (condominiumId) uuidSchema.parse(condominiumId);
+  const r = await rpc(c, 'get_my_notifications', {
+    target_condominium: condominiumId ?? null,
+    unread_only: unreadOnly,
+    limit_count: c.req.query('limit') ?? '30',
+    cursor_at: cursorAt,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.get('/v1/notifications/unread-count', async (c) => {
+  const r = await rpc(c, 'get_my_unread_notification_count', {});
+  return responseJson(c, r, 200, 403);
+});
+app.post('/v1/notifications/:id/read', async (c) => {
+  const r = await rpc(c, 'mark_notification_read', { target: uuidSchema.parse(c.req.param('id')) });
+  return responseJson(c, r, 200, 404);
+});
+app.post('/v1/notifications/read-all', async (c) => {
+  const condominiumId = c.req.query('condominiumId');
+  if (condominiumId) uuidSchema.parse(condominiumId);
+  const r = await rpc(c, 'mark_all_notifications_read', {
+    target_condominium: condominiumId ?? null,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.post('/v1/notifications/:id/archive', async (c) => {
+  const r = await rpc(c, 'archive_notification', { target: uuidSchema.parse(c.req.param('id')) });
+  return responseJson(c, r, 200, 404);
+});
+app.get('/v1/notification-preferences', async (c) => {
+  const condominiumId = c.req.query('condominiumId');
+  if (condominiumId) uuidSchema.parse(condominiumId);
+  const r = await rpc(c, 'get_my_notification_preferences', {
+    target_condominium: condominiumId ?? null,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.put('/v1/notification-preferences/:condominiumId', async (c) => {
+  const p = await body(c, notificationPreferencesSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_my_notification_preferences', {
+    target_condominium: uuidSchema.parse(c.req.param('condominiumId')),
+    target_type: p.notificationType,
+    target_email_enabled: p.emailEnabled,
+    target_in_app_enabled: p.inAppEnabled,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.get('/v1/condominiums/:id/notification-settings', async (c) => {
+  const r = await rpc(c, 'get_condominium_notification_settings', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.put('/v1/condominiums/:id/notification-settings', async (c) => {
+  const p = await body(c, notificationSettingsSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_condominium_notification_settings', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_email_enabled: p.emailEnabled,
+    target_due_soon_enabled: p.dueSoonEnabled,
+    target_due_soon_days: p.dueSoonDays,
+    target_overdue_enabled: p.overdueEnabled,
+    target_timezone: p.timezone,
+  });
+  return responseJson(c, r, 200, 403);
+});
+const serviceRpc = async <T>(env: Bindings, name: string, payload: unknown) => {
+  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(`Notification RPC ${name} failed`);
+  return (await response.json()) as T;
+};
+const caracasDate = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date());
+const enqueuePendingNotifications = async (env: Bindings) => {
+  const eventIds = await serviceRpc<{ id: string }[]>(env, 'claim_notification_events', {
+    limit_count: 50,
+  });
+  for (const event of eventIds) {
+    const deliveryIds = await serviceRpc<{ delivery_id: string }[]>(
+      env,
+      'expand_notification_event',
+      {
+        target: event.id,
+      },
+    );
+    for (const delivery of deliveryIds)
+      await env.NOTIFICATION_QUEUE.send({ deliveryId: delivery.delivery_id });
+  }
+  const retryIds = await serviceRpc<{ id: string }[]>(env, 'claim_due_notification_deliveries', {
+    limit_count: 100,
+  });
+  for (const delivery of retryIds) await env.NOTIFICATION_QUEUE.send({ deliveryId: delivery.id });
+};
+const renderEmail = (
+  delivery: { template_key: string; payload: Record<string, string> },
+  env: Bindings,
+) => {
+  const labels: Record<string, string> = {
+    new_receivable: 'Nuevo cargo',
+    payment_submitted_admin: 'Pago pendiente de revisión',
+    payment_correction_requested: 'Corrección solicitada',
+    payment_rejected: 'Pago rechazado',
+    payment_approved: 'Pago aprobado',
+    payment_reversed: 'Pago reversado',
+    payment_receipt_available: 'Recibo disponible',
+    receivable_due_soon: 'Cargo próximo a vencer',
+    receivable_overdue: 'Cargo vencido',
+  };
+  const title = labels[delivery.template_key] ?? 'Actualización de Habitta';
+  const details = [
+    delivery.payload.condominium_name,
+    delivery.payload.unit_code && `Unidad ${delivery.payload.unit_code}`,
+    delivery.payload.amount && `${delivery.payload.currency_code} ${delivery.payload.amount}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const action = delivery.payload.action_url
+    ? `${env.APP_BASE_URL.replace(/\/$/, '')}${delivery.payload.action_url}`
+    : env.APP_BASE_URL;
+  return {
+    subject: `${title} | Habitta`,
+    html: `<main style="font-family:Poppins,Arial,sans-serif;color:#333D4B"><h1 style="color:#0D1B2A">${title}</h1><p>${details || 'Tienes una actualización en Habitta.'}</p><p><a href="${action}" style="background:#1B4F72;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px">Ver en Habitta</a></p></main>`,
+  };
+};
+const processNotificationDelivery = async (message: NotificationQueueMessage, env: Bindings) => {
+  const delivery = await serviceRpc<{
+    id: string;
+    recipient_email: string;
+    template_key: string;
+    payload: Record<string, string>;
+    deduplication_key: string;
+  } | null>(env, 'claim_notification_delivery', {
+    target: message.deliveryId,
+    worker: 'cloudflare-queue',
+  });
+  if (!delivery) return;
+  const allowed = await serviceRpc<boolean>(env, 'should_send_notification_delivery', {
+    target: delivery.id,
+  });
+  if (!allowed || !env.RESEND_API_KEY) {
+    await serviceRpc(env, 'skip_notification_delivery', {
+      target: delivery.id,
+      reason: allowed ? 'email_not_configured' : 'email_disabled',
+    });
+    return;
+  }
+  const email = renderEmail(delivery, env);
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': delivery.deduplication_key,
+    },
+    body: JSON.stringify({
+      from: `${env.NOTIFICATIONS_FROM_NAME} <${env.NOTIFICATIONS_FROM_EMAIL}>`,
+      to: [delivery.recipient_email],
+      subject: email.subject,
+      html: email.html,
+    }),
+  });
+  const result = (await response.json().catch(() => ({}))) as { id?: string };
+  if (response.ok)
+    await serviceRpc(env, 'finish_notification_delivery', {
+      target: delivery.id,
+      provider_id: result.id ?? null,
+      error_code: null,
+      retryable: false,
+    });
+  else
+    await serviceRpc(env, 'finish_notification_delivery', {
+      target: delivery.id,
+      provider_id: null,
+      error_code: `resend_${response.status}`,
+      retryable: response.status === 429 || response.status >= 500,
+    });
+};
+export default {
+  fetch: app.fetch,
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(
+      (async () => {
+        await serviceRpc(env, 'generate_due_notification_events', { run_date: caracasDate() });
+        await enqueuePendingNotifications(env);
+      })(),
+    );
+  },
+  async queue(batch, env) {
+    for (const message of batch.messages) {
+      try {
+        await processNotificationDelivery(message.body, env);
+        message.ack();
+      } catch {
+        message.retry();
+      }
+    }
+  },
+} satisfies ExportedHandler<Bindings, NotificationQueueMessage>;

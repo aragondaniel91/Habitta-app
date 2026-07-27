@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import app from '../src/index';
+import { app } from '../src/index';
 
 describe('invitation acceptance', () => {
   it('sends only raw_token to the acceptance RPC', async () => {
