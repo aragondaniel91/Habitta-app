@@ -32,9 +32,8 @@ function App() {
   useEffect(() => {
     if (!supabase) return;
     void supabase.auth.getSession().then((x) => setSession(x.data.session));
-    return supabase.auth
-      .onAuthStateChange((_e, s) => setSession(s))
-      .data.subscription.unsubscribe();
+    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => data.subscription.unsubscribe();
   }, []);
   const load = async (s: Session) => {
     try {
@@ -132,8 +131,9 @@ function App() {
             <select
               value={org}
               onChange={(e) => {
-                setOrg(e.target.value);
-                setCondo(selected[0]?.id ?? '');
+                const nextOrg = e.target.value;
+                setOrg(nextOrg);
+                setCondo(condos.find((item) => item.organization_id === nextOrg)?.id ?? '');
               }}
             >
               {orgs.map((x) => (
@@ -183,10 +183,12 @@ function App() {
                   ) : (
                     <p>Sin torres todavía.</p>
                   )}
-                  <form onSubmit={(e) => void submit(e, `/v1/condominiums/${condo}/buildings`)}>
-                    <input name="name" required placeholder="Nombre de torre" />
-                    <button>Agregar torre</button>
-                  </form>
+                  {condo && (
+                    <form onSubmit={(e) => void submit(e, `/v1/condominiums/${condo}/buildings`)}>
+                      <input name="name" required placeholder="Nombre de torre" />
+                      <button>Agregar torre</button>
+                    </form>
+                  )}
                 </section>
                 <section>
                   <h2>Unidades</h2>
@@ -199,17 +201,19 @@ function App() {
                   ) : (
                     <p>Sin unidades todavía.</p>
                   )}
-                  <form onSubmit={(e) => void submit(e, `/v1/condominiums/${condo}/units`)}>
-                    <input name="code" required placeholder="Código" />
-                    <select name="type">
-                      <option value="apartment">Apartamento</option>
-                      <option value="house">Casa</option>
-                      <option value="commercial">Local</option>
-                      <option value="parking">Estacionamiento</option>
-                      <option value="storage">Depósito</option>
-                    </select>
-                    <button>Agregar unidad</button>
-                  </form>
+                  {condo && (
+                    <form onSubmit={(e) => void submit(e, `/v1/condominiums/${condo}/units`)}>
+                      <input name="code" required placeholder="Código" />
+                      <select name="type">
+                        <option value="apartment">Apartamento</option>
+                        <option value="house">Casa</option>
+                        <option value="commercial">Local</option>
+                        <option value="parking">Estacionamiento</option>
+                        <option value="storage">Depósito</option>
+                      </select>
+                      <button>Agregar unidad</button>
+                    </form>
+                  )}
                 </section>
               </div>
             </>

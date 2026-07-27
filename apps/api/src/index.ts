@@ -12,6 +12,12 @@ import {
 type Bindings = { SUPABASE_URL: string; SUPABASE_ANON_KEY: string };
 type Variables = { token: string; userId: string };
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+app.onError((error, c) =>
+  c.json(
+    { error: error.name === 'ZodError' ? 'Invalid identifier' : 'Request failed' },
+    error.name === 'ZodError' ? 400 : 500,
+  ),
+);
 app.use(
   '*',
   cors({ origin: ['http://localhost:5173'], allowHeaders: ['Authorization', 'Content-Type'] }),
@@ -75,15 +81,20 @@ app.get('/v1/condominiums', async (c) =>
 app.post('/v1/condominiums', async (c) => {
   const p = await body(c, condominiumInputSchema);
   if (p instanceof Response) return p;
-  const r = await rest(c, 'condominiums', {
+  const r = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/create_condominium`, {
     method: 'POST',
+    headers: {
+      apikey: c.env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${c.get('token')}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      organization_id: p.organizationId,
-      name: p.name,
-      created_by: c.get('userId'),
+      target_organization_id: p.organizationId,
+      condominium_name: p.name,
     }),
   });
-  return c.json(await r.json(), r.ok ? 201 : 400);
+  const result = await r.json();
+  return c.json(result, r.ok ? 201 : 400);
 });
 app.get('/v1/condominiums/:id', async (c) =>
   c.json(
