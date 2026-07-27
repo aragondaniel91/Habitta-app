@@ -42,10 +42,7 @@ export const resolveNotificationsEnvironment = (
     if (emailMode === 'sandbox' && (!sandboxEmail || !emailPattern.test(sandboxEmail)))
       throw new Error('notifications_sandbox_email_invalid');
     if (!env.RESEND_API_KEY?.trim()) throw new Error('notifications_resend_key_missing');
-    if (
-      !env.NOTIFICATIONS_FROM_EMAIL?.trim() ||
-      !emailPattern.test(env.NOTIFICATIONS_FROM_EMAIL)
-    )
+    if (!env.NOTIFICATIONS_FROM_EMAIL?.trim() || !emailPattern.test(env.NOTIFICATIONS_FROM_EMAIL))
       throw new Error('notifications_from_email_invalid');
     if (!env.NOTIFICATIONS_FROM_NAME?.trim()) throw new Error('notifications_from_name_missing');
     if (!env.APP_BASE_URL?.trim() || !isHttpUrl(env.APP_BASE_URL))
