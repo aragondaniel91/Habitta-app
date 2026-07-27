@@ -1,4 +1,3 @@
-alter type public.ledger_entry_type add value if not exists 'payment_credit';
 create type public.payment_method_type as enum ('bank_transfer','pago_movil','zelle','cash','international_transfer','paypal_manual','other');
 create type public.payment_status as enum ('draft','submitted','under_review','correction_requested','approved','rejected','reversed');
 
