@@ -15,7 +15,12 @@
     "notifications:smoke": "node scripts/cloudflare/notifications-smoke.mjs",
     "notifications:infra:plan": "node scripts/cloudflare/provision-notifications-dev.mjs",
     "notifications:infra:apply": "node scripts/cloudflare/provision-notifications-dev.mjs --apply",
-    "notifications:dlq:diagnose": "node scripts/cloudflare/notifications-dlq-diagnostics.mjs"
+    "notifications:dlq:diagnose": "node scripts/cloudflare/notifications-dlq-diagnostics.mjs",
+    "release:dev:validate": "node scripts/release/validate-development-release.mjs",
+    "release:dev:resources:plan": "node scripts/release/provision-development-resources.mjs",
+    "release:dev:resources:apply": "node scripts/release/provision-development-resources.mjs --apply",
+    "release:dev:smoke": "node scripts/release/development-smoke.mjs",
+    "release:dev:verify-web": "node scripts/release/verify-web-bundle-secrets.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

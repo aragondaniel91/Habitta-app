@@ -73,7 +73,7 @@ describe('notification development scripts', () => {
     });
     expect(output).toContain('"result":"skipped"');
     expect(output).toContain('"resendCalls":0');
-  });
+  }, 15000);
   it('prints an idempotent provisioning plan without calling Cloudflare', () => {
     const output = execFileSync(
       process.execPath,

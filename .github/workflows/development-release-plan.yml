@@ -1,0 +1,82 @@
+name: Development Release Plan
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Ref to inspect
+        default: main
+        required: true
+      confirm_project_ref:
+        description: Must exactly match SUPABASE_PROJECT_REF
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      APP_ENV: development
+      NOTIFICATIONS_EMAIL_MODE: disabled
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
+      INPUT_RELEASE_REF: ${{ inputs.release_ref }}
+      INPUT_CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '${{ env.INPUT_RELEASE_REF }}'
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.84.2
+      - run: pnpm install --frozen-lockfile
+      - name: Validate protected release inputs
+        run: |
+          test "$APP_ENV" = development
+          test "$NOTIFICATIONS_EMAIL_MODE" = disabled
+          test -n "$SUPABASE_PROJECT_REF"
+          test -n "$INPUT_CONFIRM_PROJECT_REF"
+          test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
+      - run: pnpm notifications:config:check
+      - run: pnpm release:dev:validate
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: git diff --check
+      - name: Inspect migrations without changes
+        env:
+          SUPABASE_ACCESS_TOKEN: '${{ secrets.SUPABASE_ACCESS_TOKEN }}'
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          supabase migration list --linked
+          supabase db push --dry-run
+      - name: Validate Cloudflare release declarations
+        run: |
+          pnpm --filter @habitta/api exec wrangler versions upload --env dev --dry-run
+          test "$CLOUDFLARE_PAGES_PROJECT_NAME" = habitta-web-dev
+      - name: Sanitized plan summary
+        run: |
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "worker=habitta-api-dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "pages=habitta-web-dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "queue=habitta-notifications-dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "dlq=habitta-notifications-dlq-dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "r2=habitta-payment-proofs-dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "email_mode=disabled" >> "$GITHUB_STEP_SUMMARY"

@@ -31,6 +31,19 @@ import type { NotificationBindings, NotificationQueueMessage } from './notificat
 type Bindings = NotificationBindings;
 type Variables = { token: string; userId: string };
 export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+export const allowedCorsOrigins = (raw?: string) =>
+  new Set(
+    ['http://localhost:5173', ...(raw ?? '').split(',')]
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+      .flatMap((origin) => {
+        try {
+          return [new URL(origin).origin];
+        } catch {
+          return [];
+        }
+      }),
+  );
 app.onError((error, c) =>
   c.json(
     { error: error.name === 'ZodError' ? 'Invalid identifier' : 'Request failed' },
@@ -40,11 +53,21 @@ app.onError((error, c) =>
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:5173'],
+    origin: (origin, c) =>
+      allowedCorsOrigins(c.env?.CORS_ALLOWED_ORIGINS).has(origin) ? origin : undefined,
     allowHeaders: ['Authorization', 'Content-Type', 'X-Filename'],
   }),
 );
-app.get('/health', (c) => c.json({ status: 'ok' as const, service: 'habitta-api' as const }));
+app.get('/health', (c) =>
+  c.json({
+    status: 'ok' as const,
+    environment: c.env?.APP_ENV ?? 'development',
+    commit: c.env?.BUILD_COMMIT ?? 'unknown',
+    version: c.env?.APP_VERSION ?? 'unknown',
+    buildTimestamp: c.env?.BUILD_TIMESTAMP ?? 'unknown',
+    notificationsEmailMode: c.env?.NOTIFICATIONS_EMAIL_MODE ?? 'disabled',
+  }),
+);
 app.use('/v1/*', async (c, n) => {
   const token = c.req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return c.json({ error: 'Unauthorized' }, 401);
