@@ -110,7 +110,7 @@ export function PaymentsPanel({
                 void paymentApi(
                   `/v1/condominiums/${condominiumId}/payments/${p.id}/receipt`,
                   session,
-                ).then((x) => window.print())
+                ).then(() => window.print())
               }
             >
               Ver recibo imprimible
