@@ -40,6 +40,9 @@ importers:
       '@habitta/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@habitta/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
       hono:
         specifier: ^4.7.11
         version: 4.12.32
