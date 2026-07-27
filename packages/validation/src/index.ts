@@ -85,26 +85,36 @@ export const chargeConceptSchema = z.object({
   defaultAmount: money.optional(),
   isActive: z.boolean().optional(),
 });
-export const receivableSchema = z.object({
-  unitId: uuidSchema,
-  conceptId: uuidSchema.optional(),
-  description: z.string().trim().min(1),
-  amount: money,
-  currencyCode: z.string().regex(/^[A-Z]{3}$/),
-  issueDate: z.string().date(),
-  dueDate: z.string().date().optional(),
-});
-export const batchSchema = z.object({
-  conceptId: uuidSchema,
-  name: z.string().trim().min(1),
-  currencyCode: z.string().regex(/^[A-Z]{3}$/),
-  issueDate: z.string().date(),
-  dueDate: z.string().date(),
-  distributionMethod: z.enum(['fixed_per_unit', 'custom_per_unit']),
-  fixedAmount: money.optional(),
-  rows: z.array(z.object({ unitId: uuidSchema, amount: money.optional() })).min(1),
-  idempotencyKey: z.string().min(1),
-});
+export const receivableSchema = z
+  .object({
+    unitId: uuidSchema,
+    conceptId: uuidSchema.optional(),
+    description: z.string().trim().min(1),
+    amount: money,
+    currencyCode: z.string().regex(/^[A-Z]{3}$/),
+    issueDate: z.string().date(),
+    dueDate: z.string().date().optional(),
+  })
+  .refine((value) => !value.dueDate || value.dueDate >= value.issueDate, {
+    message: 'dueDate must not precede issueDate',
+    path: ['dueDate'],
+  });
+export const batchSchema = z
+  .object({
+    conceptId: uuidSchema,
+    name: z.string().trim().min(1),
+    currencyCode: z.string().regex(/^[A-Z]{3}$/),
+    issueDate: z.string().date(),
+    dueDate: z.string().date(),
+    distributionMethod: z.enum(['fixed_per_unit', 'custom_per_unit']),
+    fixedAmount: money.optional(),
+    rows: z.array(z.object({ unitId: uuidSchema, amount: money.optional() })).min(1),
+    idempotencyKey: z.string().trim().min(1),
+  })
+  .refine((value) => value.dueDate >= value.issueDate, {
+    message: 'dueDate must not precede issueDate',
+    path: ['dueDate'],
+  });
 export const reverseReceivableSchema = z.object({ reason: z.string().trim().min(3).max(500) });
 export const openingBalancesSchema = z.object({
   rows: z
@@ -122,6 +132,6 @@ export const openingBalancesSchema = z.object({
       }),
     )
     .min(1),
-  idempotencyKey: z.string().min(1),
+  idempotencyKey: z.string().trim().min(1),
   filename: z.string().optional(),
 });
