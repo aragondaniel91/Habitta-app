@@ -1,0 +1,3 @@
+unit_code,first_name,last_name,email,phone,relationship,ownership_percentage
+A-101,Ana,Perez,ana@example.com,+584121234567,owner,100
+A-102,Carlos,Rojas,carlos@example.com,+584141234567,tenant,

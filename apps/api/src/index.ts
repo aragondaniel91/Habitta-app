@@ -6,6 +6,10 @@ import {
   condominiumInputSchema,
   organizationInputSchema,
   unitInputSchema,
+  personInputSchema,
+  ownerInputSchema,
+  occupancyInputSchema,
+  invitationInputSchema,
   uuidSchema,
 } from '@habitta/validation';
 
@@ -154,4 +158,177 @@ app.post('/v1/condominiums/:id/units', async (c) => {
   });
   return c.json(await r.json(), r.ok ? 201 : 400);
 });
+const list =
+  (table: string, filter: string) =>
+  async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
+    const r = await rest(c, `${table}?${filter}&select=*`);
+    const value = await r.json();
+    return c.json(value, r.ok ? 200 : 400);
+  };
+app.get('/v1/condominiums/:id/people', list('people', 'condominium_id=eq.:id'));
+app.post('/v1/condominiums/:id/people', async (c) => {
+  const p = await body(c, personInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'people', {
+    method: 'POST',
+    body: JSON.stringify({
+      condominium_id: uuidSchema.parse(c.req.param('id')),
+      first_name: p.firstName,
+      last_name: p.lastName,
+      email: p.email ?? null,
+      phone: p.phone ?? null,
+      status: p.status,
+      created_by: c.get('userId'),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 400);
+});
+app.get('/v1/condominiums/:id/people/:personId', async (c) => {
+  const r = await rest(
+    c,
+    `people?id=eq.${uuidSchema.parse(c.req.param('personId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+app.patch('/v1/condominiums/:id/people/:personId', async (c) => {
+  const p = await body(c, personInputSchema.partial());
+  if (p instanceof Response) return p;
+  const r = await rest(
+    c,
+    `people?id=eq.${uuidSchema.parse(c.req.param('personId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        first_name: p.firstName,
+        last_name: p.lastName,
+        email: p.email,
+        phone: p.phone,
+        status: p.status,
+      }),
+    },
+  );
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+app.get('/v1/condominiums/:id/units/:unitId/owners', list('unit_owners', 'unit_id=eq.:unitId'));
+app.post('/v1/condominiums/:id/units/:unitId/owners', async (c) => {
+  const p = await body(c, ownerInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'unit_owners', {
+    method: 'POST',
+    body: JSON.stringify({
+      unit_id: uuidSchema.parse(c.req.param('unitId')),
+      person_id: p.personId,
+      ownership_percentage: p.ownershipPercentage ?? null,
+      is_primary_contact: p.isPrimaryContact,
+      starts_at: p.startsAt ?? undefined,
+      created_by: c.get('userId'),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 400);
+});
+app.get(
+  '/v1/condominiums/:id/units/:unitId/occupancies',
+  list('unit_occupancies', 'unit_id=eq.:unitId'),
+);
+app.post('/v1/condominiums/:id/units/:unitId/occupancies', async (c) => {
+  const p = await body(c, occupancyInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'unit_occupancies', {
+    method: 'POST',
+    body: JSON.stringify({
+      unit_id: uuidSchema.parse(c.req.param('unitId')),
+      person_id: p.personId,
+      occupancy_type: p.occupancyType,
+      is_primary_contact: p.isPrimaryContact,
+      starts_at: p.startsAt ?? undefined,
+      created_by: c.get('userId'),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 400);
+});
+app.post('/v1/condominiums/:id/invitations', async (c) => {
+  const p = await body(c, invitationInputSchema);
+  if (p instanceof Response) return p;
+  const token = crypto.randomUUID().replaceAll('-', '');
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  const tokenHash = [...new Uint8Array(hash)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  const r = await rest(c, 'invitations', {
+    method: 'POST',
+    body: JSON.stringify({
+      condominium_id: uuidSchema.parse(c.req.param('id')),
+      person_id: p.personId,
+      unit_id: p.unitId ?? null,
+      email: p.email,
+      intended_role: p.intendedRole,
+      token_hash: tokenHash,
+      expires_at: p.expiresAt ?? new Date(Date.now() + 604800000).toISOString(),
+      invited_by: c.get('userId'),
+    }),
+  });
+  const result = await r.json();
+  return c.json(
+    {
+      invitation: result,
+      developmentUrl: c.env.SUPABASE_URL.includes('localhost') ? `/invite/${token}` : undefined,
+    },
+    r.ok ? 201 : 400,
+  );
+});
+app.post('/v1/invitations/:token/accept', async (c) => {
+  const email = ((await c.req.json()) as { email: string }).email;
+  const r = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/accept_invitation`, {
+    method: 'POST',
+    headers: {
+      apikey: c.env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${c.get('token')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ raw_token: c.req.param('token'), claimant_email: email }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+app.post('/v1/condominiums/:id/people/import/preview', async (c) => {
+  const { csv } = (await c.req.json()) as { csv: string };
+  const [header, ...rows] = csv
+    .trim()
+    .split(/\r?\n/)
+    .map((row) => row.split(',').map((cell) => cell.trim()));
+  const expected = [
+    'unit_code',
+    'first_name',
+    'last_name',
+    'email',
+    'phone',
+    'relationship',
+    'ownership_percentage',
+  ];
+  if (!header || expected.some((value, index) => header[index] !== value))
+    return c.json({ error: 'Invalid CSV headers' }, 400);
+  const units = (await (
+    await rest(c, `units?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=code`)
+  ).json()) as { code: string }[];
+  const known = new Set(units.map((unit) => unit.code));
+  const seen = new Set<string>();
+  const valid: unknown[] = [];
+  const errors: unknown[] = [];
+  rows.forEach((row, index) => {
+    const email = row[3]?.toLowerCase();
+    const issue = !known.has(row[0] ?? '')
+      ? 'Unknown unit'
+      : !row[1] || !row[2]
+        ? 'Missing name'
+        : email && seen.has(email)
+          ? 'Duplicate email'
+          : undefined;
+    if (issue) errors.push({ row: index + 2, error: issue });
+    else {
+      if (email) seen.add(email);
+      valid.push(row);
+    }
+  });
+  return c.json({ valid, errors });
+});
+app.post('/v1/condominiums/:id/people/import/commit', async (c) =>
+  c.json({ error: 'Use validated preview rows to commit imports' }, 501),
+);
 export default app;
