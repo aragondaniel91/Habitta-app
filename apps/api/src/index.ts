@@ -11,6 +11,11 @@ import {
   ownerInputSchema,
   occupancyInputSchema,
   invitationInputSchema,
+  chargeConceptSchema,
+  receivableSchema,
+  batchSchema,
+  openingBalancesSchema,
+  reverseReceivableSchema,
   uuidSchema,
 } from '@habitta/validation';
 
@@ -391,6 +396,184 @@ app.post('/v1/condominiums/:id/people/import/commit', async (c) => {
       key: payload.idempotencyKey,
     }),
   });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+const financeList =
+  (table: string, order = 'created_at.desc') =>
+  async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
+    const id = uuidSchema.parse(c.req.param('id'));
+    const r = await rest(c, `${table}?condominium_id=eq.${id}&select=*&order=${order}`);
+    return c.json(await r.json(), r.ok ? 200 : 400);
+  };
+app.get('/v1/condominiums/:id/charge-concepts', financeList('charge_concepts'));
+app.post('/v1/condominiums/:id/charge-concepts', async (c) => {
+  const p = await body(c, chargeConceptSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'charge_concepts', {
+    method: 'POST',
+    body: JSON.stringify({
+      condominium_id: uuidSchema.parse(c.req.param('id')),
+      code: p.code,
+      name: p.name,
+      description: p.description,
+      category: p.category,
+      default_currency_code: p.defaultCurrencyCode,
+      default_amount: p.defaultAmount,
+      is_active: p.isActive ?? true,
+      created_by: c.get('userId'),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 403);
+});
+app.patch('/v1/condominiums/:id/charge-concepts/:conceptId', async (c) => {
+  const p = await body(c, chargeConceptSchema.partial());
+  if (p instanceof Response) return p;
+  const r = await rest(
+    c,
+    `charge_concepts?id=eq.${uuidSchema.parse(c.req.param('conceptId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        code: p.code,
+        name: p.name,
+        description: p.description,
+        category: p.category,
+        default_currency_code: p.defaultCurrencyCode,
+        default_amount: p.defaultAmount,
+        is_active: p.isActive,
+      }),
+    },
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/receivables', financeList('receivable_balances', 'issue_date.desc'));
+app.post('/v1/condominiums/:id/receivables', async (c) => {
+  const p = await body(c, receivableSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/create_receivable_item', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_unit: p.unitId,
+      target_concept: p.conceptId ?? null,
+      item_description: p.description,
+      item_amount: p.amount,
+      item_currency: p.currencyCode,
+      item_issue: p.issueDate,
+      item_due: p.dueDate ?? null,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 403);
+});
+app.post('/v1/condominiums/:id/receivables/:receivableId/reverse', async (c) => {
+  const p = await body(c, reverseReceivableSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/reverse_receivable_item', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_item: uuidSchema.parse(c.req.param('receivableId')),
+      reason: p.reason,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/charge-batches', financeList('charge_batches'));
+app.post('/v1/condominiums/:id/charge-batches/preview', async (c) => {
+  const p = await body(c, batchSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/preview_charge_batch', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_concept: p.conceptId,
+      batch_currency: p.currencyCode,
+      issue_on: p.issueDate,
+      due_on: p.dueDate,
+      method: p.distributionMethod,
+      rows: p.rows.map((x: { unitId: string; amount?: string }) => ({
+        unit_id: x.unitId,
+        amount: x.amount,
+      })),
+      fixed_amount: p.fixedAmount ?? null,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+app.post('/v1/condominiums/:id/charge-batches/commit', async (c) => {
+  const p = await body(c, batchSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/post_charge_batch', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_concept: p.conceptId,
+      batch_name: p.name,
+      batch_currency: p.currencyCode,
+      issue_on: p.issueDate,
+      due_on: p.dueDate,
+      method: p.distributionMethod,
+      rows: p.rows.map((x: { unitId: string; amount?: string }) => ({
+        unit_id: x.unitId,
+        amount: x.amount,
+      })),
+      key: p.idempotencyKey,
+      fixed_amount: p.fixedAmount ?? null,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 403);
+});
+app.post('/v1/condominiums/:id/opening-balances/preview', async (c) => {
+  const p = await body(c, openingBalancesSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/preview_opening_balances', {
+    method: 'POST',
+    body: JSON.stringify({ target: uuidSchema.parse(c.req.param('id')), rows: p.rows }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+app.post('/v1/condominiums/:id/opening-balances/commit', async (c) => {
+  const p = await body(c, openingBalancesSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/import_opening_balances', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      rows: p.rows,
+      key: p.idempotencyKey,
+      import_filename: p.filename ?? null,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 403);
+});
+app.get('/v1/condominiums/:id/units/:unitId/statement', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id')),
+    unit = uuidSchema.parse(c.req.param('unitId'));
+  const r = await rest(c, 'rpc/get_unit_statement', {
+    method: 'POST',
+    body: JSON.stringify({ target: id, target_unit: unit }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+app.get('/v1/condominiums/:id/receivables/summary', async (c) => {
+  const r = await rest(c, 'rpc/get_receivables_summary', {
+    method: 'POST',
+    body: JSON.stringify({ target: uuidSchema.parse(c.req.param('id')) }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/receivables/aging', async (c) => {
+  const r = await rest(c, 'rpc/get_receivables_aging', {
+    method: 'POST',
+    body: JSON.stringify({ target: uuidSchema.parse(c.req.param('id')) }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/receivables/:receivableId', async (c) => {
+  const r = await rest(
+    c,
+    `receivable_balances?id=eq.${uuidSchema.parse(c.req.param('receivableId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
+  );
   return c.json(await r.json(), r.ok ? 200 : 400);
 });
 export default app;
