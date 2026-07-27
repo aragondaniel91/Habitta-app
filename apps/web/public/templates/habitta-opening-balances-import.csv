@@ -1,0 +1,2 @@
+unit_code,balance_type,amount,currency_code,effective_date,description
+A-101,debit,125.50,USD,2026-07-01,Saldo inicial
