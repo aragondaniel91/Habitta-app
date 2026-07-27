@@ -16,7 +16,19 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm notifications:config:check
-      - run: pnpm format:check
+      - name: Check formatting
+        run: |
+          pnpm format:check || {
+            pnpm exec prettier --list-different . > prettier-files.txt
+            exit 1
+          }
+      - name: Upload formatting diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prettier-files
+          path: prettier-files.txt
+          if-no-files-found: ignore
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
