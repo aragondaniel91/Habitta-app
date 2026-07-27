@@ -7,6 +7,8 @@ import type { NotificationBindings } from '../src/notifications/types';
 
 const env = (send = vi.fn()) =>
   ({
+    APP_ENV: 'production',
+    NOTIFICATIONS_EMAIL_MODE: 'live',
     SUPABASE_URL: 'https://supabase.test',
     SUPABASE_ANON_KEY: 'anon',
     SUPABASE_SERVICE_ROLE_KEY: 'service',
@@ -139,5 +141,65 @@ describe('Resend delivery', () => {
     vi.stubGlobal('fetch', fetchMock);
     expect(await processNotificationDelivery({ deliveryId: 'd' }, env())).toBe('ignored');
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+  it('marks disabled email delivery as skipped before contacting Resend', async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('claim_notification_delivery'))
+        return Response.json({
+          id: 'd',
+          recipient_email: 'user@test.dev',
+          template_key: 'payment_approved',
+          payload: { action_url: '/app/x' },
+          deduplication_key: 'k',
+          attempts: 1,
+        });
+      if (url.includes('should_send_notification_delivery')) return Response.json(true);
+      if (url.includes('skip_notification_delivery')) {
+        expect(JSON.parse(String(init?.body))).toMatchObject({ reason: 'email_delivery_disabled' });
+        return Response.json(null);
+      }
+      throw new Error('Resend should not be called');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(
+      await processNotificationDelivery(
+        { deliveryId: 'd' },
+        { ...env(), NOTIFICATIONS_EMAIL_MODE: 'disabled' },
+      ),
+    ).toBe('skipped');
+  });
+  it('redirects sandbox delivery and prefixes the subject without exposing the original recipient', async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('claim_notification_delivery'))
+        return Response.json({
+          id: 'd',
+          recipient_email: 'original@example.test',
+          template_key: 'payment_approved',
+          payload: { action_url: '/app/x' },
+          deduplication_key: 'k',
+          attempts: 1,
+        });
+      if (url.includes('should_send_notification_delivery')) return Response.json(true);
+      if (url.includes('finish_notification_delivery')) return Response.json(null);
+      if (url.includes('resend.com')) return Response.json({ id: 'provider' });
+      throw new Error(url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await processNotificationDelivery(
+      { deliveryId: 'd' },
+      {
+        ...env(),
+        APP_ENV: 'development',
+        NOTIFICATIONS_EMAIL_MODE: 'sandbox',
+        NOTIFICATIONS_SANDBOX_EMAIL: 'sandbox@habitta.test',
+      },
+    );
+    const resend = fetchMock.mock.calls.find((call) => String(call[0]).includes('resend.com'))!;
+    const payload = JSON.parse(String(resend[1]?.body));
+    expect(payload.to).toEqual(['sandbox@habitta.test']);
+    expect(payload.subject).toMatch(/^\[HABITTA DEV\]/);
+    expect(JSON.stringify(payload)).not.toContain('original@example.test');
   });
 });

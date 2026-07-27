@@ -1,4 +1,5 @@
 import { renderNotificationEmail } from './renderer';
+import { resolveNotificationsEnvironment } from '../config/notifications-env';
 import type { NotificationBindings, NotificationDelivery, NotificationQueueMessage } from './types';
 
 export const serviceRpc = async <T>(env: NotificationBindings, name: string, payload: unknown) => {
@@ -70,6 +71,21 @@ export const processNotificationDelivery = async (
     return 'skipped' as const;
   }
 
+  let environment;
+  try {
+    environment = resolveNotificationsEnvironment(env);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : 'notifications_environment_invalid';
+    await finish(env, delivery, code, false);
+    return 'dead' as const;
+  }
+  if (environment.emailMode === 'disabled') {
+    await serviceRpc(env, 'skip_notification_delivery', {
+      target: delivery.id,
+      reason: 'email_delivery_disabled',
+    });
+    return 'skipped' as const;
+  }
   if (!delivery.recipient_email) {
     await finish(env, delivery, 'recipient_email_unavailable', false);
     return 'dead' as const;
@@ -94,8 +110,13 @@ export const processNotificationDelivery = async (
       },
       body: JSON.stringify({
         from: `${env.NOTIFICATIONS_FROM_NAME} <${env.NOTIFICATIONS_FROM_EMAIL}>`,
-        to: [delivery.recipient_email],
-        subject: rendered.subject,
+        to: [
+          environment.emailMode === 'sandbox' ? environment.sandboxEmail : delivery.recipient_email,
+        ],
+        subject:
+          environment.emailMode === 'sandbox'
+            ? `[HABITTA DEV] ${rendered.subject}`
+            : rendered.subject,
         html: rendered.html,
         text: rendered.text,
       }),

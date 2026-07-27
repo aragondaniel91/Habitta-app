@@ -9,7 +9,13 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "format:check": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "notifications:config:check": "node scripts/cloudflare/validate-notifications-config.mjs",
+    "notifications:dev": "pnpm --filter @habitta/api exec wrangler dev --env dev --local",
+    "notifications:smoke": "node scripts/cloudflare/notifications-smoke.mjs",
+    "notifications:infra:plan": "node scripts/cloudflare/provision-notifications-dev.mjs",
+    "notifications:infra:apply": "node scripts/cloudflare/provision-notifications-dev.mjs --apply",
+    "notifications:dlq:diagnose": "node scripts/cloudflare/notifications-dlq-diagnostics.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
