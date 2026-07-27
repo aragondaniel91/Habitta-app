@@ -53,6 +53,7 @@ describe('Resend delivery', () => {
           deduplication_key: 'dedupe',
           attempts: 1,
         });
+      if (url.includes('should_send_notification_delivery')) return Response.json(true);
       if (url.includes('finish_notification_delivery')) {
         finishes.push(JSON.parse(String(init?.body)));
         return Response.json(null);
@@ -88,7 +89,7 @@ describe('Resend delivery', () => {
   it('retries temporary network failures', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
         if (url.includes('claim_notification_delivery'))
           return Response.json({
@@ -99,11 +100,39 @@ describe('Resend delivery', () => {
             deduplication_key: 'k',
             attempts: 4,
           });
+        if (url.includes('should_send_notification_delivery')) return Response.json(true);
         if (url.includes('finish_notification_delivery')) return Response.json(null);
         throw new TypeError('network');
       }),
     );
     expect(await processNotificationDelivery({ deliveryId: 'd' }, env())).toBe('retry');
+  });
+  it('skips a claimed delivery when current email preferences were disabled', async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('claim_notification_delivery'))
+        return Response.json({
+          id: 'd',
+          recipient_email: 'u@test.dev',
+          template_key: 'payment_approved',
+          payload: { action_url: '/app/x' },
+          deduplication_key: 'k',
+          attempts: 1,
+        });
+      if (url.includes('should_send_notification_delivery')) return Response.json(false);
+      if (url.includes('skip_notification_delivery')) {
+        expect(JSON.parse(String(init?.body))).toMatchObject({
+          target: 'd',
+          reason: 'email_disabled_at_delivery',
+        });
+        return Response.json(null);
+      }
+      if (url.includes('resend.com')) throw new Error('Resend should not be called');
+      throw new Error(url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await processNotificationDelivery({ deliveryId: 'd' }, env())).toBe('skipped');
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('resend.com'))).toBe(false);
   });
   it('does not call Resend for sent, skipped or dead deliveries', async () => {
     const fetchMock = vi.fn(async () => Response.json(null));
