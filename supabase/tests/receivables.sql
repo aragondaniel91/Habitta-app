@@ -1,5 +1,5 @@
 begin;
-select plan(35);
+select plan(36);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('70000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@fin.test','x',now(),now()),
@@ -32,6 +32,7 @@ insert into public.charge_concepts(id,condominium_id,code,name,category,created_
 
 set local role authenticated; select set_config('request.jwt.claim.sub','70000000-0000-0000-0000-000000000001',true);
 select lives_ok($$select public.create_receivable_item('71100000-0000-0000-0000-000000000001','71110000-0000-0000-0000-000000000001','71120000-0000-0000-0000-000000000001','Admin charge',100.00,'USD',current_date-95,current_date-91)$$,'condominium admin creates charge');
+select throws_ok($$select public.create_receivable_item('71100000-0000-0000-0000-000000000001','71110000-0000-0000-0000-000000000001','71120000-0000-0000-0000-000000000001','Invalid dates',1.00,'USD',current_date,current_date-1)$$,null,null,'manual charge rejects due date before issue date');
 select is((select direction::text from public.receivable_ledger_entries where description='Admin charge'),'debit','manual charge creates debit');
 select set_config('request.jwt.claim.sub','70000000-0000-0000-0000-000000000002',true);
 select lives_ok($$select public.create_receivable_item('71100000-0000-0000-0000-000000000001','71110000-0000-0000-0000-000000000002','71120000-0000-0000-0000-000000000001','Accountant charge',50.00,'VES',current_date,current_date+10)$$,'accountant creates charge');
