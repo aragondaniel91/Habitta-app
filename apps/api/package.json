@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@habitta/contracts": "workspace:*",
+    "@habitta/validation": "workspace:*",
     "hono": "^4.7.11"
   },
   "devDependencies": {
