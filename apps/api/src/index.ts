@@ -322,7 +322,11 @@ app.post('/v1/condominiums/:id/invitations', async (c) => {
   );
 });
 app.post('/v1/invitations/:token/accept', async (c) => {
-  const email = ((await c.req.json()) as { email: string }).email;
+  const identity = await fetch(`${c.env.SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: c.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${c.get('token')}` },
+  });
+  const email = ((await identity.json()) as { email?: string }).email;
+  if (!email) return c.json({ error: 'Authenticated email required' }, 400);
   const r = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/accept_invitation`, {
     method: 'POST',
     headers: {
