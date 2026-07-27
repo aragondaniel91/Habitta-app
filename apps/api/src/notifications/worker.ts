@@ -58,6 +58,18 @@ export const processNotificationDelivery = async (
     { target: message.deliveryId, worker: 'cloudflare-queue' },
   );
   if (!delivery) return 'ignored' as const;
+
+  const stillAllowed = await serviceRpc<boolean>(env, 'should_send_notification_delivery', {
+    target: delivery.id,
+  });
+  if (!stillAllowed) {
+    await serviceRpc(env, 'skip_notification_delivery', {
+      target: delivery.id,
+      reason: 'email_disabled_at_delivery',
+    });
+    return 'skipped' as const;
+  }
+
   if (!delivery.recipient_email) {
     await finish(env, delivery, 'recipient_email_unavailable', false);
     return 'dead' as const;
