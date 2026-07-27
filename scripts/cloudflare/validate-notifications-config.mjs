@@ -51,8 +51,7 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
     );
     if (consumer?.dead_letter_queue !== 'habitta-notifications-dlq-dev')
       errors.push('invalid_dev_dead_letter_queue');
-    if (dev.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
-      errors.push('unsafe_dev_email_mode');
+    if (dev.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled') errors.push('unsafe_dev_email_mode');
   }
   if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
     errors.push('missing_notification_cron');
