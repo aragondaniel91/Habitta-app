@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 
 :root {
-  font-family: Manrope, sans-serif;
-  color: #14352e;
-  background: #f5f5ed;
+  font-family: Poppins, sans-serif;
+  color: #333d4b;
+  background: #f5f7fa;
   font-synthesis: none;
 }
 * {
@@ -21,9 +21,10 @@ nav {
   align-items: center;
   gap: 34px;
   padding: 0 max(7vw, 30px);
-  border-bottom: 1px solid #d9dfd2;
+  border-bottom: 1px solid #e6f0fa;
   font-size: 13px;
   font-weight: 700;
+  background: #fff;
 }
 nav a {
   color: inherit;
@@ -31,6 +32,7 @@ nav a {
 }
 .brand {
   margin-right: auto;
+  color: #0d1b2a;
   font-size: 21px;
   font-weight: 800;
   letter-spacing: -1.2px;
@@ -43,29 +45,29 @@ nav a {
   place-items: center;
   width: 30px;
   height: 30px;
-  color: #f4f5e9;
-  background: #15705c;
-  border-radius: 50% 50% 42% 42%;
-  font-family: 'Playfair Display';
-  font-style: italic;
+  color: #fff;
+  background: #1b4f72;
+  border-radius: 8px;
+  font-weight: 800;
 }
 .hero {
   min-height: 610px;
   padding: 90px max(7vw, 30px);
-  background: radial-gradient(circle at 84% 40%, #d7e2c8 0 16%, transparent 40%), #f5f5ed;
+  background: radial-gradient(circle at 84% 40%, #e6f0fa 0 16%, transparent 40%), #f5f7fa;
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 80px;
   align-items: center;
 }
 .eyebrow {
-  font: 500 11px 'DM Mono';
-  color: #497960;
+  font: 600 11px Poppins;
+  color: #1b4f72;
   letter-spacing: 1.6px;
 }
 h1,
 h2 {
   margin: 16px 0;
+  color: #0d1b2a;
   letter-spacing: -2.5px;
 }
 h1 {
@@ -73,15 +75,14 @@ h1 {
   line-height: 0.99;
 }
 h1 em {
-  color: #15705c;
-  font-family: 'Playfair Display';
-  font-weight: 600;
+  color: #1b4f72;
+  font-style: normal;
 }
 .intro {
   max-width: 510px;
   font-size: 17px;
   line-height: 1.7;
-  color: #486057;
+  color: #333d4b;
 }
 .actions {
   display: flex;
@@ -92,31 +93,35 @@ h1 em {
 .button,
 button {
   border: 0;
-  background: #15705c;
-  color: white;
+  background: #1b4f72;
+  color: #fff;
   border-radius: 8px;
   padding: 15px 20px;
-  font: 700 13px Manrope;
+  font: 700 13px Poppins;
   cursor: pointer;
   text-decoration: none;
+}
+.button:hover,
+button:hover {
+  background: #0d1b2a;
 }
 .button b {
   font-size: 18px;
   margin-left: 16px;
 }
 .text-link {
-  color: #14352e;
+  color: #1b4f72;
   font-size: 13px;
   font-weight: 800;
   text-decoration: underline;
   text-underline-offset: 5px;
 }
 .dashboard {
-  background: #173d35;
-  color: #edf4e7;
+  background: #0d1b2a;
+  color: #fff;
   padding: 25px;
   border-radius: 19px;
-  box-shadow: 22px 24px 0 #c5d5b5;
+  box-shadow: 22px 24px 0 #c9dff1;
   transform: rotate(2deg);
   max-width: 400px;
   justify-self: end;
@@ -128,16 +133,17 @@ button {
   font-weight: 700;
 }
 .dash-top i {
-  color: #a7d18c;
+  color: #28a745;
   font-style: normal;
 }
 .dashboard h2 {
+  color: #fff;
   font-size: 22px;
   letter-spacing: -1px;
   margin-top: 40px;
 }
 .balance {
-  background: #255448;
+  background: #1b4f72;
   padding: 18px;
   border-radius: 12px;
   display: grid;
@@ -145,7 +151,7 @@ button {
 }
 small {
   font-size: 11px;
-  color: #a9bdb1;
+  color: #c9dff1;
 }
 .balance strong {
   font-size: 31px;
@@ -156,8 +162,8 @@ small {
 }
 .balance span,
 .cards span {
-  font: 10px 'DM Mono';
-  color: #abd786;
+  font: 600 10px Poppins;
+  color: #7ee194;
 }
 .cards {
   display: grid;
@@ -168,8 +174,8 @@ small {
 .cards article {
   display: grid;
   gap: 8px;
-  background: #f0efe5;
-  color: #163e35;
+  background: #fff;
+  color: #0d1b2a;
   padding: 15px;
   border-radius: 12px;
 }
@@ -177,28 +183,30 @@ small {
   font-size: 26px;
 }
 .cards article span {
-  color: #3d886d;
+  color: #28a745;
 }
 .proof {
   padding: 65px 7vw;
   text-align: center;
-  background: #e7ecde;
+  background: #e6f0fa;
 }
 .proof p {
   margin: 0 auto 25px;
-  font: 600 22px 'Playfair Display';
+  color: #0d1b2a;
+  font-size: 22px;
+  font-weight: 700;
 }
 .proof div {
   display: flex;
   justify-content: center;
   gap: 30px;
-  font: 500 11px 'DM Mono';
-  color: #497960;
+  font: 600 11px Poppins;
+  color: #1b4f72;
   text-transform: uppercase;
 }
 .proof span::before {
-  content: '✦';
-  color: #c48c41;
+  content: '•';
+  color: #28a745;
   margin-right: 8px;
 }
 .access {
@@ -215,7 +223,7 @@ small {
 .access > div > p:last-child {
   max-width: 470px;
   line-height: 1.7;
-  color: #62746a;
+  color: #333d4b;
 }
 .access form {
   display: grid;
@@ -229,19 +237,24 @@ small {
   font-weight: 800;
 }
 .access input {
-  border: 1px solid #ccd8ca;
+  border: 1px solid #c9dff1;
   border-radius: 7px;
   padding: 14px;
-  font: 14px Manrope;
+  color: #333d4b;
+  font: 14px Poppins;
+}
+.access input:focus {
+  outline: 2px solid #1b4f72;
+  outline-offset: 1px;
 }
 .message {
   margin: 0;
   font-size: 12px;
-  color: #497960;
+  color: #1b4f72;
 }
 .logout {
   background: transparent;
-  color: #15705c;
+  color: #1b4f72;
   padding: 5px 0;
   text-align: left;
 }

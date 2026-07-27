@@ -35,9 +35,16 @@ create table public.memberships (
   role public.membership_role not null,
   created_by uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (user_id, organization_id, condominium_id, role)
+  updated_at timestamptz not null default now()
 );
+
+create unique index memberships_organization_role_unique
+  on public.memberships (user_id, organization_id, role)
+  where condominium_id is null;
+
+create unique index memberships_condominium_role_unique
+  on public.memberships (user_id, condominium_id, role)
+  where condominium_id is not null;
 
 alter table public.profiles enable row level security;
 alter table public.organizations enable row level security;
@@ -53,6 +60,11 @@ create function public.is_condominium_member(target_condominium_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.memberships where user_id = auth.uid() and condominium_id = target_condominium_id);
 $$;
+
+revoke execute on function public.is_organization_member(uuid) from public;
+revoke execute on function public.is_condominium_member(uuid) from public;
+grant execute on function public.is_organization_member(uuid) to authenticated, service_role;
+grant execute on function public.is_condominium_member(uuid) to authenticated, service_role;
 
 create policy "profiles are visible to their owner" on public.profiles for select using (id = auth.uid());
 create policy "organizations are isolated by membership" on public.organizations for select using (public.is_organization_member(id));

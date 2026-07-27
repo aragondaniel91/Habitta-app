@@ -23,7 +23,7 @@ function App() {
     if (!supabase) return setMessage('Configura Supabase para habilitar el acceso.');
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: window.location.origin, shouldCreateUser: false },
     });
     setMessage(error ? error.message : 'Revisa tu correo para continuar.');
   }
