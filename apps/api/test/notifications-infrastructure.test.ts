@@ -5,19 +5,51 @@ import { resolveNotificationsEnvironment } from '../src/config/notifications-env
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
+const providerConfiguration = {
+  RESEND_API_KEY: 'test-key',
+  NOTIFICATIONS_FROM_EMAIL: 'no-reply@habitta.test',
+  NOTIFICATIONS_FROM_NAME: 'Habitta',
+  APP_BASE_URL: 'https://habitta.test',
+};
+
 describe('notification environment modes', () => {
-  it('defaults to disabled and requires a sandbox recipient', () => {
-    expect(resolveNotificationsEnvironment({ APP_ENV: 'development' }).emailMode).toBe('disabled');
+  it('defaults to disabled without requiring provider secrets', () => {
+    expect(resolveNotificationsEnvironment({ APP_ENV: 'development' })).toEqual({
+      appEnv: 'development',
+      emailMode: 'disabled',
+      sandboxEmail: null,
+    });
+  });
+  it('requires a valid sandbox recipient and provider configuration', () => {
     expect(() =>
       resolveNotificationsEnvironment({
         APP_ENV: 'development',
         NOTIFICATIONS_EMAIL_MODE: 'sandbox',
       }),
     ).toThrow('notifications_sandbox_email_invalid');
+    expect(() =>
+      resolveNotificationsEnvironment({
+        APP_ENV: 'development',
+        NOTIFICATIONS_EMAIL_MODE: 'sandbox',
+        NOTIFICATIONS_SANDBOX_EMAIL: 'sandbox@habitta.test',
+      }),
+    ).toThrow('notifications_resend_key_missing');
+    expect(
+      resolveNotificationsEnvironment({
+        APP_ENV: 'development',
+        NOTIFICATIONS_EMAIL_MODE: 'sandbox',
+        NOTIFICATIONS_SANDBOX_EMAIL: 'Sandbox@Habitta.test',
+        ...providerConfiguration,
+      }).sandboxEmail,
+    ).toBe('sandbox@habitta.test');
   });
   it('rejects live delivery outside production', () => {
     expect(() =>
-      resolveNotificationsEnvironment({ APP_ENV: 'development', NOTIFICATIONS_EMAIL_MODE: 'live' }),
+      resolveNotificationsEnvironment({
+        APP_ENV: 'development',
+        NOTIFICATIONS_EMAIL_MODE: 'live',
+        ...providerConfiguration,
+      }),
     ).toThrow('notifications_live_mode_not_allowed');
   });
 });
@@ -34,7 +66,7 @@ describe('notification development scripts', () => {
     );
     expect(output).toContain('notifications configuration is valid');
   });
-  it('runs the disabled-mode synthetic smoke check without a provider call', () => {
+  it('runs the disabled-mode consumer smoke check without a provider call', () => {
     const output = execFileSync(process.execPath, ['scripts/cloudflare/notifications-smoke.mjs'], {
       cwd: root,
       encoding: 'utf8',
