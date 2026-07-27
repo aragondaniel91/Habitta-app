@@ -141,6 +141,7 @@ export const paymentMethodSchema = z.object({
 export const paymentDraftSchema = z.object({
   unitId: uuidSchema,
   paymentMethodId: uuidSchema,
+  submittedForPersonId: uuidSchema.optional(),
   paymentDate: z.string().date(),
   originalAmount: decimalAmountSchema,
   originalCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
@@ -149,22 +150,54 @@ export const paymentDraftSchema = z.object({
   notes: z.string().trim().optional(),
   idempotencyKey: z.string().min(1),
 });
-export const paymentUpdateSchema = paymentDraftSchema.omit({ unitId: true, idempotencyKey: true });
-export const paymentReasonSchema = z.object({ reason: z.string().trim().min(3).max(500) });
-export const allocationSchema = z.object({
-  receivableItemId: uuidSchema,
-  paymentAmount: decimalAmountSchema,
-  receivableAmount: decimalAmountSchema,
-  paymentCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
-  receivableCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
-  receivablePerPaymentRate: z
-    .string()
-    .regex(/^(0|[1-9][0-9]{0,13})(\.[0-9]{1,10})?$/)
-    .optional(),
-  fxRateSource: z.string().trim().optional(),
-  fxRateAt: z.string().datetime().optional(),
+export const paymentUpdateSchema = paymentDraftSchema.omit({
+  unitId: true,
+  submittedForPersonId: true,
+  idempotencyKey: true,
 });
-export const approvePaymentSchema = z.object({ allocations: z.array(allocationSchema) });
+export const paymentReasonSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+export const allocationSchema = z
+  .object({
+    receivableItemId: uuidSchema,
+    paymentAmount: decimalAmountSchema,
+    receivableAmount: decimalAmountSchema,
+    paymentCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
+    receivableCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
+    receivablePerPaymentRate: z
+      .string()
+      .regex(/^(0|[1-9][0-9]{0,13})(\.[0-9]{1,10})?$/)
+      .optional(),
+    fxRateSource: z.string().trim().optional(),
+    fxRateAt: z.string().datetime().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.paymentCurrencyCode === value.receivableCurrencyCode) {
+      if (
+        value.paymentAmount !== value.receivableAmount ||
+        (value.receivablePerPaymentRate &&
+          !/^1(?:\.0{1,10})?$/.test(value.receivablePerPaymentRate))
+      )
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Same-currency allocations must be one to one',
+        });
+    } else if (!value.receivablePerPaymentRate) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Cross-currency allocations require a rate',
+      });
+    }
+  });
+export const approvePaymentSchema = z
+  .object({ allocations: z.array(allocationSchema) })
+  .superRefine((value, context) => {
+    const ids = value.allocations.map((allocation) => allocation.receivableItemId);
+    if (new Set(ids).size !== ids.length)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Duplicate receivable item',
+      });
+  });
 export const openingBalancesSchema = z.object({
   rows: z
     .array(

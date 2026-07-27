@@ -35,7 +35,10 @@ app.onError((error, c) =>
 );
 app.use(
   '*',
-  cors({ origin: ['http://localhost:5173'], allowHeaders: ['Authorization', 'Content-Type'] }),
+  cors({
+    origin: ['http://localhost:5173'],
+    allowHeaders: ['Authorization', 'Content-Type', 'X-Filename'],
+  }),
 );
 app.get('/health', (c) => c.json({ status: 'ok' as const, service: 'habitta-api' as const }));
 app.use('/v1/*', async (c, n) => {
@@ -586,6 +589,44 @@ const rpc = (
   name: string,
   payload: unknown,
 ) => rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) });
+const rpcAllocations = (
+  allocations: {
+    receivableItemId: string;
+    paymentAmount: string;
+    receivableAmount: string;
+    paymentCurrencyCode: string;
+    receivableCurrencyCode: string;
+    receivablePerPaymentRate?: string;
+    fxRateSource?: string;
+    fxRateAt?: string;
+  }[],
+) =>
+  allocations.map((allocation) => ({
+    receivable_item_id: allocation.receivableItemId,
+    payment_amount: allocation.paymentAmount,
+    receivable_amount: allocation.receivableAmount,
+    payment_currency_code: allocation.paymentCurrencyCode,
+    receivable_currency_code: allocation.receivableCurrencyCode,
+    receivable_per_payment_rate: allocation.receivablePerPaymentRate ?? null,
+    fx_rate_source: allocation.fxRateSource ?? null,
+    fx_rate_at: allocation.fxRateAt ?? null,
+  }));
+const responseJson = async (
+  c: Context<{ Bindings: Bindings; Variables: Variables }>,
+  response: Response,
+  successStatus: 200 | 201 = 200,
+  failureStatus: 400 | 403 | 404 | 409 = 409,
+) => {
+  const value = (await response.json()) as { code?: string };
+  if (response.ok) return c.json(value, successStatus);
+  const status: 400 | 403 | 404 | 409 =
+    response.status === 401 || response.status === 403 || value.code === '42501'
+      ? 403
+      : value.code === '23505'
+        ? 409
+        : failureStatus;
+  return c.json({ error: status === 403 ? 'Forbidden' : 'Request conflict' }, status);
+};
 app.get(
   '/v1/condominiums/:id/payment-methods',
   financeList('condominium_payment_methods', 'display_name.asc'),
@@ -636,6 +677,10 @@ app.patch('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
   return c.json(await r.json(), r.ok ? 200 : 403);
 });
 app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
+  const allowed = await rpc(c, 'can_review_payments', {
+    target: uuidSchema.parse(c.req.param('id')),
+  });
+  if (!allowed.ok || (await allowed.json()) !== true) return c.json({ error: 'Forbidden' }, 403);
   const r = await rest(
     c,
     `payments?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&status=in.(submitted,under_review)&select=*&order=submitted_at.asc`,
@@ -650,6 +695,7 @@ app.post('/v1/condominiums/:id/payments', async (c) => {
     target: uuidSchema.parse(c.req.param('id')),
     target_unit: p.unitId,
     target_method: p.paymentMethodId,
+    submitted_for: p.submittedForPersonId ?? null,
     payment_on: p.paymentDate,
     amount: p.originalAmount,
     currency: p.originalCurrencyCode,
@@ -658,14 +704,16 @@ app.post('/v1/condominiums/:id/payments', async (c) => {
     notes_value: p.notes ?? null,
     key: p.idempotencyKey,
   });
-  return c.json(await r.json(), r.ok ? 201 : 403);
+  return responseJson(c, r, 201, 409);
 });
 app.get('/v1/condominiums/:id/payments/:paymentId', async (c) => {
   const r = await rest(
     c,
     `payments?id=eq.${uuidSchema.parse(c.req.param('paymentId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
   );
-  return c.json(await r.json(), r.ok ? 200 : 404);
+  if (!r.ok) return c.json({ error: 'Request failed' }, r.status === 403 ? 403 : 404);
+  const rows = (await r.json()) as unknown[];
+  return rows.length ? c.json(rows[0]) : c.json({ error: 'Payment not found' }, 404);
 });
 app.patch('/v1/condominiums/:id/payments/:paymentId', async (c) => {
   const p = await body(c, paymentUpdateSchema);
@@ -718,27 +766,7 @@ app.post('/v1/condominiums/:id/payments/:paymentId/approve', async (c) => {
   const r = await rpc(c, 'approve_payment', {
     target: uuidSchema.parse(c.req.param('id')),
     target_payment: uuidSchema.parse(c.req.param('paymentId')),
-    allocations: p.allocations.map(
-      (a: {
-        receivableItemId: string;
-        paymentAmount: string;
-        receivableAmount: string;
-        paymentCurrencyCode: string;
-        receivableCurrencyCode: string;
-        receivablePerPaymentRate?: string;
-        fxRateSource?: string;
-        fxRateAt?: string;
-      }) => ({
-        receivable_item_id: a.receivableItemId,
-        payment_amount: a.paymentAmount,
-        receivable_amount: a.receivableAmount,
-        payment_currency_code: a.paymentCurrencyCode,
-        receivable_currency_code: a.receivableCurrencyCode,
-        receivable_per_payment_rate: a.receivablePerPaymentRate ?? null,
-        fx_rate_source: a.fxRateSource ?? null,
-        fx_rate_at: a.fxRateAt ?? null,
-      }),
-    ),
+    allocations: rpcAllocations(p.allocations),
   });
   return c.json(await r.json(), r.ok ? 200 : 409);
 });
@@ -755,17 +783,21 @@ app.post('/v1/condominiums/:id/payments/:paymentId/reverse', async (c) => {
 app.post('/v1/condominiums/:id/payments/:paymentId/allocation-preview', async (c) => {
   const p = await body(c, approvePaymentSchema);
   if (p instanceof Response) return p;
-  return c.json({
-    allocations: p.allocations,
-    warning: 'Review duplicate payment details before approval',
+  const r = await rpc(c, 'preview_payment_allocation', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_payment: uuidSchema.parse(c.req.param('paymentId')),
+    allocations: rpcAllocations(p.allocations),
   });
+  return responseJson(c, r, 200, 409);
 });
 app.get('/v1/condominiums/:id/payments/:paymentId/receipt', async (c) => {
   const r = await rest(
     c,
     `payment_receipts?payment_id=eq.${uuidSchema.parse(c.req.param('paymentId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
   );
-  return c.json(await r.json(), r.ok ? 200 : 404);
+  if (!r.ok) return c.json({ error: 'Request failed' }, r.status === 403 ? 403 : 404);
+  const rows = (await r.json()) as unknown[];
+  return rows.length ? c.json(rows[0]) : c.json({ error: 'Receipt not found' }, 404);
 });
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'proof';
 app.put('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
@@ -773,17 +805,25 @@ app.put('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
   if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(type))
     return c.json({ error: 'Unsupported proof type' }, 415);
   const bytes = await c.req.raw.arrayBuffer();
+  if (bytes.byteLength === 0) return c.json({ error: 'Proof is empty' }, 400);
   if (bytes.byteLength > 10485760) return c.json({ error: 'Proof exceeds 10 MB' }, 413);
   const id = uuidSchema.parse(c.req.param('id')),
     payment = uuidSchema.parse(c.req.param('paymentId')),
     hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
       .map((x) => x.toString(16).padStart(2, '0'))
       .join(''),
-    key = `payments/${crypto.randomUUID()}`;
+    proofId = crypto.randomUUID(),
+    key = `payments/${proofId}`;
+  const allowed = await rpc(c, 'can_upload_payment_proof', {
+    target: id,
+    target_payment: payment,
+  });
+  if (!allowed.ok || (await allowed.json()) !== true) return c.json({ error: 'Forbidden' }, 403);
   await c.env.PAYMENT_PROOFS.put(key, bytes, { httpMetadata: { contentType: type } });
   const r = await rpc(c, 'record_payment_proof', {
     target: id,
     target_payment: payment,
+    target_proof: proofId,
     key_value: key,
     filename: safeName(c.req.header('X-Filename') ?? 'proof'),
     mime: type,
@@ -801,15 +841,15 @@ app.get('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
     payment = uuidSchema.parse(c.req.param('paymentId'));
   const r = await rest(
     c,
-    `payment_proofs?condominium_id=eq.${id}&payment_id=eq.${payment}&superseded_at=is.null&select=object_key,original_filename,content_type`,
+    `payment_proofs?condominium_id=eq.${id}&payment_id=eq.${payment}&superseded_at=is.null&select=id,original_filename,content_type`,
   );
   const rows = (await r.json()) as {
-    object_key: string;
+    id: string;
     original_filename: string;
     content_type: string;
   }[];
   if (!r.ok || !rows[0]) return c.json({ error: 'Proof not found' }, 404);
-  const object = await c.env.PAYMENT_PROOFS.get(rows[0].object_key);
+  const object = await c.env.PAYMENT_PROOFS.get(`payments/${rows[0].id}`);
   if (!object) return c.json({ error: 'Proof unavailable' }, 404);
   return new Response(object.body, {
     headers: {
