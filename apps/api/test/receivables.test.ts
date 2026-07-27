@@ -11,6 +11,17 @@ describe('receivables validation', () => {
         issueDate: '2026-07-01',
       }).success,
     ).toBe(false));
+  it('rejects a due date before the issue date', () =>
+    expect(
+      receivableSchema.safeParse({
+        unitId: '00000000-0000-0000-0000-000000000001',
+        description: 'x',
+        amount: '10.00',
+        currencyCode: 'USD',
+        issueDate: '2026-07-10',
+        dueDate: '2026-07-09',
+      }).success,
+    ).toBe(false));
   it('previews a fixed batch with decimal amounts', () =>
     expect(
       batchSchema.parse({
