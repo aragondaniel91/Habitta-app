@@ -37,7 +37,10 @@ jobs:
             prettier-files.txt
             formatted-files
           if-no-files-found: ignore
+      - run: pnpm release:dev:validate
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - run: git diff --check
+      - run: git diff --check

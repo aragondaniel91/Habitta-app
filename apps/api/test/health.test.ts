@@ -5,6 +5,11 @@ describe('health endpoint', () => {
   it('reports the API health', async () => {
     const response = await app.request('/health');
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ status: 'ok', service: 'habitta-api' });
+    await expect(response.json()).resolves.toEqual({
+      status: 'ok',
+      environment: 'development',
+      commit: 'unknown',
+      version: 'unknown',
+    });
   });
 });

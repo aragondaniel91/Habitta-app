@@ -19,6 +19,7 @@ test-results/
 !.dev.vars.example
 *.smoke.json
 *.smoke.log
+release-worker-secrets.*
 
 # Supabase local
 supabase/.branches/

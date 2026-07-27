@@ -44,7 +44,14 @@ app.use(
     allowHeaders: ['Authorization', 'Content-Type', 'X-Filename'],
   }),
 );
-app.get('/health', (c) => c.json({ status: 'ok' as const, service: 'habitta-api' as const }));
+app.get('/health', (c) =>
+  c.json({
+    status: 'ok' as const,
+    environment: c.env?.APP_ENV ?? 'development',
+    commit: c.env?.BUILD_COMMIT ?? 'unknown',
+    version: c.env?.APP_VERSION ?? 'unknown',
+  }),
+);
 app.use('/v1/*', async (c, n) => {
   const token = c.req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return c.json({ error: 'Unauthorized' }, 401);
