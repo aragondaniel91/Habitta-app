@@ -3,7 +3,11 @@
   "name": "habitta-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-26",
-  "vars": { "APP_ENV": "development", "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co" },
+  "vars": {
+    "APP_ENV": "development",
+    "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
+    "NOTIFICATIONS_EMAIL_MODE": "disabled",
+  },
   "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-local" }],
   "queues": {
     "producers": [{ "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-local" }],
@@ -12,10 +16,35 @@
         "queue": "habitta-notifications-local",
         "max_batch_size": 10,
         "max_retries": 5,
+        "max_concurrency": 1,
         "dead_letter_queue": "habitta-notifications-dlq-local",
       },
     ],
   },
   "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true },
+  "env": {
+    "dev": {
+      "name": "habitta-api-dev",
+      "vars": {
+        "APP_ENV": "development",
+        "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
+        "NOTIFICATIONS_EMAIL_MODE": "disabled",
+      },
+      "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-dev" }],
+      "queues": {
+        "producers": [{ "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-dev" }],
+        "consumers": [
+          {
+            "queue": "habitta-notifications-dev",
+            "max_batch_size": 10,
+            "max_retries": 5,
+            "max_concurrency": 1,
+            "dead_letter_queue": "habitta-notifications-dlq-dev",
+          },
+        ],
+      },
+      "triggers": { "crons": ["*/5 * * * *"] },
+    },
+  },
 }

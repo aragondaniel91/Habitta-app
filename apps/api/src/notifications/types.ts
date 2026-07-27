@@ -1,6 +1,9 @@
 export type NotificationQueueMessage = { deliveryId: string };
 
 export type NotificationBindings = {
+  APP_ENV: string;
+  NOTIFICATIONS_EMAIL_MODE?: string | undefined;
+  NOTIFICATIONS_SANDBOX_EMAIL?: string | undefined;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;

@@ -1,0 +1,10 @@
+# Local-only values for `pnpm --filter @habitta/api exec wrangler dev --env dev --local`.
+# Keep NOTIFICATIONS_EMAIL_MODE=disabled unless deliberately testing sandbox delivery.
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+RESEND_API_KEY=
+NOTIFICATIONS_FROM_EMAIL=
+NOTIFICATIONS_FROM_NAME=Habitta
+APP_BASE_URL=http://localhost:5173
+NOTIFICATIONS_EMAIL_MODE=disabled
+NOTIFICATIONS_SANDBOX_EMAIL=

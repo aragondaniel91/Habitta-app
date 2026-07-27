@@ -1,0 +1,79 @@
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('../../', import.meta.url));
+const requiredQueue = (config, name, errors) => {
+  const producers = config?.queues?.producers ?? [];
+  const consumers = config?.queues?.consumers ?? [];
+  if (
+    !producers.some(
+      (producer) => producer.binding === 'NOTIFICATION_QUEUE' && producer.queue === name,
+    )
+  )
+    errors.push(`missing_notification_producer:${name}`);
+  const consumer = consumers.find((entry) => entry.queue === name);
+  if (!consumer) errors.push(`missing_notification_consumer:${name}`);
+  else {
+    if (consumer.max_batch_size !== 10) errors.push(`invalid_batch_size:${name}`);
+    if (consumer.max_retries !== 5) errors.push(`invalid_max_retries:${name}`);
+    if (consumer.max_concurrency !== 1) errors.push(`invalid_max_concurrency:${name}`);
+    if (!consumer.dead_letter_queue) errors.push(`missing_dead_letter_queue:${name}`);
+  }
+};
+const requiredR2 = (config, bucketName, errors) => {
+  if (
+    !(config?.r2_buckets ?? []).some(
+      (bucket) => bucket.binding === 'PAYMENT_PROOFS' && bucket.bucket_name === bucketName,
+    )
+  )
+    errors.push(`missing_payment_proofs_binding:${bucketName}`);
+};
+
+const parseJsonc = (source) => JSON.parse(source.replace(/,\s*([}\]])/g, '$1'));
+
+export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
+  const errors = [];
+  let config;
+  try {
+    config = parseJsonc(wranglerSource);
+  } catch {
+    return ['wrangler_config_not_parseable'];
+  }
+  requiredQueue(config, 'habitta-notifications-local', errors);
+  requiredR2(config, 'habitta-payment-proofs-local', errors);
+  const dev = config.env?.dev;
+  if (!dev || dev.name !== 'habitta-api-dev') errors.push('missing_dev_environment');
+  else {
+    requiredQueue(dev, 'habitta-notifications-dev', errors);
+    requiredR2(dev, 'habitta-payment-proofs-dev', errors);
+    const consumer = dev.queues?.consumers?.find(
+      (entry) => entry.queue === 'habitta-notifications-dev',
+    );
+    if (consumer?.dead_letter_queue !== 'habitta-notifications-dlq-dev')
+      errors.push('invalid_dev_dead_letter_queue');
+    if (dev.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled') errors.push('unsafe_dev_email_mode');
+  }
+  if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
+    errors.push('missing_notification_cron');
+  if (config.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
+    errors.push('unsafe_default_email_mode');
+  const secretAssignment = /^(SUPABASE_(?:ANON|SERVICE_ROLE)_KEY|RESEND_API_KEY)=(?!\s*$).+/m;
+  if (secretAssignment.test(devVarsSource)) errors.push('example_contains_secret_value');
+  return errors;
+};
+
+export const checkNotificationsConfig = async () => {
+  const [wranglerSource, devVarsSource] = await Promise.all([
+    readFile(new URL('../../apps/api/wrangler.jsonc', import.meta.url), 'utf8'),
+    readFile(new URL('../../apps/api/.dev.vars.example', import.meta.url), 'utf8'),
+  ]);
+  return validateNotificationsConfig(wranglerSource, devVarsSource);
+};
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const errors = await checkNotificationsConfig();
+  if (errors.length) {
+    console.error(`notifications configuration invalid: ${errors.join(', ')}`);
+    process.exitCode = 1;
+  } else console.log('notifications configuration is valid');
+}
