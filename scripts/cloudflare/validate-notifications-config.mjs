@@ -20,6 +20,14 @@ const requiredQueue = (config, name, errors) => {
     if (!consumer.dead_letter_queue) errors.push(`missing_dead_letter_queue:${name}`);
   }
 };
+const requiredR2 = (config, bucketName, errors) => {
+  if (
+    !(config?.r2_buckets ?? []).some(
+      (bucket) => bucket.binding === 'PAYMENT_PROOFS' && bucket.bucket_name === bucketName,
+    )
+  )
+    errors.push(`missing_payment_proofs_binding:${bucketName}`);
+};
 
 const parseJsonc = (source) => JSON.parse(source.replace(/,\s*([}\]])/g, '$1'));
 
@@ -32,15 +40,19 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
     return ['wrangler_config_not_parseable'];
   }
   requiredQueue(config, 'habitta-notifications-local', errors);
+  requiredR2(config, 'habitta-payment-proofs-local', errors);
   const dev = config.env?.dev;
   if (!dev || dev.name !== 'habitta-api-dev') errors.push('missing_dev_environment');
   else {
     requiredQueue(dev, 'habitta-notifications-dev', errors);
+    requiredR2(dev, 'habitta-payment-proofs-dev', errors);
     const consumer = dev.queues?.consumers?.find(
       (entry) => entry.queue === 'habitta-notifications-dev',
     );
     if (consumer?.dead_letter_queue !== 'habitta-notifications-dlq-dev')
       errors.push('invalid_dev_dead_letter_queue');
+    if (dev.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
+      errors.push('unsafe_dev_email_mode');
   }
   if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
     errors.push('missing_notification_cron');
