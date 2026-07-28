@@ -32,16 +32,23 @@ export const existingResourcesFromCloudflare = ({ queuesResult, r2Result, pagesR
   queues: (Array.isArray(queuesResult) ? queuesResult : [])
     .map((item) => item?.queue_name ?? item?.name)
     .filter(Boolean),
-  buckets: (Array.isArray(r2Result?.buckets) ? r2Result.buckets : Array.isArray(r2Result) ? r2Result : [])
+  buckets: (Array.isArray(r2Result?.buckets)
+    ? r2Result.buckets
+    : Array.isArray(r2Result)
+      ? r2Result
+      : []
+  )
     .map((item) => item?.name)
     .filter(Boolean),
-  pages: (Array.isArray(pagesResult) ? pagesResult : [])
-    .map((item) => item?.name)
-    .filter(Boolean),
+  pages: (Array.isArray(pagesResult) ? pagesResult : []).map((item) => item?.name).filter(Boolean),
 });
 
 export const sanitizeCloudflareDiagnostic = (value, token = '') => {
-  const hidden = token ? String(value ?? '').split(token).join('[REDACTED]') : String(value ?? '');
+  const hidden = token
+    ? String(value ?? '')
+        .split(token)
+        .join('[REDACTED]')
+    : String(value ?? '');
   return hidden.replace(/\s+/g, ' ').trim().slice(0, 500) || 'unknown_error';
 };
 
@@ -130,9 +137,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     return result.stdout;
   };
 
-  const existing = apply
-    ? await listExistingCloudflareResources({ token, accountId })
-    : undefined;
+  const existing = apply ? await listExistingCloudflareResources({ token, accountId }) : undefined;
   const plan = provisionDevelopmentResources({ apply, run, existing });
 
   if (apply) {
