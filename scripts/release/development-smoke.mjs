@@ -4,6 +4,13 @@ const option = (name) => {
   const index = process.argv.indexOf(name);
   return index === -1 ? undefined : process.argv[index + 1];
 };
+const numberOption = (name, fallback) => {
+  const value = Number(option(name));
+  return Number.isFinite(value) ? value : fallback;
+};
+const defaultSleep = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 export const detectsResendCall = (value) =>
   /api\.resend\.com|RESEND_API_KEY/i.test(JSON.stringify(value));
 export const validateSmokeOptions = ({
@@ -69,16 +76,65 @@ export const runDevelopmentSmoke = async ({
   return [];
 };
 
+export const retryableSmokeErrors = new Set([
+  'network_error',
+  'health_failed',
+  'commit_mismatch',
+  'invalid_build_metadata',
+  'cors_origin_invalid',
+  'unknown_route_not_404',
+  'unauthenticated_route_not_401',
+  'cors_preflight_invalid',
+  'web_unavailable',
+]);
+
+export const runDevelopmentSmokeWithRetries = async ({
+  attempts = 6,
+  retryDelayMs = 5_000,
+  sleep = defaultSleep,
+  onRetry = () => {},
+  ...options
+}) => {
+  const totalAttempts = Math.max(1, Math.trunc(attempts));
+  const delay = Math.max(0, retryDelayMs);
+  let errors = [];
+
+  for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
+    try {
+      errors = await runDevelopmentSmoke(options);
+    } catch {
+      errors = ['network_error'];
+    }
+    if (!errors.length) return { errors, attempts: attempt };
+
+    const retryable = errors.every((error) => retryableSmokeErrors.has(error));
+    if (!retryable || attempt === totalAttempts) return { errors, attempts: attempt };
+
+    onRetry({ attempt, totalAttempts, errors, retryDelayMs: delay });
+    await sleep(delay);
+  }
+
+  return { errors, attempts: totalAttempts };
+};
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const errors = await runDevelopmentSmoke({
+  const result = await runDevelopmentSmokeWithRetries({
     apiUrl: option('--api-url'),
     webUrl: option('--web-url'),
     expectedCommit: option('--expected-commit'),
     expectedWebOrigin: option('--expected-web-origin'),
     emailMode: option('--email-mode'),
+    attempts: numberOption('--attempts', 6),
+    retryDelayMs: numberOption('--retry-delay-ms', 5_000),
+    onRetry: ({ attempt, totalAttempts, errors, retryDelayMs }) =>
+      console.warn(
+        `development smoke attempt ${attempt}/${totalAttempts} failed: ${errors.join(', ')}; retrying in ${retryDelayMs}ms`,
+      ),
   });
-  if (errors.length) {
-    console.error(`development smoke failed: ${errors.join(', ')}`);
+  if (result.errors.length) {
+    console.error(
+      `development smoke failed after ${result.attempts} attempt(s): ${result.errors.join(', ')}`,
+    );
     process.exitCode = 1;
-  } else console.log('development smoke passed');
+  } else console.log(`development smoke passed after ${result.attempts} attempt(s)`);
 }
