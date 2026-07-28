@@ -57,7 +57,14 @@ const requireCredential = (name, value) => {
   return value;
 };
 
-const cloudflareApi = async ({ path, operation, token, accountId, fetchImpl = fetch }) => {
+const cloudflareApi = async ({
+  path,
+  operation,
+  token,
+  accountId,
+  fetchImpl = fetch,
+  returnEnvelope = false,
+}) => {
   const response = await fetchImpl(`${CLOUDFLARE_API_BASE}/accounts/${accountId}${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -82,7 +89,43 @@ const cloudflareApi = async ({ path, operation, token, accountId, fetchImpl = fe
       `cloudflare_api_failed:${operation}:${sanitizeCloudflareDiagnostic(detail, token)}`,
     );
   }
-  return payload.result;
+  return returnEnvelope ? payload : payload.result;
+};
+
+export const listPaginatedCloudflareResults = async ({
+  path,
+  operation,
+  token,
+  accountId,
+  fetchImpl = fetch,
+  perPage = 20,
+} = {}) => {
+  if (!Number.isInteger(perPage) || perPage < 1)
+    throw new Error(`cloudflare_pagination_invalid:${operation ?? 'unknown'}`);
+
+  const results = [];
+  for (let page = 1; page <= 1000; page += 1) {
+    const separator = path.includes('?') ? '&' : '?';
+    const payload = await cloudflareApi({
+      path: `${path}${separator}page=${page}&per_page=${perPage}`,
+      operation: `${operation}_page_${page}`,
+      token,
+      accountId,
+      fetchImpl,
+      returnEnvelope: true,
+    });
+    const pageResults = Array.isArray(payload.result) ? payload.result : [];
+    results.push(...pageResults);
+
+    const totalPages = Number(payload.result_info?.total_pages);
+    if (Number.isFinite(totalPages) && totalPages > 0) {
+      if (page >= totalPages) return results;
+    } else if (pageResults.length < perPage) {
+      return results;
+    }
+  }
+
+  throw new Error(`cloudflare_pagination_limit_exceeded:${operation}`);
 };
 
 export const listExistingCloudflareResources = async ({
@@ -107,12 +150,13 @@ export const listExistingCloudflareResources = async ({
       accountId: resolvedAccountId,
       fetchImpl,
     }),
-    cloudflareApi({
-      path: '/pages/projects?per_page=100',
+    listPaginatedCloudflareResults({
+      path: '/pages/projects',
       operation: 'pages_projects_list',
       token: resolvedToken,
       accountId: resolvedAccountId,
       fetchImpl,
+      perPage: 20,
     }),
   ]);
   return existingResourcesFromCloudflare({ queuesResult, r2Result, pagesResult });
