@@ -40,7 +40,11 @@ export const existingResourcesFromCloudflare = ({ queuesResult, r2Result, pagesR
   )
     .map((item) => item?.name)
     .filter(Boolean),
-  pages: (Array.isArray(pagesResult) ? pagesResult : []).map((item) => item?.name).filter(Boolean),
+  pages: Array.isArray(pagesResult)
+    ? pagesResult.map((item) => item?.name).filter(Boolean)
+    : pagesResult?.name
+      ? [pagesResult.name]
+      : [],
 });
 
 export const sanitizeCloudflareDiagnostic = (value, token = '') => {
@@ -63,7 +67,7 @@ const cloudflareApi = async ({
   token,
   accountId,
   fetchImpl = fetch,
-  returnEnvelope = false,
+  allowNotFound = false,
 }) => {
   const response = await fetchImpl(`${CLOUDFLARE_API_BASE}/accounts/${accountId}${path}`, {
     headers: {
@@ -72,6 +76,8 @@ const cloudflareApi = async ({
     },
   });
   const raw = await response.text();
+  if (allowNotFound && response.status === 404) return null;
+
   let payload;
   try {
     payload = raw ? JSON.parse(raw) : {};
@@ -89,43 +95,25 @@ const cloudflareApi = async ({
       `cloudflare_api_failed:${operation}:${sanitizeCloudflareDiagnostic(detail, token)}`,
     );
   }
-  return returnEnvelope ? payload : payload.result;
+  return payload.result;
 };
 
-export const listPaginatedCloudflareResults = async ({
-  path,
-  operation,
+export const getCloudflarePagesProjectByName = async ({
+  name,
   token,
   accountId,
   fetchImpl = fetch,
-  perPage = 20,
 } = {}) => {
-  if (!Number.isInteger(perPage) || perPage < 1)
-    throw new Error(`cloudflare_pagination_invalid:${operation ?? 'unknown'}`);
-
-  const results = [];
-  for (let page = 1; page <= 1000; page += 1) {
-    const separator = path.includes('?') ? '&' : '?';
-    const payload = await cloudflareApi({
-      path: `${path}${separator}page=${page}&per_page=${perPage}`,
-      operation: `${operation}_page_${page}`,
-      token,
-      accountId,
-      fetchImpl,
-      returnEnvelope: true,
-    });
-    const pageResults = Array.isArray(payload.result) ? payload.result : [];
-    results.push(...pageResults);
-
-    const totalPages = Number(payload.result_info?.total_pages);
-    if (Number.isFinite(totalPages) && totalPages > 0) {
-      if (page >= totalPages) return results;
-    } else if (pageResults.length < perPage) {
-      return results;
-    }
-  }
-
-  throw new Error(`cloudflare_pagination_limit_exceeded:${operation}`);
+  const projectName = String(name ?? '').trim();
+  if (!projectName) throw new Error('cloudflare_pages_project_name_missing');
+  return cloudflareApi({
+    path: `/pages/projects/${encodeURIComponent(projectName)}`,
+    operation: 'pages_project_get',
+    token,
+    accountId,
+    fetchImpl,
+    allowNotFound: true,
+  });
 };
 
 export const listExistingCloudflareResources = async ({
@@ -150,13 +138,11 @@ export const listExistingCloudflareResources = async ({
       accountId: resolvedAccountId,
       fetchImpl,
     }),
-    listPaginatedCloudflareResults({
-      path: '/pages/projects',
-      operation: 'pages_projects_list',
+    getCloudflarePagesProjectByName({
+      name: developmentResources.pages,
       token: resolvedToken,
       accountId: resolvedAccountId,
       fetchImpl,
-      perPage: 20,
     }),
   ]);
   return existingResourcesFromCloudflare({ queuesResult, r2Result, pagesResult });
