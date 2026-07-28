@@ -95,20 +95,36 @@ jobs:
       - name: Upload then promote initial Worker version
         run: |
           SECRETS_FILE="$RUNNER_TEMP/release-worker-secrets"
-          trap 'rm -f "$SECRETS_FILE"' EXIT
+          PREVIOUS_STATUS_FILE="$RUNNER_TEMP/previous-worker-status.json"
+          PREVIOUS_STATUS_ERROR="$RUNNER_TEMP/previous-worker-status.err"
+          VERSION_LIST_FILE="$RUNNER_TEMP/initial-worker-versions.json"
+          ACTIVE_STATUS_FILE="$RUNNER_TEMP/initial-worker-active-status.json"
+          cleanup() {
+            rm -f "$SECRETS_FILE" "$PREVIOUS_STATUS_FILE" "$PREVIOUS_STATUS_ERROR" "$VERSION_LIST_FILE" "$ACTIVE_STATUS_FILE"
+          }
+          trap cleanup EXIT
           node scripts/release/create-worker-secrets-file.mjs "$SECRETS_FILE"
           SHA=$(git rev-parse HEAD)
           BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          APP_VERSION=$(node -p "require('./package.json').version || '0.0.0'")
-          PREVIOUS_STATUS=$(pnpm --filter @habitta/api exec wrangler deployments status --env dev --json 2>/dev/null || printf '{}')
-          PREVIOUS_VERSION=$(printf '%s' "$PREVIOUS_STATUS" | jq -r '[.versions[]? | select(.percentage == 100)] | if length == 1 then .[0].version_id else empty end')
-          TAG="release-$SHA-initial"
+          APP_VERSION=$(node -p "require('./apps/api/package.json').version || '0.0.0'")
+          if pnpm --filter @habitta/api exec wrangler deployments status --env dev --json >"$PREVIOUS_STATUS_FILE" 2>"$PREVIOUS_STATUS_ERROR"; then
+            jq -e 'type == "object"' "$PREVIOUS_STATUS_FILE" >/dev/null
+          else
+            printf '{}' >"$PREVIOUS_STATUS_FILE"
+            echo 'No previous Worker deployment was readable; continuing as a first deployment.'
+          fi
+          PREVIOUS_VERSION=$(jq -r '[.versions[]? | select(.percentage == 100)] | if length == 1 then .[0].version_id else empty end' "$PREVIOUS_STATUS_FILE")
+          TAG="release-$SHA-initial-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           pnpm --filter @habitta/api exec wrangler versions upload --env dev --secrets-file "$SECRETS_FILE" --message "$TAG" --tag "$TAG" --strict --var "BUILD_COMMIT:$SHA" --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" --var "APP_VERSION:$APP_VERSION" --var "APP_ENV:development" --var "NOTIFICATIONS_EMAIL_MODE:disabled" --var "CORS_ALLOWED_ORIGINS:$CORS_ALLOWED_ORIGINS"
-          INITIAL_VERSION_ID=$(pnpm --filter @habitta/api exec wrangler versions list --env dev --json | jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end')
+          pnpm --filter @habitta/api exec wrangler versions list --env dev --json >"$VERSION_LIST_FILE"
+          jq -e 'type == "array"' "$VERSION_LIST_FILE" >/dev/null
+          INITIAL_VERSION_ID=$(jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end' "$VERSION_LIST_FILE")
           test -n "$INITIAL_VERSION_ID"
           pnpm --filter @habitta/api exec wrangler versions view "$INITIAL_VERSION_ID" --env dev --json
           pnpm --filter @habitta/api exec wrangler versions deploy "$INITIAL_VERSION_ID@100%" --env dev --yes
-          pnpm --filter @habitta/api exec wrangler deployments status --env dev --json | jq -e --arg id "$INITIAL_VERSION_ID" '[.versions[]? | select(.version_id == $id and .percentage == 100)] | length == 1'
+          pnpm --filter @habitta/api exec wrangler deployments status --env dev --json >"$ACTIVE_STATUS_FILE"
+          jq -e 'type == "object"' "$ACTIVE_STATUS_FILE" >/dev/null
+          jq -e --arg id "$INITIAL_VERSION_ID" '[.versions[]? | select(.version_id == $id and .percentage == 100)] | length == 1' "$ACTIVE_STATUS_FILE"
           echo "PREVIOUS_WORKER_VERSION=$PREVIOUS_VERSION" >> "$GITHUB_ENV"
           echo "INITIAL_WORKER_VERSION=$INITIAL_VERSION_ID" >> "$GITHUB_ENV"
           echo "BUILD_TIMESTAMP=$BUILD_TIMESTAMP" >> "$GITHUB_ENV"
@@ -121,15 +137,23 @@ jobs:
           fi
       - name: Deploy Pages and capture exact deployment metadata
         run: |
-          BEFORE_PAGES=$(pnpm --filter @habitta/api exec wrangler pages deployment list --project-name habitta-web-dev --json)
-          PREVIOUS_PAGE_ID=$(printf '%s' "$BEFORE_PAGES" | jq -r '[.[] | select(.deployment_trigger.metadata.branch == "development")] | sort_by(.created_on) | reverse | .[0].id // empty')
-          PREVIOUS_PAGE_URL=$(printf '%s' "$BEFORE_PAGES" | jq -r '[.[] | select(.deployment_trigger.metadata.branch == "development")] | sort_by(.created_on) | reverse | .[0].url // empty')
+          BEFORE_PAGES_FILE="$RUNNER_TEMP/pages-deployments-before.json"
+          AFTER_PAGES_FILE="$RUNNER_TEMP/pages-deployments-after.json"
+          cleanup() {
+            rm -f "$BEFORE_PAGES_FILE" "$AFTER_PAGES_FILE"
+          }
+          trap cleanup EXIT
+          pnpm --filter @habitta/api exec wrangler pages deployment list --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --json >"$BEFORE_PAGES_FILE"
+          jq -e 'type == "array"' "$BEFORE_PAGES_FILE" >/dev/null
+          PREVIOUS_PAGE_ID=$(jq -r '[.[] | select(.deployment_trigger.metadata.branch == "development")] | sort_by(.created_on) | reverse | .[0].id // empty' "$BEFORE_PAGES_FILE")
+          PREVIOUS_PAGE_URL=$(jq -r '[.[] | select(.deployment_trigger.metadata.branch == "development")] | sort_by(.created_on) | reverse | .[0].url // empty' "$BEFORE_PAGES_FILE")
           SHA=$(git rev-parse HEAD)
-          pnpm --filter @habitta/api exec wrangler pages deploy apps/web/dist --project-name habitta-web-dev --branch development --commit-hash "$SHA" --commit-message "release-$SHA"
-          AFTER_PAGES=$(pnpm --filter @habitta/api exec wrangler pages deployment list --project-name habitta-web-dev --json)
-          CURRENT_PAGE=$(jq -cn --argjson before "$BEFORE_PAGES" --argjson after "$AFTER_PAGES" --arg sha "$SHA" '
-            ($before | map(.id)) as $beforeIds |
-            [$after[] | . as $candidate | select(
+          pnpm --filter @habitta/api exec wrangler pages deploy "$GITHUB_WORKSPACE/apps/web/dist" --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --branch development --commit-hash "$SHA" --commit-message "release-$SHA"
+          pnpm --filter @habitta/api exec wrangler pages deployment list --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --json >"$AFTER_PAGES_FILE"
+          jq -e 'type == "array"' "$AFTER_PAGES_FILE" >/dev/null
+          CURRENT_PAGE=$(jq -cn --slurpfile before "$BEFORE_PAGES_FILE" --slurpfile after "$AFTER_PAGES_FILE" --arg sha "$SHA" '
+            ($before[0] | map(.id)) as $beforeIds |
+            [$after[0][] | . as $candidate | select(
               .deployment_trigger.metadata.branch == "development" and
               .deployment_trigger.metadata.commit_hash == $sha and
               (($beforeIds | index($candidate.id)) == null)
@@ -156,18 +180,27 @@ jobs:
       - name: Promote final Worker version with exact Pages CORS
         run: |
           SECRETS_FILE="$RUNNER_TEMP/release-worker-secrets-final"
-          trap 'rm -f "$SECRETS_FILE"' EXIT
+          VERSION_LIST_FILE="$RUNNER_TEMP/final-worker-versions.json"
+          ACTIVE_STATUS_FILE="$RUNNER_TEMP/final-worker-active-status.json"
+          cleanup() {
+            rm -f "$SECRETS_FILE" "$VERSION_LIST_FILE" "$ACTIVE_STATUS_FILE"
+          }
+          trap cleanup EXIT
           node scripts/release/create-worker-secrets-file.mjs "$SECRETS_FILE"
           SHA=$(git rev-parse HEAD)
           FINAL_CORS_ALLOWED_ORIGINS="$CLOUDFLARE_PAGES_DEV_URL,$EXACT_PAGES_URL"
           if [ -n "$PAGES_ALIAS_URL" ]; then FINAL_CORS_ALLOWED_ORIGINS="$FINAL_CORS_ALLOWED_ORIGINS,$PAGES_ALIAS_URL"; fi
-          TAG="release-$SHA-pages-$PAGES_DEPLOYMENT_ID"
+          TAG="release-$SHA-pages-$PAGES_DEPLOYMENT_ID-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           pnpm --filter @habitta/api exec wrangler versions upload --env dev --secrets-file "$SECRETS_FILE" --message "$TAG" --tag "$TAG" --strict --var "BUILD_COMMIT:$SHA" --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" --var "APP_VERSION:$APP_VERSION" --var "APP_ENV:development" --var "NOTIFICATIONS_EMAIL_MODE:disabled" --var "CORS_ALLOWED_ORIGINS:$FINAL_CORS_ALLOWED_ORIGINS"
-          FINAL_VERSION_ID=$(pnpm --filter @habitta/api exec wrangler versions list --env dev --json | jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end')
+          pnpm --filter @habitta/api exec wrangler versions list --env dev --json >"$VERSION_LIST_FILE"
+          jq -e 'type == "array"' "$VERSION_LIST_FILE" >/dev/null
+          FINAL_VERSION_ID=$(jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end' "$VERSION_LIST_FILE")
           test -n "$FINAL_VERSION_ID"
           pnpm --filter @habitta/api exec wrangler versions view "$FINAL_VERSION_ID" --env dev --json
           pnpm --filter @habitta/api exec wrangler versions deploy "$FINAL_VERSION_ID@100%" --env dev --yes
-          pnpm --filter @habitta/api exec wrangler deployments status --env dev --json | jq -e --arg id "$FINAL_VERSION_ID" '[.versions[]? | select(.version_id == $id and .percentage == 100)] | length == 1'
+          pnpm --filter @habitta/api exec wrangler deployments status --env dev --json >"$ACTIVE_STATUS_FILE"
+          jq -e 'type == "object"' "$ACTIVE_STATUS_FILE" >/dev/null
+          jq -e --arg id "$FINAL_VERSION_ID" '[.versions[]? | select(.version_id == $id and .percentage == 100)] | length == 1' "$ACTIVE_STATUS_FILE"
           ROLLBACK_VERSION=${PREVIOUS_WORKER_VERSION:-$INITIAL_WORKER_VERSION}
           jq -n \
             --arg commit "$SHA" \
