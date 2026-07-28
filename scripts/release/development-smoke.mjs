@@ -8,8 +8,7 @@ const numberOption = (name, fallback) => {
   const value = Number(option(name));
   return Number.isFinite(value) ? value : fallback;
 };
-const defaultSleep = (milliseconds) =>
-  new Promise((resolve) => setTimeout(resolve, milliseconds));
+const defaultSleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export const detectsResendCall = (value) =>
   /api\.resend\.com|RESEND_API_KEY/i.test(JSON.stringify(value));
