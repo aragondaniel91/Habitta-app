@@ -1,7 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const workflowUrl = new URL('../../../.github/workflows/development-release-apply.yml', import.meta.url);
+const workflowUrl = new URL(
+  '../../../.github/workflows/development-release-apply.yml',
+  import.meta.url,
+);
 
 describe('development web API release configuration', () => {
   it('derives the public web API URL from the required Worker URL', async () => {
