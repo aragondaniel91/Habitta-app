@@ -12,8 +12,12 @@ type Org = { id: string; name: string };
 type Condo = { id: string; name: string; organization_id: string };
 type Building = { id: string; name: string };
 type Unit = { id: string; code: string; type: string; status: string };
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_API_URL ??
+  'http://localhost:8787';
 const api = async <T,>(path: string, session: Session, init?: RequestInit) => {
-  const r = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}${path}`, {
+  const r = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${session.access_token}`,
