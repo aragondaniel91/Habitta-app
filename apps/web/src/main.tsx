@@ -105,7 +105,7 @@ function App() {
             if (!supabase) return;
             const r = await supabase.auth.signInWithOtp({
               email,
-              options: { emailRedirectTo: location.origin, shouldCreateUser: false },
+              options: { emailRedirectTo: location.origin, shouldCreateUser: true },
             });
             setMessage(r.error ? r.error.message : 'Revisa tu correo.');
           }}
