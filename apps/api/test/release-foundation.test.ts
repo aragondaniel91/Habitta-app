@@ -23,6 +23,7 @@ import {
 } from '../../../scripts/release/development-smoke.mjs';
 import {
   existingResourcesFromCloudflare,
+  listPaginatedCloudflareResults,
   provisionDevelopmentResources,
   resourcePlan,
   sanitizeCloudflareDiagnostic,
@@ -85,7 +86,34 @@ describe('development release safeguards', () => {
     expect(source).not.toContain("r2', 'bucket', 'list', '--json");
     expect(source).toContain('/queues?per_page=100');
     expect(source).toContain('/r2/buckets?per_page=100');
-    expect(source).toContain('/pages/projects?per_page=100');
+    expect(source).not.toContain('/pages/projects?per_page=100');
+    expect(source).toContain("path: '/pages/projects'");
+    expect(source).toContain('perPage: 20');
+  });
+  it('paginates Cloudflare Pages projects with supported list options', async () => {
+    const calls: string[] = [];
+    const pages = await listPaginatedCloudflareResults({
+      path: '/pages/projects',
+      operation: 'pages_projects_list',
+      token: 'token',
+      accountId: 'account',
+      fetchImpl: async (url: string) => {
+        const requestUrl = new URL(url);
+        const page = Number(requestUrl.searchParams.get('page'));
+        calls.push(requestUrl.toString());
+        return Response.json({
+          success: true,
+          result: [{ name: `project-${page}` }],
+          result_info: { page, per_page: 20, total_pages: 2 },
+        });
+      },
+      perPage: 20,
+    });
+
+    expect(pages).toEqual([{ name: 'project-1' }, { name: 'project-2' }]);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toContain('page=1&per_page=20');
+    expect(calls[1]).toContain('page=2&per_page=20');
   });
   it('redacts Cloudflare tokens from operational diagnostics', () => {
     const diagnostic = sanitizeCloudflareDiagnostic(
