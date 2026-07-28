@@ -92,13 +92,13 @@ jobs:
           pnpm --filter @habitta/api build
           pnpm --filter @habitta/web build
           pnpm release:dev:verify-web
-      - name: Upload then promote initial Worker version
+      - name: Bootstrap or update development Worker
         run: |
           SECRETS_FILE="$RUNNER_TEMP/release-worker-secrets"
           PREVIOUS_STATUS_FILE="$RUNNER_TEMP/previous-worker-status.json"
           PREVIOUS_STATUS_ERROR="$RUNNER_TEMP/previous-worker-status.err"
-          VERSION_LIST_FILE="$RUNNER_TEMP/initial-worker-versions.json"
-          ACTIVE_STATUS_FILE="$RUNNER_TEMP/initial-worker-active-status.json"
+          VERSION_LIST_FILE="$RUNNER_TEMP/worker-versions.json"
+          ACTIVE_STATUS_FILE="$RUNNER_TEMP/worker-active-status.json"
           cleanup() {
             rm -f "$SECRETS_FILE" "$PREVIOUS_STATUS_FILE" "$PREVIOUS_STATUS_ERROR" "$VERSION_LIST_FILE" "$ACTIVE_STATUS_FILE"
           }
@@ -111,28 +111,61 @@ jobs:
             jq -e 'type == "object"' "$PREVIOUS_STATUS_FILE" >/dev/null
           else
             printf '{}' >"$PREVIOUS_STATUS_FILE"
-            echo 'No previous Worker deployment was readable; continuing as a first deployment.'
           fi
           PREVIOUS_VERSION=$(jq -r '[.versions[]? | select(.percentage == 100)] | if length == 1 then .[0].version_id else empty end' "$PREVIOUS_STATUS_FILE")
-          TAG="release-$SHA-initial-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          pnpm --filter @habitta/api exec wrangler versions upload --env dev --secrets-file "$SECRETS_FILE" --message "$TAG" --tag "$TAG" --strict --var "BUILD_COMMIT:$SHA" --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" --var "APP_VERSION:$APP_VERSION" --var "APP_ENV:development" --var "NOTIFICATIONS_EMAIL_MODE:disabled" --var "CORS_ALLOWED_ORIGINS:$CORS_ALLOWED_ORIGINS"
+          TAG="release-$SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          COMMON_ARGS=(
+            --env dev
+            --secrets-file "$SECRETS_FILE"
+            --message "$TAG"
+            --tag "$TAG"
+            --strict
+            --var "BUILD_COMMIT:$SHA"
+            --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP"
+            --var "APP_VERSION:$APP_VERSION"
+            --var "APP_ENV:development"
+            --var "SUPABASE_URL:$SUPABASE_URL"
+            --var "NOTIFICATIONS_EMAIL_MODE:disabled"
+            --var "CORS_ALLOWED_ORIGINS:$CORS_ALLOWED_ORIGINS"
+          )
+          if [ -z "$PREVIOUS_VERSION" ]; then
+            echo 'Bootstrapping the first development Worker deployment.'
+            pnpm --filter @habitta/api exec wrangler deploy "${COMMON_ARGS[@]}"
+            WORKER_BOOTSTRAPPED=true
+          else
+            echo 'Uploading and promoting a new development Worker version.'
+            pnpm --filter @habitta/api exec wrangler versions upload "${COMMON_ARGS[@]}"
+            WORKER_BOOTSTRAPPED=false
+          fi
           pnpm --filter @habitta/api exec wrangler versions list --env dev --json >"$VERSION_LIST_FILE"
           jq -e 'type == "array"' "$VERSION_LIST_FILE" >/dev/null
-          INITIAL_VERSION_ID=$(jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end' "$VERSION_LIST_FILE")
-          test -n "$INITIAL_VERSION_ID"
-          pnpm --filter @habitta/api exec wrangler versions view "$INITIAL_VERSION_ID" --env dev --json
-          pnpm --filter @habitta/api exec wrangler versions deploy "$INITIAL_VERSION_ID@100%" --env dev --yes
+          ACTIVE_VERSION_ID=$(jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end' "$VERSION_LIST_FILE")
+          test -n "$ACTIVE_VERSION_ID"
+          pnpm --filter @habitta/api exec wrangler versions view "$ACTIVE_VERSION_ID" --env dev --json >/dev/null
+          if [ "$WORKER_BOOTSTRAPPED" = false ]; then
+            pnpm --filter @habitta/api exec wrangler versions deploy "$ACTIVE_VERSION_ID@100%" --env dev --yes
+          fi
           pnpm --filter @habitta/api exec wrangler deployments status --env dev --json >"$ACTIVE_STATUS_FILE"
           jq -e 'type == "object"' "$ACTIVE_STATUS_FILE" >/dev/null
-          jq -e --arg id "$INITIAL_VERSION_ID" '[.versions[]? | select(.version_id == $id and .percentage == 100)] | length == 1' "$ACTIVE_STATUS_FILE"
+          jq -e --arg id "$ACTIVE_VERSION_ID" '[.versions[]? | select(.version_id == $id and .percentage == 100)] | length == 1' "$ACTIVE_STATUS_FILE" >/dev/null
+          jq -n \
+            --arg commit "$SHA" \
+            --arg activeVersionId "$ACTIVE_VERSION_ID" \
+            --arg previousVersionId "$PREVIOUS_VERSION" \
+            --arg timestamp "$BUILD_TIMESTAMP" \
+            --argjson bootstrapped "$WORKER_BOOTSTRAPPED" \
+            '{commit:$commit,activeVersionId:$activeVersionId,previousVersionId:$previousVersionId,timestamp:$timestamp,environment:"development",bootstrapped:$bootstrapped}' \
+            > release-worker-metadata.json
           echo "PREVIOUS_WORKER_VERSION=$PREVIOUS_VERSION" >> "$GITHUB_ENV"
-          echo "INITIAL_WORKER_VERSION=$INITIAL_VERSION_ID" >> "$GITHUB_ENV"
+          echo "ACTIVE_WORKER_VERSION=$ACTIVE_VERSION_ID" >> "$GITHUB_ENV"
           echo "BUILD_TIMESTAMP=$BUILD_TIMESTAMP" >> "$GITHUB_ENV"
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
       - name: Smoke Worker before Pages
         run: |
           if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled; then
-            test -n "$PREVIOUS_WORKER_VERSION" && pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env dev --yes
+            if [ -n "$PREVIOUS_WORKER_VERSION" ]; then
+              pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env dev --yes
+            fi
             exit 1
           fi
       - name: Deploy Pages and capture exact deployment metadata
@@ -177,42 +210,6 @@ jobs:
           echo "EXACT_PAGES_URL=$PAGE_URL" >> "$GITHUB_ENV"
           echo "PAGES_DEPLOYMENT_ID=$PAGE_ID" >> "$GITHUB_ENV"
           echo "PAGES_ALIAS_URL=$PAGE_ALIAS" >> "$GITHUB_ENV"
-      - name: Promote final Worker version with exact Pages CORS
-        run: |
-          SECRETS_FILE="$RUNNER_TEMP/release-worker-secrets-final"
-          VERSION_LIST_FILE="$RUNNER_TEMP/final-worker-versions.json"
-          ACTIVE_STATUS_FILE="$RUNNER_TEMP/final-worker-active-status.json"
-          cleanup() {
-            rm -f "$SECRETS_FILE" "$VERSION_LIST_FILE" "$ACTIVE_STATUS_FILE"
-          }
-          trap cleanup EXIT
-          node scripts/release/create-worker-secrets-file.mjs "$SECRETS_FILE"
-          SHA=$(git rev-parse HEAD)
-          FINAL_CORS_ALLOWED_ORIGINS="$CLOUDFLARE_PAGES_DEV_URL,$EXACT_PAGES_URL"
-          if [ -n "$PAGES_ALIAS_URL" ]; then FINAL_CORS_ALLOWED_ORIGINS="$FINAL_CORS_ALLOWED_ORIGINS,$PAGES_ALIAS_URL"; fi
-          TAG="release-$SHA-pages-$PAGES_DEPLOYMENT_ID-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          pnpm --filter @habitta/api exec wrangler versions upload --env dev --secrets-file "$SECRETS_FILE" --message "$TAG" --tag "$TAG" --strict --var "BUILD_COMMIT:$SHA" --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" --var "APP_VERSION:$APP_VERSION" --var "APP_ENV:development" --var "NOTIFICATIONS_EMAIL_MODE:disabled" --var "CORS_ALLOWED_ORIGINS:$FINAL_CORS_ALLOWED_ORIGINS"
-          pnpm --filter @habitta/api exec wrangler versions list --env dev --json >"$VERSION_LIST_FILE"
-          jq -e 'type == "array"' "$VERSION_LIST_FILE" >/dev/null
-          FINAL_VERSION_ID=$(jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end' "$VERSION_LIST_FILE")
-          test -n "$FINAL_VERSION_ID"
-          pnpm --filter @habitta/api exec wrangler versions view "$FINAL_VERSION_ID" --env dev --json
-          pnpm --filter @habitta/api exec wrangler versions deploy "$FINAL_VERSION_ID@100%" --env dev --yes
-          pnpm --filter @habitta/api exec wrangler deployments status --env dev --json >"$ACTIVE_STATUS_FILE"
-          jq -e 'type == "object"' "$ACTIVE_STATUS_FILE" >/dev/null
-          jq -e --arg id "$FINAL_VERSION_ID" '[.versions[]? | select(.version_id == $id and .percentage == 100)] | length == 1' "$ACTIVE_STATUS_FILE"
-          ROLLBACK_VERSION=${PREVIOUS_WORKER_VERSION:-$INITIAL_WORKER_VERSION}
-          jq -n \
-            --arg commit "$SHA" \
-            --arg initialVersionId "$INITIAL_WORKER_VERSION" \
-            --arg finalVersionId "$FINAL_VERSION_ID" \
-            --arg previousVersionId "$PREVIOUS_WORKER_VERSION" \
-            --arg rollbackVersionId "$ROLLBACK_VERSION" \
-            --arg timestamp "$BUILD_TIMESTAMP" \
-            '{commit:$commit,initialVersionId:$initialVersionId,finalVersionId:$finalVersionId,previousVersionId:$previousVersionId,rollbackVersionId:$rollbackVersionId,timestamp:$timestamp,environment:"development"}' \
-            > release-worker-metadata.json
-          echo "FINAL_WORKER_VERSION=$FINAL_VERSION_ID" >> "$GITHUB_ENV"
-          echo "ROLLBACK_WORKER_VERSION=$ROLLBACK_VERSION" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
           name: development-worker-release-metadata
@@ -223,8 +220,10 @@ jobs:
           path: release-pages-metadata.json
       - name: End-to-end development smoke
         run: |
-          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$EXACT_PAGES_URL" --expected-web-origin "$EXACT_PAGES_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled; then
-            pnpm --filter @habitta/api exec wrangler versions deploy "$ROLLBACK_WORKER_VERSION@100%" --env dev --yes
+          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$EXACT_PAGES_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled; then
+            if [ -n "$PREVIOUS_WORKER_VERSION" ]; then
+              pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env dev --yes
+            fi
             exit 1
           fi
           if [ "$CLOUDFLARE_PAGES_DEV_URL" != "$EXACT_PAGES_URL" ]; then
