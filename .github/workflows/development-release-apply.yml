@@ -21,7 +21,7 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      VITE_API_BASE_URL: ${{ vars.CLOUDFLARE_WORKER_DEV_URL }}
       CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
       CLOUDFLARE_WORKER_DEV_URL: ${{ vars.CLOUDFLARE_WORKER_DEV_URL }}
       CLOUDFLARE_PAGES_DEV_URL: ${{ vars.CLOUDFLARE_PAGES_DEV_URL }}
@@ -58,6 +58,8 @@ jobs:
           test -n "$SUPABASE_PROJECT_REF"
           test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
           test -n "$CLOUDFLARE_WORKER_DEV_URL"
+          test -n "$VITE_API_BASE_URL"
+          test "$VITE_API_BASE_URL" = "$CLOUDFLARE_WORKER_DEV_URL"
           test -n "$CLOUDFLARE_PAGES_DEV_URL"
           git fetch origin main
           if [ "$INPUT_RELEASE_REF" = main ]; then SHA=$(git rev-parse origin/main); else
