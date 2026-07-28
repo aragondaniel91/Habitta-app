@@ -13,8 +13,8 @@ describe('development release workflow', () => {
     expect(workflow).not.toContain("|| printf '{}'");
     expect(workflow).not.toMatch(/--json\s*\|\s*jq/);
     expect(workflow).toContain('PREVIOUS_STATUS_FILE="$RUNNER_TEMP/previous-worker-status.json"');
-    expect(workflow).toContain("printf '{}' >\"$PREVIOUS_STATUS_FILE\"");
-    expect(workflow).toContain("jq -e 'type == \"object\"' \"$PREVIOUS_STATUS_FILE\"");
+    expect(workflow).toContain('printf \'{}\' >"$PREVIOUS_STATUS_FILE"');
+    expect(workflow).toContain('jq -e \'type == "object"\' "$PREVIOUS_STATUS_FILE"');
   });
 
   it('validates structured Wrangler output before extracting release metadata', async () => {
