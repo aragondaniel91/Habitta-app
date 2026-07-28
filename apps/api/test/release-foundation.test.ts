@@ -22,8 +22,10 @@ import {
   detectsResendCall,
 } from '../../../scripts/release/development-smoke.mjs';
 import {
+  existingResourcesFromCloudflare,
   provisionDevelopmentResources,
   resourcePlan,
+  sanitizeCloudflareDiagnostic,
 } from '../../../scripts/release/provision-development-resources.mjs';
 import { verifyWebBundleSecrets } from '../../../scripts/release/verify-web-bundle-secrets.mjs';
 
@@ -59,6 +61,39 @@ describe('development release safeguards', () => {
         pages: ['habitta-web-dev'],
       }),
     ).toEqual([]);
+  });
+  it('normalizes Cloudflare API resources and never relies on unsupported list JSON flags', async () => {
+    expect(
+      existingResourcesFromCloudflare({
+        queuesResult: [
+          { queue_name: 'habitta-notifications-dev' },
+          { queue_name: 'habitta-notifications-dlq-dev' },
+        ],
+        r2Result: { buckets: [{ name: 'habitta-payment-proofs-dev' }] },
+        pagesResult: [{ name: 'habitta-web-dev' }],
+      }),
+    ).toEqual({
+      queues: ['habitta-notifications-dev', 'habitta-notifications-dlq-dev'],
+      buckets: ['habitta-payment-proofs-dev'],
+      pages: ['habitta-web-dev'],
+    });
+    const source = await readFile(
+      new URL('../../../scripts/release/provision-development-resources.mjs', import.meta.url),
+      'utf8',
+    );
+    expect(source).not.toContain("queues', 'list', '--json");
+    expect(source).not.toContain("r2', 'bucket', 'list', '--json");
+    expect(source).toContain('/queues?per_page=100');
+    expect(source).toContain('/r2/buckets?per_page=100');
+    expect(source).toContain('/pages/projects?per_page=100');
+  });
+  it('redacts Cloudflare tokens from operational diagnostics', () => {
+    const diagnostic = sanitizeCloudflareDiagnostic(
+      'request failed with token secret-token-value',
+      'secret-token-value',
+    );
+    expect(diagnostic).toContain('[REDACTED]');
+    expect(diagnostic).not.toContain('secret-token-value');
   });
   it('keeps dispatch inputs out of shell and supports repository credentials on GitHub Free', async () => {
     const root = new URL('../../../', import.meta.url);
