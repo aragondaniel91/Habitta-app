@@ -8,7 +8,9 @@ const normalizeJsonBody = (body: BodyInit | null | undefined) => {
     if (!value || Array.isArray(value) || typeof value !== 'object') return body;
     return JSON.stringify(
       Object.fromEntries(
-        Object.entries(value).filter(([, fieldValue]) => fieldValue !== '' && fieldValue !== undefined),
+        Object.entries(value).filter(
+          ([, fieldValue]) => fieldValue !== '' && fieldValue !== undefined,
+        ),
       ),
     );
   } catch {
