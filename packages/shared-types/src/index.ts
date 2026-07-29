@@ -33,3 +33,19 @@ export const serviceRequestStatuses = [
 export type ServiceRequestStatus = (typeof serviceRequestStatuses)[number];
 
 export type ServiceRequestVisibility = 'public' | 'internal';
+
+export const announcementPriorities = ['normal', 'important', 'urgent'] as const;
+export type AnnouncementPriority = (typeof announcementPriorities)[number];
+
+export const announcementStatuses = ['draft', 'scheduled', 'published', 'archived'] as const;
+export type AnnouncementStatus = (typeof announcementStatuses)[number];
+
+export const announcementAudiences = [
+  'everyone',
+  'owners',
+  'tenants',
+  'board',
+  'building',
+  'unit',
+] as const;
+export type AnnouncementAudience = (typeof announcementAudiences)[number];

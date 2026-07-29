@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   serviceRequestCreateSchema,
   serviceRequestUpdateSchema,
+  announcementCreateSchema,
+  announcementUpdateSchema,
+  announcementScheduleSchema,
   signInSchema,
   tenantContextSchema,
 } from './index';
@@ -29,6 +32,34 @@ describe('validation schemas', () => {
       description: 'Hay agua frente al ascensor.',
     });
     expect(result.priority).toBe('normal');
+  });
+
+  it('validates announcement audiences, updates and schedules', () => {
+    expect(
+      announcementCreateSchema.parse({
+        title: 'Mantenimiento de ascensores',
+        summary: 'El ascensor norte estará fuera de servicio.',
+        body: 'El proveedor realizará mantenimiento preventivo durante la mañana.',
+      }),
+    ).toMatchObject({ priority: 'normal', audience: 'everyone' });
+    expect(
+      announcementCreateSchema.safeParse({
+        title: 'Aviso de torre',
+        summary: 'Información para una torre.',
+        body: 'Contenido del aviso.',
+        audience: 'building',
+      }).success,
+    ).toBe(false);
+    expect(announcementUpdateSchema.safeParse({}).success).toBe(false);
+    expect(
+      announcementUpdateSchema.safeParse({
+        expiresAt: '2026-08-01T12:00:00Z',
+        clearExpires: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      announcementScheduleSchema.safeParse({ publishAt: '2026-08-01T12:00:00Z' }).success,
+    ).toBe(true);
   });
 
   it('rejects contradictory or empty request updates', () => {

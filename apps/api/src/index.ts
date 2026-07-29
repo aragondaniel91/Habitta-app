@@ -30,6 +30,11 @@ import {
   serviceRequestCommentSchema,
   serviceRequestCancelSchema,
   serviceRequestListQuerySchema,
+  announcementCreateSchema,
+  announcementUpdateSchema,
+  announcementListQuerySchema,
+  announcementScheduleSchema,
+  announcementActionSchema,
   uuidSchema,
 } from '@habitta/validation';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
@@ -661,6 +666,152 @@ const responseJson = async (
         : failureStatus;
   return c.json({ error: status === 403 ? 'Forbidden' : 'Request conflict' }, status);
 };
+
+app.get('/v1/condominiums/:id/announcements', async (c) => {
+  const query = announcementListQuerySchema.safeParse({
+    status: c.req.query('status') || undefined,
+    priority: c.req.query('priority') || undefined,
+    audience: c.req.query('audience') || undefined,
+  });
+  if (!query.success) return c.json({ error: query.error.flatten() }, 400);
+  const id = uuidSchema.parse(c.req.param('id'));
+  const filters = [
+    `condominium_id=eq.${id}`,
+    query.data.status ? `status=eq.${query.data.status}` : '',
+    query.data.priority ? `priority=eq.${query.data.priority}` : '',
+    query.data.audience ? `audience=eq.${query.data.audience}` : '',
+  ].filter(Boolean);
+  const r = await rest(c, `announcements?${filters.join('&')}&select=*&order=updated_at.desc`);
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.post('/v1/condominiums/:id/announcements', async (c) => {
+  const p = await body(c, announcementCreateSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'create_announcement', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    announcement_title: p.title,
+    announcement_summary: p.summary,
+    announcement_body: p.body,
+    announcement_priority: p.priority,
+    announcement_audience: p.audience,
+    target_building: p.buildingId ?? null,
+    target_unit: p.unitId ?? null,
+    acknowledgement_required: p.requiresAcknowledgement,
+    expires_on: p.expiresAt ?? null,
+  });
+  return responseJson(c, r, 201, 409);
+});
+app.get('/v1/condominiums/:id/announcements/:announcementId', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const announcementId = uuidSchema.parse(c.req.param('announcementId'));
+  const r = await rest(c, `announcements?id=eq.${announcementId}&condominium_id=eq.${id}&select=*`);
+  if (!r.ok) return c.json({ error: 'Announcement failed' }, r.status === 403 ? 403 : 404);
+  const rows = (await r.json()) as unknown[];
+  return rows.length ? c.json(rows[0]) : c.json({ error: 'Announcement not found' }, 404);
+});
+app.patch('/v1/condominiums/:id/announcements/:announcementId', async (c) => {
+  const p = await body(c, announcementUpdateSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_announcement', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_announcement: uuidSchema.parse(c.req.param('announcementId')),
+    next_title: p.title ?? null,
+    next_summary: p.summary ?? null,
+    next_body: p.body ?? null,
+    next_priority: p.priority ?? null,
+    next_audience: p.audience ?? null,
+    target_building: p.buildingId ?? null,
+    target_unit: p.unitId ?? null,
+    next_requires_acknowledgement: p.requiresAcknowledgement ?? null,
+    expires_on: p.expiresAt ?? null,
+    clear_expires: p.clearExpires ?? false,
+    expected_version: p.expectedVersion ?? null,
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.post('/v1/condominiums/:id/announcements/:announcementId/schedule', async (c) => {
+  const p = await body(c, announcementScheduleSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'schedule_announcement', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_announcement: uuidSchema.parse(c.req.param('announcementId')),
+    publish_on: p.publishAt,
+    expected_version: p.expectedVersion ?? null,
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.post('/v1/condominiums/:id/announcements/:announcementId/unschedule', async (c) => {
+  const p = await body(c, announcementActionSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'unschedule_announcement', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_announcement: uuidSchema.parse(c.req.param('announcementId')),
+    expected_version: p.expectedVersion ?? null,
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.post('/v1/condominiums/:id/announcements/:announcementId/publish', async (c) => {
+  const p = await body(c, announcementActionSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'publish_announcement', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_announcement: uuidSchema.parse(c.req.param('announcementId')),
+    expected_version: p.expectedVersion ?? null,
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.post('/v1/condominiums/:id/announcements/:announcementId/archive', async (c) => {
+  const p = await body(c, announcementActionSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'archive_announcement', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_announcement: uuidSchema.parse(c.req.param('announcementId')),
+    expected_version: p.expectedVersion ?? null,
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.post('/v1/condominiums/:id/announcements/:announcementId/read', async (c) => {
+  const r = await rpc(c, 'mark_announcement_read', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_announcement: uuidSchema.parse(c.req.param('announcementId')),
+  });
+  return responseJson(c, r, 200, 404);
+});
+app.post('/v1/condominiums/:id/announcements/:announcementId/acknowledge', async (c) => {
+  const r = await rpc(c, 'acknowledge_announcement', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_announcement: uuidSchema.parse(c.req.param('announcementId')),
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.get('/v1/condominiums/:id/announcements/:announcementId/recipients', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const announcementId = uuidSchema.parse(c.req.param('announcementId'));
+  const r = await rest(
+    c,
+    `announcement_recipients?condominium_id=eq.${id}&announcement_id=eq.${announcementId}&select=*&order=created_at.asc,user_id.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/announcements/:announcementId/events', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const announcementId = uuidSchema.parse(c.req.param('announcementId'));
+  const r = await rest(
+    c,
+    `announcement_events?condominium_id=eq.${id}&announcement_id=eq.${announcementId}&select=*&order=created_at.asc,id.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/announcements/:announcementId/attachments', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const announcementId = uuidSchema.parse(c.req.param('announcementId'));
+  const r = await rest(
+    c,
+    `announcement_attachments?condominium_id=eq.${id}&announcement_id=eq.${announcementId}&select=*&order=created_at.asc,id.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+
 app.get('/v1/condominiums/:id/request-categories', async (c) => {
   const id = uuidSchema.parse(c.req.param('id'));
   const r = await rest(

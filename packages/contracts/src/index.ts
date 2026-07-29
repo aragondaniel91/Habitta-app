@@ -41,3 +41,26 @@ export type ServiceRequestRecord = {
   created_at: string;
   updated_at: string;
 };
+
+export type AnnouncementRecord = {
+  id: string;
+  condominium_id: string;
+  title: string;
+  summary: string;
+  body: string;
+  priority: import('@habitta/shared-types').AnnouncementPriority;
+  status: import('@habitta/shared-types').AnnouncementStatus;
+  audience: import('@habitta/shared-types').AnnouncementAudience;
+  building_id: string | null;
+  unit_id: string | null;
+  requires_acknowledgement: boolean;
+  publish_at: string | null;
+  published_at: string | null;
+  expires_at: string | null;
+  archived_at: string | null;
+  created_by: string;
+  updated_by: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
