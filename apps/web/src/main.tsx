@@ -9,6 +9,7 @@ import './community-directory.css';
 import './receivables.css';
 import './payments.css';
 import './reports.css';
+import './settings.css';
 import './brand-palette.css';
 
 createRoot(document.getElementById('root')!).render(
