@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { CheckCircleIcon, FeesIcon, PaymentsIcon, ReportsIcon, SettingsIcon } from '../components/icons';
+import {
+  CheckCircleIcon,
+  FeesIcon,
+  PaymentsIcon,
+  ReportsIcon,
+  SettingsIcon,
+} from '../components/icons';
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
 import { paymentApi } from '../features/payments/api';
-import type { Payment, PaymentMethod, PaymentReceipt, Receivable } from '../features/payments/types';
+import type {
+  Payment,
+  PaymentMethod,
+  PaymentReceipt,
+  Receivable,
+} from '../features/payments/types';
 import { ApiRequestError, apiRequest } from '../lib/api';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import {
@@ -157,9 +168,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
         });
       } catch (requestError) {
         setError(
-          requestError instanceof Error
-            ? requestError.message
-            : 'No se pudieron cargar los pagos.',
+          requestError instanceof Error ? requestError.message : 'No se pudieron cargar los pagos.',
         );
       } finally {
         if (!background) setLoading(false);
@@ -260,7 +269,8 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
 
   const summary = getPaymentSummary(data.payments, selectedCurrency);
   const activeMethods = data.methods.filter(
-    (method) => method.is_active && (!selectedCurrency || method.currency_code === selectedCurrency),
+    (method) =>
+      method.is_active && (!selectedCurrency || method.currency_code === selectedCurrency),
   );
   const selectedCurrencyLabel = selectedCurrency || 'USD';
 
@@ -270,7 +280,9 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
         <div>
           <span className="payments-kicker">Tesorería y validación</span>
           <h2>Pagos y comprobantes</h2>
-          <p>{condominiumName} · registro, revisión, aplicación y recibos en una sola experiencia.</p>
+          <p>
+            {condominiumName} · registro, revisión, aplicación y recibos en una sola experiencia.
+          </p>
         </div>
         <div className="payments-overview__actions">
           <Button onClick={() => setDrawer({ type: 'methods' })} size="sm" variant="secondary">
@@ -351,19 +363,34 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
               <p>Prioriza los pagos enviados y abre su comprobante antes de aprobar.</p>
             </div>
             <Badge tone={data.reviewQueue.length ? 'warning' : 'success'}>
-              {data.reviewQueueAvailable ? `${data.reviewQueue.length} pendientes` : 'Acceso restringido'}
+              {data.reviewQueueAvailable
+                ? `${data.reviewQueue.length} pendientes`
+                : 'Acceso restringido'}
             </Badge>
           </div>
           {data.reviewQueueAvailable && data.reviewQueue.length ? (
             <div className="payments-review-list">
               {data.reviewQueue.slice(0, 4).map((payment) => (
-                <button key={payment.id} onClick={() => setDrawer({ type: 'review', payment })} type="button">
-                  <span><PaymentsIcon size={18} /></span>
+                <button
+                  key={payment.id}
+                  onClick={() => setDrawer({ type: 'review', payment })}
+                  type="button"
+                >
+                  <span>
+                    <PaymentsIcon size={18} />
+                  </span>
                   <div>
-                    <strong>{unitCodes.get(payment.unit_id) ?? 'Unidad'} · {payment.payer_name}</strong>
-                    <small>{formatDashboardDate(payment.payment_date)} · {paymentStatusLabels[payment.status] ?? payment.status}</small>
+                    <strong>
+                      {unitCodes.get(payment.unit_id) ?? 'Unidad'} · {payment.payer_name}
+                    </strong>
+                    <small>
+                      {formatDashboardDate(payment.payment_date)} ·{' '}
+                      {paymentStatusLabels[payment.status] ?? payment.status}
+                    </small>
                   </div>
-                  <b>{formatDashboardAmount(payment.original_amount, payment.original_currency_code)}</b>
+                  <b>
+                    {formatDashboardAmount(payment.original_amount, payment.original_currency_code)}
+                  </b>
                 </button>
               ))}
             </div>
@@ -395,8 +422,13 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
             <div className="payments-method-summary">
               {activeMethods.map((method) => (
                 <article key={method.id}>
-                  <span><SettingsIcon size={18} /></span>
-                  <div><strong>{method.display_name}</strong><small>{method.method_type.replaceAll('_', ' ')}</small></div>
+                  <span>
+                    <SettingsIcon size={18} />
+                  </span>
+                  <div>
+                    <strong>{method.display_name}</strong>
+                    <small>{method.method_type.replaceAll('_', ' ')}</small>
+                  </div>
                   <div>
                     {method.requires_reference ? <Badge tone="info">Referencia</Badge> : null}
                     {method.requires_proof ? <Badge tone="warning">Comprobante</Badge> : null}
@@ -439,7 +471,9 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           >
             <option value="">Todos los estados</option>
             {Object.entries(paymentStatusLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </Select>
           <Select
@@ -448,7 +482,9 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           >
             <option value="">Todos los métodos</option>
             {data.methods.map((method) => (
-              <option key={method.id} value={method.id}>{method.display_name}</option>
+              <option key={method.id} value={method.id}>
+                {method.display_name}
+              </option>
             ))}
           </Select>
         </div>
@@ -457,16 +493,52 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           <>
             <div className="payments-table-wrap">
               <table className="payments-table">
-                <thead><tr><th>Unidad y pagador</th><th>Método</th><th>Fecha</th><th>Monto</th><th>Estado</th><th /></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Unidad y pagador</th>
+                    <th>Método</th>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                    <th />
+                  </tr>
+                </thead>
                 <tbody>
                   {visiblePayments.map((payment) => (
                     <tr key={payment.id}>
-                      <td><strong>{unitCodes.get(payment.unit_id) ?? 'Sin unidad'}</strong><span>{payment.payer_name}{payment.reference ? ` · ${payment.reference}` : ''}</span></td>
-                      <td>{methodNames.get(payment.payment_method_id) ?? 'Método no disponible'}</td>
+                      <td>
+                        <strong>{unitCodes.get(payment.unit_id) ?? 'Sin unidad'}</strong>
+                        <span>
+                          {payment.payer_name}
+                          {payment.reference ? ` · ${payment.reference}` : ''}
+                        </span>
+                      </td>
+                      <td>
+                        {methodNames.get(payment.payment_method_id) ?? 'Método no disponible'}
+                      </td>
                       <td>{formatDashboardDate(payment.payment_date)}</td>
-                      <td><strong>{formatDashboardAmount(payment.original_amount, payment.original_currency_code)}</strong></td>
-                      <td><Badge tone={paymentStatusTone(payment.status)}>{paymentStatusLabels[payment.status] ?? payment.status}</Badge></td>
-                      <td><Button onClick={() => void openPayment(payment)} size="sm" variant="ghost">{['approved', 'reversed'].includes(payment.status) ? 'Recibo' : ['submitted', 'under_review'].includes(payment.status) ? 'Revisar' : 'Abrir'}</Button></td>
+                      <td>
+                        <strong>
+                          {formatDashboardAmount(
+                            payment.original_amount,
+                            payment.original_currency_code,
+                          )}
+                        </strong>
+                      </td>
+                      <td>
+                        <Badge tone={paymentStatusTone(payment.status)}>
+                          {paymentStatusLabels[payment.status] ?? payment.status}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Button onClick={() => void openPayment(payment)} size="sm" variant="ghost">
+                          {['approved', 'reversed'].includes(payment.status)
+                            ? 'Recibo'
+                            : ['submitted', 'under_review'].includes(payment.status)
+                              ? 'Revisar'
+                              : 'Abrir'}
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -475,9 +547,21 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
             <div className="payments-mobile-list">
               {visiblePayments.map((payment) => (
                 <button key={payment.id} onClick={() => void openPayment(payment)} type="button">
-                  <div><strong>{unitCodes.get(payment.unit_id) ?? 'Sin unidad'} · {payment.payer_name}</strong><Badge tone={paymentStatusTone(payment.status)}>{paymentStatusLabels[payment.status] ?? payment.status}</Badge></div>
-                  <span>{methodNames.get(payment.payment_method_id) ?? 'Método no disponible'} · {formatDashboardDate(payment.payment_date)}</span>
-                  <b>{formatDashboardAmount(payment.original_amount, payment.original_currency_code)}</b>
+                  <div>
+                    <strong>
+                      {unitCodes.get(payment.unit_id) ?? 'Sin unidad'} · {payment.payer_name}
+                    </strong>
+                    <Badge tone={paymentStatusTone(payment.status)}>
+                      {paymentStatusLabels[payment.status] ?? payment.status}
+                    </Badge>
+                  </div>
+                  <span>
+                    {methodNames.get(payment.payment_method_id) ?? 'Método no disponible'} ·{' '}
+                    {formatDashboardDate(payment.payment_date)}
+                  </span>
+                  <b>
+                    {formatDashboardAmount(payment.original_amount, payment.original_currency_code)}
+                  </b>
                 </button>
               ))}
             </div>

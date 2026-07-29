@@ -63,7 +63,12 @@ function DrawerFrame({
 
   return (
     <div className="payments-drawer-layer" role="presentation">
-      <button aria-label="Cerrar panel" className="payments-drawer-backdrop" onClick={onClose} type="button" />
+      <button
+        aria-label="Cerrar panel"
+        className="payments-drawer-backdrop"
+        onClick={onClose}
+        type="button"
+      />
       <aside aria-label={title} className="payments-drawer" role="dialog">
         <header className="payments-drawer__header">
           <div className="payments-drawer__icon">{icon}</div>
@@ -72,7 +77,12 @@ function DrawerFrame({
             <h2>{title}</h2>
             <p>{description}</p>
           </div>
-          <button aria-label="Cerrar" className="payments-drawer__close" onClick={onClose} type="button">
+          <button
+            aria-label="Cerrar"
+            className="payments-drawer__close"
+            onClick={onClose}
+            type="button"
+          >
             ×
           </button>
         </header>
@@ -99,7 +109,9 @@ function PaymentForm({
 }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [selectedMethodId, setSelectedMethodId] = useState(payment?.payment_method_id ?? methods[0]?.id ?? '');
+  const [selectedMethodId, setSelectedMethodId] = useState(
+    payment?.payment_method_id ?? methods[0]?.id ?? '',
+  );
   const selectedMethod = methods.find((method) => method.id === selectedMethodId);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -107,7 +119,10 @@ function PaymentForm({
     setSaving(true);
     setMessage('');
     try {
-      const values = Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>;
+      const values = Object.fromEntries(new FormData(event.currentTarget)) as Record<
+        string,
+        string
+      >;
       const path = payment
         ? `/v1/condominiums/${condominiumId}/payments/${payment.id}`
         : `/v1/condominiums/${condominiumId}/payments`;
@@ -130,7 +145,9 @@ function PaymentForm({
     <form className="payments-form" onSubmit={(event) => void submit(event)}>
       {message ? <div className="payments-form__message">{message}</div> : null}
       {!methods.length ? (
-        <div className="payments-form__notice">Crea un método de pago antes de registrar movimientos.</div>
+        <div className="payments-form__notice">
+          Crea un método de pago antes de registrar movimientos.
+        </div>
       ) : null}
       {!payment ? (
         <Field label="Unidad">
@@ -152,19 +169,30 @@ function PaymentForm({
           value={selectedMethodId}
         >
           <option value="">Seleccionar método</option>
-          {methods.filter((method) => method.is_active).map((method) => (
-            <option key={method.id} value={method.id}>
-              {method.display_name} · {method.currency_code}
-            </option>
-          ))}
+          {methods
+            .filter((method) => method.is_active)
+            .map((method) => (
+              <option key={method.id} value={method.id}>
+                {method.display_name} · {method.currency_code}
+              </option>
+            ))}
         </Select>
       </Field>
       <div className="payments-form__grid">
         <Field label="Fecha del pago">
-          <input className="input" defaultValue={payment?.payment_date} name="paymentDate" required type="date" />
+          <input
+            className="input"
+            defaultValue={payment?.payment_date}
+            name="paymentDate"
+            required
+            type="date"
+          />
         </Field>
         <Field label="Moneda">
-          <Select defaultValue={payment?.original_currency_code ?? selectedMethod?.currency_code ?? 'USD'} name="originalCurrencyCode">
+          <Select
+            defaultValue={payment?.original_currency_code ?? selectedMethod?.currency_code ?? 'USD'}
+            name="originalCurrencyCode"
+          >
             <option>USD</option>
             <option>VES</option>
           </Select>
@@ -182,13 +210,32 @@ function PaymentForm({
         />
       </Field>
       <Field label="Nombre del pagador">
-        <input className="input" defaultValue={payment?.payer_name} name="payerName" placeholder="Nombre y apellido" required />
+        <input
+          className="input"
+          defaultValue={payment?.payer_name}
+          name="payerName"
+          placeholder="Nombre y apellido"
+          required
+        />
       </Field>
-      <Field label="Referencia" hint={selectedMethod?.requires_reference ? 'Obligatoria para este método.' : 'Opcional.'}>
-        <input className="input" defaultValue={payment?.reference} name="reference" required={selectedMethod?.requires_reference} />
+      <Field
+        label="Referencia"
+        hint={selectedMethod?.requires_reference ? 'Obligatoria para este método.' : 'Opcional.'}
+      >
+        <input
+          className="input"
+          defaultValue={payment?.reference}
+          name="reference"
+          required={selectedMethod?.requires_reference}
+        />
       </Field>
       <Field label="Notas internas">
-        <textarea className="payments-textarea" defaultValue={payment?.notes} name="notes" placeholder="Contexto adicional para la revisión" />
+        <textarea
+          className="payments-textarea"
+          defaultValue={payment?.notes}
+          name="notes"
+          placeholder="Contexto adicional para la revisión"
+        />
       </Field>
       <footer className="payments-form__footer">
         <Button disabled={saving || !methods.length} type="submit">
@@ -251,12 +298,16 @@ function MethodsForm({
           <article key={method.id}>
             <div>
               <strong>{method.display_name}</strong>
-              <span>{method.method_type.replaceAll('_', ' ')} · {method.currency_code}</span>
+              <span>
+                {method.method_type.replaceAll('_', ' ')} · {method.currency_code}
+              </span>
             </div>
             <div>
               {method.requires_reference ? <Badge tone="info">Referencia</Badge> : null}
               {method.requires_proof ? <Badge tone="warning">Comprobante</Badge> : null}
-              <Badge tone={method.is_active ? 'success' : 'neutral'}>{method.is_active ? 'Activo' : 'Inactivo'}</Badge>
+              <Badge tone={method.is_active ? 'success' : 'neutral'}>
+                {method.is_active ? 'Activo' : 'Inactivo'}
+              </Badge>
             </div>
           </article>
         ))}
@@ -278,25 +329,48 @@ function MethodsForm({
             </Select>
           </Field>
           <Field label="Moneda">
-            <Select name="currencyCode"><option>USD</option><option>VES</option></Select>
+            <Select name="currencyCode">
+              <option>USD</option>
+              <option>VES</option>
+            </Select>
           </Field>
         </div>
-        <Field label="Nombre visible"><input className="input" name="displayName" required /></Field>
+        <Field label="Nombre visible">
+          <input className="input" name="displayName" required />
+        </Field>
         <div className="payments-form__grid">
-          <Field label="Titular"><input className="input" name="accountHolder" /></Field>
-          <Field label="Banco"><input className="input" name="bankName" /></Field>
+          <Field label="Titular">
+            <input className="input" name="accountHolder" />
+          </Field>
+          <Field label="Banco">
+            <input className="input" name="bankName" />
+          </Field>
         </div>
         <div className="payments-form__grid">
-          <Field label="Cuenta enmascarada"><input className="input" name="accountIdentifierMasked" placeholder="****1234" /></Field>
-          <Field label="Teléfono enmascarado"><input className="input" name="phoneMasked" placeholder="****5678" /></Field>
+          <Field label="Cuenta enmascarada">
+            <input className="input" name="accountIdentifierMasked" placeholder="****1234" />
+          </Field>
+          <Field label="Teléfono enmascarado">
+            <input className="input" name="phoneMasked" placeholder="****5678" />
+          </Field>
         </div>
-        <Field label="Correo enmascarado"><input className="input" name="emailMasked" placeholder="a***@correo.com" /></Field>
-        <Field label="Instrucciones"><textarea className="payments-textarea" name="instructions" /></Field>
+        <Field label="Correo enmascarado">
+          <input className="input" name="emailMasked" placeholder="a***@correo.com" />
+        </Field>
+        <Field label="Instrucciones">
+          <textarea className="payments-textarea" name="instructions" />
+        </Field>
         <div className="payments-checkbox-row">
-          <label><input name="requiresReference" type="checkbox" /> Exigir referencia</label>
-          <label><input name="requiresProof" type="checkbox" /> Exigir comprobante</label>
+          <label>
+            <input name="requiresReference" type="checkbox" /> Exigir referencia
+          </label>
+          <label>
+            <input name="requiresProof" type="checkbox" /> Exigir comprobante
+          </label>
         </div>
-        <Button disabled={saving} type="submit">{saving ? 'Creando…' : 'Crear método'}</Button>
+        <Button disabled={saving} type="submit">
+          {saving ? 'Creando…' : 'Crear método'}
+        </Button>
       </form>
     </div>
   );
@@ -334,19 +408,52 @@ function ReviewPayment({
   return (
     <div className="payments-review">
       <div className="payments-review__summary">
-        <div><span>Pagador</span><strong>{payment.payer_name}</strong></div>
-        <div><span>Monto</span><strong>{formatDashboardAmount(payment.original_amount, payment.original_currency_code)}</strong></div>
-        <div><span>Fecha</span><strong>{formatDashboardDate(payment.payment_date)}</strong></div>
-        <div><span>Estado</span><Badge tone={paymentStatusTone(payment.status)}>{paymentStatusLabels[payment.status] ?? payment.status}</Badge></div>
+        <div>
+          <span>Pagador</span>
+          <strong>{payment.payer_name}</strong>
+        </div>
+        <div>
+          <span>Monto</span>
+          <strong>
+            {formatDashboardAmount(payment.original_amount, payment.original_currency_code)}
+          </strong>
+        </div>
+        <div>
+          <span>Fecha</span>
+          <strong>{formatDashboardDate(payment.payment_date)}</strong>
+        </div>
+        <div>
+          <span>Estado</span>
+          <Badge tone={paymentStatusTone(payment.status)}>
+            {paymentStatusLabels[payment.status] ?? payment.status}
+          </Badge>
+        </div>
       </div>
-      {payment.reference ? <div className="payments-review__reference"><span>Referencia</span><strong>{payment.reference}</strong></div> : null}
+      {payment.reference ? (
+        <div className="payments-review__reference">
+          <span>Referencia</span>
+          <strong>{payment.reference}</strong>
+        </div>
+      ) : null}
       {message ? <div className="payments-form__message">{message}</div> : null}
       <div className="payments-review__actions">
-        {payment.status === 'submitted' ? <Button onClick={() => void transition('start-review', 'Revisión iniciada.')} variant="secondary">Iniciar revisión</Button> : null}
+        {payment.status === 'submitted' ? (
+          <Button
+            onClick={() => void transition('start-review', 'Revisión iniciada.')}
+            variant="secondary"
+          >
+            Iniciar revisión
+          </Button>
+        ) : null}
         <Button
-          onClick={() => void paymentProof(`${endpoint}/proof`, session).then((value) => {
-            if (value instanceof Blob) window.open(URL.createObjectURL(value), '_blank', 'noopener,noreferrer');
-          }).catch((error: Error) => setMessage(error.message))}
+          onClick={() =>
+            void paymentProof(`${endpoint}/proof`, session)
+              .then((value) => {
+                if (value instanceof Blob)
+                  window.open(URL.createObjectURL(value), '_blank', 'noopener,noreferrer');
+              })
+              .catch((error: Error) => setMessage(error.message))
+          }
           variant="secondary"
         >
           Ver comprobante
@@ -354,33 +461,63 @@ function ReviewPayment({
       </div>
       <div className="payments-review__decision">
         <Field label="Motivo para corrección, rechazo o reverso">
-          <textarea className="payments-textarea" onChange={(event) => setReason(event.target.value)} value={reason} />
+          <textarea
+            className="payments-textarea"
+            onChange={(event) => setReason(event.target.value)}
+            value={reason}
+          />
         </Field>
         <div>
-          <Button disabled={!reason.trim()} onClick={() => void transition('request-correction', 'Corrección solicitada.', true)} variant="secondary">Solicitar corrección</Button>
-          <Button disabled={!reason.trim()} onClick={() => void transition('reject', 'Pago rechazado.', true)} variant="danger">Rechazar</Button>
+          <Button
+            disabled={!reason.trim()}
+            onClick={() => void transition('request-correction', 'Corrección solicitada.', true)}
+            variant="secondary"
+          >
+            Solicitar corrección
+          </Button>
+          <Button
+            disabled={!reason.trim()}
+            onClick={() => void transition('reject', 'Pago rechazado.', true)}
+            variant="danger"
+          >
+            Rechazar
+          </Button>
         </div>
       </div>
       <div className="payments-review__allocation">
         <div className="payments-form__section-heading">
           <strong>Aplicación del pago</strong>
-          <span>Previsualiza la distribución antes de aprobar. Las monedas nunca se mezclan sin tasa explícita.</span>
+          <span>
+            Previsualiza la distribución antes de aprobar. Las monedas nunca se mezclan sin tasa
+            explícita.
+          </span>
         </div>
         <PaymentAllocationEditor
           onApprove={async (allocations: AllocationInput[]) => {
-            await paymentApi(`${endpoint}/approve`, session, { method: 'POST', body: JSON.stringify({ allocations }) });
+            await paymentApi(`${endpoint}/approve`, session, {
+              method: 'POST',
+              body: JSON.stringify({ allocations }),
+            });
             await onChanged('Pago aprobado y aplicado.');
           }}
-          onPreview={(allocations) => paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
-            method: 'POST',
-            body: JSON.stringify({ allocations }),
-          })}
+          onPreview={(allocations) =>
+            paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
+              method: 'POST',
+              body: JSON.stringify({ allocations }),
+            })
+          }
           paymentCurrency={payment.original_currency_code}
           receivables={receivables.filter((item) => Number(item.outstanding_amount ?? 0) > 0)}
         />
       </div>
       {payment.status === 'approved' ? (
-        <Button disabled={!reason.trim()} onClick={() => void transition('reverse', 'Pago reversado.', true)} variant="danger">Reversar pago aprobado</Button>
+        <Button
+          disabled={!reason.trim()}
+          onClick={() => void transition('reverse', 'Pago reversado.', true)}
+          variant="danger"
+        >
+          Reversar pago aprobado
+        </Button>
       ) : null}
     </div>
   );
@@ -389,19 +526,60 @@ function ReviewPayment({
 function ReceiptView({ payment, receipt }: { payment: Payment; receipt: PaymentReceipt }) {
   return (
     <article className="payments-receipt-card">
-      {payment.status === 'reversed' ? <div className="payments-receipt-card__reversed">PAGO REVERSADO</div> : null}
-      <div className="payments-receipt-card__brand"><span><CheckCircleIcon size={22} /></span><div><strong>Habitta</strong><small>Recibo de pago</small></div></div>
-      <div className="payments-receipt-card__number"><span>Número de recibo</span><strong>{receipt.receipt_number}</strong></div>
-      <div className="payments-receipt-card__amount"><span>Monto confirmado</span><strong>{formatDashboardAmount(receipt.snapshot.payment.amount, receipt.snapshot.payment.currency_code)}</strong></div>
-      <div className="payments-receipt-card__details">
-        <div><span>Condominio</span><strong>{receipt.snapshot.condominium.name}</strong></div>
-        <div><span>Unidad</span><strong>{receipt.snapshot.unit.code}</strong></div>
-        <div><span>Pagador</span><strong>{receipt.snapshot.payment.payer}</strong></div>
-        <div><span>Fecha</span><strong>{formatDashboardDate(receipt.snapshot.payment.date)}</strong></div>
-        <div><span>Método</span><strong>{receipt.snapshot.method.display_name}</strong></div>
-        <div><span>Emitido</span><strong>{formatDashboardDate(receipt.issued_at)}</strong></div>
+      {payment.status === 'reversed' ? (
+        <div className="payments-receipt-card__reversed">PAGO REVERSADO</div>
+      ) : null}
+      <div className="payments-receipt-card__brand">
+        <span>
+          <CheckCircleIcon size={22} />
+        </span>
+        <div>
+          <strong>Habitta</strong>
+          <small>Recibo de pago</small>
+        </div>
       </div>
-      <Button onClick={() => window.print()} variant="secondary">Imprimir recibo</Button>
+      <div className="payments-receipt-card__number">
+        <span>Número de recibo</span>
+        <strong>{receipt.receipt_number}</strong>
+      </div>
+      <div className="payments-receipt-card__amount">
+        <span>Monto confirmado</span>
+        <strong>
+          {formatDashboardAmount(
+            receipt.snapshot.payment.amount,
+            receipt.snapshot.payment.currency_code,
+          )}
+        </strong>
+      </div>
+      <div className="payments-receipt-card__details">
+        <div>
+          <span>Condominio</span>
+          <strong>{receipt.snapshot.condominium.name}</strong>
+        </div>
+        <div>
+          <span>Unidad</span>
+          <strong>{receipt.snapshot.unit.code}</strong>
+        </div>
+        <div>
+          <span>Pagador</span>
+          <strong>{receipt.snapshot.payment.payer}</strong>
+        </div>
+        <div>
+          <span>Fecha</span>
+          <strong>{formatDashboardDate(receipt.snapshot.payment.date)}</strong>
+        </div>
+        <div>
+          <span>Método</span>
+          <strong>{receipt.snapshot.method.display_name}</strong>
+        </div>
+        <div>
+          <span>Emitido</span>
+          <strong>{formatDashboardDate(receipt.issued_at)}</strong>
+        </div>
+      </div>
+      <Button onClick={() => window.print()} variant="secondary">
+        Imprimir recibo
+      </Button>
     </article>
   );
 }
@@ -420,15 +598,32 @@ export function PaymentsDrawerHost({
 
   if (drawer.type === 'methods') {
     return (
-      <DrawerFrame description="Configura opciones visibles y requisitos de validación." eyebrow="Configuración financiera" icon={<SettingsIcon size={22} />} onClose={onClose} title="Métodos de pago">
-        <MethodsForm condominiumId={condominiumId} methods={methods} onChanged={onChanged} session={session} />
+      <DrawerFrame
+        description="Configura opciones visibles y requisitos de validación."
+        eyebrow="Configuración financiera"
+        icon={<SettingsIcon size={22} />}
+        onClose={onClose}
+        title="Métodos de pago"
+      >
+        <MethodsForm
+          condominiumId={condominiumId}
+          methods={methods}
+          onChanged={onChanged}
+          session={session}
+        />
       </DrawerFrame>
     );
   }
 
   if (drawer.type === 'receipt') {
     return (
-      <DrawerFrame description="Documento generado a partir del pago aprobado y sus aplicaciones." eyebrow="Trazabilidad" icon={<CheckCircleIcon size={22} />} onClose={onClose} title="Recibo de pago">
+      <DrawerFrame
+        description="Documento generado a partir del pago aprobado y sus aplicaciones."
+        eyebrow="Trazabilidad"
+        icon={<CheckCircleIcon size={22} />}
+        onClose={onClose}
+        title="Recibo de pago"
+      >
         <ReceiptView payment={drawer.payment} receipt={drawer.receipt} />
       </DrawerFrame>
     );
@@ -436,20 +631,57 @@ export function PaymentsDrawerHost({
 
   if (drawer.type === 'review') {
     return (
-      <DrawerFrame description="Valida referencia, comprobante y aplicación antes de aprobar." eyebrow="Control financiero" icon={<PaymentsIcon size={22} />} onClose={onClose} title="Revisar pago">
-        <ReviewPayment condominiumId={condominiumId} onChanged={onChanged} payment={drawer.payment} receivables={receivables} session={session} />
+      <DrawerFrame
+        description="Valida referencia, comprobante y aplicación antes de aprobar."
+        eyebrow="Control financiero"
+        icon={<PaymentsIcon size={22} />}
+        onClose={onClose}
+        title="Revisar pago"
+      >
+        <ReviewPayment
+          condominiumId={condominiumId}
+          onChanged={onChanged}
+          payment={drawer.payment}
+          receivables={receivables}
+          session={session}
+        />
       </DrawerFrame>
     );
   }
 
   const payment = drawer.type === 'edit' ? drawer.payment : undefined;
   return (
-    <DrawerFrame description={payment ? 'Corrige los datos solicitados antes de reenviar.' : 'Registra el movimiento como borrador y adjunta su comprobante.'} eyebrow="Captura guiada" icon={<PaymentsIcon size={22} />} onClose={onClose} title={payment ? 'Corregir pago' : 'Registrar pago'}>
-      <PaymentForm {...(payment ? { payment } : {})} condominiumId={condominiumId} methods={methods} onChanged={onChanged} session={session} units={units} />
+    <DrawerFrame
+      description={
+        payment
+          ? 'Corrige los datos solicitados antes de reenviar.'
+          : 'Registra el movimiento como borrador y adjunta su comprobante.'
+      }
+      eyebrow="Captura guiada"
+      icon={<PaymentsIcon size={22} />}
+      onClose={onClose}
+      title={payment ? 'Corregir pago' : 'Registrar pago'}
+    >
+      <PaymentForm
+        {...(payment ? { payment } : {})}
+        condominiumId={condominiumId}
+        methods={methods}
+        onChanged={onChanged}
+        session={session}
+        units={units}
+      />
       {payment ? (
         <div className="payments-proof-section">
-          <div className="payments-form__section-heading"><strong>Comprobante</strong><span>JPEG, PNG, WebP o PDF. Máximo 10 MB.</span></div>
-          <PaymentProofUploader condominiumId={condominiumId} onDone={(nextMessage) => void onChanged(nextMessage)} paymentId={payment.id} session={session} />
+          <div className="payments-form__section-heading">
+            <strong>Comprobante</strong>
+            <span>JPEG, PNG, WebP o PDF. Máximo 10 MB.</span>
+          </div>
+          <PaymentProofUploader
+            condominiumId={condominiumId}
+            onDone={(nextMessage) => void onChanged(nextMessage)}
+            paymentId={payment.id}
+            session={session}
+          />
         </div>
       ) : null}
     </DrawerFrame>
