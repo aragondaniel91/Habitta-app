@@ -5,19 +5,29 @@ const apiBaseUrl =
 
 export class ApiRequestError extends Error {
   readonly status: number;
+  readonly path: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, path: string) {
     super(message);
     this.name = 'ApiRequestError';
     this.status = status;
+    this.path = path;
   }
 }
 
-const messageForStatus = (status: number) => {
-  if (status === 401) return 'Tu sesión expiró. Vuelve a iniciar sesión.';
-  if (status === 403) return 'No tienes permisos para realizar esta acción.';
-  if (status >= 500) return 'Habitta no pudo completar la solicitud. Intenta nuevamente.';
-  return 'No se pudo completar la solicitud.';
+const messageForStatus = (status: number, path: string) => {
+  const message =
+    status === 401
+      ? 'Tu sesión expiró. Vuelve a iniciar sesión.'
+      : status === 403
+        ? 'No tienes permisos para realizar esta acción.'
+        : status >= 500
+          ? 'Habitta no pudo completar la solicitud. Intenta nuevamente.'
+          : 'No se pudo completar la solicitud.';
+
+  return import.meta.env.VITE_APP_ENV === 'development'
+    ? `${message} [${status} ${path}]`
+    : message;
 };
 
 export async function apiRequest<T>(path: string, session: Session, init?: RequestInit) {
@@ -28,7 +38,7 @@ export async function apiRequest<T>(path: string, session: Session, init?: Reque
 
   const response = await fetch(`${apiBaseUrl}${path}`, { ...init, headers });
 
-  if (!response.ok) throw new ApiRequestError(response.status, messageForStatus(response.status));
+  if (!response.ok) throw new ApiRequestError(response.status, messageForStatus(response.status, path), path);
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
