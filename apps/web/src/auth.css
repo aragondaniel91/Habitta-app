@@ -579,13 +579,11 @@
     width: 42px;
     overflow: hidden;
     padding: 0;
-    white-space: nowrap;
-    text-indent: 100px;
+    font-size: 0;
   }
 
   .onboarding-topbar .button svg {
-    position: absolute;
-    text-indent: 0;
+    position: static;
   }
 
   .onboarding-layout {
