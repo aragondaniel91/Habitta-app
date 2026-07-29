@@ -39,6 +39,8 @@ export type DashboardReceivable = {
   description: string;
   currency_code: string;
   outstanding_amount: string;
+  original_amount?: string;
+  amount?: string;
   status: string;
   issue_date?: string;
   due_date?: string;
@@ -75,13 +77,39 @@ export type AgingBucket = {
   numericAmount: number;
 };
 
+export type MonthlyFinancialPoint = {
+  key: string;
+  label: string;
+  collections: number;
+  charges: number;
+};
+
+export type RecentPayment = {
+  id: string;
+  payer: string;
+  unitCode: string;
+  amount: string;
+  currencyCode: string;
+  status: string;
+  date: string;
+};
+
 const numeric = (value: string | undefined) => {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-export function formatDashboardAmount(value: string, currencyCode: string) {
-  const parsed = numeric(value);
+const dateKey = (value: string | undefined) => {
+  if (!value) return '';
+  const match = /^(\d{4})-(\d{2})/.exec(value);
+  return match ? `${match[1]}-${match[2]}` : '';
+};
+
+const monthKey = (date: Date) =>
+  `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+
+export function formatDashboardAmount(value: string | number, currencyCode: string) {
+  const parsed = typeof value === 'number' ? value : numeric(value);
   return new Intl.NumberFormat('es-VE', {
     style: 'currency',
     currency: currencyCode,
@@ -111,6 +139,27 @@ export function sortReceivableSummaries(rows: ReceivableSummary[]) {
     const rightPriority = priority.get(right.currency_code) ?? 99;
     return leftPriority - rightPriority || left.currency_code.localeCompare(right.currency_code);
   });
+}
+
+export function getDashboardCurrencies(
+  summaries: ReceivableSummary[],
+  aging: ReceivableAging[],
+  receivables: DashboardReceivable[],
+  payments: DashboardPayment[],
+) {
+  const codes = new Set<string>();
+  summaries.forEach((row) => codes.add(row.currency_code));
+  aging.forEach((row) => codes.add(row.currency_code));
+  receivables.forEach((row) => codes.add(row.currency_code));
+  payments.forEach((row) => codes.add(row.original_currency_code));
+  return sortReceivableSummaries(
+    [...codes].map((currencyCode) => ({
+      currency_code: currencyCode,
+      net_outstanding: '0',
+      total_debits: '0',
+      total_credits: '0',
+    })),
+  ).map((row) => row.currency_code);
 }
 
 export function getAgingBuckets(row: ReceivableAging): AgingBucket[] {
@@ -156,6 +205,97 @@ export function getOverdueTotal(row: ReceivableAging) {
   return getAgingBuckets(row)
     .filter((bucket) => bucket.key !== 'current')
     .reduce((total, bucket) => total + bucket.numericAmount, 0);
+}
+
+export function getDelinquencyRate(row: ReceivableAging | undefined) {
+  if (!row) return 0;
+  const total = getAgingTotal(row);
+  return total > 0 ? (getOverdueTotal(row) / total) * 100 : 0;
+}
+
+export function getCollectionsThisMonth(
+  payments: DashboardPayment[],
+  currencyCode: string,
+  referenceDate = new Date(),
+) {
+  const target = monthKey(referenceDate);
+  return payments
+    .filter(
+      (payment) =>
+        payment.status === 'approved' &&
+        payment.original_currency_code === currencyCode &&
+        dateKey(payment.payment_date ?? payment.created_at) === target,
+    )
+    .reduce((total, payment) => total + numeric(payment.original_amount), 0);
+}
+
+export function buildMonthlyFinancialSeries(
+  receivables: DashboardReceivable[],
+  payments: DashboardPayment[],
+  currencyCode: string,
+  referenceDate = new Date(),
+  monthCount = 6,
+): MonthlyFinancialPoint[] {
+  const safeCount = Math.max(1, monthCount);
+  const keys = Array.from({ length: safeCount }, (_, index) => {
+    const offset = safeCount - index - 1;
+    return monthKey(
+      new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth() - offset, 1)),
+    );
+  });
+  const points = new Map(
+    keys.map((key) => {
+      const date = new Date(`${key}-01T12:00:00Z`);
+      const label = new Intl.DateTimeFormat('es-VE', { month: 'short' })
+        .format(date)
+        .replace('.', '');
+      return [key, { key, label, collections: 0, charges: 0 } satisfies MonthlyFinancialPoint];
+    }),
+  );
+
+  payments.forEach((payment) => {
+    if (payment.status !== 'approved' || payment.original_currency_code !== currencyCode) return;
+    const key = dateKey(payment.payment_date ?? payment.created_at);
+    const point = points.get(key);
+    if (point) point.collections += numeric(payment.original_amount);
+  });
+
+  receivables.forEach((receivable) => {
+    if (receivable.status === 'reversed' || receivable.currency_code !== currencyCode) return;
+    const key = dateKey(receivable.issue_date ?? receivable.created_at ?? receivable.due_date);
+    const point = points.get(key);
+    if (point)
+      point.charges += numeric(
+        receivable.original_amount ?? receivable.amount ?? receivable.outstanding_amount,
+      );
+  });
+
+  return keys.map((key) => points.get(key)!).filter(Boolean);
+}
+
+export function getRecentPayments(
+  payments: DashboardPayment[],
+  units: DashboardUnit[],
+  limit = 4,
+): RecentPayment[] {
+  const unitCodes = new Map(units.map((unit) => [unit.id, unit.code]));
+  return [...payments]
+    .filter((payment) => Boolean(payment.payment_date ?? payment.created_at))
+    .sort((left, right) => {
+      const leftDate = left.submitted_at ?? left.created_at ?? left.payment_date;
+      const rightDate = right.submitted_at ?? right.created_at ?? right.payment_date;
+      return rightDate.localeCompare(leftDate);
+    })
+    .slice(0, limit)
+    .map((payment) => ({
+      id: payment.id,
+      payer: payment.payer_name || 'Pago registrado',
+      unitCode: unitCodes.get(payment.unit_id) ?? 'Sin unidad',
+      amount: payment.original_amount,
+      currencyCode: payment.original_currency_code,
+      status: payment.status,
+      date: payment.submitted_at ?? payment.created_at ?? payment.payment_date,
+    }));
 }
 
 export function buildRecentActivity(
