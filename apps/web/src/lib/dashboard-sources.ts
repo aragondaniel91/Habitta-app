@@ -1,3 +1,4 @@
+// Dashboard blocks degrade independently so one unavailable source never hides the full workspace.
 export type DashboardSourceResult<T> = {
   value: T;
   warning?: string;
