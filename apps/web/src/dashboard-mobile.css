@@ -1,3 +1,72 @@
+@media (min-width: 720px) and (max-width: 1024px) {
+  .dashboard-page {
+    gap: 1rem;
+  }
+
+  .dashboard-overview-heading {
+    min-height: auto;
+    align-items: center;
+    flex-direction: row;
+    gap: 1.25rem;
+  }
+
+  .dashboard-overview-heading > div:first-child {
+    max-width: 56%;
+  }
+
+  .dashboard-overview-heading__actions {
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-metric-card {
+    min-height: 154px;
+  }
+
+  .dashboard-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-panel {
+    padding: 1.1rem;
+  }
+
+  .dashboard-bar-chart {
+    height: 250px;
+  }
+
+  .dashboard-payment-list article {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dashboard-payment-list article > div:last-child {
+    grid-column: 2;
+    justify-items: start;
+  }
+
+  .dashboard-action-grid button {
+    min-height: 108px;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1120px) {
+  .dashboard-chart-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  }
+
+  .dashboard-donut-layout {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .dashboard-donut {
+    width: 150px;
+    height: 150px;
+  }
+}
+
 @media (max-width: 760px) {
   .dashboard-activity-panel .table-scroll {
     overflow: visible;
