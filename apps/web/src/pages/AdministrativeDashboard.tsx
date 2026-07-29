@@ -205,7 +205,11 @@ function FinancialBarChart({
   }
 
   return (
-    <div className="dashboard-bar-chart" role="img" aria-label={`Cobros y cargos en ${currencyCode}`}>
+    <div
+      className="dashboard-bar-chart"
+      role="img"
+      aria-label={`Cobros y cargos en ${currencyCode}`}
+    >
       <div className="dashboard-bar-chart__grid" aria-hidden="true">
         <span />
         <span />
@@ -222,7 +226,9 @@ function FinancialBarChart({
                 <span
                   aria-label={`${point.label}: cobros ${formatDashboardAmount(point.collections, currencyCode)}`}
                   className="dashboard-bar dashboard-bar--income"
-                  style={{ height: `${Math.max(collectionHeight, point.collections > 0 ? 3 : 0)}%` }}
+                  style={{
+                    height: `${Math.max(collectionHeight, point.collections > 0 ? 3 : 0)}%`,
+                  }}
                   title={`Cobros: ${formatDashboardAmount(point.collections, currencyCode)}`}
                 />
                 <span
@@ -383,7 +389,8 @@ export function AdministrativeDashboard({
 
   useEffect(() => {
     const firstCurrency = currencies[0] ?? '';
-    if (!selectedCurrency || !currencies.includes(selectedCurrency)) setSelectedCurrency(firstCurrency);
+    if (!selectedCurrency || !currencies.includes(selectedCurrency))
+      setSelectedCurrency(firstCurrency);
   }, [currencies, selectedCurrency]);
 
   const activity = useMemo(
@@ -641,7 +648,9 @@ export function AdministrativeDashboard({
               onClick={() => feesRoute && onNavigate(feesRoute)}
               type="button"
             >
-              <span data-tone={delinquencyRows.some((row) => row.value > 0) ? 'warning' : 'success'}>
+              <span
+                data-tone={delinquencyRows.some((row) => row.value > 0) ? 'warning' : 'success'}
+              >
                 <FeesIcon size={19} />
               </span>
               <div>
