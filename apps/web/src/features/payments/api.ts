@@ -1,9 +1,28 @@
 import type { Session } from '@supabase/supabase-js';
 import { apiBaseUrl } from '../../lib/api';
 
+const normalizeJsonBody = (body: BodyInit | null | undefined) => {
+  if (typeof body !== 'string') return body;
+  try {
+    const value = JSON.parse(body) as unknown;
+    if (!value || Array.isArray(value) || typeof value !== 'object') return body;
+    return JSON.stringify(
+      Object.fromEntries(
+        Object.entries(value).filter(
+          ([, fieldValue]) => fieldValue !== '' && fieldValue !== undefined,
+        ),
+      ),
+    );
+  } catch {
+    return body;
+  }
+};
+
 export const paymentApi = async <T>(path: string, session: Session, init?: RequestInit) => {
+  const normalizedBody = normalizeJsonBody(init?.body);
   const r = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
+    ...(normalizedBody === undefined ? {} : { body: normalizedBody }),
     headers: {
       Authorization: `Bearer ${session.access_token}`,
       'Content-Type': 'application/json',
