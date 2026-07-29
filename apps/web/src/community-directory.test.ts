@@ -71,7 +71,7 @@ describe('community directory helpers', () => {
   });
 
   it('provides stable display labels and summary values', () => {
-    expect(getBuildingName(units[0], buildings)).toBe('Torre Norte');
+    expect(getBuildingName(units[0]!, buildings)).toBe('Torre Norte');
     expect(getUnitTypeLabel('commercial')).toBe('Local');
     expect(getPersonInitials({ id: '1', first_name: 'Ana', last_name: 'Rodríguez' })).toBe('AR');
     expect(countUnitsByStatus(units)).toEqual({ active: 1, inactive: 1 });
