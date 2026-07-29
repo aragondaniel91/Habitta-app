@@ -8,7 +8,12 @@ import {
   getReceivableStatusCounts,
   parseOpeningBalancesCsv,
 } from './lib/receivables';
-import type { ChargeConcept, ReceivableFilters, ReceivableItem, ReceivableUnit } from './lib/receivables';
+import type {
+  ChargeConcept,
+  ReceivableFilters,
+  ReceivableItem,
+  ReceivableUnit,
+} from './lib/receivables';
 
 const units: ReceivableUnit[] = [
   { id: 'unit-a', code: 'A-101', status: 'active' },
@@ -71,9 +76,9 @@ describe('receivables helpers', () => {
     expect(filterReceivables(items, units, concepts, { ...emptyFilters, query: 'b-202' })).toEqual([
       items[1],
     ]);
-    expect(filterReceivables(items, units, concepts, { ...emptyFilters, query: 'servicio agua' })).toEqual([
-      items[1],
-    ]);
+    expect(
+      filterReceivables(items, units, concepts, { ...emptyFilters, query: 'servicio agua' }),
+    ).toEqual([items[1]]);
   });
 
   it('keeps currencies and status counts isolated', () => {
