@@ -1,0 +1,28 @@
+name: Inspect requests foundation
+
+on:
+  push:
+    branches:
+      - feat/backend-requests-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare backend snapshot
+        run: |
+          mkdir -p inspection
+          find apps/api supabase packages -maxdepth 5 -type f | sort > inspection/file-tree.txt
+          cp -R apps/api inspection/apps-api
+          cp -R supabase inspection/supabase
+          cp -R packages inspection/packages
+      - uses: actions/upload-artifact@v4
+        with:
+          name: requests-foundation-snapshot
+          path: inspection
+          if-no-files-found: error
+          retention-days: 1
