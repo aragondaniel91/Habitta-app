@@ -124,34 +124,26 @@ export function AdministrativeDashboard({
           throw requestError;
         });
 
-      const [
-        units,
-        buildings,
-        people,
-        summaries,
-        aging,
-        receivables,
-        payments,
-        reviewQueueResult,
-      ] = await Promise.all([
-        apiRequest<DashboardUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-        apiRequest<DashboardBuilding[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-        apiRequest<DashboardPerson[]>(`/v1/condominiums/${condominiumId}/people`, session),
-        apiRequest<ReceivableSummary[]>(
-          `/v1/condominiums/${condominiumId}/receivables/summary`,
-          session,
-        ),
-        apiRequest<ReceivableAging[]>(
-          `/v1/condominiums/${condominiumId}/receivables/aging`,
-          session,
-        ),
-        apiRequest<DashboardReceivable[]>(
-          `/v1/condominiums/${condominiumId}/receivables`,
-          session,
-        ),
-        apiRequest<DashboardPayment[]>(`/v1/condominiums/${condominiumId}/payments`, session),
-        reviewQueuePromise,
-      ]);
+      const [units, buildings, people, summaries, aging, receivables, payments, reviewQueueResult] =
+        await Promise.all([
+          apiRequest<DashboardUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
+          apiRequest<DashboardBuilding[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+          apiRequest<DashboardPerson[]>(`/v1/condominiums/${condominiumId}/people`, session),
+          apiRequest<ReceivableSummary[]>(
+            `/v1/condominiums/${condominiumId}/receivables/summary`,
+            session,
+          ),
+          apiRequest<ReceivableAging[]>(
+            `/v1/condominiums/${condominiumId}/receivables/aging`,
+            session,
+          ),
+          apiRequest<DashboardReceivable[]>(
+            `/v1/condominiums/${condominiumId}/receivables`,
+            session,
+          ),
+          apiRequest<DashboardPayment[]>(`/v1/condominiums/${condominiumId}/payments`, session),
+          reviewQueuePromise,
+        ]);
 
       setData({
         units,
@@ -246,7 +238,9 @@ export function AdministrativeDashboard({
                 <span>Por cobrar</span>
                 <Badge tone="info">{summary.currency_code}</Badge>
               </div>
-              <strong>{formatDashboardAmount(summary.net_outstanding, summary.currency_code)}</strong>
+              <strong>
+                {formatDashboardAmount(summary.net_outstanding, summary.currency_code)}
+              </strong>
               <small>
                 Débitos {formatDashboardAmount(summary.total_debits, summary.currency_code)} ·
                 Créditos {formatDashboardAmount(summary.total_credits, summary.currency_code)}
@@ -286,7 +280,8 @@ export function AdministrativeDashboard({
           </div>
           <strong>{activeUnits}</strong>
           <small>
-            {data.buildings.length} {data.buildings.length === 1 ? 'torre registrada' : 'torres registradas'}.
+            {data.buildings.length}{' '}
+            {data.buildings.length === 1 ? 'torre registrada' : 'torres registradas'}.
           </small>
         </Surface>
       </section>
@@ -480,8 +475,8 @@ export function AdministrativeDashboard({
                     <td>
                       <Badge tone={toneForStatus(item.status)}>
                         {item.kind === 'payment'
-                          ? paymentStatusLabels[item.status] ?? item.status
-                          : receivableStatusLabels[item.status] ?? item.status}
+                          ? (paymentStatusLabels[item.status] ?? item.status)
+                          : (receivableStatusLabels[item.status] ?? item.status)}
                       </Badge>
                     </td>
                     <td>{formatDashboardDate(item.date)}</td>

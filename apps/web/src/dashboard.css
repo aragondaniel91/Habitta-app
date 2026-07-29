@@ -11,9 +11,7 @@
   gap: 2rem;
   overflow: hidden;
   padding: clamp(1.5rem, 3vw, 2.25rem);
-  background:
-    linear-gradient(105deg, rgb(13 27 42 / 0.98), rgb(18 52 78 / 0.96)),
-    var(--navy);
+  background: linear-gradient(105deg, rgb(13 27 42 / 0.98), rgb(18 52 78 / 0.96)), var(--navy);
   color: #fff;
   box-shadow: 0 16px 36px rgb(13 27 42 / 0.14);
 }
