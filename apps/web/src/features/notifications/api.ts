@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import { apiRequest } from '../../lib/api';
 import type {
   Notification,
   NotificationPreference,
@@ -6,21 +7,9 @@ import type {
   UnreadCount,
 } from './types';
 
-const request = async <T>(path: string, session: Session, init?: RequestInit) => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}${path}`,
-    {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-        ...(init?.headers ?? {}),
-      },
-    },
-  );
-  if (!response.ok) throw new Error('No se pudieron actualizar las notificaciones.');
-  return response.json() as Promise<T>;
-};
+const request = async <T>(path: string, session: Session, init?: RequestInit) =>
+  apiRequest<T>(path, session, init);
+
 export const getUnreadCount = (session: Session) =>
   request<UnreadCount>('/v1/notifications/unread-count', session);
 export const getNotifications = (
