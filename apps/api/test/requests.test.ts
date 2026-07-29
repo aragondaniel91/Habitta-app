@@ -115,6 +115,27 @@ describe('service request HTTP routes', () => {
     ).toBe(true);
   });
 
+  it('rejects invalid request-list filters before querying Supabase', async () => {
+    let databaseCalls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        if (String(input).includes('/auth/v1/user')) return auth();
+        databaseCalls += 1;
+        return Response.json([]);
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/requests?status=not-a-status`,
+      { headers: token },
+      env(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(databaseCalls).toBe(0);
+  });
+
   it('returns a real 404 for an inaccessible or missing request', async () => {
     vi.stubGlobal(
       'fetch',
