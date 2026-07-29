@@ -23,6 +23,13 @@ import {
   approvePaymentSchema,
   notificationPreferencesSchema,
   notificationSettingsSchema,
+  serviceRequestCategoryInputSchema,
+  serviceRequestCategoryUpdateSchema,
+  serviceRequestCreateSchema,
+  serviceRequestUpdateSchema,
+  serviceRequestCommentSchema,
+  serviceRequestCancelSchema,
+  serviceRequestListQuerySchema,
   uuidSchema,
 } from '@habitta/validation';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
@@ -654,6 +661,160 @@ const responseJson = async (
         : failureStatus;
   return c.json({ error: status === 403 ? 'Forbidden' : 'Request conflict' }, status);
 };
+app.get('/v1/condominiums/:id/request-categories', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const r = await rest(
+    c,
+    `service_request_categories?condominium_id=eq.${id}&select=*&order=sort_order.asc,name.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.post('/v1/condominiums/:id/request-categories', async (c) => {
+  const p = await body(c, serviceRequestCategoryInputSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'service_request_categories', {
+    method: 'POST',
+    body: JSON.stringify({
+      condominium_id: uuidSchema.parse(c.req.param('id')),
+      code: p.code,
+      name: p.name,
+      description: p.description ?? null,
+      sort_order: p.sortOrder,
+      is_active: p.isActive,
+      created_by: c.get('userId'),
+    }),
+  });
+  return responseJson(c, r, 201, 409);
+});
+app.patch('/v1/condominiums/:id/request-categories/:categoryId', async (c) => {
+  const p = await body(c, serviceRequestCategoryUpdateSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(
+    c,
+    `service_request_categories?id=eq.${uuidSchema.parse(c.req.param('categoryId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: p.name,
+        description: p.description,
+        sort_order: p.sortOrder,
+        is_active: p.isActive,
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
+  return responseJson(c, r, 200, 409);
+});
+app.get('/v1/condominiums/:id/requests', async (c) => {
+  const query = serviceRequestListQuerySchema.safeParse({
+    status: c.req.query('status') || undefined,
+    priority: c.req.query('priority') || undefined,
+    unitId: c.req.query('unitId') || undefined,
+    categoryId: c.req.query('categoryId') || undefined,
+    assignedToUserId: c.req.query('assignedToUserId') || undefined,
+  });
+  if (!query.success) return c.json({ error: query.error.flatten() }, 400);
+  const id = uuidSchema.parse(c.req.param('id'));
+  const filters = [
+    `condominium_id=eq.${id}`,
+    query.data.status ? `status=eq.${query.data.status}` : '',
+    query.data.priority ? `priority=eq.${query.data.priority}` : '',
+    query.data.unitId ? `unit_id=eq.${query.data.unitId}` : '',
+    query.data.categoryId ? `category_id=eq.${query.data.categoryId}` : '',
+    query.data.assignedToUserId ? `assigned_to_user_id=eq.${query.data.assignedToUserId}` : '',
+  ].filter(Boolean);
+  const r = await rest(c, `service_requests?${filters.join('&')}&select=*&order=updated_at.desc`);
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.post('/v1/condominiums/:id/requests', async (c) => {
+  const p = await body(c, serviceRequestCreateSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'create_service_request', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_unit: p.unitId ?? null,
+    target_category: p.categoryId,
+    request_title: p.title,
+    request_description: p.description,
+    request_priority: p.priority,
+    target_requester: p.requesterPersonId ?? null,
+  });
+  return responseJson(c, r, 201, 409);
+});
+app.get('/v1/condominiums/:id/requests/:requestId', async (c) => {
+  const r = await rest(
+    c,
+    `service_requests?id=eq.${uuidSchema.parse(c.req.param('requestId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
+  );
+  if (!r.ok) return c.json({ error: 'Request failed' }, r.status === 403 ? 403 : 404);
+  const rows = (await r.json()) as unknown[];
+  return rows.length ? c.json(rows[0]) : c.json({ error: 'Service request not found' }, 404);
+});
+app.patch('/v1/condominiums/:id/requests/:requestId', async (c) => {
+  const p = await body(c, serviceRequestUpdateSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_service_request', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_request: uuidSchema.parse(c.req.param('requestId')),
+    next_status: p.status ?? null,
+    next_priority: p.priority ?? null,
+    target_category: p.categoryId ?? null,
+    target_assignee: p.assignedToUserId ?? null,
+    clear_assignee: p.clearAssignee ?? false,
+    due_on: p.dueAt ?? null,
+    clear_due: p.clearDue ?? false,
+    resolution: p.resolution ?? null,
+    expected_version: p.expectedVersion ?? null,
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.post('/v1/condominiums/:id/requests/:requestId/cancel', async (c) => {
+  const p = await body(c, serviceRequestCancelSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'cancel_service_request', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_request: uuidSchema.parse(c.req.param('requestId')),
+    reason: p.reason,
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.get('/v1/condominiums/:id/requests/:requestId/comments', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const requestId = uuidSchema.parse(c.req.param('requestId'));
+  const r = await rest(
+    c,
+    `service_request_comments?condominium_id=eq.${id}&request_id=eq.${requestId}&select=*&order=created_at.asc,id.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.post('/v1/condominiums/:id/requests/:requestId/comments', async (c) => {
+  const p = await body(c, serviceRequestCommentSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'add_service_request_comment', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_request: uuidSchema.parse(c.req.param('requestId')),
+    comment_body: p.body,
+    comment_visibility: p.visibility,
+  });
+  return responseJson(c, r, 201, 409);
+});
+app.get('/v1/condominiums/:id/requests/:requestId/events', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const requestId = uuidSchema.parse(c.req.param('requestId'));
+  const r = await rest(
+    c,
+    `service_request_events?condominium_id=eq.${id}&request_id=eq.${requestId}&select=*&order=created_at.asc,id.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/requests/:requestId/attachments', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const requestId = uuidSchema.parse(c.req.param('requestId'));
+  const r = await rest(
+    c,
+    `service_request_attachments?condominium_id=eq.${id}&request_id=eq.${requestId}&select=*&order=created_at.asc,id.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
 app.get(
   '/v1/condominiums/:id/payment-methods',
   financeList('condominium_payment_methods', 'display_name.asc'),

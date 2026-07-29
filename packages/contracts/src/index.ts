@@ -21,3 +21,23 @@ export type ReceivablesSummary = {
   total_credits: DecimalMoney;
   net_outstanding: DecimalMoney;
 };
+
+export type ServiceRequestRecord = {
+  id: string;
+  request_number: string;
+  condominium_id: string;
+  unit_id: string | null;
+  category_id: string;
+  requester_person_id: string | null;
+  submitted_by_user_id: string;
+  assigned_to_user_id: string | null;
+  title: string;
+  description: string;
+  priority: import('@habitta/shared-types').ServiceRequestPriority;
+  status: import('@habitta/shared-types').ServiceRequestStatus;
+  due_at: string | null;
+  resolution_summary: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};

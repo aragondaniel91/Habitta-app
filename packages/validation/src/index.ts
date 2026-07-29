@@ -242,3 +242,110 @@ export const notificationSettingsSchema = z.object({
   overdueEnabled: z.boolean(),
   timezone: z.string().trim().min(1).max(64),
 });
+
+export const serviceRequestPrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
+export const serviceRequestStatusSchema = z.enum([
+  'submitted',
+  'acknowledged',
+  'in_progress',
+  'waiting_resident',
+  'waiting_vendor',
+  'resolved',
+  'closed',
+  'cancelled',
+]);
+export const serviceRequestVisibilitySchema = z.enum(['public', 'internal']);
+
+export const serviceRequestCategoryInputSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9][a-z0-9_-]{1,31}$/),
+  name: z.string().trim().min(2).max(80),
+  description: z.string().trim().max(500).optional(),
+  sortOrder: z.number().int().min(0).max(1000).default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const serviceRequestCreateSchema = z.object({
+  unitId: uuidSchema.optional(),
+  categoryId: uuidSchema,
+  requesterPersonId: uuidSchema.optional(),
+  title: z.string().trim().min(3).max(160),
+  description: z.string().trim().min(3).max(5000),
+  priority: serviceRequestPrioritySchema.default('normal'),
+});
+
+export const serviceRequestUpdateSchema = z
+  .object({
+    status: serviceRequestStatusSchema.optional(),
+    priority: serviceRequestPrioritySchema.optional(),
+    categoryId: uuidSchema.optional(),
+    assignedToUserId: uuidSchema.optional(),
+    clearAssignee: z.boolean().optional(),
+    dueAt: z.string().datetime({ offset: true }).optional(),
+    clearDue: z.boolean().optional(),
+    resolution: z.string().trim().min(3).max(4000).optional(),
+    expectedVersion: z.number().int().positive().optional(),
+  })
+  .superRefine((value, context) => {
+    if (!Object.values(value).some((field) => field !== undefined && field !== false)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: 'At least one change is required' });
+    }
+    if (value.assignedToUserId && value.clearAssignee) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['clearAssignee'],
+        message: 'Cannot assign and clear an assignee together',
+      });
+    }
+    if (value.dueAt && value.clearDue) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['clearDue'],
+        message: 'Cannot set and clear a due date together',
+      });
+    }
+    if (value.status === 'cancelled') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['status'],
+        message: 'Use the cancellation endpoint',
+      });
+    }
+    if (value.resolution && value.status && !['resolved', 'closed'].includes(value.status)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['resolution'],
+        message: 'Resolution is only valid for resolved requests',
+      });
+    }
+  });
+
+export const serviceRequestCommentSchema = z.object({
+  body: z.string().trim().min(1).max(5000),
+  visibility: serviceRequestVisibilitySchema.default('public'),
+});
+
+export const serviceRequestCancelSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+});
+
+export const serviceRequestListQuerySchema = z.object({
+  status: serviceRequestStatusSchema.optional(),
+  priority: serviceRequestPrioritySchema.optional(),
+  unitId: uuidSchema.optional(),
+  categoryId: uuidSchema.optional(),
+  assignedToUserId: uuidSchema.optional(),
+});
+
+export const serviceRequestCategoryUpdateSchema = z
+  .object({
+    name: z.string().trim().min(2).max(80).optional(),
+    description: z.string().trim().max(500).optional(),
+    sortOrder: z.number().int().min(0).max(1000).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((value) => Object.values(value).some((field) => field !== undefined), {
+    message: 'At least one category change is required',
+  });
