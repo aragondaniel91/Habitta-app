@@ -698,11 +698,16 @@
 }
 
 @keyframes directory-fade-in {
-  from { opacity: 0; }
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes directory-slide-in {
-  from { opacity: 0; transform: translateX(40px); }
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
 }
 
 @media (max-width: 1240px) {
