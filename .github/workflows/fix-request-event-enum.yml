@@ -1,0 +1,44 @@
+name: Fix request event enum casts
+
+on:
+  push:
+    branches:
+      - feat/backend-requests-foundation
+    paths:
+      - .github/workflows/fix-request-event-enum.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Apply enum casts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('supabase/migrations/20260729001000_service_requests_foundation.sql')
+          value = path.read_text()
+          value = value.replace(
+              "      else 'status_changed'\n    end;",
+              "      else 'status_changed'\n    end::public.service_request_event_type;",
+          )
+          value = value.replace(
+              "      case when updated_request.assigned_to_user_id is null then 'unassigned' else 'assigned' end,",
+              "      (case when updated_request.assigned_to_user_id is null then 'unassigned' else 'assigned' end)::public.service_request_event_type,",
+          )
+          path.write_text(value)
+          PY
+          rm -f .github/workflows/fix-request-event-enum.yml
+      - name: Commit correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Cast service request event values to enum"
+          git push origin HEAD:${{ github.ref_name }}
