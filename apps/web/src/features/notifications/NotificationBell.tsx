@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { BellIcon } from '../../components/icons';
 import { getUnreadCount } from './api';
 
 export function NotificationBell({ session, onOpen }: { session: Session; onOpen: () => void }) {
@@ -15,7 +16,8 @@ export function NotificationBell({ session, onOpen }: { session: Session; onOpen
   }, [session]);
   return (
     <button className="notification-bell" onClick={onOpen} aria-label="Abrir notificaciones">
-      🔔{count > 0 && <span>{count > 99 ? '99+' : count}</span>}
+      <BellIcon size={20} />
+      {count > 0 && <span>{count > 99 ? '99+' : count}</span>}
     </button>
   );
 }
