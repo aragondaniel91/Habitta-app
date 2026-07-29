@@ -113,8 +113,8 @@ export function SignInGate() {
                 <span className="access-kicker">Revisa tu correo</span>
                 <h2>Tu enlace de acceso está en camino</h2>
                 <p>
-                  Enviamos un enlace seguro a <strong>{sentEmail}</strong>. Ábrelo en este dispositivo
-                  para entrar a Habitta.
+                  Enviamos un enlace seguro a <strong>{sentEmail}</strong>. Ábrelo en este
+                  dispositivo para entrar a Habitta.
                 </p>
               </div>
               {message ? (
@@ -308,18 +308,31 @@ export function OnboardingWizard({
         <aside className="onboarding-progress" aria-label="Progreso de configuración">
           <span className="access-kicker">Primeros pasos</span>
           <h1>Configuremos tu espacio de trabajo.</h1>
-          <p>Solo necesitamos los datos básicos. Podrás completar torres, unidades y residentes después.</p>
+          <p>
+            Solo necesitamos los datos básicos. Podrás completar torres, unidades y residentes
+            después.
+          </p>
           <ol>
             {['Bienvenida', 'Datos principales', 'Confirmación'].map((label, index) => {
               const itemNumber = index + 1;
               const active = itemNumber === stepNumber;
               const complete = itemNumber < stepNumber;
               return (
-                <li data-active={active || undefined} data-complete={complete || undefined} key={label}>
+                <li
+                  data-active={active || undefined}
+                  data-complete={complete || undefined}
+                  key={label}
+                >
                   <span>{complete ? <CheckCircleIcon size={18} /> : itemNumber}</span>
                   <div>
                     <strong>{label}</strong>
-                    <small>{itemNumber === 1 ? 'Conoce el flujo' : itemNumber === 2 ? 'Crea la base' : 'Revisa y termina'}</small>
+                    <small>
+                      {itemNumber === 1
+                        ? 'Conoce el flujo'
+                        : itemNumber === 2
+                          ? 'Crea la base'
+                          : 'Revisa y termina'}
+                    </small>
                   </div>
                 </li>
               );
@@ -336,7 +349,11 @@ export function OnboardingWizard({
                 </span>
                 <div>
                   <span className="access-kicker">Bienvenido a Habitta</span>
-                  <h2>{hasOrganization ? 'Agrega tu primer condominio' : 'Crea la base de tu administración'}</h2>
+                  <h2>
+                    {hasOrganization
+                      ? 'Agrega tu primer condominio'
+                      : 'Crea la base de tu administración'}
+                  </h2>
                   <p>
                     {hasOrganization
                       ? 'Tu organización ya está disponible. Ahora crea el primer condominio para entrar al dashboard.'
@@ -368,7 +385,11 @@ export function OnboardingWizard({
               <form className="onboarding-form" onSubmit={continueToReview}>
                 <div>
                   <span className="access-kicker">Datos principales</span>
-                  <h2>{hasOrganization ? '¿Qué condominio deseas agregar?' : '¿Cómo identificaremos tu administración?'}</h2>
+                  <h2>
+                    {hasOrganization
+                      ? '¿Qué condominio deseas agregar?'
+                      : '¿Cómo identificaremos tu administración?'}
+                  </h2>
                   <p>Usa nombres claros; serán visibles en el selector principal de Habitta.</p>
                 </div>
 
@@ -448,12 +469,17 @@ export function OnboardingWizard({
                 <div>
                   <span className="access-kicker">Confirmación</span>
                   <h2>Todo está listo para crear tu espacio.</h2>
-                  <p>Revisa los nombres antes de continuar. Podrás completar el resto desde Configuración.</p>
+                  <p>
+                    Revisa los nombres antes de continuar. Podrás completar el resto desde
+                    Configuración.
+                  </p>
                 </div>
                 <dl>
                   <div>
                     <dt>Organización</dt>
-                    <dd>{hasOrganization ? selectedOrganization?.name : organizationName.trim()}</dd>
+                    <dd>
+                      {hasOrganization ? selectedOrganization?.name : organizationName.trim()}
+                    </dd>
                   </div>
                   <div>
                     <dt>Primer condominio</dt>
@@ -470,10 +496,19 @@ export function OnboardingWizard({
                   </p>
                 ) : null}
                 <div className="onboarding-card__actions">
-                  <Button disabled={submitting} onClick={() => setStep('details')} type="button" variant="ghost">
+                  <Button
+                    disabled={submitting}
+                    onClick={() => setStep('details')}
+                    type="button"
+                    variant="ghost"
+                  >
                     Editar
                   </Button>
-                  <Button disabled={submitting} onClick={() => void createWorkspace()} type="button">
+                  <Button
+                    disabled={submitting}
+                    onClick={() => void createWorkspace()}
+                    type="button"
+                  >
                     {submitting ? 'Creando espacio…' : 'Crear y entrar a Habitta'}
                     {!submitting ? <ArrowRightIcon size={18} /> : null}
                   </Button>
