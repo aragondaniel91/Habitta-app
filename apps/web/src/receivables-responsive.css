@@ -1,0 +1,298 @@
+@media (max-width: 1280px) {
+  .receivables-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receivables-filter-grid {
+    grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(140px, 0.8fr));
+  }
+
+  .receivables-filter-grid > .button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1040px) {
+  .receivables-overview {
+    align-items: flex-start;
+  }
+
+  .receivables-overview__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .receivables-insights-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receivables-aging-list {
+    grid-template-columns: 1fr;
+  }
+
+  .receivables-workspace__heading {
+    align-items: flex-start;
+  }
+
+  .receivables-tools-menu {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 820px) {
+  .receivables-overview {
+    min-height: auto;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .receivables-overview__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .receivables-currency-row {
+    align-items: flex-start;
+  }
+
+  .receivables-insights-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receivables-section-heading {
+    flex-direction: column;
+  }
+
+  .receivables-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receivables-search {
+    grid-column: 1 / -1;
+  }
+
+  .receivables-workspace__heading {
+    flex-direction: column;
+  }
+
+  .receivables-tools-menu {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .receivables-table th:nth-child(3),
+  .receivables-table td:nth-child(3),
+  .receivables-table th:nth-child(4),
+  .receivables-table td:nth-child(4) {
+    display: none;
+  }
+
+  .receivables-item-name {
+    min-width: 190px;
+  }
+}
+
+@media (max-width: 680px) {
+  .receivables-page {
+    gap: 0.9rem;
+  }
+
+  .receivables-overview__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receivables-overview__actions .button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .receivables-currency-row {
+    flex-direction: column;
+  }
+
+  .receivables-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .receivables-metric {
+    min-height: 142px;
+    padding: 0.85rem;
+  }
+
+  .receivables-metric__heading > span {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .receivables-metric > strong {
+    font-size: clamp(1rem, 5vw, 1.25rem);
+  }
+
+  .receivables-metric > p {
+    font-size: 0.62rem;
+  }
+
+  .receivables-insights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .receivables-aging-list {
+    grid-template-columns: 1fr;
+  }
+
+  .receivables-filter-grid {
+    grid-template-columns: 1fr;
+    padding: 0.8rem;
+  }
+
+  .receivables-search {
+    grid-column: auto;
+  }
+
+  .receivables-workspace__heading {
+    padding: 1rem;
+  }
+
+  .receivables-tools-menu {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receivables-tools-menu .button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .receivables-table-wrap {
+    overflow: visible;
+    padding: 0.8rem;
+  }
+
+  .receivables-table,
+  .receivables-table tbody,
+  .receivables-table tr,
+  .receivables-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .receivables-table thead {
+    display: none;
+  }
+
+  .receivables-table tbody {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .receivables-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.9rem;
+    background: var(--surface);
+    box-shadow: 0 4px 14px rgb(13 27 42 / 0.035);
+  }
+
+  .receivables-table td {
+    display: grid;
+    gap: 0.18rem;
+    border: 0;
+    padding: 0;
+    font-size: 0.72rem;
+  }
+
+  .receivables-table td::before {
+    color: var(--muted);
+    content: attr(data-label);
+    font-size: 0.58rem;
+    font-weight: 850;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .receivables-table td:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .receivables-table td:first-child::before,
+  .receivables-table td:last-child::before {
+    display: none;
+  }
+
+  .receivables-table td:nth-child(3),
+  .receivables-table td:nth-child(4) {
+    display: grid;
+  }
+
+  .receivables-table td:last-child {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+  }
+
+  .receivables-table tr {
+    position: relative;
+  }
+
+  .receivables-item-name {
+    min-width: 0;
+    padding-right: 2.5rem;
+  }
+
+  .receivables-drawer {
+    width: 100%;
+    max-width: none;
+  }
+
+  .receivables-drawer__content {
+    padding: 1rem;
+  }
+
+  .receivables-detail-list,
+  .receivables-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .receivables-detail-list > div:nth-child(odd) {
+    border-right: 0;
+  }
+
+  .receivables-detail-list > div:nth-last-child(-n + 2) {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .receivables-detail-list > div:last-child {
+    border-bottom: 0;
+  }
+
+  .receivables-preview-actions {
+    width: 100%;
+  }
+
+  .receivables-preview-actions .button {
+    flex: 1;
+  }
+
+  .receivables-statement-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .receivables-statement-list article > div:last-child {
+    justify-items: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receivables-metric,
+  .receivables-status-list button,
+  .receivables-drawer {
+    animation: none;
+    transition: none;
+  }
+}
