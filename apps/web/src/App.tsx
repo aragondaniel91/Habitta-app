@@ -9,6 +9,7 @@ import {
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
 import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
+import { ReceivablesPage } from './pages/ReceivablesPage';
 import { apiRequest } from './lib/api';
 import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
 import { ModulePlaceholderPage } from './pages/ModulePage';
@@ -146,6 +147,14 @@ export default function App() {
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         mode={currentRoute.key}
+        session={session}
+      />
+    );
+  } else if (currentRoute.key === 'fees') {
+    page = (
+      <ReceivablesPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
         session={session}
       />
     );
