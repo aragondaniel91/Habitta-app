@@ -13,6 +13,7 @@ import { CommunityPage } from './pages/CommunityPage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ReceivablesPage } from './pages/ReceivablesPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { RequestsPage } from './pages/RequestsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { apiRequest } from './lib/api';
 import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
@@ -173,6 +174,14 @@ export default function App() {
   } else if (currentRoute.key === 'reports') {
     page = (
       <ReportsPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
+  } else if (currentRoute.key === 'requests') {
+    page = (
+      <RequestsPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         session={session}

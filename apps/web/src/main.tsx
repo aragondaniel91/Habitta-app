@@ -11,6 +11,7 @@ import './payments.css';
 import './reports.css';
 import './settings.css';
 import './community.css';
+import './requests.css';
 import './brand-palette.css';
 
 createRoot(document.getElementById('root')!).render(
