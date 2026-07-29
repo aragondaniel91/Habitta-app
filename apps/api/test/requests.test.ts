@@ -36,6 +36,12 @@ describe('service request validation', () => {
     });
     expect(serviceRequestUpdateSchema.safeParse({}).success).toBe(false);
     expect(serviceRequestUpdateSchema.safeParse({ status: 'cancelled' }).success).toBe(false);
+    expect(
+      serviceRequestUpdateSchema.safeParse({
+        assignedToUserId: '00000000-0000-0000-0000-000000000006',
+        clearAssignee: true,
+      }).success,
+    ).toBe(false);
     expect(serviceRequestCommentSchema.safeParse({ body: '   ' }).success).toBe(false);
   });
 });
