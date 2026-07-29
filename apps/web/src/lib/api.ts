@@ -38,7 +38,8 @@ export async function apiRequest<T>(path: string, session: Session, init?: Reque
 
   const response = await fetch(`${apiBaseUrl}${path}`, { ...init, headers });
 
-  if (!response.ok) throw new ApiRequestError(response.status, messageForStatus(response.status, path), path);
+  if (!response.ok)
+    throw new ApiRequestError(response.status, messageForStatus(response.status, path), path);
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
