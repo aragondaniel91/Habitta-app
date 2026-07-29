@@ -16,3 +16,20 @@ export interface TenantContext {
   membershipId: string;
   role: MembershipRole;
 }
+
+export const serviceRequestPriorities = ['low', 'normal', 'high', 'urgent'] as const;
+export type ServiceRequestPriority = (typeof serviceRequestPriorities)[number];
+
+export const serviceRequestStatuses = [
+  'submitted',
+  'acknowledged',
+  'in_progress',
+  'waiting_resident',
+  'waiting_vendor',
+  'resolved',
+  'closed',
+  'cancelled',
+] as const;
+export type ServiceRequestStatus = (typeof serviceRequestStatuses)[number];
+
+export type ServiceRequestVisibility = 'public' | 'internal';
