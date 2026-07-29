@@ -92,8 +92,12 @@ select is((select count(*) from public.notification_deliveries where template_ke
 select is((select count(*) from public.announcement_events where event_type='published'), 1::bigint, 'publication is audited');
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', true);
-update public.announcements set priority='normal' where title='Mantenimiento de ascensores';
-select is((select priority::text from public.announcements where title='Mantenimiento de ascensores'), 'urgent', 'published announcement cannot be directly updated');
+select throws_ok(
+  $$update public.announcements set priority='normal' where title='Mantenimiento de ascensores'$$,
+  null,
+  'permission denied for table announcements',
+  'authenticated users cannot directly update announcements'
+);
 select lives_ok(
   $$select public.create_announcement(
     'a1100000-0000-0000-0000-000000000001',
