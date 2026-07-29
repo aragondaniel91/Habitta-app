@@ -7,9 +7,10 @@ import {
   WorkspaceLoadError,
 } from './components/AuthExperience';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
+import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
 import { apiRequest } from './lib/api';
 import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
-import { DashboardFoundationPage, ModulePlaceholderPage } from './pages/ModulePage';
+import { ModulePlaceholderPage } from './pages/ModulePage';
 import { supabase } from './supabase';
 
 type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
@@ -125,9 +126,15 @@ export default function App() {
     );
   }
 
+  const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
   const page =
     currentRoute.key === DEFAULT_ROUTE.key ? (
-      <DashboardFoundationPage />
+      <AdministrativeDashboard
+        condominiumId={selectedCondominiumId}
+        condominiumName={selectedCondominium?.name ?? 'Condominio'}
+        onNavigate={navigate}
+        session={session}
+      />
     ) : (
       <ModulePlaceholderPage route={currentRoute} />
     );
