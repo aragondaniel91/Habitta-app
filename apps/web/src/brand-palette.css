@@ -1,0 +1,17 @@
+:root {
+  /* Habitta core brand palette */
+  --navy: #0d1b2a;
+  --blue: #1b4f72;
+  --green: #28a745;
+  --blue-soft: #e6f0fa;
+  --background: #f5f7fa;
+  --text: #333d4b;
+  --text-strong: #0d1b2a;
+
+  /* Neutral tokens derived from the core palette. */
+  --muted: rgb(51 61 75 / 0.72);
+  --border: rgb(51 61 75 / 0.12);
+  --border-strong: rgb(51 61 75 / 0.22);
+  --surface-subtle: #f5f7fa;
+  --navy-soft: #0d1b2a;
+}
