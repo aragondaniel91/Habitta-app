@@ -5,6 +5,7 @@ import './styles.css';
 import './auth.css';
 import './dashboard.css';
 import './dashboard-mobile.css';
+import './community-directory.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
