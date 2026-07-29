@@ -8,6 +8,7 @@ import {
 } from './components/AuthExperience';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
+import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
 import { apiRequest } from './lib/api';
 import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
 import { ModulePlaceholderPage } from './pages/ModulePage';
@@ -127,17 +128,30 @@ export default function App() {
   }
 
   const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
-  const page =
-    currentRoute.key === DEFAULT_ROUTE.key ? (
+  const condominiumName = selectedCondominium?.name ?? 'Condominio';
+  let page;
+
+  if (currentRoute.key === DEFAULT_ROUTE.key) {
+    page = (
       <AdministrativeDashboard
         condominiumId={selectedCondominiumId}
-        condominiumName={selectedCondominium?.name ?? 'Condominio'}
+        condominiumName={condominiumName}
         onNavigate={navigate}
         session={session}
       />
-    ) : (
-      <ModulePlaceholderPage route={currentRoute} />
     );
+  } else if (currentRoute.key === 'units' || currentRoute.key === 'people') {
+    page = (
+      <CommunityDirectoryPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        mode={currentRoute.key}
+        session={session}
+      />
+    );
+  } else {
+    page = <ModulePlaceholderPage route={currentRoute} />;
+  }
 
   return (
     <AppShell
