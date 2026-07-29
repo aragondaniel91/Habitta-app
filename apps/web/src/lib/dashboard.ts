@@ -224,7 +224,7 @@ export function getCollectionsThisMonth(
       (payment) =>
         payment.status === 'approved' &&
         payment.original_currency_code === currencyCode &&
-        dateKey(payment.payment_date ?? payment.created_at) === target,
+        dateKey(payment.payment_date || payment.created_at) === target,
     )
     .reduce((total, payment) => total + numeric(payment.original_amount), 0);
 }
@@ -255,7 +255,7 @@ export function buildMonthlyFinancialSeries(
 
   payments.forEach((payment) => {
     if (payment.status !== 'approved' || payment.original_currency_code !== currencyCode) return;
-    const key = dateKey(payment.payment_date ?? payment.created_at);
+    const key = dateKey(payment.payment_date || payment.created_at);
     const point = points.get(key);
     if (point) point.collections += numeric(payment.original_amount);
   });
@@ -280,7 +280,7 @@ export function getRecentPayments(
 ): RecentPayment[] {
   const unitCodes = new Map(units.map((unit) => [unit.id, unit.code]));
   return [...payments]
-    .filter((payment) => Boolean(payment.payment_date ?? payment.created_at))
+    .filter((payment) => Boolean(payment.payment_date || payment.created_at))
     .sort((left, right) => {
       const leftDate = left.submitted_at ?? left.created_at ?? left.payment_date;
       const rightDate = right.submitted_at ?? right.created_at ?? right.payment_date;
