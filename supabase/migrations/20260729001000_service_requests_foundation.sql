@@ -652,7 +652,7 @@ begin
       when updated_request.status = 'cancelled' then 'cancelled'
       when current_request.status = 'resolved' and updated_request.status = 'in_progress' then 'reopened'
       else 'status_changed'
-    end;
+    end::public.service_request_event_type;
     insert into public.service_request_events (
       condominium_id, request_id, event_type, actor_user_id, from_value, to_value
     ) values (
@@ -703,7 +703,7 @@ begin
     ) values (
       target_condominium,
       updated_request.id,
-      case when updated_request.assigned_to_user_id is null then 'unassigned' else 'assigned' end,
+      (case when updated_request.assigned_to_user_id is null then 'unassigned' else 'assigned' end)::public.service_request_event_type,
       'internal',
       auth.uid(),
       jsonb_build_object('assigned_to_user_id', current_request.assigned_to_user_id),
