@@ -85,10 +85,13 @@ select lives_ok(
   'administrator publishes an announcement'
 );
 select is((select status::text from public.announcements where title='Mantenimiento de ascensores'), 'published', 'publication changes status');
+reset role;
 select is((select count(*) from public.announcement_recipients where announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores')), 5::bigint, 'publication snapshots the five audience members');
 select is((select count(*) from public.notifications where notification_type='announcement_published'), 5::bigint, 'publication creates in-app notifications');
 select is((select count(*) from public.notification_deliveries where template_key='announcement_published'), 5::bigint, 'publication creates email deliveries');
 select is((select count(*) from public.announcement_events where event_type='published'), 1::bigint, 'publication is audited');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', true);
 update public.announcements set priority='normal' where title='Mantenimiento de ascensores';
 select is((select priority::text from public.announcements where title='Mantenimiento de ascensores'), 'urgent', 'published announcement cannot be directly updated');
 select lives_ok(

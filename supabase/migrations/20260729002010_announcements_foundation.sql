@@ -106,6 +106,60 @@ create index announcement_events_timeline_idx
 create index announcement_attachments_idx
   on public.announcement_attachments (announcement_id, created_at, id);
 
+
+create or replace function public.validate_notification_event_scope()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+set row_security = off
+as $$
+declare
+  expected_unit uuid;
+  aggregate_found boolean := false;
+begin
+  if new.aggregate_type = 'receivable' then
+    select unit_id, true
+      into expected_unit, aggregate_found
+      from public.receivable_items
+      where id = new.aggregate_id
+        and condominium_id = new.condominium_id;
+  elsif new.aggregate_type = 'payment' then
+    select unit_id, true
+      into expected_unit, aggregate_found
+      from public.payments
+      where id = new.aggregate_id
+        and condominium_id = new.condominium_id;
+  elsif new.aggregate_type = 'receipt' then
+    select p.unit_id, true
+      into expected_unit, aggregate_found
+      from public.payment_receipts r
+      join public.payments p on p.id = r.payment_id
+      where r.id = new.aggregate_id
+        and r.condominium_id = new.condominium_id
+        and p.condominium_id = new.condominium_id;
+  elsif new.aggregate_type = 'announcement' then
+    select null::uuid, true
+      into expected_unit, aggregate_found
+      from public.announcements a
+      where a.id = new.aggregate_id
+        and a.condominium_id = new.condominium_id;
+  else
+    raise exception 'invalid notification aggregate type';
+  end if;
+
+  if not coalesce(aggregate_found, false) then
+    raise exception 'notification aggregate does not belong to condominium';
+  end if;
+
+  if new.unit_id is distinct from expected_unit then
+    raise exception 'notification unit does not match aggregate';
+  end if;
+
+  return new;
+end;
+$$;
+
 create function public.can_manage_announcements(target uuid)
 returns boolean
 language sql

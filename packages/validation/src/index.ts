@@ -369,7 +369,11 @@ const announcementAudienceFieldsSchema = z.object({
 });
 
 const validateAnnouncementAudience = (
-  value: { audience?: string; buildingId?: string; unitId?: string },
+  value: {
+    audience?: string | undefined;
+    buildingId?: string | undefined;
+    unitId?: string | undefined;
+  },
   context: z.RefinementCtx,
 ) => {
   if (value.buildingId && value.unitId) {
