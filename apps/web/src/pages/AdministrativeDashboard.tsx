@@ -41,6 +41,7 @@ import type {
 } from '../lib/dashboard';
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
+import { buildDashboardSourceWarning, settleDashboardSource } from '../lib/dashboard-sources';
 
 const PORTFOLIO_COLORS = ['#28a745', '#78aee8', '#3978bd', '#e39b45', '#c94d58'] as const;
 
@@ -321,7 +322,7 @@ export function AdministrativeDashboard({
     setLoading(true);
     setError('');
     try {
-      const reviewQueuePromise = apiRequest<DashboardPayment[]>(
+      const reviewQueueRequest = apiRequest<DashboardPayment[]>(
         `/v1/condominiums/${condominiumId}/payments/review-queue`,
         session,
       )
@@ -332,38 +333,89 @@ export function AdministrativeDashboard({
           throw requestError;
         });
 
-      const [units, buildings, people, summaries, aging, receivables, payments, reviewQueueResult] =
-        await Promise.all([
+      const [
+        unitsResult,
+        buildingsResult,
+        peopleResult,
+        summariesResult,
+        agingResult,
+        receivablesResult,
+        paymentsResult,
+        reviewQueueResult,
+      ] = await Promise.all([
+        settleDashboardSource(
+          'unidades',
           apiRequest<DashboardUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
+          [],
+        ),
+        settleDashboardSource(
+          'torres',
           apiRequest<DashboardBuilding[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+          [],
+        ),
+        settleDashboardSource(
+          'personas',
           apiRequest<DashboardPerson[]>(`/v1/condominiums/${condominiumId}/people`, session),
+          [],
+        ),
+        settleDashboardSource(
+          'resumen de cartera',
           apiRequest<ReceivableSummary[]>(
             `/v1/condominiums/${condominiumId}/receivables/summary`,
             session,
           ),
+          [],
+        ),
+        settleDashboardSource(
+          'antigüedad de cartera',
           apiRequest<ReceivableAging[]>(
             `/v1/condominiums/${condominiumId}/receivables/aging`,
             session,
           ),
+          [],
+        ),
+        settleDashboardSource(
+          'cuotas',
           apiRequest<DashboardReceivable[]>(
             `/v1/condominiums/${condominiumId}/receivables`,
             session,
           ),
+          [],
+        ),
+        settleDashboardSource(
+          'pagos',
           apiRequest<DashboardPayment[]>(`/v1/condominiums/${condominiumId}/payments`, session),
-          reviewQueuePromise,
-        ]);
+          [],
+        ),
+        settleDashboardSource('bandeja de revisión', reviewQueueRequest, {
+          items: [],
+          available: false,
+        }),
+      ]);
 
       setData({
-        units,
-        buildings,
-        people,
-        summaries,
-        aging,
-        receivables,
-        payments,
-        reviewQueue: reviewQueueResult.items,
-        reviewQueueAvailable: reviewQueueResult.available,
+        units: unitsResult.value,
+        buildings: buildingsResult.value,
+        people: peopleResult.value,
+        summaries: summariesResult.value,
+        aging: agingResult.value,
+        receivables: receivablesResult.value,
+        payments: paymentsResult.value,
+        reviewQueue: reviewQueueResult.value.items,
+        reviewQueueAvailable: reviewQueueResult.value.available,
       });
+      setError(
+        buildDashboardSourceWarning([
+          unitsResult,
+          buildingsResult,
+          peopleResult,
+          summariesResult,
+          agingResult,
+          receivablesResult,
+          paymentsResult,
+          reviewQueueResult,
+        ]),
+      );
     } catch (requestError) {
       setError(
         requestError instanceof Error

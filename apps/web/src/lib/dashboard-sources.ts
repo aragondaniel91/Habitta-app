@@ -20,7 +20,5 @@ export async function settleDashboardSource<T>(
 
 export function buildDashboardSourceWarning(results: DashboardSourceResult<unknown>[]) {
   const warnings = results.flatMap((result) => (result.warning ? [result.warning] : []));
-  return warnings.length
-    ? `Algunos bloques no pudieron actualizarse. ${warnings.join(' · ')}`
-    : '';
+  return warnings.length ? `Algunos bloques no pudieron actualizarse. ${warnings.join(' · ')}` : '';
 }
