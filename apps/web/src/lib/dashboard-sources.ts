@@ -1,4 +1,5 @@
 // Dashboard blocks degrade independently so one unavailable source never hides the full workspace.
+// Each fallback remains explicit and surfaces its source in the operator warning.
 export type DashboardSourceResult<T> = {
   value: T;
   warning?: string;
