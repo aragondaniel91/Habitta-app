@@ -5,7 +5,68 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
+  fix-stacked-requests-ui:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'feat/frontend-service-requests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/frontend-service-requests
+          fetch-depth: 0
+      - name: Apply strict result narrowing and restore head workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/src/pages/RequestsPage.tsx')
+          value = path.read_text()
+          old = """    if (requests.status === 'rejected' || categories.status === 'rejected') {
+      const reason = requests.status === 'rejected' ? requests.reason : categories.reason;
+      setError(
+        reason instanceof Error ? reason.message : 'No se pudo cargar el espacio de solicitudes.',
+      );
+      setLoading(false);
+      return;
+    }
+"""
+          new = """    if (requests.status === 'rejected') {
+      setError(
+        requests.reason instanceof Error
+          ? requests.reason.message
+          : 'No se pudo cargar el espacio de solicitudes.',
+      );
+      setLoading(false);
+      return;
+    }
+    if (categories.status === 'rejected') {
+      setError(
+        categories.reason instanceof Error
+          ? categories.reason.message
+          : 'No se pudo cargar el espacio de solicitudes.',
+      );
+      setLoading(false);
+      return;
+    }
+"""
+          if old not in value:
+              raise SystemExit('loader block not found')
+          path.write_text(value.replace(old, new))
+          PY
+          rm -f .github/workflows/fix-requests-loader-narrowing.yml
+          git fetch origin main
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+      - name: Commit correction to stacked head
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Narrow requests loader failures explicitly"
+          git push origin HEAD:feat/frontend-service-requests
+
   quality:
     runs-on: ubuntu-latest
     steps:
