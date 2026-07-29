@@ -1,6 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
+import { apiBaseUrl } from '../../lib/api';
+
 export const paymentApi = async <T>(path: string, session: Session, init?: RequestInit) => {
-  const r = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}${path}`, {
+  const r = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${session.access_token}`,
@@ -18,7 +20,7 @@ export const paymentProof = async (
   file?: File,
 ): Promise<Blob | { id: string }> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}${path}`,
+    `${apiBaseUrl}${path}`,
     file
       ? {
           method: 'PUT',

@@ -1,6 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 
-const apiBaseUrl =
+export const apiBaseUrl =
   import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:8787';
 
 export class ApiRequestError extends Error {
