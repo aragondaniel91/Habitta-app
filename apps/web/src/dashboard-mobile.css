@@ -1,0 +1,142 @@
+@media (min-width: 720px) and (max-width: 1024px) {
+  .dashboard-page {
+    gap: 1rem;
+  }
+
+  .dashboard-overview-heading {
+    min-height: auto;
+    align-items: center;
+    flex-direction: row;
+    gap: 1.25rem;
+  }
+
+  .dashboard-overview-heading > div:first-child {
+    max-width: 56%;
+  }
+
+  .dashboard-overview-heading__actions {
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-metric-card {
+    min-height: 154px;
+  }
+
+  .dashboard-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-panel {
+    padding: 1.1rem;
+  }
+
+  .dashboard-bar-chart {
+    height: 250px;
+  }
+
+  .dashboard-payment-list article {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dashboard-payment-list article > div:last-child {
+    grid-column: 2;
+    justify-items: start;
+  }
+
+  .dashboard-action-grid button {
+    min-height: 108px;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1120px) {
+  .dashboard-chart-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  }
+
+  .dashboard-donut-layout {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .dashboard-donut {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboard-activity-panel .table-scroll {
+    overflow: visible;
+    padding: 0 1rem 1rem;
+  }
+
+  .dashboard-activity-table,
+  .dashboard-activity-table tbody,
+  .dashboard-activity-table tr,
+  .dashboard-activity-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .dashboard-activity-table thead {
+    display: none;
+  }
+
+  .dashboard-activity-table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .dashboard-activity-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    background: var(--surface-subtle);
+  }
+
+  .dashboard-activity-table td {
+    display: grid;
+    gap: 0.2rem;
+    border: 0;
+    padding: 0;
+    font-size: 0.75rem;
+  }
+
+  .dashboard-activity-table td:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-activity-table td::before {
+    color: var(--muted);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-activity-table td:nth-child(2)::before {
+    content: 'Unidad';
+  }
+
+  .dashboard-activity-table td:nth-child(3)::before {
+    content: 'Monto';
+  }
+
+  .dashboard-activity-table td:nth-child(4)::before {
+    content: 'Estado';
+  }
+
+  .dashboard-activity-table td:nth-child(5)::before {
+    content: 'Fecha';
+  }
+
+  .dashboard-activity-name {
+    min-width: 0;
+  }
+}
