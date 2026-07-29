@@ -7,6 +7,7 @@ import './dashboard.css';
 import './dashboard-mobile.css';
 import './community-directory.css';
 import './receivables.css';
+import './brand-palette.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
