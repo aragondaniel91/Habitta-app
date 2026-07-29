@@ -26,10 +26,7 @@ import type {
   ReceivableItem,
   ReceivableUnit,
 } from '../lib/receivables';
-import {
-  ReceivablesDrawerHost,
-  type ReceivablesDrawerMode,
-} from './ReceivablesDrawers';
+import { ReceivablesDrawerHost, type ReceivablesDrawerMode } from './ReceivablesDrawers';
 
 type ReceivablesData = {
   units: ReceivableUnit[];
@@ -150,14 +147,8 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       try {
         const [units, concepts, items, summaries, aging] = await Promise.all([
           apiRequest<ReceivableUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-          apiRequest<ChargeConcept[]>(
-            `/v1/condominiums/${condominiumId}/charge-concepts`,
-            session,
-          ),
-          apiRequest<ReceivableItem[]>(
-            `/v1/condominiums/${condominiumId}/receivables`,
-            session,
-          ),
+          apiRequest<ChargeConcept[]>(`/v1/condominiums/${condominiumId}/charge-concepts`, session),
+          apiRequest<ReceivableItem[]>(`/v1/condominiums/${condominiumId}/receivables`, session),
           apiRequest<ReceivableSummary[]>(
             `/v1/condominiums/${condominiumId}/receivables/summary`,
             session,

@@ -16,13 +16,7 @@ import {
 import type { ChargeConcept, ReceivableItem, ReceivableUnit } from '../lib/receivables';
 
 export type ReceivablesDrawerMode =
-  | 'receivable'
-  | 'manual'
-  | 'batch'
-  | 'concept'
-  | 'statement'
-  | 'opening'
-  | null;
+  'receivable' | 'manual' | 'batch' | 'concept' | 'statement' | 'opening' | null;
 
 type StatementRow = {
   effective_date: string;
@@ -393,7 +387,9 @@ export function ReceivablesDrawerHost({
           </div>
           <div>
             <dt>Estado</dt>
-            <dd>{receivableStatusLabels[selectedReceivable.status] ?? selectedReceivable.status}</dd>
+            <dd>
+              {receivableStatusLabels[selectedReceivable.status] ?? selectedReceivable.status}
+            </dd>
           </div>
         </dl>
         {!isSettledReceivable(selectedReceivable) ? (
@@ -564,10 +560,7 @@ export function ReceivablesDrawerHost({
               <small>Previsualización lista</small>
               <strong>{batchPreview.result.count} cuotas</strong>
               <b>
-                {formatDashboardAmount(
-                  batchPreview.result.total,
-                  batchPreview.result.currencyCode,
-                )}
+                {formatDashboardAmount(batchPreview.result.total, batchPreview.result.currencyCode)}
               </b>
               <p>Concepto: {getConceptName(batchPreview.payload.conceptId, concepts)}</p>
             </div>
