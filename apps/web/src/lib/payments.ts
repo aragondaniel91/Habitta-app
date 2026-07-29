@@ -25,12 +25,19 @@ export const paymentStatusTone = (status: string) => {
 };
 
 export const getPaymentCurrencies = (payments: Payment[], methods: PaymentMethod[]) =>
-  [...new Set([...payments.map((payment) => payment.original_currency_code), ...methods.map((method) => method.currency_code)])]
+  [
+    ...new Set([
+      ...payments.map((payment) => payment.original_currency_code),
+      ...methods.map((method) => method.currency_code),
+    ]),
+  ]
     .filter(Boolean)
     .sort();
 
 export const getPaymentSummary = (payments: Payment[], currencyCode: string) => {
-  const rows = payments.filter((payment) => !currencyCode || payment.original_currency_code === currencyCode);
+  const rows = payments.filter(
+    (payment) => !currencyCode || payment.original_currency_code === currencyCode,
+  );
   const amountFor = (statuses: string[]) =>
     rows
       .filter((payment) => statuses.includes(payment.status))
@@ -38,8 +45,10 @@ export const getPaymentSummary = (payments: Payment[], currencyCode: string) => 
 
   return {
     approvedAmount: amountFor(['approved']),
-    pendingReview: rows.filter((payment) => ['submitted', 'under_review'].includes(payment.status)).length,
-    drafts: rows.filter((payment) => ['draft', 'correction_requested'].includes(payment.status)).length,
+    pendingReview: rows.filter((payment) => ['submitted', 'under_review'].includes(payment.status))
+      .length,
+    drafts: rows.filter((payment) => ['draft', 'correction_requested'].includes(payment.status))
+      .length,
     reversedAmount: amountFor(['reversed']),
   };
 };
@@ -50,16 +59,13 @@ export const filterPayments = (
   unitCodes: Map<string, string>,
   filters: PaymentFilters,
 ) => {
-  const queryTokens = filters.query
-    .trim()
-    .toLocaleLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  const queryTokens = filters.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   const methodNames = new Map(methods.map((method) => [method.id, method.display_name]));
 
   return payments.filter((payment) => {
     if (filters.status && payment.status !== filters.status) return false;
-    if (filters.currencyCode && payment.original_currency_code !== filters.currencyCode) return false;
+    if (filters.currencyCode && payment.original_currency_code !== filters.currencyCode)
+      return false;
     if (filters.methodId && payment.payment_method_id !== filters.methodId) return false;
     if (!queryTokens.length) return true;
 
