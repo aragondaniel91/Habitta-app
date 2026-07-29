@@ -23,7 +23,8 @@ const messageForStatus = (status: number) => {
 export async function apiRequest<T>(path: string, session: Session, init?: RequestInit) {
   const headers = new Headers(init?.headers);
   headers.set('Authorization', `Bearer ${session.access_token}`);
-  if (init?.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
+  if (init?.body && !(init.body instanceof FormData))
+    headers.set('Content-Type', 'application/json');
 
   const response = await fetch(`${apiBaseUrl}${path}`, { ...init, headers });
 

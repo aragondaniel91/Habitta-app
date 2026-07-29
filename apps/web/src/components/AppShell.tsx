@@ -3,19 +3,8 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
-import {
-  APP_ROUTES,
-  ROUTE_SECTION_LABELS,
-  type AppRoute,
-  type RouteSection,
-} from '../navigation';
-import {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  HomeIcon,
-  LogOutIcon,
-  MenuIcon,
-} from './icons';
+import { APP_ROUTES, ROUTE_SECTION_LABELS, type AppRoute, type RouteSection } from '../navigation';
+import { ChevronDownIcon, ChevronLeftIcon, HomeIcon, LogOutIcon, MenuIcon } from './icons';
 import { Button, Select } from './ui';
 
 export type Organization = { id: string; name: string };
@@ -73,9 +62,7 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const selectedCondominium = condominiums.find(
-    (item) => item.id === selectedCondominiumId,
-  );
+  const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
   const selectedOrganization = organizations.find(
     (item) => item.id === selectedCondominium?.organization_id,
   );

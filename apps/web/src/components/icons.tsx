@@ -60,7 +60,10 @@ export function PeopleIcon(props: IconProps) {
   return (
     <IconBase {...props}>
       <circle {...strokeProps} cx="9" cy="8" r="3" />
-      <path {...strokeProps} d="M3.5 20a5.5 5.5 0 0 1 11 0M16 4.5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 3.5 4.8" />
+      <path
+        {...strokeProps}
+        d="M3.5 20a5.5 5.5 0 0 1 11 0M16 4.5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 3.5 4.8"
+      />
     </IconBase>
   );
 }
@@ -87,7 +90,10 @@ export function ExpensesIcon(props: IconProps) {
   return (
     <IconBase {...props}>
       <circle {...strokeProps} cx="12" cy="12" r="9" />
-      <path {...strokeProps} d="M12 7v10M15 9.5c-.7-1-1.7-1.5-3-1.5-1.7 0-3 1-3 2.3 0 1.4 1.2 2 3.2 2.4 1.8.3 2.8 1 2.8 2.3 0 1.2-1.2 2-3 2-1.4 0-2.6-.5-3.3-1.5" />
+      <path
+        {...strokeProps}
+        d="M12 7v10M15 9.5c-.7-1-1.7-1.5-3-1.5-1.7 0-3 1-3 2.3 0 1.4 1.2 2 3.2 2.4 1.8.3 2.8 1 2.8 2.3 0 1.2-1.2 2-3 2-1.4 0-2.6-.5-3.3-1.5"
+      />
     </IconBase>
   );
 }
@@ -112,7 +118,10 @@ export function CommunityIcon(props: IconProps) {
 export function RequestsIcon(props: IconProps) {
   return (
     <IconBase {...props}>
-      <path {...strokeProps} d="M6 3h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-7l-5 3v-3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path
+        {...strokeProps}
+        d="M6 3h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-7l-5 3v-3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
+      />
       <path {...strokeProps} d="M8 8h8M8 12h5" />
     </IconBase>
   );
@@ -131,7 +140,10 @@ export function SettingsIcon(props: IconProps) {
   return (
     <IconBase {...props}>
       <circle {...strokeProps} cx="12" cy="12" r="3" />
-      <path {...strokeProps} d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
+      <path
+        {...strokeProps}
+        d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"
+      />
     </IconBase>
   );
 }

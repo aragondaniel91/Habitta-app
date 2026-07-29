@@ -34,7 +34,9 @@ export function DashboardFoundationPage() {
         <div className="section-heading">
           <div>
             <h2>Actividad reciente</h2>
-            <p>Los movimientos reales se conectarán sin alterar el historial financiero existente.</p>
+            <p>
+              Los movimientos reales se conectarán sin alterar el historial financiero existente.
+            </p>
           </div>
           <Badge tone="info">Preparado</Badge>
         </div>
@@ -51,7 +53,9 @@ export function DashboardFoundationPage() {
             <tbody>
               <tr>
                 <td colSpan={4}>
-                  <div className="table-empty">Aún no hay actividad para mostrar en esta vista.</div>
+                  <div className="table-empty">
+                    Aún no hay actividad para mostrar en esta vista.
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -82,7 +86,9 @@ export function ModulePlaceholderPage({ route }: { route: AppRoute }) {
         <div className="section-heading">
           <div>
             <h2>Alcance previsto</h2>
-            <p>Este módulo se implementará sobre los componentes y patrones definidos en este PR.</p>
+            <p>
+              Este módulo se implementará sobre los componentes y patrones definidos en este PR.
+            </p>
           </div>
         </div>
         <div className="scope-list">
