@@ -96,20 +96,26 @@ export function filterReceivables(
   filters: ReceivableFilters,
   today?: string,
 ) {
-  const query = normalized(filters.query);
+  const queryTokens = normalized(filters.query).split(/\s+/).filter(Boolean);
 
   return items.filter((item) => {
     const unitCode = getUnitCode(item.unit_id, units);
     const conceptName = getConceptName(item.concept_id, concepts);
     const searchable = normalized(`${item.description} ${unitCode} ${conceptName}`);
     const dueState = getReceivableDueState(item, today);
+    const matchesQuery = queryTokens.every((token) => searchable.includes(token));
+    const matchesStatus =
+      !filters.status ||
+      (filters.status === 'settled'
+        ? ['paid', 'settled'].includes(item.status)
+        : item.status === filters.status);
 
     return (
-      (!query || searchable.includes(query)) &&
+      matchesQuery &&
       (!filters.unitId || item.unit_id === filters.unitId) &&
       (!filters.conceptId || item.concept_id === filters.conceptId) &&
       (!filters.currencyCode || item.currency_code === filters.currencyCode) &&
-      (!filters.status || item.status === filters.status) &&
+      matchesStatus &&
       (!filters.due || dueState === filters.due)
     );
   });
