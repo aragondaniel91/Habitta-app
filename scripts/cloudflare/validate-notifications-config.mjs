@@ -41,6 +41,8 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
   }
   requiredQueue(config, 'habitta-notifications-local', errors);
   requiredR2(config, 'habitta-payment-proofs-local', errors);
+  if (config.vars?.NOTIFICATIONS_EMAIL_PROVIDER !== 'zeptomail')
+    errors.push('invalid_default_email_provider');
   const dev = config.env?.dev;
   if (!dev || dev.name !== 'habitta-api-dev') errors.push('missing_dev_environment');
   else {
@@ -52,12 +54,15 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
     if (consumer?.dead_letter_queue !== 'habitta-notifications-dlq-dev')
       errors.push('invalid_dev_dead_letter_queue');
     if (dev.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled') errors.push('unsafe_dev_email_mode');
+    if (dev.vars?.NOTIFICATIONS_EMAIL_PROVIDER !== 'zeptomail')
+      errors.push('invalid_dev_email_provider');
   }
   if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
     errors.push('missing_notification_cron');
   if (config.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
     errors.push('unsafe_default_email_mode');
-  const secretAssignment = /^(SUPABASE_(?:ANON|SERVICE_ROLE)_KEY|RESEND_API_KEY)=(?!\s*$).+/m;
+  const secretAssignment =
+    /^(SUPABASE_(?:ANON|SERVICE_ROLE)_KEY|RESEND_API_KEY|ZEPTOMAIL_SEND_TOKEN)=(?!\s*$).+/m;
   if (secretAssignment.test(devVarsSource)) errors.push('example_contains_secret_value');
   return errors;
 };

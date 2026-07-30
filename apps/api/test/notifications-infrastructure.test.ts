@@ -12,11 +12,20 @@ const providerConfiguration = {
   APP_BASE_URL: 'https://habitta.test',
 };
 
+const zeptoMailConfiguration = {
+  NOTIFICATIONS_EMAIL_PROVIDER: 'zeptomail',
+  ZEPTOMAIL_SEND_TOKEN: 'test-token',
+  NOTIFICATIONS_FROM_EMAIL: 'notifications@habitta.test',
+  NOTIFICATIONS_FROM_NAME: 'Habitta',
+  APP_BASE_URL: 'https://habitta.test',
+};
+
 describe('notification environment modes', () => {
   it('defaults to disabled without requiring provider secrets', () => {
     expect(resolveNotificationsEnvironment({ APP_ENV: 'development' })).toEqual({
       appEnv: 'development',
       emailMode: 'disabled',
+      emailProvider: 'resend',
       sandboxEmail: null,
     });
   });
@@ -42,6 +51,27 @@ describe('notification environment modes', () => {
         ...providerConfiguration,
       }).sandboxEmail,
     ).toBe('sandbox@habitta.test');
+  });
+  it('requires the ZeptoMail token when ZeptoMail is selected', () => {
+    expect(() =>
+      resolveNotificationsEnvironment({
+        APP_ENV: 'development',
+        NOTIFICATIONS_EMAIL_MODE: 'sandbox',
+        NOTIFICATIONS_EMAIL_PROVIDER: 'zeptomail',
+        NOTIFICATIONS_SANDBOX_EMAIL: 'sandbox@habitta.test',
+        NOTIFICATIONS_FROM_EMAIL: 'notifications@habitta.test',
+        NOTIFICATIONS_FROM_NAME: 'Habitta',
+        APP_BASE_URL: 'https://habitta.test',
+      }),
+    ).toThrow('notifications_zeptomail_token_missing');
+    expect(
+      resolveNotificationsEnvironment({
+        APP_ENV: 'development',
+        NOTIFICATIONS_EMAIL_MODE: 'sandbox',
+        NOTIFICATIONS_SANDBOX_EMAIL: 'sandbox@habitta.test',
+        ...zeptoMailConfiguration,
+      }).emailProvider,
+    ).toBe('zeptomail');
   });
   it('rejects live delivery outside production', () => {
     expect(() =>
