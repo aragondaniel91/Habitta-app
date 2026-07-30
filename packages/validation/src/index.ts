@@ -229,6 +229,7 @@ export const notificationTypeSchema = z.enum([
   'payment_receipt_issued',
   'receivable_due_soon',
   'receivable_overdue',
+  'announcement_published',
 ]);
 export const notificationPreferencesSchema = z.object({
   notificationType: notificationTypeSchema,
@@ -349,3 +350,120 @@ export const serviceRequestCategoryUpdateSchema = z
   .refine((value) => Object.values(value).some((field) => field !== undefined), {
     message: 'At least one category change is required',
   });
+
+export const announcementPrioritySchema = z.enum(['normal', 'important', 'urgent']);
+export const announcementStatusSchema = z.enum(['draft', 'scheduled', 'published', 'archived']);
+export const announcementAudienceSchema = z.enum([
+  'everyone',
+  'owners',
+  'tenants',
+  'board',
+  'building',
+  'unit',
+]);
+
+const announcementAudienceFieldsSchema = z.object({
+  audience: announcementAudienceSchema,
+  buildingId: uuidSchema.optional(),
+  unitId: uuidSchema.optional(),
+});
+
+const validateAnnouncementAudience = (
+  value: {
+    audience?: string | undefined;
+    buildingId?: string | undefined;
+    unitId?: string | undefined;
+  },
+  context: z.RefinementCtx,
+) => {
+  if (value.buildingId && value.unitId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['unitId'],
+      message: 'An announcement cannot target a building and a unit together',
+    });
+  }
+  if (value.audience === 'building' && !value.buildingId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['buildingId'],
+      message: 'Building audience requires buildingId',
+    });
+  }
+  if (value.audience === 'unit' && !value.unitId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['unitId'],
+      message: 'Unit audience requires unitId',
+    });
+  }
+  if (value.audience && value.audience !== 'building' && value.buildingId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['buildingId'],
+      message: 'buildingId is only valid for building audiences',
+    });
+  }
+  if (value.audience && value.audience !== 'unit' && value.unitId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['unitId'],
+      message: 'unitId is only valid for unit audiences',
+    });
+  }
+};
+
+export const announcementCreateSchema = announcementAudienceFieldsSchema
+  .extend({
+    title: z.string().trim().min(3).max(160),
+    summary: z.string().trim().min(3).max(280),
+    body: z.string().trim().min(3).max(12000),
+    priority: announcementPrioritySchema.default('normal'),
+    audience: announcementAudienceSchema.default('everyone'),
+    requiresAcknowledgement: z.boolean().default(false),
+    expiresAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .superRefine(validateAnnouncementAudience);
+
+export const announcementUpdateSchema = z
+  .object({
+    title: z.string().trim().min(3).max(160).optional(),
+    summary: z.string().trim().min(3).max(280).optional(),
+    body: z.string().trim().min(3).max(12000).optional(),
+    priority: announcementPrioritySchema.optional(),
+    audience: announcementAudienceSchema.optional(),
+    buildingId: uuidSchema.optional(),
+    unitId: uuidSchema.optional(),
+    requiresAcknowledgement: z.boolean().optional(),
+    expiresAt: z.string().datetime({ offset: true }).optional(),
+    clearExpires: z.boolean().optional(),
+    expectedVersion: z.number().int().positive().optional(),
+  })
+  .superRefine((value, context) => {
+    if (!Object.values(value).some((field) => field !== undefined && field !== false)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: 'At least one change is required' });
+    }
+    if (value.expiresAt && value.clearExpires) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['clearExpires'],
+        message: 'Cannot set and clear expiration together',
+      });
+    }
+    validateAnnouncementAudience(value, context);
+  });
+
+export const announcementListQuerySchema = z.object({
+  status: announcementStatusSchema.optional(),
+  priority: announcementPrioritySchema.optional(),
+  audience: announcementAudienceSchema.optional(),
+});
+
+export const announcementScheduleSchema = z.object({
+  publishAt: z.string().datetime({ offset: true }),
+  expectedVersion: z.number().int().positive().optional(),
+});
+
+export const announcementActionSchema = z.object({
+  expectedVersion: z.number().int().positive().optional(),
+});

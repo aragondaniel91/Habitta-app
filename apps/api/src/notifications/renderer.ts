@@ -33,6 +33,9 @@ export const renderNotificationEmail = (
     plain(payload.payer_name),
     plain(payload.description),
     plain(payload.reason),
+    plain(payload.announcement_title),
+    plain(payload.announcement_summary),
+    plain(payload.priority),
     plain(payload.amount) && `${plain(payload.currency_code)} ${plain(payload.amount)}`,
   ].filter(Boolean);
   const textDetails = details.join(' · ');

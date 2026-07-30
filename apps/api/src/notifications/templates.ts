@@ -24,6 +24,11 @@ export const notificationTemplates = {
     intro: 'Tienes un cargo próximo a vencer.',
   },
   receivable_overdue: { version: 1, subject: 'Cargo vencido', intro: 'Tienes un cargo vencido.' },
+  announcement_published: {
+    version: 1,
+    subject: 'Nuevo anuncio',
+    intro: 'Se publicó un nuevo anuncio en tu condominio.',
+  },
 } as const;
 
 export type NotificationTemplateKey = keyof typeof notificationTemplates;

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   enqueuePendingNotifications,
   processNotificationDelivery,
+  runScheduled,
 } from '../src/notifications/worker';
 import type { NotificationBindings } from '../src/notifications/types';
 
@@ -21,6 +22,25 @@ const env = (send = vi.fn()) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe('notification queue scheduling', () => {
+  it('publishes due announcements before expanding notification events', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        calls.push(url);
+        if (url.includes('publish_due_announcements')) return Response.json(1);
+        if (url.includes('generate_due_notification_events')) return Response.json(0);
+        if (url.includes('claim_notification_events')) return Response.json([]);
+        if (url.includes('claim_due_notification_deliveries')) return Response.json([]);
+        throw new Error(url);
+      }),
+    );
+    await runScheduled(env(), new Date('2026-08-01T12:00:00Z'));
+    expect(calls.findIndex((url) => url.includes('publish_due_announcements'))).toBeLessThan(
+      calls.findIndex((url) => url.includes('generate_due_notification_events')),
+    );
+  });
   it('queues each claimed delivery once with only deliveryId', async () => {
     const send = vi.fn();
     vi.stubGlobal(
