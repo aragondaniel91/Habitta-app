@@ -19,7 +19,7 @@ import {
 type Props = {
   organizations: Organization[];
   onCancel: () => void;
-  onCreated: () => Promise<void>;
+  onCreated: (condominiumId: string) => Promise<void>;
 };
 
 export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props) {
@@ -29,7 +29,7 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
   const [errors, setErrors] = useState<AdminOnboardingErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [created, setCreated] = useState(false);
+  const [createdCondominiumId, setCreatedCondominiumId] = useState('');
 
   const update = <Key extends keyof AdminOnboardingInput>(
     key: Key,
@@ -49,8 +49,12 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
     setSubmitting(true);
     setSubmitError('');
     try {
-      await submitAdminOnboarding(input, true);
-      setCreated(true);
+      const result = await submitAdminOnboarding(input, true);
+      const condominiumId = result?.condominium?.id ?? '';
+      if (!condominiumId) {
+        throw new Error('El condominio se creó, pero no pudimos identificarlo para abrirlo.');
+      }
+      setCreatedCondominiumId(condominiumId);
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : 'No pudimos crear el nuevo condominio.',
@@ -60,7 +64,7 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
     }
   };
 
-  if (created) {
+  if (createdCondominiumId) {
     return (
       <Surface className="add-condominium-card add-condominium-success">
         <span className="admin-onboarding-success"><CheckCircleIcon size={32} /></span>
@@ -69,7 +73,7 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
           <h2>{input.condominiumName.trim()} ya forma parte de tu organización.</h2>
           <p>Los datos y permisos permanecen separados de las demás comunidades.</p>
         </div>
-        <Button onClick={() => void onCreated()} type="button">
+        <Button onClick={() => void onCreated(createdCondominiumId)} type="button">
           Abrir el nuevo condominio
           <ArrowRightIcon size={18} />
         </Button>
