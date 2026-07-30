@@ -28,6 +28,7 @@ export type AppRoute = {
     | 'community'
     | 'requests'
     | 'announcements'
+    | 'team'
     | 'settings';
   path: string;
   label: string;
@@ -158,6 +159,17 @@ export const APP_ROUTES = [
     scope: ['Comunicados', 'Audiencias', 'Historial de publicación'],
   },
   {
+    key: 'team',
+    path: '/app/team',
+    label: 'Equipo y accesos',
+    shortLabel: 'Equipo',
+    title: 'Equipo y accesos',
+    description: 'Invita administradores, asigna roles y revisa accesos pendientes.',
+    section: 'sistema',
+    icon: PeopleIcon,
+    scope: ['Administradores', 'Roles', 'Invitaciones y expiración'],
+  },
+  {
     key: 'settings',
     path: '/app/settings',
     label: 'Configuración',
@@ -166,7 +178,7 @@ export const APP_ROUTES = [
     description: 'Administra preferencias, permisos y parámetros del espacio.',
     section: 'sistema',
     icon: SettingsIcon,
-    scope: ['Condominio', 'Usuarios y permisos', 'Preferencias'],
+    scope: ['Condominio', 'Preferencias', 'Notificaciones'],
   },
 ] as const satisfies readonly AppRoute[];
 
