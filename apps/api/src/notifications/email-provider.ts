@@ -15,8 +15,7 @@ type EmailMessage = {
 };
 
 export type EmailProviderResult =
-  | { ok: true; providerId: string | null }
-  | { ok: false; errorCode: string; retryable: boolean };
+  { ok: true; providerId: string | null } | { ok: false; errorCode: string; retryable: boolean };
 
 const retryableStatus = (status: number) => status === 408 || status === 429 || status >= 500;
 
@@ -26,8 +25,7 @@ const sendWithResend = async (
   signal: AbortSignal,
 ): Promise<EmailProviderResult> => {
   const apiKey = env.RESEND_API_KEY?.trim();
-  if (!apiKey)
-    return { ok: false, errorCode: 'resend_key_missing', retryable: false };
+  if (!apiKey) return { ok: false, errorCode: 'resend_key_missing', retryable: false };
 
   try {
     const response = await fetch(RESEND_ENDPOINT, {
@@ -64,8 +62,7 @@ const sendWithZeptoMail = async (
   signal: AbortSignal,
 ): Promise<EmailProviderResult> => {
   const token = env.ZEPTOMAIL_SEND_TOKEN?.trim();
-  if (!token)
-    return { ok: false, errorCode: 'zeptomail_token_missing', retryable: false };
+  if (!token) return { ok: false, errorCode: 'zeptomail_token_missing', retryable: false };
 
   try {
     const response = await fetch(ZEPTOMAIL_ENDPOINT, {
