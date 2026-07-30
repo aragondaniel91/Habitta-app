@@ -24,7 +24,10 @@ type RpcResult = {
 type InvitationDelivery = {
   status: 'disabled' | 'sent' | 'failed';
   recipient: string | null;
+  provider: string;
+  mode: string;
   providerId?: string;
+  errorCode?: string;
 };
 
 const invitationInputSchema = z.object({
@@ -47,6 +50,11 @@ const escapeHtml = (value: string) =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+
+const safeConfigurationError = (error: unknown) =>
+  error instanceof Error && /^notifications_[a-z_]+$/.test(error.message)
+    ? error.message
+    : 'notifications_configuration_error';
 
 export const adminInvitationRoutes = new Hono<AppEnvironment>();
 
@@ -112,10 +120,41 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
   const condominiumName = condominiums[0]?.name ?? 'tu condominio';
   const invitationUrl = `${c.env.APP_BASE_URL.replace(/\/$/, '')}/admin-invite/${rpcData.raw_token}`;
 
-  const notificationEnvironment = resolveNotificationsEnvironment(c.env);
+  let notificationEnvironment;
+  try {
+    notificationEnvironment = resolveNotificationsEnvironment(c.env);
+  } catch (error) {
+    const errorCode = safeConfigurationError(error);
+    console.error(
+      JSON.stringify({
+        event: 'admin_invitation_email_configuration_failed',
+        invitationId: rpcData.invitation.id,
+        provider: c.env.NOTIFICATIONS_EMAIL_PROVIDER ?? 'unknown',
+        mode: c.env.NOTIFICATIONS_EMAIL_MODE ?? 'disabled',
+        errorCode,
+      }),
+    );
+    return c.json(
+      {
+        invitation: rpcData.invitation,
+        invitationUrl,
+        emailDelivery: {
+          status: 'failed',
+          recipient: null,
+          provider: c.env.NOTIFICATIONS_EMAIL_PROVIDER ?? 'unknown',
+          mode: c.env.NOTIFICATIONS_EMAIL_MODE ?? 'disabled',
+          errorCode,
+        } satisfies InvitationDelivery,
+      },
+      201,
+    );
+  }
+
   const delivery: InvitationDelivery = {
     status: 'disabled',
     recipient: null,
+    provider: notificationEnvironment.emailProvider,
+    mode: notificationEnvironment.emailMode,
   };
 
   if (notificationEnvironment.emailMode !== 'disabled') {
@@ -182,9 +221,35 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
           if (result.providerId) delivery.providerId = result.providerId;
         } else {
           delivery.status = 'failed';
+          delivery.errorCode = result.errorCode;
+          if (result.providerId) delivery.providerId = result.providerId;
+          console.error(
+            JSON.stringify({
+              event: 'admin_invitation_email_failed',
+              invitationId: rpcData.invitation.id,
+              provider: delivery.provider,
+              mode: delivery.mode,
+              errorCode: result.errorCode,
+              providerId: result.providerId ?? null,
+              retryable: result.retryable,
+            }),
+          );
         }
-      } catch {
+      } catch (error) {
         delivery.status = 'failed';
+        delivery.errorCode =
+          error instanceof DOMException && error.name === 'AbortError'
+            ? 'email_delivery_timeout'
+            : 'email_delivery_exception';
+        console.error(
+          JSON.stringify({
+            event: 'admin_invitation_email_exception',
+            invitationId: rpcData.invitation.id,
+            provider: delivery.provider,
+            mode: delivery.mode,
+            errorCode: delivery.errorCode,
+          }),
+        );
       } finally {
         clearTimeout(timeout);
       }
