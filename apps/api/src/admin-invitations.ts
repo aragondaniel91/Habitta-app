@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { resolveNotificationsEnvironment } from './config/notifications-env';
+import { sendNotificationEmail } from './notifications/email-provider';
 import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
@@ -137,29 +138,36 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
     `;
 
     if (recipient) {
-      const resendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${c.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': `habitta-admin-invitation-${rpcData.invitation.id}`,
-        },
-        body: JSON.stringify({
-          from: `${c.env.NOTIFICATIONS_FROM_NAME} <${c.env.NOTIFICATIONS_FROM_EMAIL}>`,
-          to: [recipient],
-          subject,
-          html,
-          text,
-        }),
-      });
-
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
       delivery.recipient = recipient;
-      if (resendResponse.ok) {
-        const resendData = (await resendResponse.json()) as { id?: string };
-        delivery.status = 'sent';
-        if (resendData.id) delivery.providerId = resendData.id;
-      } else {
+
+      try {
+        const result = await sendNotificationEmail(
+          c.env,
+          notificationEnvironment.emailProvider,
+          {
+            fromEmail: c.env.NOTIFICATIONS_FROM_EMAIL,
+            fromName: c.env.NOTIFICATIONS_FROM_NAME,
+            to: recipient,
+            subject,
+            html,
+            text,
+            deduplicationKey: `habitta-admin-invitation-${rpcData.invitation.id}`,
+          },
+          controller.signal,
+        );
+
+        if (result.ok) {
+          delivery.status = 'sent';
+          if (result.providerId) delivery.providerId = result.providerId;
+        } else {
+          delivery.status = 'failed';
+        }
+      } catch {
         delivery.status = 'failed';
+      } finally {
+        clearTimeout(timeout);
       }
     }
   }
