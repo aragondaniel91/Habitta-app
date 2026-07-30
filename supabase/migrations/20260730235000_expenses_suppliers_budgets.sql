@@ -76,10 +76,7 @@ create table public.expenses (
   check (length(trim(description)) between 1 and 500),
   check (due_date is null or due_date >= issue_date),
   check (paid_date is null or paid_date >= issue_date),
-  check (
-    (status = 'paid' and paid_date is not null)
-    or (status <> 'paid')
-  ),
+  check ((status = 'paid' and paid_date is not null) or status <> 'paid'),
   check (
     (status = 'void' and void_reason is not null and length(trim(void_reason)) >= 3)
     or status <> 'void'
@@ -204,14 +201,18 @@ alter table public.budget_lines enable row level security;
 
 create policy expense_categories_read on public.expense_categories
 for select using (public.can_read_expenses(condominium_id));
-create policy expense_categories_write on public.expense_categories
-for all using (public.can_manage_expenses(condominium_id))
+create policy expense_categories_insert on public.expense_categories
+for insert with check (public.can_manage_expenses(condominium_id));
+create policy expense_categories_update on public.expense_categories
+for update using (public.can_manage_expenses(condominium_id))
 with check (public.can_manage_expenses(condominium_id));
 
 create policy suppliers_read on public.suppliers
 for select using (public.can_read_expenses(condominium_id));
-create policy suppliers_write on public.suppliers
-for all using (public.can_manage_expenses(condominium_id))
+create policy suppliers_insert on public.suppliers
+for insert with check (public.can_manage_expenses(condominium_id));
+create policy suppliers_update on public.suppliers
+for update using (public.can_manage_expenses(condominium_id))
 with check (public.can_manage_expenses(condominium_id));
 
 create policy expenses_read on public.expenses
@@ -255,17 +256,23 @@ begin
     raise exception 'invalid due date';
   end if;
   if not exists (
-    select 1 from public.expense_categories
+    select 1
+    from public.expense_categories
     where id = target_category_id
       and condominium_id = target_condominium_id
       and is_active
-  ) then raise exception 'invalid expense category'; end if;
+  ) then
+    raise exception 'invalid expense category';
+  end if;
   if target_supplier_id is not null and not exists (
-    select 1 from public.suppliers
+    select 1
+    from public.suppliers
     where id = target_supplier_id
       and condominium_id = target_condominium_id
       and status = 'active'
-  ) then raise exception 'invalid supplier'; end if;
+  ) then
+    raise exception 'invalid supplier';
+  end if;
 
   reference_value := 'EXP-' || to_char(current_date, 'YYYYMMDD') || '-'
     || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
@@ -304,7 +311,11 @@ begin
     target_condominium_id,
     created.id,
     'created',
-    jsonb_build_object('status', created.status, 'amount', created.amount, 'currency_code', created.currency_code),
+    jsonb_build_object(
+      'status', created.status,
+      'amount', created.amount,
+      'currency_code', created.currency_code
+    ),
     auth.uid()
   );
 
@@ -319,7 +330,8 @@ security definer
 set search_path = public
 set row_security = off
 as $$
-declare updated public.expenses;
+declare
+  updated public.expenses;
 begin
   if auth.uid() is null or not public.can_manage_expenses(target_condominium_id) then
     raise exception 'expense manager required';
@@ -356,7 +368,8 @@ security definer
 set search_path = public
 set row_security = off
 as $$
-declare updated public.expenses;
+declare
+  updated public.expenses;
 begin
   if auth.uid() is null or not public.can_manage_expenses(target_condominium_id) then
     raise exception 'expense manager required';
@@ -373,7 +386,9 @@ begin
     and paid_on >= issue_date
   returning * into updated;
 
-  if updated.id is null then raise exception 'expense not approved or paid date invalid'; end if;
+  if updated.id is null then
+    raise exception 'expense not approved or paid date invalid';
+  end if;
 
   insert into public.expense_events (
     condominium_id, expense_id, event_type, event_data, actor_user_id
@@ -400,7 +415,8 @@ security definer
 set search_path = public
 set row_security = off
 as $$
-declare updated public.expenses;
+declare
+  updated public.expenses;
 begin
   if auth.uid() is null or not public.can_manage_expenses(target_condominium_id) then
     raise exception 'expense manager required';
@@ -447,7 +463,8 @@ security definer
 set search_path = public
 set row_security = off
 as $$
-declare created public.budgets;
+declare
+  created public.budgets;
 begin
   if auth.uid() is null or not public.can_manage_expenses(target_condominium_id) then
     raise exception 'expense manager required';
@@ -457,7 +474,12 @@ begin
   insert into public.budgets (
     condominium_id, name, period_start, period_end, notes, created_by
   ) values (
-    target_condominium_id, trim(budget_name), starts_on, ends_on, nullif(trim(budget_notes), ''), auth.uid()
+    target_condominium_id,
+    trim(budget_name),
+    starts_on,
+    ends_on,
+    nullif(trim(budget_notes), ''),
+    auth.uid()
   ) returning * into created;
 
   return created;
@@ -478,8 +500,9 @@ security definer
 set search_path = public
 set row_security = off
 as $$
-declare updated public.budget_lines;
-declare normalized_currency text := upper(trim(line_currency_code));
+declare
+  updated public.budget_lines;
+  normalized_currency text := upper(trim(line_currency_code));
 begin
   if auth.uid() is null or not public.can_manage_expenses(target_condominium_id) then
     raise exception 'expense manager required';
@@ -487,17 +510,23 @@ begin
   if line_planned_amount < 0 then raise exception 'invalid planned amount'; end if;
   if normalized_currency !~ '^[A-Z]{3}$' then raise exception 'invalid currency code'; end if;
   if not exists (
-    select 1 from public.budgets
+    select 1
+    from public.budgets
     where id = target_budget_id
       and condominium_id = target_condominium_id
       and status = 'draft'
-  ) then raise exception 'draft budget required'; end if;
+  ) then
+    raise exception 'draft budget required';
+  end if;
   if not exists (
-    select 1 from public.expense_categories
+    select 1
+    from public.expense_categories
     where id = target_category_id
       and condominium_id = target_condominium_id
       and is_active
-  ) then raise exception 'invalid expense category'; end if;
+  ) then
+    raise exception 'invalid expense category';
+  end if;
 
   insert into public.budget_lines (
     condominium_id,
@@ -534,16 +563,20 @@ security definer
 set search_path = public
 set row_security = off
 as $$
-declare updated public.budgets;
+declare
+  updated public.budgets;
 begin
   if auth.uid() is null or not public.can_manage_expenses(target_condominium_id) then
     raise exception 'expense manager required';
   end if;
   if not exists (
-    select 1 from public.budget_lines
+    select 1
+    from public.budget_lines
     where budget_id = target_budget_id
       and condominium_id = target_condominium_id
-  ) then raise exception 'budget requires at least one line'; end if;
+  ) then
+    raise exception 'budget requires at least one line';
+  end if;
 
   update public.budgets
   set status = 'approved',
@@ -595,10 +628,14 @@ as
 select
   condominium_id,
   currency_code,
-  coalesce(sum(amount) filter (where status in ('approved', 'paid')), 0)::numeric(18, 2) as committed_amount,
-  coalesce(sum(amount) filter (where status = 'paid'), 0)::numeric(18, 2) as paid_amount,
-  coalesce(sum(amount) filter (where status = 'approved'), 0)::numeric(18, 2) as payable_amount,
-  coalesce(sum(amount) filter (where status = 'draft'), 0)::numeric(18, 2) as draft_amount
+  coalesce(sum(amount) filter (where status in ('approved', 'paid')), 0)::numeric(18, 2)
+    as committed_amount,
+  coalesce(sum(amount) filter (where status = 'paid'), 0)::numeric(18, 2)
+    as paid_amount,
+  coalesce(sum(amount) filter (where status = 'approved'), 0)::numeric(18, 2)
+    as payable_amount,
+  coalesce(sum(amount) filter (where status = 'draft'), 0)::numeric(18, 2)
+    as draft_amount
 from public.expenses
 where status <> 'void'
 group by condominium_id, currency_code;
@@ -618,8 +655,12 @@ select
   ec.name as category_name,
   bl.currency_code,
   bl.planned_amount,
-  coalesce(sum(e.amount) filter (where e.status in ('approved', 'paid')), 0)::numeric(18, 2) as actual_amount,
-  (bl.planned_amount - coalesce(sum(e.amount) filter (where e.status in ('approved', 'paid')), 0))::numeric(18, 2) as variance_amount
+  coalesce(sum(e.amount) filter (where e.status in ('approved', 'paid')), 0)::numeric(18, 2)
+    as actual_amount,
+  (
+    bl.planned_amount
+    - coalesce(sum(e.amount) filter (where e.status in ('approved', 'paid')), 0)
+  )::numeric(18, 2) as variance_amount
 from public.budget_lines bl
 join public.budgets b on b.id = bl.budget_id
 join public.expense_categories ec on ec.id = bl.category_id
@@ -629,8 +670,29 @@ left join public.expenses e
   and e.currency_code = bl.currency_code
   and e.issue_date between b.period_start and b.period_end
   and e.status <> 'void'
-group by bl.id, b.id, ec.id;
+group by
+  bl.id,
+  bl.condominium_id,
+  bl.budget_id,
+  b.name,
+  b.status,
+  b.period_start,
+  b.period_end,
+  bl.category_id,
+  ec.name,
+  bl.currency_code,
+  bl.planned_amount;
 
+grant usage on type public.supplier_status to authenticated;
+grant usage on type public.expense_status to authenticated;
+grant usage on type public.expense_event_type to authenticated;
+grant usage on type public.budget_status to authenticated;
+grant select, insert, update on public.expense_categories to authenticated;
+grant select, insert, update on public.suppliers to authenticated;
+grant select on public.expenses to authenticated;
+grant select on public.expense_events to authenticated;
+grant select on public.budgets to authenticated;
+grant select on public.budget_lines to authenticated;
 grant select on public.expense_register to authenticated;
 grant select on public.expense_summary_by_currency to authenticated;
 grant select on public.budget_actuals to authenticated;
