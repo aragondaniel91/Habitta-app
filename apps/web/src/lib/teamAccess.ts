@@ -1,10 +1,7 @@
 import { supabase } from '../supabase';
 
 export type AdministrativeRole =
-  | 'condominium_admin'
-  | 'accountant'
-  | 'assistant'
-  | 'payment_reviewer';
+  'condominium_admin' | 'accountant' | 'assistant' | 'payment_reviewer';
 
 export type TeamMember = {
   user_id: string;
