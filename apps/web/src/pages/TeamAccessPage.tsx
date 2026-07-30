@@ -1,0 +1,366 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
+import { CheckCircleIcon, PeopleIcon, SettingsIcon } from '../components/icons';
+import { Badge, Button, EmptyState, Field, Skeleton, Surface } from '../components/ui';
+import {
+  ADMINISTRATIVE_ROLE_OPTIONS,
+  administrativeRoleLabel,
+  createAdminInvitation,
+  loadTeamAccess,
+  revokeAdminInvitation,
+  type AdminInvitation,
+  type AdministrativeRole,
+  type TeamMember,
+} from '../lib/teamAccess';
+
+type Props = {
+  condominiumId: string;
+  condominiumName: string;
+};
+
+type TeamData = {
+  members: TeamMember[];
+  invitations: AdminInvitation[];
+};
+
+function dateInputValue(daysFromNow: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromNow);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('es', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function invitationTone(status: AdminInvitation['status']) {
+  if (status === 'accepted') return 'success' as const;
+  if (status === 'pending') return 'info' as const;
+  return 'warning' as const;
+}
+
+function invitationStatus(status: AdminInvitation['status']) {
+  const labels: Record<AdminInvitation['status'], string> = {
+    pending: 'Pendiente',
+    accepted: 'Aceptada',
+    expired: 'Vencida',
+    revoked: 'Revocada',
+  };
+  return labels[status];
+}
+
+export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
+  const [data, setData] = useState<TeamData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<AdministrativeRole>('assistant');
+  const [expirationDate, setExpirationDate] = useState(() => dateInputValue(7));
+  const [creating, setCreating] = useState(false);
+  const [revokingId, setRevokingId] = useState('');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [createdLink, setCreatedLink] = useState('');
+  const [createdEmail, setCreatedEmail] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setData(await loadTeamAccess(condominiumId));
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo cargar el equipo del condominio.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [condominiumId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    setCreatedLink('');
+    setCreatedEmail('');
+    setMessage('');
+  }, [condominiumId]);
+
+  const pendingInvitations = useMemo(
+    () => data?.invitations.filter((invitation) => invitation.status === 'pending').length ?? 0,
+    [data?.invitations],
+  );
+
+  const createInvitation = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!email.trim()) {
+      setError('Introduce el correo del administrador que deseas invitar.');
+      return;
+    }
+
+    setCreating(true);
+    setError('');
+    setMessage('');
+    setCreatedLink('');
+    try {
+      const expiration = new Date(`${expirationDate}T23:59:59`);
+      const result = await createAdminInvitation({
+        condominiumId,
+        email,
+        role,
+        expiresAt: expiration.toISOString(),
+      });
+      setCreatedLink(result.invitationUrl);
+      setCreatedEmail(result.invitation.email);
+      setMessage('Invitación creada. Copia o envía el enlace antes de salir de esta pantalla.');
+      setEmail('');
+      await load();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear la invitación.',
+      );
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const copyLink = async () => {
+    if (!createdLink) return;
+    try {
+      await navigator.clipboard.writeText(createdLink);
+      setMessage('Enlace copiado al portapapeles.');
+    } catch {
+      setError('No se pudo copiar automáticamente. Selecciona el enlace y cópialo manualmente.');
+    }
+  };
+
+  const openEmail = () => {
+    if (!createdLink || !createdEmail) return;
+    const subject = encodeURIComponent(`Invitación a ${condominiumName} en Habitta`);
+    const body = encodeURIComponent(
+      `Has sido invitado a administrar ${condominiumName} en Habitta.\n\nAbre este enlace seguro para aceptar la invitación:\n${createdLink}\n\nEl enlace vence en la fecha indicada por la administración.`,
+    );
+    window.location.href = `mailto:${encodeURIComponent(createdEmail)}?subject=${subject}&body=${body}`;
+  };
+
+  const revoke = async (invitationId: string) => {
+    setRevokingId(invitationId);
+    setError('');
+    setMessage('');
+    try {
+      await revokeAdminInvitation(invitationId);
+      setMessage('Invitación revocada correctamente.');
+      await load();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo revocar la invitación.',
+      );
+    } finally {
+      setRevokingId('');
+    }
+  };
+
+  if (loading && !data) {
+    return (
+      <div className="team-access-page" aria-label="Cargando equipo y accesos">
+        <Skeleton className="skeleton--title" />
+        <Skeleton className="settings-panel-skeleton" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Surface className="team-access-load-error">
+        <EmptyState
+          actionLabel="Intentar nuevamente"
+          description={error || 'No se pudo abrir la administración del equipo.'}
+          icon={<PeopleIcon size={28} />}
+          onAction={() => void load()}
+          title="Equipo y accesos no disponible"
+        />
+      </Surface>
+    );
+  }
+
+  return (
+    <div className="team-access-page">
+      <header className="team-access-overview">
+        <div>
+          <span className="settings-kicker">Seguridad y colaboración</span>
+          <h2>Equipo y accesos</h2>
+          <p>{condominiumName} · invita administradores sin compartir contraseñas.</p>
+        </div>
+        <div className="team-access-metrics">
+          <span><strong>{data.members.length}</strong> miembros</span>
+          <span><strong>{pendingInvitations}</strong> pendientes</span>
+        </div>
+      </header>
+
+      {error ? <div className="settings-inline-alert">{error}</div> : null}
+      {message ? (
+        <div className="settings-success-alert"><CheckCircleIcon size={17} /> {message}</div>
+      ) : null}
+
+      {createdLink ? (
+        <Surface className="team-invitation-link-card">
+          <div>
+            <span className="settings-kicker">Enlace creado una sola vez</span>
+            <h3>Entrega esta invitación a {createdEmail}</h3>
+            <p>Habitta almacena únicamente el hash del token; el enlace completo no podrá recuperarse después.</p>
+          </div>
+          <input aria-label="Enlace de invitación" className="input" readOnly value={createdLink} />
+          <div>
+            <Button onClick={() => void copyLink()} type="button">Copiar enlace</Button>
+            <Button onClick={openEmail} type="button" variant="secondary">Enviar por correo</Button>
+          </div>
+        </Surface>
+      ) : null}
+
+      <section className="team-access-layout">
+        <Surface className="team-access-panel">
+          <div className="settings-section-heading">
+            <div>
+              <span className="settings-kicker">Nueva invitación</span>
+              <h2>Invitar administrador</h2>
+              <p>El rol y el condominio se asignan al aceptar el enlace seguro.</p>
+            </div>
+            <SettingsIcon size={22} />
+          </div>
+
+          <form className="team-invitation-form" onSubmit={createInvitation}>
+            <Field label="Correo electrónico">
+              <input
+                autoCapitalize="none"
+                autoComplete="email"
+                className="input"
+                inputMode="email"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="administrador@correo.com"
+                required
+                type="email"
+                value={email}
+              />
+            </Field>
+
+            <Field label="Rol administrativo">
+              <select
+                className="select"
+                onChange={(event) => setRole(event.target.value as AdministrativeRole)}
+                value={role}
+              >
+                {ADMINISTRATIVE_ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </Field>
+
+            <p className="team-role-description">
+              {ADMINISTRATIVE_ROLE_OPTIONS.find((option) => option.value === role)?.description}
+            </p>
+
+            <Field hint="Entre mañana y 90 días." label="Fecha de expiración">
+              <input
+                className="input"
+                max={dateInputValue(90)}
+                min={dateInputValue(1)}
+                onChange={(event) => setExpirationDate(event.target.value)}
+                required
+                type="date"
+                value={expirationDate}
+              />
+            </Field>
+
+            <Button disabled={creating} type="submit">
+              {creating ? 'Creando invitación…' : 'Crear invitación segura'}
+            </Button>
+          </form>
+        </Surface>
+
+        <Surface className="team-access-panel">
+          <div className="settings-section-heading">
+            <div>
+              <span className="settings-kicker">Acceso actual</span>
+              <h2>Miembros del equipo</h2>
+              <p>Usuarios que ya aceptaron acceso administrativo.</p>
+            </div>
+            <Badge tone="success">{data.members.length} activos</Badge>
+          </div>
+
+          {data.members.length ? (
+            <div className="team-member-list">
+              {data.members.map((member) => (
+                <article key={`${member.user_id}-${member.role}`}>
+                  <span>{(member.full_name ?? member.email).slice(0, 2).toUpperCase()}</span>
+                  <div>
+                    <strong>{member.full_name ?? member.email}</strong>
+                    <small>{member.email}</small>
+                  </div>
+                  <Badge tone="info">{administrativeRoleLabel(member.role)}</Badge>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              description="Aún no hay otros miembros administrativos en este condominio."
+              icon={<PeopleIcon size={26} />}
+              title="Equipo sin miembros adicionales"
+            />
+          )}
+        </Surface>
+      </section>
+
+      <Surface className="team-access-panel">
+        <div className="settings-section-heading">
+          <div>
+            <span className="settings-kicker">Trazabilidad</span>
+            <h2>Historial de invitaciones</h2>
+            <p>Consulta estado, rol y expiración de cada invitación administrativa.</p>
+          </div>
+        </div>
+
+        {data.invitations.length ? (
+          <div className="team-invitation-list">
+            {data.invitations.map((invitation) => (
+              <article key={invitation.id}>
+                <div>
+                  <strong>{invitation.email}</strong>
+                  <small>{administrativeRoleLabel(invitation.intended_role)}</small>
+                </div>
+                <div>
+                  <small>Creada {formatDate(invitation.created_at)}</small>
+                  <small>Vence {formatDate(invitation.expires_at)}</small>
+                </div>
+                <Badge tone={invitationTone(invitation.status)}>
+                  {invitationStatus(invitation.status)}
+                </Badge>
+                {invitation.status === 'pending' ? (
+                  <Button
+                    disabled={revokingId === invitation.id}
+                    onClick={() => void revoke(invitation.id)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {revokingId === invitation.id ? 'Revocando…' : 'Revocar'}
+                  </Button>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            description="Las invitaciones que crees aparecerán aquí con su estado."
+            icon={<PeopleIcon size={26} />}
+            title="Sin invitaciones registradas"
+          />
+        )}
+      </Surface>
+    </div>
+  );
+}
