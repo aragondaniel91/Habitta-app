@@ -1,3 +1,5 @@
+import type { Session } from '@supabase/supabase-js';
+import { apiRequest } from './api';
 import { supabase } from '../supabase';
 
 export type AdministrativeRole =
@@ -31,6 +33,18 @@ export type AdminInvitationPreview = {
   intended_role: AdministrativeRole;
   status: AdminInvitation['status'];
   expires_at: string;
+};
+
+export type AdminInvitationDelivery = {
+  status: 'disabled' | 'sent' | 'failed';
+  recipient: string | null;
+  providerId?: string;
+};
+
+export type CreatedAdminInvitation = {
+  invitation: AdminInvitation;
+  invitationUrl: string;
+  emailDelivery: AdminInvitationDelivery;
 };
 
 export const ADMINISTRATIVE_ROLE_OPTIONS: Array<{
@@ -108,34 +122,30 @@ export async function loadTeamAccess(condominiumId: string) {
 }
 
 export async function createAdminInvitation({
+  session,
   condominiumId,
   email,
   role,
   expiresAt,
 }: {
+  session: Session;
   condominiumId: string;
   email: string;
   role: AdministrativeRole;
   expiresAt?: string;
 }) {
-  const client = requireSupabase();
-  const result = await client.rpc('create_admin_invitation', {
-    target_condominium_id: condominiumId,
-    target_email: email.trim().toLowerCase(),
-    target_role: role,
-    target_expires_at: expiresAt || null,
-  });
-
-  if (result.error) throw new Error(translateTeamError(result.error));
-  const data = result.data as { invitation: AdminInvitation; raw_token: string } | null;
-  if (!data?.invitation || !data.raw_token) {
-    throw new Error('La invitación se creó sin un enlace utilizable.');
-  }
-
-  return {
-    invitation: data.invitation,
-    invitationUrl: `${window.location.origin}/admin-invite/${data.raw_token}`,
-  };
+  return apiRequest<CreatedAdminInvitation>(
+    `/v1/condominiums/${condominiumId}/admin-invitations`,
+    session,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        email: email.trim().toLowerCase(),
+        role,
+        expiresAt: expiresAt || undefined,
+      }),
+    },
+  );
 }
 
 export async function revokeAdminInvitation(invitationId: string) {
