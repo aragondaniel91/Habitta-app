@@ -20,6 +20,12 @@ type RpcResult = {
   raw_token: string;
 };
 
+type InvitationDelivery = {
+  status: 'disabled' | 'sent' | 'failed';
+  recipient: string | null;
+  providerId?: string;
+};
+
 const invitationInputSchema = z.object({
   email: z.string().trim().email(),
   role: z.enum(['condominium_admin', 'accountant', 'assistant', 'payment_reviewer']),
@@ -41,19 +47,16 @@ const escapeHtml = (value: string) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 
-async function loadCondominiumName(
-  c: Parameters<typeof adminInvitationRoutes.post>[1] extends never ? never : never,
-) {
-  return c;
-}
-
 export const adminInvitationRoutes = new Hono<AppEnvironment>();
 
 adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
-  const condominiumId = z.string().uuid().parse(c.req.param('condominiumId'));
+  const condominiumIdResult = z.string().uuid().safeParse(c.req.param('condominiumId'));
+  if (!condominiumIdResult.success) return c.json({ error: 'Invalid condominium identifier' }, 400);
+
   const parsed = invitationInputSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
+  const condominiumId = condominiumIdResult.data;
   const rpcResponse = await fetch(
     `${c.env.SUPABASE_URL}/rest/v1/rpc/create_admin_invitation`,
     {
@@ -74,7 +77,7 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
 
   const rpcData = (await rpcResponse.json()) as RpcResult | { message?: string; error?: string };
   if (!rpcResponse.ok || !('invitation' in rpcData) || !('raw_token' in rpcData)) {
-    return c.json(rpcData, rpcResponse.status >= 400 ? rpcResponse.status : 400);
+    return c.json(rpcData, 400);
   }
 
   const condominiumResponse = await fetch(
@@ -93,11 +96,7 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
   const invitationUrl = `${c.env.APP_BASE_URL.replace(/\/$/, '')}/admin-invite/${rpcData.raw_token}`;
 
   const notificationEnvironment = resolveNotificationsEnvironment(c.env);
-  const delivery: {
-    status: 'disabled' | 'sent' | 'failed';
-    recipient: string | null;
-    providerId?: string;
-  } = {
+  const delivery: InvitationDelivery = {
     status: 'disabled',
     recipient: null,
   };
@@ -110,13 +109,14 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
     const roleLabel = roleLabels[rpcData.invitation.intended_role];
     const subjectPrefix = notificationEnvironment.emailMode === 'sandbox' ? '[HABITTA DEV] ' : '';
     const subject = `${subjectPrefix}Invitación para administrar ${condominiumName}`;
+    const expirationLabel = new Date(rpcData.invitation.expires_at).toLocaleString('es');
     const text = [
       `Has sido invitado como ${roleLabel} en ${condominiumName}.`,
       '',
       'Abre este enlace seguro para aceptar la invitación:',
       invitationUrl,
       '',
-      `La invitación vence el ${new Date(rpcData.invitation.expires_at).toLocaleString('es')}.`,
+      `La invitación vence el ${expirationLabel}.`,
       'Si no esperabas esta invitación, puedes ignorar este correo.',
     ].join('\n');
     const html = `
@@ -133,7 +133,7 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
             <p style="margin:24px 0">
               <a href="${escapeHtml(invitationUrl)}" style="display:inline-block;background:#28a745;color:#ffffff;text-decoration:none;border-radius:10px;padding:13px 20px;font-weight:700">Aceptar invitación</a>
             </p>
-            <p style="font-size:13px;color:#667085;line-height:1.6">Este enlace vence el ${escapeHtml(new Date(rpcData.invitation.expires_at).toLocaleString('es'))}. Si no esperabas esta invitación, puedes ignorar el correo.</p>
+            <p style="font-size:13px;color:#667085;line-height:1.6">Este enlace vence el ${escapeHtml(expirationLabel)}. Si no esperabas esta invitación, puedes ignorar el correo.</p>
           </div>
         </div>
       </div>
