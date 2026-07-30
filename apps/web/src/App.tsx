@@ -18,6 +18,7 @@ import { ReceivablesPage } from './pages/ReceivablesPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { RequestsPage } from './pages/RequestsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { StructureManagementPage } from './pages/StructureManagementPage';
 import { TeamAccessPage } from './pages/TeamAccessPage';
 import { supabase } from './supabase';
 
@@ -230,12 +231,20 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'units' || currentRoute.key === 'people') {
+  } else if (currentRoute.key === 'units') {
+    page = (
+      <StructureManagementPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
+  } else if (currentRoute.key === 'people') {
     page = (
       <CommunityDirectoryPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
-        mode={currentRoute.key}
+        mode="people"
         session={session}
       />
     );
