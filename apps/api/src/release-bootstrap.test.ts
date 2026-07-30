@@ -23,7 +23,14 @@ describe('development Worker bootstrap', () => {
     expect(workflow).not.toContain('Promote final Worker version with exact Pages CORS');
     expect(workflow.match(/wrangler versions upload/g)).toHaveLength(1);
     expect(workflow).toContain('--expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL"');
-    expect(workflow).toContain('--web-url "$EXACT_PAGES_URL"');
+    expect(workflow).toContain('--web-url "$SMOKE_WEB_URL"');
+    expect(workflow).toContain(
+      'SMOKE_WEB_URL="${EXACT_PAGES_URL:-${PAGES_ALIAS_URL:-$CLOUDFLARE_PAGES_DEV_URL}}"',
+    );
+    expect(workflow).toContain(
+      "CLOUDFLARE_PAGES_DEV_URL: ${{ format('https://development.{0}.pages.dev', vars.CLOUDFLARE_PAGES_PROJECT_NAME) }}",
+    );
+    expect(workflow).toContain('test "$CORS_ALLOWED_ORIGINS" = "$CLOUDFLARE_PAGES_DEV_URL"');
   });
 
   it('records whether the Worker was bootstrapped without exposing secrets', async () => {

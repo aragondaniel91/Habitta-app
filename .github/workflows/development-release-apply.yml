@@ -24,8 +24,8 @@ jobs:
       VITE_API_BASE_URL: ${{ vars.CLOUDFLARE_WORKER_DEV_URL }}
       CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
       CLOUDFLARE_WORKER_DEV_URL: ${{ vars.CLOUDFLARE_WORKER_DEV_URL }}
-      CLOUDFLARE_PAGES_DEV_URL: ${{ vars.CLOUDFLARE_PAGES_DEV_URL }}
-      CORS_ALLOWED_ORIGINS: ${{ vars.CLOUDFLARE_PAGES_DEV_URL }}
+      CLOUDFLARE_PAGES_DEV_URL: ${{ format('https://development.{0}.pages.dev', vars.CLOUDFLARE_PAGES_PROJECT_NAME) }}
+      CORS_ALLOWED_ORIGINS: ${{ format('https://development.{0}.pages.dev', vars.CLOUDFLARE_PAGES_PROJECT_NAME) }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -61,6 +61,8 @@ jobs:
           test -n "$VITE_API_BASE_URL"
           test "$VITE_API_BASE_URL" = "$CLOUDFLARE_WORKER_DEV_URL"
           test -n "$CLOUDFLARE_PAGES_DEV_URL"
+          test "$CLOUDFLARE_PAGES_DEV_URL" = "https://development.$CLOUDFLARE_PAGES_PROJECT_NAME.pages.dev"
+          test "$CORS_ALLOWED_ORIGINS" = "$CLOUDFLARE_PAGES_DEV_URL"
           git fetch origin main
           if [ "$INPUT_RELEASE_REF" = main ]; then SHA=$(git rev-parse origin/main); else
             printf '%s' "$INPUT_RELEASE_REF" | grep -Eq '^[0-9a-f]{40}$'
@@ -171,6 +173,7 @@ jobs:
             exit 1
           fi
       - name: Deploy Pages and capture exact deployment metadata
+        id: pages
         run: |
           BEFORE_PAGES_FILE="$RUNNER_TEMP/pages-deployments-before.json"
           AFTER_PAGES_FILE="$RUNNER_TEMP/pages-deployments-after.json"
@@ -212,6 +215,8 @@ jobs:
           echo "EXACT_PAGES_URL=$PAGE_URL" >> "$GITHUB_ENV"
           echo "PAGES_DEPLOYMENT_ID=$PAGE_ID" >> "$GITHUB_ENV"
           echo "PAGES_ALIAS_URL=$PAGE_ALIAS" >> "$GITHUB_ENV"
+          echo "exact_pages_url=$PAGE_URL" >> "$GITHUB_OUTPUT"
+          echo "pages_alias_url=$PAGE_ALIAS" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: development-worker-release-metadata
@@ -221,13 +226,18 @@ jobs:
           name: development-pages-release-metadata
           path: release-pages-metadata.json
       - name: End-to-end development smoke
+        env:
+          EXACT_PAGES_URL: ${{ steps.pages.outputs.exact_pages_url }}
+          PAGES_ALIAS_URL: ${{ steps.pages.outputs.pages_alias_url }}
         run: |
-          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$EXACT_PAGES_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled; then
+          SMOKE_WEB_URL="${EXACT_PAGES_URL:-${PAGES_ALIAS_URL:-$CLOUDFLARE_PAGES_DEV_URL}}"
+          test -n "$SMOKE_WEB_URL"
+          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$SMOKE_WEB_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled; then
             if [ -n "$PREVIOUS_WORKER_VERSION" ]; then
               pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env dev --yes
             fi
             exit 1
           fi
-          if [ "$CLOUDFLARE_PAGES_DEV_URL" != "$EXACT_PAGES_URL" ]; then
+          if [ "$CLOUDFLARE_PAGES_DEV_URL" != "$SMOKE_WEB_URL" ]; then
             pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$CLOUDFLARE_PAGES_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled
           fi
