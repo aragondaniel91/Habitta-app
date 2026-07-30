@@ -293,10 +293,7 @@ export default function App() {
     );
   } else if (currentRoute.key === 'team') {
     page = (
-      <TeamAccessPage
-        condominiumId={selectedCondominiumId}
-        condominiumName={condominiumName}
-      />
+      <TeamAccessPage condominiumId={selectedCondominiumId} condominiumName={condominiumName} />
     );
   } else if (currentRoute.key === 'settings') {
     page = (
