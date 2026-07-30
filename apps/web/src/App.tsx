@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import {
-  OnboardingLoading,
-  OnboardingWizard,
-  WorkspaceLoadError,
-} from './components/AuthExperience';
+import { OnboardingLoading, WorkspaceLoadError } from './components/AuthExperience';
+import { AdminOnboardingWizard } from './components/AdminOnboardingWizard';
 import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
@@ -154,11 +151,10 @@ export default function App() {
 
   if (!selectedCondominiumId) {
     return (
-      <OnboardingWizard
+      <AdminOnboardingWizard
         onComplete={() => loadWorkspace(session)}
         onSignOut={signOut}
         organizations={organizations}
-        session={session}
       />
     );
   }
