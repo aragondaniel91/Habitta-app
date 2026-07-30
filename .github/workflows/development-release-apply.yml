@@ -123,7 +123,7 @@ jobs:
             --secrets-file "$SECRETS_FILE"
             --message "$TAG"
             --tag "$TAG"
-            --strict
+            --keep-vars
             --var "BUILD_COMMIT:$SHA"
             --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP"
             --var "APP_VERSION:$APP_VERSION"
