@@ -27,9 +27,7 @@ type Unit = {
 };
 
 type EditorState =
-  | { kind: 'building'; building: Building | null }
-  | { kind: 'unit'; unit: Unit | null }
-  | null;
+  { kind: 'building'; building: Building | null } | { kind: 'unit'; unit: Unit | null } | null;
 
 type Props = {
   condominiumId: string;
@@ -111,7 +109,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
     () =>
       units.filter((unit) => {
         if (!normalizedSearch) return true;
-        const buildingName = unit.building_id ? buildingById.get(unit.building_id)?.name ?? '' : '';
+        const buildingName = unit.building_id
+          ? (buildingById.get(unit.building_id)?.name ?? '')
+          : '';
         return [unit.code, unit.floor ?? '', unitTypeLabels[unit.type], buildingName, unit.status]
           .join(' ')
           .toLocaleLowerCase('es')
@@ -223,7 +223,10 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
           </p>
         </div>
         <div className="structure-hero__actions">
-          <Button onClick={() => setEditor({ kind: 'building', building: null })} variant="secondary">
+          <Button
+            onClick={() => setEditor({ kind: 'building', building: null })}
+            variant="secondary"
+          >
             Nueva torre o edificio
           </Button>
           <Button onClick={() => setEditor({ kind: 'unit', unit: null })}>Nueva unidad</Button>
@@ -286,7 +289,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
             <span className="sr-only">Buscar</span>
             <input
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={activeView === 'units' ? 'Buscar unidad, piso o torre' : 'Buscar torre o edificio'}
+              placeholder={
+                activeView === 'units' ? 'Buscar unidad, piso o torre' : 'Buscar torre o edificio'
+              }
               type="search"
               value={search}
             />
@@ -309,7 +314,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                 return (
                   <article className="structure-unit-row" key={unit.id}>
                     <div className="structure-unit-row__identity">
-                      <span className="structure-unit-icon"><UnitsIcon size={19} /></span>
+                      <span className="structure-unit-icon">
+                        <UnitsIcon size={19} />
+                      </span>
                       <div>
                         <strong>{unit.code}</strong>
                         <small>{unit.floor ? `Piso ${unit.floor}` : 'Piso no indicado'}</small>
@@ -358,11 +365,15 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
           <div className="structure-building-grid">
             {filteredBuildings.map((building) => {
               const buildingUnits = units.filter((unit) => unit.building_id === building.id);
-              const activeBuildingUnits = buildingUnits.filter((unit) => unit.status === 'active').length;
+              const activeBuildingUnits = buildingUnits.filter(
+                (unit) => unit.status === 'active',
+              ).length;
               return (
                 <article className="structure-building-card" key={building.id}>
                   <div className="structure-building-card__top">
-                    <span className="structure-building-card__icon"><UnitsIcon size={23} /></span>
+                    <span className="structure-building-card__icon">
+                      <UnitsIcon size={23} />
+                    </span>
                     <Button
                       onClick={() => setEditor({ kind: 'building', building })}
                       size="sm"
@@ -373,11 +384,16 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   </div>
                   <h2>{building.name}</h2>
                   <p>
-                    {buildingUnits.length} {buildingUnits.length === 1 ? 'unidad registrada' : 'unidades registradas'}
+                    {buildingUnits.length}{' '}
+                    {buildingUnits.length === 1 ? 'unidad registrada' : 'unidades registradas'}
                   </p>
                   <div className="structure-building-card__stats">
-                    <span><strong>{activeBuildingUnits}</strong> activas</span>
-                    <span><strong>{buildingUnits.length - activeBuildingUnits}</strong> inactivas</span>
+                    <span>
+                      <strong>{activeBuildingUnits}</strong> activas
+                    </span>
+                    <span>
+                      <strong>{buildingUnits.length - activeBuildingUnits}</strong> inactivas
+                    </span>
                   </div>
                 </article>
               );
@@ -420,7 +436,14 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                       : 'Crear torre o edificio'}
                 </h2>
               </div>
-              <button aria-label="Cerrar" disabled={saving} onClick={() => setEditor(null)} type="button">×</button>
+              <button
+                aria-label="Cerrar"
+                disabled={saving}
+                onClick={() => setEditor(null)}
+                type="button"
+              >
+                ×
+              </button>
             </div>
 
             {editor.kind === 'building' ? (
@@ -433,36 +456,58 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                     <input defaultValue={editor.building?.name ?? ''} name="name" required />
                   </Field>
                   <div className="structure-form-note">
-                    Cambiar el nombre actualiza la ubicación mostrada en todas sus unidades. No elimina ni modifica el historial.
+                    Cambiar el nombre actualiza la ubicación mostrada en todas sus unidades. No
+                    elimina ni modifica el historial.
                   </div>
                 </div>
                 <div className="structure-dialog__footer">
-                  <Button disabled={saving} onClick={() => setEditor(null)} type="button" variant="ghost">Cancelar</Button>
-                  <Button disabled={saving} type="submit">{saving ? 'Guardando…' : 'Guardar'}</Button>
+                  <Button
+                    disabled={saving}
+                    onClick={() => setEditor(null)}
+                    type="button"
+                    variant="ghost"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button disabled={saving} type="submit">
+                    {saving ? 'Guardando…' : 'Guardar'}
+                  </Button>
                 </div>
               </form>
             ) : (
               <form onSubmit={(event) => void saveUnit(event, editor.unit)}>
                 <div className="structure-dialog__body structure-form-grid">
                   <Field label="Código o número de unidad">
-                    <input defaultValue={editor.unit?.code ?? ''} maxLength={40} name="code" required />
+                    <input
+                      defaultValue={editor.unit?.code ?? ''}
+                      maxLength={40}
+                      name="code"
+                      required
+                    />
                   </Field>
                   <Field label="Torre o edificio">
                     <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
                       <option value="">Sin torre asignada</option>
                       {buildings.map((building) => (
-                        <option key={building.id} value={building.id}>{building.name}</option>
+                        <option key={building.id} value={building.id}>
+                          {building.name}
+                        </option>
                       ))}
                     </Select>
                   </Field>
                   <Field label="Tipo">
                     <Select defaultValue={editor.unit?.type ?? 'apartment'} name="type">
                       {unitTypeOptions.map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
                       ))}
                     </Select>
                   </Field>
-                  <Field hint="Puede ser un número, PB, PH o nivel descriptivo." label="Piso o nivel">
+                  <Field
+                    hint="Puede ser un número, PB, PH o nivel descriptivo."
+                    label="Piso o nivel"
+                  >
                     <input defaultValue={editor.unit?.floor ?? ''} maxLength={20} name="floor" />
                   </Field>
                   <Field hint="Porcentaje de participación entre 0 y 100." label="Alícuota (%)">
@@ -486,8 +531,17 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   </Field>
                 </div>
                 <div className="structure-dialog__footer">
-                  <Button disabled={saving} onClick={() => setEditor(null)} type="button" variant="ghost">Cancelar</Button>
-                  <Button disabled={saving} type="submit">{saving ? 'Guardando…' : 'Guardar unidad'}</Button>
+                  <Button
+                    disabled={saving}
+                    onClick={() => setEditor(null)}
+                    type="button"
+                    variant="ghost"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button disabled={saving} type="submit">
+                    {saving ? 'Guardando…' : 'Guardar unidad'}
+                  </Button>
                 </div>
               </form>
             )}
