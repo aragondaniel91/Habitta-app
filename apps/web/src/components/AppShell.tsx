@@ -21,6 +21,7 @@ type Props = {
   contextMessage: ContextMessage;
   notificationOpen: boolean;
   children: ReactNode;
+  onAddCondominium: () => void;
   onCondominiumChange: (condominiumId: string) => void;
   onNavigate: (route: AppRoute) => void;
   onOpenNotifications: () => void;
@@ -50,6 +51,7 @@ export function AppShell({
   contextMessage,
   notificationOpen,
   children,
+  onAddCondominium,
   onCondominiumChange,
   onNavigate,
   onOpenNotifications,
@@ -171,24 +173,35 @@ export function AppShell({
               <MenuIcon size={21} />
             </button>
             <div className="condo-switcher">
-              <span>Condominio</span>
-              <Select
-                aria-label="Seleccionar condominio"
-                disabled={!condominiums.length}
-                onChange={(event) => onCondominiumChange(event.target.value)}
-                value={selectedCondominiumId}
+              <div>
+                <span>Condominio</span>
+                <Select
+                  aria-label="Seleccionar condominio"
+                  disabled={!condominiums.length}
+                  onChange={(event) => onCondominiumChange(event.target.value)}
+                  value={selectedCondominiumId}
+                >
+                  {!condominiums.length ? <option value="">Sin condominios</option> : null}
+                  {optionsByOrganization.map(({ organization, condominiums: items }) => (
+                    <optgroup key={organization.id} label={organization.name}>
+                      {items.map((condominium) => (
+                        <option key={condominium.id} value={condominium.id}>
+                          {condominium.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </Select>
+              </div>
+              <Button
+                className="condo-switcher__add"
+                onClick={onAddCondominium}
+                size="sm"
+                type="button"
+                variant="secondary"
               >
-                {!condominiums.length ? <option value="">Sin condominios</option> : null}
-                {optionsByOrganization.map(({ organization, condominiums: items }) => (
-                  <optgroup key={organization.id} label={organization.name}>
-                    {items.map((condominium) => (
-                      <option key={condominium.id} value={condominium.id}>
-                        {condominium.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </Select>
+                + Agregar condominio
+              </Button>
             </div>
           </div>
 

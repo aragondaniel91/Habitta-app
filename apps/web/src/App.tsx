@@ -1,34 +1,51 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import {
-  OnboardingLoading,
-  OnboardingWizard,
-  SignInGate,
-  WorkspaceLoadError,
-} from './components/AuthExperience';
+import { AdminInvitationExperience } from './components/AdminInvitationExperience';
+import { AdminOnboardingWizard } from './components/AdminOnboardingWizard';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
+import { OnboardingLoading, WorkspaceLoadError } from './components/AuthExperience';
+import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
+import { apiRequest } from './lib/api';
+import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
+import { AddCondominiumPage } from './pages/AddCondominiumPage';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
 import { CommunityPage } from './pages/CommunityPage';
+import { ModulePlaceholderPage } from './pages/ModulePage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ReceivablesPage } from './pages/ReceivablesPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { RequestsPage } from './pages/RequestsPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { apiRequest } from './lib/api';
-import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
-import { ModulePlaceholderPage } from './pages/ModulePage';
+import { TeamAccessPage } from './pages/TeamAccessPage';
 import { supabase } from './supabase';
 
 type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
 
+function invitationTokenFromPath(pathname: string) {
+  const prefix = '/admin-invite/';
+  if (!pathname.startsWith(prefix)) return '';
+  try {
+    return decodeURIComponent(pathname.slice(prefix.length).split('/')[0] ?? '');
+  } catch {
+    return '';
+  }
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(
+    () => window.location.pathname === '/reset-password',
+  );
+  const [adminInvitationToken, setAdminInvitationToken] = useState(() =>
+    invitationTokenFromPath(window.location.pathname),
+  );
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [selectedCondominiumId, setSelectedCondominiumId] = useState('');
+  const [addingCondominium, setAddingCondominium] = useState(false);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [contextMessage, setContextMessage] = useState<ContextMessage>(null);
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() =>
@@ -46,20 +63,23 @@ export default function App() {
       setSession(data.session);
       setAuthResolved(true);
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
       setAuthResolved(true);
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecoveryMode(true);
       if (!nextSession) {
         setOrganizations([]);
         setCondominiums([]);
         setSelectedCondominiumId('');
+        setAddingCondominium(false);
         setContextMessage(null);
+        if (event === 'SIGNED_OUT') setPasswordRecoveryMode(false);
       }
     });
     return () => data.subscription.unsubscribe();
   }, []);
 
-  const loadWorkspace = useCallback(async (activeSession: Session) => {
+  const loadWorkspace = useCallback(async (activeSession: Session, preferredCondominiumId = '') => {
     setWorkspaceLoading(true);
     setContextMessage(null);
     try {
@@ -70,6 +90,12 @@ export default function App() {
       setOrganizations(organizationItems);
       setCondominiums(condominiumItems);
       setSelectedCondominiumId((current) => {
+        if (
+          preferredCondominiumId &&
+          condominiumItems.some((item) => item.id === preferredCondominiumId)
+        ) {
+          return preferredCondominiumId;
+        }
         if (condominiumItems.some((item) => item.id === current)) return current;
         return condominiumItems[0]?.id ?? '';
       });
@@ -84,33 +110,78 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session) void loadWorkspace(session);
-  }, [session, loadWorkspace]);
+    if (session && !passwordRecoveryMode && !adminInvitationToken) void loadWorkspace(session);
+  }, [session, passwordRecoveryMode, adminInvitationToken, loadWorkspace]);
 
   useEffect(() => {
-    const onPopState = () => setCurrentRoute(getRouteFromPath(window.location.pathname));
+    const onPopState = () => {
+      setAdminInvitationToken(invitationTokenFromPath(window.location.pathname));
+      setCurrentRoute(getRouteFromPath(window.location.pathname));
+    };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || passwordRecoveryMode || adminInvitationToken) return;
     const resolved = getRouteFromPath(window.location.pathname);
     if (window.location.pathname !== resolved.path) {
       window.history.replaceState({}, '', resolved.path);
       setCurrentRoute(resolved);
     }
-  }, [session]);
+  }, [session, passwordRecoveryMode, adminInvitationToken]);
 
   const navigate = (route: AppRoute) => {
+    setAddingCondominium(false);
     window.history.pushState({}, '', route.path);
     setCurrentRoute(route);
   };
 
   const signOut = () => void supabase?.auth.signOut();
 
+  const completePasswordRecovery = () => {
+    setPasswordRecoveryMode(false);
+    window.history.replaceState({}, '', DEFAULT_ROUTE.path);
+    setCurrentRoute(DEFAULT_ROUTE);
+  };
+
   if (!authResolved) return <OnboardingLoading />;
-  if (!session) return <SignInGate />;
+
+  if (adminInvitationToken) {
+    return (
+      <AdminInvitationExperience
+        onAccepted={async () => {
+          if (session) await loadWorkspace(session);
+          setAdminInvitationToken('');
+          window.history.replaceState({}, '', DEFAULT_ROUTE.path);
+          setCurrentRoute(DEFAULT_ROUTE);
+        }}
+        onSignOut={signOut}
+        rawToken={adminInvitationToken}
+        session={session}
+      />
+    );
+  }
+
+  if (passwordRecoveryMode && session) {
+    return <PasswordRecoveryGate onComplete={completePasswordRecovery} />;
+  }
+  if (!session) {
+    const expiredRecoveryLink = window.location.pathname === '/reset-password';
+    return (
+      <SignInGate
+        initialMessage={
+          expiredRecoveryLink
+            ? {
+                tone: 'error',
+                text: 'El enlace de recuperación venció o ya fue utilizado. Solicita uno nuevo.',
+              }
+            : null
+        }
+        initialMode={expiredRecoveryLink ? 'forgot' : 'sign-in'}
+      />
+    );
+  }
   if (workspaceLoading) return <OnboardingLoading />;
 
   if (contextMessage?.tone === 'error' && !organizations.length && !condominiums.length) {
@@ -125,11 +196,10 @@ export default function App() {
 
   if (!selectedCondominiumId) {
     return (
-      <OnboardingWizard
+      <AdminOnboardingWizard
         onComplete={() => loadWorkspace(session)}
         onSignOut={signOut}
         organizations={organizations}
-        session={session}
       />
     );
   }
@@ -138,7 +208,20 @@ export default function App() {
   const condominiumName = selectedCondominium?.name ?? 'Condominio';
   let page;
 
-  if (currentRoute.key === DEFAULT_ROUTE.key) {
+  if (addingCondominium) {
+    page = (
+      <AddCondominiumPage
+        onCancel={() => setAddingCondominium(false)}
+        onCreated={async (condominiumId) => {
+          await loadWorkspace(session, condominiumId);
+          setAddingCondominium(false);
+          window.history.replaceState({}, '', DEFAULT_ROUTE.path);
+          setCurrentRoute(DEFAULT_ROUTE);
+        }}
+        organizations={organizations}
+      />
+    );
+  } else if (currentRoute.key === DEFAULT_ROUTE.key) {
     page = (
       <AdministrativeDashboard
         condominiumId={selectedCondominiumId}
@@ -205,6 +288,14 @@ export default function App() {
         session={session}
       />
     );
+  } else if (currentRoute.key === 'team') {
+    page = (
+      <TeamAccessPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
   } else if (currentRoute.key === 'settings') {
     page = (
       <SettingsPage
@@ -223,8 +314,12 @@ export default function App() {
       contextMessage={contextMessage}
       currentRoute={currentRoute}
       notificationOpen={notificationOpen}
+      onAddCondominium={() => setAddingCondominium(true)}
       onCloseNotifications={() => setNotificationOpen(false)}
-      onCondominiumChange={setSelectedCondominiumId}
+      onCondominiumChange={(condominiumId) => {
+        setAddingCondominium(false);
+        setSelectedCondominiumId(condominiumId);
+      }}
       onNavigate={navigate}
       onOpenNotifications={() => setNotificationOpen(true)}
       onSignOut={signOut}

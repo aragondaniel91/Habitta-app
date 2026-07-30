@@ -1,14 +1,19 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const authExperienceUrl = new URL('./components/AuthExperience.tsx', import.meta.url);
+const passwordAuthExperienceUrl = new URL(
+  './components/PasswordAuthExperience.tsx',
+  import.meta.url,
+);
 
-describe('email OTP signup', () => {
-  it('allows Supabase to create a new user and redirects to the current app origin', async () => {
-    const source = await readFile(authExperienceUrl, 'utf8');
+describe('administrator password signup', () => {
+  it('creates an account with password and redirects confirmation to Habitta', async () => {
+    const source = await readFile(passwordAuthExperienceUrl, 'utf8');
 
+    expect(source).toContain('supabase.auth.signUp');
     expect(source).toContain('emailRedirectTo: window.location.origin');
-    expect(source).toContain('shouldCreateUser: true');
-    expect(source).not.toContain('shouldCreateUser: false');
+    expect(source).toContain("registration_source: 'public_admin_onboarding'");
+    expect(source).not.toContain('signInWithOtp');
+    expect(source).not.toContain('shouldCreateUser');
   });
 });
