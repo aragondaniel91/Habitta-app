@@ -51,30 +51,26 @@ export const adminInvitationRoutes = new Hono<AppEnvironment>();
 
 adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
   const condominiumIdResult = z.string().uuid().safeParse(c.req.param('condominiumId'));
-  if (!condominiumIdResult.success)
-    return c.json({ error: 'Invalid condominium identifier' }, 400);
+  if (!condominiumIdResult.success) return c.json({ error: 'Invalid condominium identifier' }, 400);
 
   const parsed = invitationInputSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
   const condominiumId = condominiumIdResult.data;
-  const rpcResponse = await fetch(
-    `${c.env.SUPABASE_URL}/rest/v1/rpc/create_admin_invitation`,
-    {
-      method: 'POST',
-      headers: {
-        apikey: c.env.SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${c.get('token')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        target_condominium_id: condominiumId,
-        target_email: parsed.data.email.toLowerCase(),
-        target_role: parsed.data.role,
-        target_expires_at: parsed.data.expiresAt ?? null,
-      }),
+  const rpcResponse = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/create_admin_invitation`, {
+    method: 'POST',
+    headers: {
+      apikey: c.env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${c.get('token')}`,
+      'Content-Type': 'application/json',
     },
-  );
+    body: JSON.stringify({
+      target_condominium_id: condominiumId,
+      target_email: parsed.data.email.toLowerCase(),
+      target_role: parsed.data.role,
+      target_expires_at: parsed.data.expiresAt ?? null,
+    }),
+  });
 
   const rpcData = (await rpcResponse.json()) as RpcResult | { message?: string; error?: string };
   if (!rpcResponse.ok || !('invitation' in rpcData) || !('raw_token' in rpcData)) {
