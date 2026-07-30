@@ -38,7 +38,10 @@ export type AdminInvitationPreview = {
 export type AdminInvitationDelivery = {
   status: 'disabled' | 'sent' | 'failed';
   recipient: string | null;
+  provider: string;
+  mode: string;
   providerId?: string;
+  errorCode?: string;
 };
 
 export type CreatedAdminInvitation = {
@@ -134,7 +137,7 @@ export async function createAdminInvitation({
   role: AdministrativeRole;
   expiresAt?: string;
 }) {
-  return apiRequest<CreatedAdminInvitation>(
+  const result = await apiRequest<CreatedAdminInvitation>(
     `/v1/condominiums/${condominiumId}/admin-invitations`,
     session,
     {
@@ -146,6 +149,15 @@ export async function createAdminInvitation({
       }),
     },
   );
+  if (result.emailDelivery.status === 'failed') {
+    console.error('Habitta administrator invitation email failed', {
+      provider: result.emailDelivery.provider,
+      mode: result.emailDelivery.mode,
+      errorCode: result.emailDelivery.errorCode ?? 'unknown',
+      providerId: result.emailDelivery.providerId ?? null,
+    });
+  }
+  return result;
 }
 
 export async function revokeAdminInvitation(invitationId: string) {

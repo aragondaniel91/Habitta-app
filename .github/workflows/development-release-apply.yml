@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ENV: development
-      NOTIFICATIONS_EMAIL_MODE: disabled
+      NOTIFICATIONS_EMAIL_MODE: sandbox
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -71,7 +71,7 @@ jobs:
           fi
           git merge-base --is-ancestor "$SHA" origin/main
           test "$APP_ENV" = development
-          test "$NOTIFICATIONS_EMAIL_MODE" = disabled
+          test "$NOTIFICATIONS_EMAIL_MODE" = sandbox
           test -n "$SUPABASE_PROJECT_REF"
           test "$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" --jq '[.[] | select(.state == "open")] | length')" = 0
       - run: pnpm install --frozen-lockfile
@@ -129,7 +129,7 @@ jobs:
             --var "APP_VERSION:$APP_VERSION"
             --var "APP_ENV:development"
             --var "SUPABASE_URL:$SUPABASE_URL"
-            --var "NOTIFICATIONS_EMAIL_MODE:disabled"
+            --var "NOTIFICATIONS_EMAIL_MODE:sandbox"
             --var "CORS_ALLOWED_ORIGINS:$CORS_ALLOWED_ORIGINS"
           )
           if [ -z "$PREVIOUS_VERSION" ]; then
@@ -166,7 +166,7 @@ jobs:
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
       - name: Smoke Worker before Pages
         run: |
-          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled; then
+          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode sandbox; then
             if [ -n "$PREVIOUS_WORKER_VERSION" ]; then
               pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env dev --yes
             fi
@@ -232,12 +232,12 @@ jobs:
         run: |
           SMOKE_WEB_URL="${EXACT_PAGES_URL:-${PAGES_ALIAS_URL:-$CLOUDFLARE_PAGES_DEV_URL}}"
           test -n "$SMOKE_WEB_URL"
-          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$SMOKE_WEB_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled; then
+          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$SMOKE_WEB_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode sandbox; then
             if [ -n "$PREVIOUS_WORKER_VERSION" ]; then
               pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env dev --yes
             fi
             exit 1
           fi
           if [ "$CLOUDFLARE_PAGES_DEV_URL" != "$SMOKE_WEB_URL" ]; then
-            pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$CLOUDFLARE_PAGES_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode disabled
+            pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$CLOUDFLARE_PAGES_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode sandbox
           fi
