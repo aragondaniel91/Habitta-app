@@ -15,9 +15,17 @@ type EmailMessage = {
 };
 
 export type EmailProviderResult =
-  { ok: true; providerId: string | null } | { ok: false; errorCode: string; retryable: boolean };
+  | { ok: true; providerId: string | null }
+  | {
+      ok: false;
+      errorCode: string;
+      retryable: boolean;
+      providerId?: string | null;
+    };
 
 const retryableStatus = (status: number) => status === 408 || status === 429 || status >= 500;
+const safeProviderCode = (value?: string) =>
+  value?.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) || null;
 
 const sendWithResend = async (
   env: NotificationBindings,
@@ -56,6 +64,17 @@ const sendWithResend = async (
   }
 };
 
+type ZeptoMailResponse = {
+  request_id?: string;
+  code?: string;
+  message?: string;
+  error?: {
+    request_id?: string;
+    code?: string;
+    message?: string;
+  };
+};
+
 const sendWithZeptoMail = async (
   env: NotificationBindings,
   message: EmailMessage,
@@ -70,7 +89,7 @@ const sendWithZeptoMail = async (
       signal,
       headers: {
         Accept: 'application/json',
-        Authorization: `Zoho-enczapikey ${token}`,
+        Authorization: `zoho-enczapikey ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -84,19 +103,27 @@ const sendWithZeptoMail = async (
         track_opens: false,
       }),
     });
-    const result = (await response.json().catch(() => ({}))) as {
-      request_id?: string;
-      error?: { request_id?: string };
-    };
-    if (response.ok)
-      return { ok: true, providerId: result.request_id ?? result.error?.request_id ?? null };
+    const result = (await response.json().catch(() => ({}))) as ZeptoMailResponse;
+    const providerId = result.request_id ?? result.error?.request_id ?? null;
+    if (response.ok) return { ok: true, providerId };
+
+    const providerCode = safeProviderCode(result.error?.code ?? result.code);
     return {
       ok: false,
-      errorCode: `zeptomail_${response.status}`,
+      errorCode: providerCode
+        ? `zeptomail_${response.status}_${providerCode}`
+        : `zeptomail_${response.status}`,
       retryable: retryableStatus(response.status),
+      providerId,
     };
-  } catch {
-    return { ok: false, errorCode: 'zeptomail_network_error', retryable: true };
+  } catch (error) {
+    return {
+      ok: false,
+      errorCode: error instanceof DOMException && error.name === 'AbortError'
+        ? 'zeptomail_timeout'
+        : 'zeptomail_network_error',
+      retryable: true,
+    };
   }
 };
 
