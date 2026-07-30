@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { buildingInputSchema, uuidSchema } from '@habitta/validation';
+import { expensesRoutes } from './expenses-routes';
 import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
@@ -56,6 +57,7 @@ const supabaseHeaders = (env: NotificationBindings, token: string, representatio
 const condominiumId = (raw: string) => uuidSchema.safeParse(raw);
 
 export const structureRoutes = new Hono<StructureEnvironment>();
+structureRoutes.route('/', expensesRoutes);
 
 structureRoutes.get('/:condominiumId/buildings', async (c) => {
   const parsedId = condominiumId(c.req.param('condominiumId'));
