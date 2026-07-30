@@ -37,7 +37,7 @@ describe('transactional email providers', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://api.zeptomail.com/v1.1/email');
-    expect(new Headers(init.headers).get('Authorization')).toBe('Zoho-enczapikey zepto-token');
+    expect(new Headers(init.headers).get('Authorization')).toBe('zoho-enczapikey zepto-token');
     expect(JSON.parse(String(init.body))).toEqual({
       from: { address: 'notifications@mihabitta.com', name: 'Habitta' },
       to: [{ email_address: { address: 'recipient@example.com' } }],
@@ -50,7 +50,7 @@ describe('transactional email providers', () => {
     });
   });
 
-  it('marks a ZeptoMail rate-limit response as retryable', async () => {
+  it('marks a ZeptoMail rate-limit response as retryable with safe provider diagnostics', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -68,7 +68,12 @@ describe('transactional email providers', () => {
         message,
         new AbortController().signal,
       ),
-    ).resolves.toEqual({ ok: false, errorCode: 'zeptomail_429', retryable: true });
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: 'zeptomail_429_rate_limit',
+      retryable: true,
+      providerId: null,
+    });
   });
 
   it('preserves Resend idempotency support for rollback', async () => {
