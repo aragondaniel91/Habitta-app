@@ -50,6 +50,25 @@ const escapeHtml = (value: string) =>
 
 export const adminInvitationRoutes = new Hono<AppEnvironment>();
 
+// This route is mounted before the legacy generic list helper. Keeping the condominium-scoped
+// people read here prevents that helper from validating a non-existent unitId parameter.
+adminInvitationRoutes.get('/:condominiumId/people', async (c) => {
+  const condominiumIdResult = z.string().uuid().safeParse(c.req.param('condominiumId'));
+  if (!condominiumIdResult.success) return c.json({ error: 'Invalid condominium identifier' }, 400);
+
+  const response = await fetch(
+    `${c.env.SUPABASE_URL}/rest/v1/people?condominium_id=eq.${condominiumIdResult.data}&select=*&order=last_name.asc,first_name.asc`,
+    {
+      headers: {
+        apikey: c.env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${c.get('token')}`,
+      },
+    },
+  );
+  const result = await response.json();
+  return c.json(result, response.ok ? 200 : 400);
+});
+
 adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
   const condominiumIdResult = z.string().uuid().safeParse(c.req.param('condominiumId'));
   if (!condominiumIdResult.success) return c.json({ error: 'Invalid condominium identifier' }, 400);
