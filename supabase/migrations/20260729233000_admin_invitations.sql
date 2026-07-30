@@ -143,15 +143,19 @@ declare
   invitation public.admin_invitations;
   condominium_name text;
 begin
-  select ai, c.name
-  into invitation, condominium_name
+  select ai.*
+  into invitation
   from public.admin_invitations ai
-  join public.condominiums c on c.id = ai.condominium_id
   where ai.token_hash = encode(digest(raw_token, 'sha256'), 'hex');
 
   if invitation.id is null then
     raise exception 'invalid invitation';
   end if;
+
+  select c.name
+  into condominium_name
+  from public.condominiums c
+  where c.id = invitation.condominium_id;
 
   if invitation.status = 'pending' and invitation.expires_at < now() then
     update public.admin_invitations
