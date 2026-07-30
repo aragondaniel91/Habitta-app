@@ -1,0 +1,41 @@
+name: Cleanup Visual Recovery Files
+
+on:
+  push:
+    branches:
+      - feat/password-auth-admin-onboarding
+    paths:
+      - '.github/workflows/cleanup-visual-recovery.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/password-auth-admin-onboarding
+
+      - name: Remove temporary visual recovery files
+        run: |
+          git rm -f --ignore-unmatch \
+            .github/workflows/recover-visual-screenshots.yml \
+            .github/workflows/record-recovered-visual-run.yml \
+            .github/workflows/fix-recovered-visual-selector.yml \
+            .github/workflows/recover-visual-artifact-v2.yml \
+            .github/workflows/record-visual-artifact-v2.yml \
+            .github/workflows/recover-visual-artifact-v3.yml \
+            .github/workflows/record-visual-artifact-v3.yml \
+            .github/workflows/recover-visual-artifact-v4.yml \
+            .github/workflows/record-visual-artifact-v4.yml \
+            .github/workflows/cleanup-visual-recovery.yml \
+            visual-artifact.json \
+            visual-artifact-v2.json \
+            visual-artifact-v3.json \
+            visual-artifact-v4.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: remove visual recovery support files"
+          git push origin HEAD:feat/password-auth-admin-onboarding
