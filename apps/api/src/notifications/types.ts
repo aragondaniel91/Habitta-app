@@ -3,6 +3,7 @@ export type NotificationQueueMessage = { deliveryId: string };
 export type NotificationBindings = {
   APP_ENV: string;
   NOTIFICATIONS_EMAIL_MODE?: string | undefined;
+  NOTIFICATIONS_EMAIL_PROVIDER?: string | undefined;
   NOTIFICATIONS_SANDBOX_EMAIL?: string | undefined;
   BUILD_COMMIT?: string;
   BUILD_TIMESTAMP?: string;
@@ -13,7 +14,8 @@ export type NotificationBindings = {
   SUPABASE_SERVICE_ROLE_KEY: string;
   PAYMENT_PROOFS: R2Bucket;
   NOTIFICATION_QUEUE: Queue<NotificationQueueMessage>;
-  RESEND_API_KEY: string;
+  RESEND_API_KEY?: string;
+  ZEPTOMAIL_SEND_TOKEN?: string;
   NOTIFICATIONS_FROM_EMAIL: string;
   NOTIFICATIONS_FROM_NAME: string;
   APP_BASE_URL: string;
