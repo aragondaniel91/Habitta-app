@@ -8,6 +8,7 @@ import {
 } from './components/AuthExperience';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
+import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
 import { CommunityPage } from './pages/CommunityPage';
 import { PaymentsPage } from './pages/PaymentsPage';
@@ -182,6 +183,14 @@ export default function App() {
   } else if (currentRoute.key === 'requests') {
     page = (
       <RequestsPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
+  } else if (currentRoute.key === 'announcements') {
+    page = (
+      <AnnouncementsPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         session={session}
