@@ -33,12 +33,16 @@ export function translateAuthError(error: unknown) {
   const normalized = message.toLowerCase();
 
   if (!normalized) return fallback;
-  if (normalized.includes('invalid login credentials')) return 'El correo o la contraseña no son correctos.';
-  if (normalized.includes('email not confirmed')) return 'Confirma tu correo antes de iniciar sesión.';
-  if (normalized.includes('user already registered')) return 'Ya existe una cuenta con este correo.';
+  if (normalized.includes('invalid login credentials'))
+    return 'El correo o la contraseña no son correctos.';
+  if (normalized.includes('email not confirmed'))
+    return 'Confirma tu correo antes de iniciar sesión.';
+  if (normalized.includes('user already registered'))
+    return 'Ya existe una cuenta con este correo.';
   if (normalized.includes('password should be at least'))
     return 'La contraseña no cumple con la longitud mínima requerida.';
-  if (normalized.includes('same password')) return 'La nueva contraseña debe ser diferente a la anterior.';
+  if (normalized.includes('same password'))
+    return 'La nueva contraseña debe ser diferente a la anterior.';
   if (normalized.includes('rate limit') || normalized.includes('too many requests'))
     return 'Se realizaron demasiados intentos. Espera unos minutos y vuelve a intentarlo.';
   if (normalized.includes('network') || normalized.includes('fetch'))
