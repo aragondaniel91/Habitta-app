@@ -37,11 +37,7 @@
         "APP_BASE_URL": "https://development.habitta-web-dev.pages.dev",
       },
       "secrets": {
-        "required": [
-          "SUPABASE_ANON_KEY",
-          "SUPABASE_SERVICE_ROLE_KEY",
-          "ZEPTOMAIL_SEND_TOKEN"
-        ],
+        "required": ["SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "ZEPTOMAIL_SEND_TOKEN"],
       },
       "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-dev" }],
       "queues": {
