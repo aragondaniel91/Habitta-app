@@ -1,0 +1,77 @@
+.condo-switcher {
+  display: flex;
+  align-items: end;
+  gap: 0.65rem;
+}
+
+.condo-switcher > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.condo-switcher__add {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.add-condominium-card {
+  display: grid;
+  width: min(920px, 100%);
+  gap: 1.5rem;
+  padding: clamp(1.35rem, 3vw, 2.25rem);
+  box-shadow: var(--shadow-sm);
+}
+
+.add-condominium-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.add-condominium-heading h2,
+.add-condominium-success h2 {
+  margin: 0.55rem 0 0.35rem;
+  font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+}
+
+.add-condominium-heading p,
+.add-condominium-success p {
+  margin-bottom: 0;
+}
+
+.add-condominium-success {
+  justify-items: start;
+}
+
+@media (max-width: 760px) {
+  .condo-switcher__add {
+    width: 42px;
+    overflow: hidden;
+    padding-inline: 0;
+    font-size: 0;
+  }
+
+  .condo-switcher__add::before {
+    content: '+';
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .condo-switcher {
+    width: 100%;
+  }
+
+  .condo-switcher > div {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .condo-switcher .select {
+    width: 100%;
+  }
+
+  .add-condominium-heading {
+    display: grid;
+  }
+}
