@@ -38,7 +38,10 @@ export type AdminInvitationPreview = {
 export type AdminInvitationDelivery = {
   status: 'disabled' | 'sent' | 'failed';
   recipient: string | null;
+  provider: string;
+  mode: string;
   providerId?: string;
+  errorCode?: string;
 };
 
 export type CreatedAdminInvitation = {
