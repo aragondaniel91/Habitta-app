@@ -1,10 +1,13 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { z } from 'zod';
 import { uuidSchema } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
 type ExpensesEnvironment = { Bindings: NotificationBindings; Variables: Variables };
+type ExpensesContext = Context<ExpensesEnvironment>;
+type ValidationFailure = { formErrors: string[]; fieldErrors: Record<string, string[]> };
 
 const currencySchema = z
   .string()
@@ -14,7 +17,12 @@ const currencySchema = z
   .refine((value) => /^[A-Z]{3}$/.test(value));
 const moneySchema = z.string().regex(/^(0|[1-9][0-9]{0,15})\.[0-9]{2}$/);
 const optionalText = (maximum: number) =>
-  z.string().trim().max(maximum).transform((value) => value || null).optional();
+  z
+    .string()
+    .trim()
+    .max(maximum)
+    .transform((value) => value || null)
+    .optional();
 
 const categorySchema = z.object({
   code: z.string().trim().min(1).max(30),
@@ -70,13 +78,15 @@ const budgetLineSchema = z.object({
   notes: optionalText(500),
 });
 
-const parseBody = async <T extends z.ZodTypeAny>(request: Request, schema: T) => {
+async function parseBody<T extends z.ZodTypeAny>(
+  request: Request,
+  schema: T,
+): Promise<z.infer<T> | ValidationFailure> {
   const result = schema.safeParse(await request.json());
   return result.success ? result.data : result.error.flatten();
-};
-const isValidationFailure = (
-  value: unknown,
-): value is { formErrors: string[]; fieldErrors: Record<string, string[]> } =>
+}
+
+const isValidationFailure = (value: unknown): value is ValidationFailure =>
   Boolean(value && typeof value === 'object' && 'fieldErrors' in value);
 
 const parseCondominiumId = (value: string) => uuidSchema.safeParse(value);
@@ -88,14 +98,9 @@ const headers = (env: NotificationBindings, token: string, representation = fals
   ...(representation ? { Prefer: 'return=representation' } : {}),
 });
 
-const rest = (
-  c: Parameters<typeof expensesRoutes.get>[1] extends never ? never : never,
-  path: string,
-) => path;
-
 export const expensesRoutes = new Hono<ExpensesEnvironment>();
 
-const proxyList = (table: string, order: string) => async (c: any) => {
+const proxyList = (table: string, order: string) => async (c: ExpensesContext) => {
   const condominiumId = parseCondominiumId(c.req.param('condominiumId'));
   if (!condominiumId.success)
     return c.json({ error: 'Invalid condominium identifier' }, 400);
@@ -246,45 +251,59 @@ expensesRoutes.post('/:condominiumId/expenses', async (c) => {
   return c.json(await response.json(), response.ok ? 201 : 400);
 });
 
-const expenseAction =
-  (rpc: string, schema?: z.ZodTypeAny) =>
-  async (c: any) => {
-    const condominiumId = parseCondominiumId(c.req.param('condominiumId'));
-    const expenseId = uuidSchema.safeParse(c.req.param('expenseId'));
-    if (!condominiumId.success || !expenseId.success)
-      return c.json({ error: 'Invalid expense identifier' }, 400);
-    const parsed = schema ? await parseBody(c.req.raw, schema) : {};
-    if (isValidationFailure(parsed)) return c.json({ error: parsed }, 400);
-    const extra =
-      rpc === 'mark_expense_paid'
-        ? { paid_on: (parsed as z.infer<typeof paidSchema>).paidDate }
-        : rpc === 'void_expense'
-          ? { reason: (parsed as z.infer<typeof voidSchema>).reason }
-          : {};
-    const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/${rpc}`, {
-      method: 'POST',
-      headers: headers(c.env, c.get('token')),
-      body: JSON.stringify({
-        target_condominium_id: condominiumId.data,
-        target_expense_id: expenseId.data,
-        ...extra,
-      }),
-    });
-    return c.json(await response.json(), response.ok ? 200 : 400);
-  };
+expensesRoutes.post('/:condominiumId/expenses/:expenseId/approve', async (c) => {
+  const condominiumId = parseCondominiumId(c.req.param('condominiumId'));
+  const expenseId = uuidSchema.safeParse(c.req.param('expenseId'));
+  if (!condominiumId.success || !expenseId.success)
+    return c.json({ error: 'Invalid expense identifier' }, 400);
+  const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/approve_expense`, {
+    method: 'POST',
+    headers: headers(c.env, c.get('token')),
+    body: JSON.stringify({
+      target_condominium_id: condominiumId.data,
+      target_expense_id: expenseId.data,
+    }),
+  });
+  return c.json(await response.json(), response.ok ? 200 : 400);
+});
 
-expensesRoutes.post(
-  '/:condominiumId/expenses/:expenseId/approve',
-  expenseAction('approve_expense'),
-);
-expensesRoutes.post(
-  '/:condominiumId/expenses/:expenseId/paid',
-  expenseAction('mark_expense_paid', paidSchema),
-);
-expensesRoutes.post(
-  '/:condominiumId/expenses/:expenseId/void',
-  expenseAction('void_expense', voidSchema),
-);
+expensesRoutes.post('/:condominiumId/expenses/:expenseId/paid', async (c) => {
+  const condominiumId = parseCondominiumId(c.req.param('condominiumId'));
+  const expenseId = uuidSchema.safeParse(c.req.param('expenseId'));
+  if (!condominiumId.success || !expenseId.success)
+    return c.json({ error: 'Invalid expense identifier' }, 400);
+  const parsed = await parseBody(c.req.raw, paidSchema);
+  if (isValidationFailure(parsed)) return c.json({ error: parsed }, 400);
+  const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/mark_expense_paid`, {
+    method: 'POST',
+    headers: headers(c.env, c.get('token')),
+    body: JSON.stringify({
+      target_condominium_id: condominiumId.data,
+      target_expense_id: expenseId.data,
+      paid_on: parsed.paidDate,
+    }),
+  });
+  return c.json(await response.json(), response.ok ? 200 : 400);
+});
+
+expensesRoutes.post('/:condominiumId/expenses/:expenseId/void', async (c) => {
+  const condominiumId = parseCondominiumId(c.req.param('condominiumId'));
+  const expenseId = uuidSchema.safeParse(c.req.param('expenseId'));
+  if (!condominiumId.success || !expenseId.success)
+    return c.json({ error: 'Invalid expense identifier' }, 400);
+  const parsed = await parseBody(c.req.raw, voidSchema);
+  if (isValidationFailure(parsed)) return c.json({ error: parsed }, 400);
+  const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/void_expense`, {
+    method: 'POST',
+    headers: headers(c.env, c.get('token')),
+    body: JSON.stringify({
+      target_condominium_id: condominiumId.data,
+      target_expense_id: expenseId.data,
+      reason: parsed.reason,
+    }),
+  });
+  return c.json(await response.json(), response.ok ? 200 : 400);
+});
 
 expensesRoutes.get('/:condominiumId/expenses/:expenseId/events', async (c) => {
   const condominiumId = parseCondominiumId(c.req.param('condominiumId'));
