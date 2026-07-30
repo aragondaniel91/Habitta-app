@@ -1,23 +1,36 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { buildingInputSchema, unitInputSchema, uuidSchema } from '@habitta/validation';
+import { buildingInputSchema, uuidSchema } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
 type StructureEnvironment = { Bindings: NotificationBindings; Variables: Variables };
+type ValidationFailure = { formErrors: string[]; fieldErrors: Record<string, string[]> };
+
+const unitTypeSchema = z.enum(['apartment', 'house', 'commercial', 'parking', 'storage']);
+const unitStatusSchema = z.enum(['active', 'inactive']);
 
 const buildingUpdateSchema = buildingInputSchema.partial().refine((value) => value.name !== undefined, {
   message: 'At least one field is required',
+});
+
+const unitCreateSchema = z.object({
+  buildingId: uuidSchema.nullable().optional(),
+  code: z.string().trim().min(1).max(40),
+  type: unitTypeSchema,
+  floor: z.string().trim().max(20).nullable().optional(),
+  ownershipPercentage: z.number().positive().max(100).nullable().optional(),
+  status: unitStatusSchema.default('active'),
 });
 
 const unitUpdateSchema = z
   .object({
     buildingId: uuidSchema.nullable().optional(),
     code: z.string().trim().min(1).max(40).optional(),
-    type: z.enum(['apartment', 'house', 'commercial', 'parking', 'storage']).optional(),
+    type: unitTypeSchema.optional(),
     floor: z.string().trim().max(20).nullable().optional(),
     ownershipPercentage: z.number().positive().max(100).nullable().optional(),
-    status: z.enum(['active', 'inactive']).optional(),
+    status: unitStatusSchema.optional(),
   })
   .refine((value) => Object.values(value).some((item) => item !== undefined), {
     message: 'At least one field is required',
@@ -28,7 +41,7 @@ const parseJsonBody = async <T extends z.ZodTypeAny>(request: Request, schema: T
   return result.success ? result.data : result.error.flatten();
 };
 
-const isValidationError = (value: unknown): value is z.typeToFlattenedError<unknown> =>
+const isValidationError = (value: unknown): value is ValidationFailure =>
   Boolean(value && typeof value === 'object' && 'fieldErrors' in value);
 
 const supabaseHeaders = (env: NotificationBindings, token: string, representation = false) => ({
@@ -107,7 +120,7 @@ structureRoutes.get('/:condominiumId/units', async (c) => {
 structureRoutes.post('/:condominiumId/units', async (c) => {
   const parsedId = condominiumId(c.req.param('condominiumId'));
   if (!parsedId.success) return c.json({ error: 'Invalid condominium identifier' }, 400);
-  const parsed = await parseJsonBody(c.req.raw, unitInputSchema);
+  const parsed = await parseJsonBody(c.req.raw, unitCreateSchema);
   if (isValidationError(parsed)) return c.json({ error: parsed }, 400);
 
   const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/units`, {
