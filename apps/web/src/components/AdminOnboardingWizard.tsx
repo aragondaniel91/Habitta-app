@@ -8,7 +8,6 @@ import {
   LogOutIcon,
   PeopleIcon,
   SettingsIcon,
-  UnitsIcon,
 } from './icons';
 import { Button, Field, Surface } from './ui';
 import {
