@@ -11,6 +11,7 @@ import './admin-invitation.css';
 import './dashboard.css';
 import './dashboard-mobile.css';
 import './community-directory.css';
+import './structure-management.css';
 import './receivables.css';
 import './payments.css';
 import './reports.css';
