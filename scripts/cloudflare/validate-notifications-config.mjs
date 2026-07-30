@@ -53,9 +53,18 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
     );
     if (consumer?.dead_letter_queue !== 'habitta-notifications-dlq-dev')
       errors.push('invalid_dev_dead_letter_queue');
-    if (dev.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled') errors.push('unsafe_dev_email_mode');
+    if (!['disabled', 'sandbox'].includes(dev.vars?.NOTIFICATIONS_EMAIL_MODE))
+      errors.push('unsafe_dev_email_mode');
     if (dev.vars?.NOTIFICATIONS_EMAIL_PROVIDER !== 'zeptomail')
       errors.push('invalid_dev_email_provider');
+    const requiredSecrets = new Set(dev.secrets?.required ?? []);
+    for (const secret of [
+      'SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'ZEPTOMAIL_SEND_TOKEN',
+    ]) {
+      if (!requiredSecrets.has(secret)) errors.push(`missing_required_secret:${secret}`);
+    }
   }
   if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
     errors.push('missing_notification_cron');
