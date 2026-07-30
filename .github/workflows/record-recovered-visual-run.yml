@@ -1,0 +1,61 @@
+name: Record Recovered Visual Artifact
+
+on:
+  push:
+    branches:
+      - feat/password-auth-admin-onboarding
+    paths:
+      - '.github/workflows/record-recovered-visual-run.yml'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/password-auth-admin-onboarding
+
+      - name: Wait for recovered visual workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in {1..120}; do
+            result=$(gh run list \
+              --workflow recover-visual-screenshots.yml \
+              --branch feat/password-auth-admin-onboarding \
+              --limit 1 \
+              --json databaseId,status,conclusion,url,headSha \
+              --jq '.[0] // empty')
+            if [ -n "$result" ]; then
+              status=$(printf '%s' "$result" | jq -r '.status')
+              if [ "$status" = "completed" ]; then
+                run_id=$(printf '%s' "$result" | jq -r '.databaseId')
+                artifact=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
+                  --jq '.artifacts[] | select(.name == "habitta-responsive-screenshots") | {artifact_id:.id,artifact_name:.name,expired:.expired,size_in_bytes:.size_in_bytes} ' | head -n 1)
+                if [ -n "$artifact" ]; then
+                  jq -s '.[0] * .[1]' <(printf '%s\n' "$result") <(printf '%s\n' "$artifact") > visual-artifact.json
+                else
+                  printf '%s\n' "$result" > visual-artifact.json
+                fi
+                break
+              fi
+            fi
+            sleep 10
+          done
+
+          if [ ! -f visual-artifact.json ]; then
+            echo '{"status":"timeout","conclusion":"unknown"}' > visual-artifact.json
+          fi
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add visual-artifact.json
+          git commit -m "chore: record recovered visual artifact result"
+          git push origin HEAD:feat/password-auth-admin-onboarding
