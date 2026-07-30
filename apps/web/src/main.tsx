@@ -19,6 +19,7 @@ import './community.css';
 import './requests.css';
 import './announcements.css';
 import './brand-palette.css';
+import './brand-assets.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
