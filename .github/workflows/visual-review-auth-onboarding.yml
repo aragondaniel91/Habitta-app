@@ -7,12 +7,17 @@ on:
     paths:
       - '.github/workflows/visual-review-auth-onboarding.yml'
 
+permissions:
+  contents: write
+
 jobs:
   screenshots:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feat/password-auth-admin-onboarding
 
       - uses: pnpm/action-setup@v4
         with:
@@ -207,7 +212,7 @@ jobs:
               await page.goto(origin);
               await expect(page.getByRole('heading', { name: 'Bienvenido a Habitta' })).toBeVisible();
               await page.getByLabel('Correo electrónico').fill('administrador@habitta.test');
-              await page.getByLabel('Contraseña').fill('Habitta2026');
+              await page.locator('input[autocomplete="current-password"]').fill('Habitta2026');
               await shot(page, '01-login-desktop');
               await context.close();
             }
@@ -226,8 +231,8 @@ jobs:
               await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
               await page.getByLabel('Nombre y apellido').fill('Juan Pérez');
               await page.getByLabel('Correo electrónico').fill('juan@habitta.test');
-              await page.getByLabel('Contraseña').fill('Habitta2026');
-              await page.getByLabel('Confirmar contraseña').fill('Habitta2026');
+              await page.locator('input[autocomplete="new-password"]').nth(0).fill('Habitta2026');
+              await page.locator('input[autocomplete="new-password"]').nth(1).fill('Habitta2026');
               await shot(page, '03-registration-desktop');
               await context.close();
             }
@@ -327,3 +332,14 @@ jobs:
           name: habitta-auth-onboarding-responsive-screenshots
           path: visual-screenshots
           if-no-files-found: error
+
+      - name: Record visual review run
+        if: always()
+        run: |
+          printf '{"databaseId":%s,"status":"completed","conclusion":"%s"}\n' "$GITHUB_RUN_ID" "${{ job.status }}" > visual-review-result.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add visual-review-result.json
+          git commit -m "Record responsive visual review result" || exit 0
+          git pull --rebase origin feat/password-auth-admin-onboarding
+          git push origin HEAD:feat/password-auth-admin-onboarding
