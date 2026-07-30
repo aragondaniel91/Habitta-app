@@ -67,7 +67,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
   if (createdCondominiumId) {
     return (
       <Surface className="add-condominium-card add-condominium-success">
-        <span className="admin-onboarding-success"><CheckCircleIcon size={32} /></span>
+        <span className="admin-onboarding-success">
+          <CheckCircleIcon size={32} />
+        </span>
         <div>
           <span className="access-kicker">Condominio agregado</span>
           <h2>{input.condominiumName.trim()} ya forma parte de tu organización.</h2>
@@ -84,7 +86,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
   return (
     <Surface className="add-condominium-card">
       <div className="add-condominium-heading">
-        <span className="admin-onboarding-success"><HomeIcon size={27} /></span>
+        <span className="admin-onboarding-success">
+          <HomeIcon size={27} />
+        </span>
         <div>
           <span className="access-kicker">Expande tu administración</span>
           <h2>Agregar otro condominio</h2>
@@ -101,7 +105,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
               value={input.organizationId}
             >
               {organizations.map((organization) => (
-                <option key={organization.id} value={organization.id}>{organization.name}</option>
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
               ))}
             </select>
           </Field>
@@ -141,7 +147,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
               value={input.countryCode}
             >
               {COUNTRY_OPTIONS.map((country) => (
-                <option key={country.code} value={country.code}>{country.label}</option>
+                <option key={country.code} value={country.code}>
+                  {country.label}
+                </option>
               ))}
             </select>
           </Field>
@@ -163,7 +171,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
               value={input.timezone}
             >
               {TIMEZONE_OPTIONS.map((timezone) => (
-                <option key={timezone.value} value={timezone.value}>{timezone.label}</option>
+                <option key={timezone.value} value={timezone.value}>
+                  {timezone.label}
+                </option>
               ))}
             </select>
           </Field>
@@ -175,7 +185,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
               value={input.primaryCurrencyCode}
             >
               {CURRENCY_OPTIONS.map((currency) => (
-                <option key={currency.code} value={currency.code}>{currency.label}</option>
+                <option key={currency.code} value={currency.code}>
+                  {currency.label}
+                </option>
               ))}
             </select>
           </Field>
@@ -194,7 +206,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
               {CURRENCY_OPTIONS.filter(
                 (currency) => currency.code !== input.primaryCurrencyCode,
               ).map((currency) => (
-                <option key={currency.code} value={currency.code}>{currency.label}</option>
+                <option key={currency.code} value={currency.code}>
+                  {currency.label}
+                </option>
               ))}
             </select>
           </Field>
@@ -224,7 +238,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
         </div>
 
         {submitError ? (
-          <p className="access-message" data-tone="error" role="alert">{submitError}</p>
+          <p className="access-message" data-tone="error" role="alert">
+            {submitError}
+          </p>
         ) : null}
 
         <div className="onboarding-card__actions">
