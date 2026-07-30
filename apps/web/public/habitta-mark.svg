@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title description">
+  <title id="title">Habitta</title>
+  <desc id="description">Edificio residencial estilizado de Habitta</desc>
+  <rect width="96" height="96" rx="22" fill="#f5f7fa"/>
+  <path d="M18 78h60" fill="none" stroke="#0d1b2a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M27 77V35l20-18v60M47 77V28l22 13v36" fill="none" stroke="#0d1b2a" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M36 44v8M36 60v8M56 43v8M56 59v8" fill="none" stroke="#1b4f72" stroke-width="5" stroke-linecap="round"/>
+  <path d="M68 77V61" fill="none" stroke="#28a745" stroke-width="5" stroke-linecap="round"/>
+</svg>
