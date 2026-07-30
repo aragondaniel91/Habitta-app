@@ -1,0 +1,187 @@
+.admin-invite-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(0, 0.9fr) minmax(430px, 1.1fr);
+  background: var(--background);
+}
+
+.admin-invite-story {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3rem;
+  padding: clamp(2rem, 5vw, 4.5rem);
+  background: var(--navy);
+  color: #fff;
+}
+
+.admin-invite-story > div:last-child {
+  margin: auto 0;
+}
+
+.admin-invite-story h1 {
+  max-width: 680px;
+  margin: 1rem 0;
+  color: #fff;
+  font-size: clamp(2.2rem, 4.5vw, 4rem);
+  line-height: 1.05;
+}
+
+.admin-invite-story p {
+  max-width: 620px;
+  color: rgb(255 255 255 / 0.68);
+}
+
+.admin-invite-panel {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: clamp(1.25rem, 5vw, 4rem);
+}
+
+.admin-invite-card {
+  display: grid;
+  width: min(560px, 100%);
+  gap: 1.35rem;
+  padding: clamp(1.35rem, 4vw, 2.25rem);
+  box-shadow: var(--shadow-lg);
+}
+
+.admin-invite-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.admin-invite-summary > span,
+.admin-invite-success > span,
+.admin-invite-confirmation > svg {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.admin-invite-summary h2,
+.admin-invite-success h2,
+.admin-invite-confirmation h2 {
+  margin: 0.45rem 0 0.25rem;
+}
+
+.admin-invite-summary p,
+.admin-invite-success p,
+.admin-invite-confirmation p {
+  margin-bottom: 0;
+}
+
+.admin-invite-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  border-radius: var(--radius-md);
+  padding: 0.35rem;
+  background: var(--surface-subtle);
+}
+
+.admin-invite-tabs button {
+  border: 0;
+  border-radius: calc(var(--radius-md) - 0.2rem);
+  padding: 0.7rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-invite-tabs button[data-active] {
+  background: var(--surface);
+  color: var(--text-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-invite-loading,
+.admin-invite-invalid,
+.admin-invite-success,
+.admin-invite-confirmation,
+.admin-invite-accept,
+.admin-invite-email-mismatch {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+}
+
+.admin-invite-loading {
+  justify-items: center;
+  padding: 3rem 1rem;
+}
+
+.admin-invite-loading p {
+  margin: 0;
+}
+
+.admin-invite-success > span {
+  width: 68px;
+  height: 68px;
+}
+
+.admin-invite-accept,
+.admin-invite-email-mismatch {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  background: var(--surface-subtle);
+}
+
+.admin-invite-accept p,
+.admin-invite-email-mismatch p {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-invite-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-invite-story {
+    min-height: auto;
+    padding-bottom: 2.5rem;
+  }
+
+  .admin-invite-story > div:last-child {
+    margin: 2rem 0 0;
+  }
+
+  .admin-invite-story h1 {
+    font-size: clamp(2rem, 8vw, 3.2rem);
+  }
+
+  .admin-invite-panel {
+    min-height: auto;
+    padding-block: 2.5rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-invite-story {
+    display: none;
+  }
+
+  .admin-invite-panel {
+    min-height: 100vh;
+    align-content: center;
+    padding: 1rem;
+  }
+
+  .admin-invite-card {
+    padding: 1.25rem;
+  }
+
+  .admin-invite-summary {
+    display: grid;
+  }
+}
