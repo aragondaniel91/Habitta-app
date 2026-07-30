@@ -191,6 +191,7 @@ select throws_ok(
   'an accepted invitation cannot be reused'
 );
 
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000d1', true);
 select is(
   (
     select count(*)
