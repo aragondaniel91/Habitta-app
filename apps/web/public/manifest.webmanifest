@@ -1,0 +1,19 @@
+{
+  "name": "Habitta — Gestión de condominios",
+  "short_name": "Habitta",
+  "description": "Administración financiera, operativa y comunitaria para condominios.",
+  "start_url": "/app/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#0d1b2a",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/habitta-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
