@@ -7,6 +7,7 @@
     "APP_ENV": "development",
     "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
     "NOTIFICATIONS_EMAIL_MODE": "disabled",
+    "NOTIFICATIONS_EMAIL_PROVIDER": "zeptomail"
   },
   "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-local" }],
   "queues": {
@@ -17,9 +18,9 @@
         "max_batch_size": 10,
         "max_retries": 5,
         "max_concurrency": 1,
-        "dead_letter_queue": "habitta-notifications-dlq-local",
-      },
-    ],
+        "dead_letter_queue": "habitta-notifications-dlq-local"
+      }
+    ]
   },
   "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true },
@@ -30,6 +31,7 @@
         "APP_ENV": "development",
         "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
         "NOTIFICATIONS_EMAIL_MODE": "disabled",
+        "NOTIFICATIONS_EMAIL_PROVIDER": "zeptomail"
       },
       "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-dev" }],
       "queues": {
@@ -40,11 +42,11 @@
             "max_batch_size": 10,
             "max_retries": 5,
             "max_concurrency": 1,
-            "dead_letter_queue": "habitta-notifications-dlq-dev",
-          },
-        ],
+            "dead_letter_queue": "habitta-notifications-dlq-dev"
+          }
+        ]
       },
-      "triggers": { "crons": ["*/5 * * * *"] },
-    },
-  },
+      "triggers": { "crons": ["*/5 * * * *"] }
+    }
+  }
 }
