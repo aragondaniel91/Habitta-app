@@ -3,9 +3,9 @@ import type { Session } from '@supabase/supabase-js';
 import {
   OnboardingLoading,
   OnboardingWizard,
-  SignInGate,
   WorkspaceLoadError,
 } from './components/AuthExperience';
+import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
@@ -26,6 +26,9 @@ type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(
+    () => window.location.pathname === '/reset-password',
+  );
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [selectedCondominiumId, setSelectedCondominiumId] = useState('');
@@ -46,14 +49,16 @@ export default function App() {
       setSession(data.session);
       setAuthResolved(true);
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
       setAuthResolved(true);
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecoveryMode(true);
       if (!nextSession) {
         setOrganizations([]);
         setCondominiums([]);
         setSelectedCondominiumId('');
         setContextMessage(null);
+        if (event === 'SIGNED_OUT') setPasswordRecoveryMode(false);
       }
     });
     return () => data.subscription.unsubscribe();
@@ -84,8 +89,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session) void loadWorkspace(session);
-  }, [session, loadWorkspace]);
+    if (session && !passwordRecoveryMode) void loadWorkspace(session);
+  }, [session, passwordRecoveryMode, loadWorkspace]);
 
   useEffect(() => {
     const onPopState = () => setCurrentRoute(getRouteFromPath(window.location.pathname));
@@ -94,13 +99,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || passwordRecoveryMode) return;
     const resolved = getRouteFromPath(window.location.pathname);
     if (window.location.pathname !== resolved.path) {
       window.history.replaceState({}, '', resolved.path);
       setCurrentRoute(resolved);
     }
-  }, [session]);
+  }, [session, passwordRecoveryMode]);
 
   const navigate = (route: AppRoute) => {
     window.history.pushState({}, '', route.path);
@@ -109,8 +114,32 @@ export default function App() {
 
   const signOut = () => void supabase?.auth.signOut();
 
+  const completePasswordRecovery = () => {
+    setPasswordRecoveryMode(false);
+    window.history.replaceState({}, '', DEFAULT_ROUTE.path);
+    setCurrentRoute(DEFAULT_ROUTE);
+  };
+
   if (!authResolved) return <OnboardingLoading />;
-  if (!session) return <SignInGate />;
+  if (passwordRecoveryMode && session) {
+    return <PasswordRecoveryGate onComplete={completePasswordRecovery} />;
+  }
+  if (!session) {
+    const expiredRecoveryLink = window.location.pathname === '/reset-password';
+    return (
+      <SignInGate
+        initialMessage={
+          expiredRecoveryLink
+            ? {
+                tone: 'error',
+                text: 'El enlace de recuperación venció o ya fue utilizado. Solicita uno nuevo.',
+              }
+            : null
+        }
+        initialMode={expiredRecoveryLink ? 'forgot' : 'sign-in'}
+      />
+    );
+  }
   if (workspaceLoading) return <OnboardingLoading />;
 
   if (contextMessage?.tone === 'error' && !organizations.length && !condominiums.length) {
