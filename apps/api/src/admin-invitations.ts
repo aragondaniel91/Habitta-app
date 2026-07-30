@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { resolveNotificationsEnvironment } from './config/notifications-env';
 import { sendNotificationEmail } from './notifications/email-provider';
 import type { NotificationBindings } from './notifications/types';
+import { structureRoutes } from './structure-routes';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
@@ -57,6 +58,7 @@ const safeConfigurationError = (error: unknown) =>
     : 'notifications_configuration_error';
 
 export const adminInvitationRoutes = new Hono<AppEnvironment>();
+adminInvitationRoutes.route('/', structureRoutes);
 
 // This route is mounted before the legacy generic list helper. Keeping the condominium-scoped
 // people read here prevents that helper from validating a non-existent unitId parameter.
