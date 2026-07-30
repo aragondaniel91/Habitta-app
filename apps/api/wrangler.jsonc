@@ -32,6 +32,9 @@
         "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
         "NOTIFICATIONS_EMAIL_MODE": "disabled",
         "NOTIFICATIONS_EMAIL_PROVIDER": "zeptomail",
+        "NOTIFICATIONS_FROM_EMAIL": "notifications@mihabitta.com",
+        "NOTIFICATIONS_FROM_NAME": "Habitta",
+        "APP_BASE_URL": "https://habitta-web-dev.pages.dev",
       },
       "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-dev" }],
       "queues": {
