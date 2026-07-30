@@ -100,9 +100,24 @@ Before production, add the production web origin to the Supabase redirect allowl
 
 ## Email delivery
 
-Supabase authentication emails will use the configured SMTP provider. Administrator invitation links can currently be copied or opened in the administrator's email client.
+Supabase authentication emails use the configured SMTP provider.
 
-Automatic invitation delivery through Resend remains required before production release. The database invitation is still valid and secure when email delivery is disabled or fails.
+Administrator invitations are created through the authenticated Worker endpoint and delivered with the existing Resend configuration:
+
+- `disabled`: creates the secure invitation and returns the backup link without sending email;
+- `sandbox`: sends the invitation to `NOTIFICATIONS_SANDBOX_EMAIL` with a development subject prefix;
+- `live`: sends directly to the invited administrator.
+
+The Worker uses a Resend idempotency key based on the invitation ID. The interface always displays the one-time invitation link as a backup when delivery is disabled or fails.
+
+Required Worker bindings for email delivery:
+
+- `APP_BASE_URL`;
+- `RESEND_API_KEY`;
+- `NOTIFICATIONS_EMAIL_MODE`;
+- `NOTIFICATIONS_FROM_EMAIL`;
+- `NOTIFICATIONS_FROM_NAME`;
+- `NOTIFICATIONS_SANDBOX_EMAIL` when sandbox mode is enabled.
 
 ## Release requirements
 
