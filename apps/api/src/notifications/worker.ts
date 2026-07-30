@@ -1,5 +1,6 @@
 import { renderNotificationEmail } from './renderer';
 import { resolveNotificationsEnvironment } from '../config/notifications-env';
+import { sendNotificationEmail } from './email-provider';
 import type { NotificationBindings, NotificationDelivery, NotificationQueueMessage } from './types';
 
 export const serviceRpc = async <T>(env: NotificationBindings, name: string, payload: unknown) => {
@@ -101,40 +102,41 @@ export const processNotificationDelivery = async (
     await finish(env, delivery, 'template_invalid', false);
     return 'dead' as const;
   }
+
+  const recipient =
+    environment.emailMode === 'sandbox' ? environment.sandboxEmail : delivery.recipient_email;
+  if (!recipient) {
+    await finish(env, delivery, 'sandbox_recipient_unavailable', false);
+    return 'dead' as const;
+  }
+  const subject =
+    environment.emailMode === 'sandbox' ? `[HABITTA DEV] ${rendered.subject}` : rendered.subject;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': delivery.deduplication_key,
-      },
-      body: JSON.stringify({
-        from: `${env.NOTIFICATIONS_FROM_NAME} <${env.NOTIFICATIONS_FROM_EMAIL}>`,
-        to: [
-          environment.emailMode === 'sandbox' ? environment.sandboxEmail : delivery.recipient_email,
-        ],
-        subject:
-          environment.emailMode === 'sandbox'
-            ? `[HABITTA DEV] ${rendered.subject}`
-            : rendered.subject,
+    const result = await sendNotificationEmail(
+      env,
+      environment.emailProvider,
+      {
+        fromEmail: env.NOTIFICATIONS_FROM_EMAIL,
+        fromName: env.NOTIFICATIONS_FROM_NAME,
+        to: recipient,
+        subject,
         html: rendered.html,
         text: rendered.text,
-      }),
-    });
-    const result = (await response.json().catch(() => ({}))) as { id?: string };
-    if (response.ok) {
-      await finish(env, delivery, null, false, result.id ?? null);
+        deduplicationKey: delivery.deduplication_key,
+      },
+      controller.signal,
+    );
+    if (result.ok) {
+      await finish(env, delivery, null, false, result.providerId);
       return 'sent' as const;
     }
-    const retryable = response.status === 429 || response.status >= 500;
-    await finish(env, delivery, `resend_${response.status}`, retryable);
-    return retryable ? ('retry' as const) : ('dead' as const);
+    await finish(env, delivery, result.errorCode, result.retryable);
+    return result.retryable ? ('retry' as const) : ('dead' as const);
   } catch {
-    await finish(env, delivery, 'resend_network_error', true);
+    await finish(env, delivery, 'email_provider_unexpected_error', true);
     return 'retry' as const;
   } finally {
     clearTimeout(timeout);
