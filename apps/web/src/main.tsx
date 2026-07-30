@@ -7,6 +7,7 @@ import './password-auth.css';
 import './admin-onboarding.css';
 import './add-condominium.css';
 import './team-access.css';
+import './admin-invitation.css';
 import './dashboard.css';
 import './dashboard-mobile.css';
 import './community-directory.css';
