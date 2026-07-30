@@ -1,0 +1,44 @@
+name: Fix Visual Review Session
+
+on:
+  push:
+    branches:
+      - feat/password-auth-admin-onboarding
+    paths:
+      - '.github/workflows/fix-visual-review-session.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/password-auth-admin-onboarding
+
+      - name: Use a valid visual JWT
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = '.github/workflows/visual-review-auth-onboarding.yml';
+          let source = fs.readFileSync(path, 'utf8');
+          source = source.replace(
+            "          const session = {\n            access_token: 'visual-access-token',",
+            "          const encodeSegment = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');\n          const visualAccessToken = `${encodeSegment({ alg: 'HS256', typ: 'JWT' })}.${encodeSegment({ sub: userId, aud: 'authenticated', role: 'authenticated', email: 'daniel@habitta.test', exp: now + 86400, iat: now - 60 })}.visual-signature`;\n\n          const session = {\n            access_token: visualAccessToken,",
+          );
+          if (!source.includes('access_token: visualAccessToken')) {
+            throw new Error('Visual access token marker was not replaced');
+          }
+          fs.writeFileSync(path, source);
+          NODE
+
+      - name: Commit visual session correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/visual-review-auth-onboarding.yml
+          git commit -m "Fix authenticated responsive visual review"
+          git push origin HEAD:feat/password-auth-admin-onboarding
