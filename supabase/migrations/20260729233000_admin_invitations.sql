@@ -143,7 +143,7 @@ declare
   invitation public.admin_invitations;
   condominium_name text;
 begin
-  select ai.*, c.name
+  select ai, c.name
   into invitation, condominium_name
   from public.admin_invitations ai
   join public.condominiums c on c.id = ai.condominium_id
