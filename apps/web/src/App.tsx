@@ -26,7 +26,11 @@ type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
 function invitationTokenFromPath(pathname: string) {
   const prefix = '/admin-invite/';
   if (!pathname.startsWith(prefix)) return '';
-  return decodeURIComponent(pathname.slice(prefix.length).split('/')[0] ?? '');
+  try {
+    return decodeURIComponent(pathname.slice(prefix.length).split('/')[0] ?? '');
+  } catch {
+    return '';
+  }
 }
 
 export default function App() {
@@ -75,29 +79,38 @@ export default function App() {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  const loadWorkspace = useCallback(async (activeSession: Session) => {
-    setWorkspaceLoading(true);
-    setContextMessage(null);
-    try {
-      const [organizationItems, condominiumItems] = await Promise.all([
-        apiRequest<Organization[]>('/v1/organizations', activeSession),
-        apiRequest<Condominium[]>('/v1/condominiums', activeSession),
-      ]);
-      setOrganizations(organizationItems);
-      setCondominiums(condominiumItems);
-      setSelectedCondominiumId((current) => {
-        if (condominiumItems.some((item) => item.id === current)) return current;
-        return condominiumItems[0]?.id ?? '';
-      });
-    } catch (error) {
-      setContextMessage({
-        tone: 'error',
-        text: error instanceof Error ? error.message : 'No se pudo cargar tu espacio.',
-      });
-    } finally {
-      setWorkspaceLoading(false);
-    }
-  }, []);
+  const loadWorkspace = useCallback(
+    async (activeSession: Session, preferredCondominiumId = '') => {
+      setWorkspaceLoading(true);
+      setContextMessage(null);
+      try {
+        const [organizationItems, condominiumItems] = await Promise.all([
+          apiRequest<Organization[]>('/v1/organizations', activeSession),
+          apiRequest<Condominium[]>('/v1/condominiums', activeSession),
+        ]);
+        setOrganizations(organizationItems);
+        setCondominiums(condominiumItems);
+        setSelectedCondominiumId((current) => {
+          if (
+            preferredCondominiumId &&
+            condominiumItems.some((item) => item.id === preferredCondominiumId)
+          ) {
+            return preferredCondominiumId;
+          }
+          if (condominiumItems.some((item) => item.id === current)) return current;
+          return condominiumItems[0]?.id ?? '';
+        });
+      } catch (error) {
+        setContextMessage({
+          tone: 'error',
+          text: error instanceof Error ? error.message : 'No se pudo cargar tu espacio.',
+        });
+      } finally {
+        setWorkspaceLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (session && !passwordRecoveryMode && !adminInvitationToken) void loadWorkspace(session);
@@ -202,10 +215,11 @@ export default function App() {
     page = (
       <AddCondominiumPage
         onCancel={() => setAddingCondominium(false)}
-        onCreated={async () => {
-          setSelectedCondominiumId('');
-          await loadWorkspace(session);
+        onCreated={async (condominiumId) => {
+          await loadWorkspace(session, condominiumId);
           setAddingCondominium(false);
+          window.history.replaceState({}, '', DEFAULT_ROUTE.path);
+          setCurrentRoute(DEFAULT_ROUTE);
         }}
         organizations={organizations}
       />
