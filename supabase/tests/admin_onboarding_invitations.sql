@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(15);
 
 insert into auth.users (
   id,
