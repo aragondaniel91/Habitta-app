@@ -10,9 +10,11 @@ type ValidationFailure = { formErrors: string[]; fieldErrors: Record<string, str
 const unitTypeSchema = z.enum(['apartment', 'house', 'commercial', 'parking', 'storage']);
 const unitStatusSchema = z.enum(['active', 'inactive']);
 
-const buildingUpdateSchema = buildingInputSchema.partial().refine((value) => value.name !== undefined, {
-  message: 'At least one field is required',
-});
+const buildingUpdateSchema = buildingInputSchema
+  .partial()
+  .refine((value) => value.name !== undefined, {
+    message: 'At least one field is required',
+  });
 
 const unitCreateSchema = z.object({
   buildingId: uuidSchema.nullable().optional(),

@@ -29,18 +29,21 @@ describe('physical structure routes', () => {
         const url = String(input);
         if (url.endsWith('/auth/v1/user')) return jsonResponse({ id: userId });
         if (url.endsWith('/rest/v1/units')) {
-          return jsonResponse([
-            {
-              id: unitId,
-              condominium_id: condominiumId,
-              building_id: null,
-              code: 'Casa 1',
-              type: 'house',
-              floor: null,
-              ownership_percentage: null,
-              status: 'active',
-            },
-          ], 201);
+          return jsonResponse(
+            [
+              {
+                id: unitId,
+                condominium_id: condominiumId,
+                building_id: null,
+                code: 'Casa 1',
+                type: 'house',
+                floor: null,
+                ownership_percentage: null,
+                status: 'active',
+              },
+            ],
+            201,
+          );
         }
         throw new Error(`Unexpected request: ${url}`);
       }),

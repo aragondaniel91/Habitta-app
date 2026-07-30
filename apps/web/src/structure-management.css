@@ -196,7 +196,10 @@
 .structure-unit-list__head,
 .structure-unit-row {
   display: grid;
-  grid-template-columns: minmax(170px, 1.2fr) minmax(160px, 1fr) minmax(120px, 0.8fr) minmax(100px, 0.65fr) minmax(95px, 0.6fr) auto;
+  grid-template-columns: minmax(170px, 1.2fr) minmax(160px, 1fr) minmax(120px, 0.8fr) minmax(
+      100px,
+      0.65fr
+    ) minmax(95px, 0.6fr) auto;
   align-items: center;
   gap: 16px;
 }
@@ -524,7 +527,7 @@
 @media (max-width: 480px) {
   .structure-hero__actions,
   .structure-metrics {
-    grid-template-columns: 1fr;
+    grid-template-colums: 1fr;
   }
 
   .structure-metric:last-child {
