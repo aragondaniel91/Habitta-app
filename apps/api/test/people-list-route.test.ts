@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import app from '../src/index';
+import { app } from '../src/index';
 import type { NotificationBindings } from '../src/notifications/types';
 
 const condominiumId = '0a5e90f2-1ff3-433c-abe1-55fab3e206c3';
