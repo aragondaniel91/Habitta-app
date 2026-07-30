@@ -16,7 +16,15 @@ export type AdminOnboardingInput = {
   firstBuildingName: string;
 };
 
-export type AdminOnboardingErrors = Partial<Record<keyof AdminOnboardingInput, string>>;
+export type AdminOnboardingErrors = Partial<
+  Record<keyof AdminOnboardingInput, string | undefined>
+>;
+
+export type AdminOnboardingResult = {
+  organization?: { id: string; name: string } | null;
+  condominium?: { id: string; name: string; organization_id: string } | null;
+  building?: { id: string; name: string } | null;
+};
 
 export const COUNTRY_OPTIONS = [
   { code: 'VE', label: 'Venezuela' },
@@ -175,7 +183,7 @@ function rpcPayload(input: AdminOnboardingInput) {
 export async function submitAdminOnboarding(
   input: AdminOnboardingInput,
   hasOrganization: boolean,
-) {
+): Promise<AdminOnboardingResult | null> {
   if (!supabase) throw new Error('La configuración de Supabase no está disponible.');
 
   const result = hasOrganization
@@ -192,7 +200,9 @@ export async function submitAdminOnboarding(
   if (result.error) {
     const message = result.error.message.toLowerCase();
     if (message.includes('already belongs')) {
-      throw new Error('Esta cuenta ya pertenece a una organización. Recarga la página e inténtalo nuevamente.');
+      throw new Error(
+        'Esta cuenta ya pertenece a una organización. Recarga la página e inténtalo nuevamente.',
+      );
     }
     if (message.includes('organization owner required')) {
       throw new Error('No tienes permisos para agregar condominios a esta organización.');
@@ -200,10 +210,12 @@ export async function submitAdminOnboarding(
     if (message.includes('duplicate key')) {
       throw new Error('Ya existe un condominio o una torre con ese nombre.');
     }
-    throw new Error('No pudimos crear el condominio. Revisa la información e inténtalo nuevamente.');
+    throw new Error(
+      'No pudimos crear el condominio. Revisa la información e inténtalo nuevamente.',
+    );
   }
 
-  return result.data;
+  return result.data as AdminOnboardingResult | null;
 }
 
 export const PROGRESSIVE_SETUP_ITEMS = [
