@@ -10,7 +10,8 @@ export const developmentResources = Object.freeze({
 export const validateDevelopmentRelease = (input) => {
   const errors = [];
   if (input.appEnv !== 'development') errors.push('app_environment_must_be_development');
-  if (input.emailMode !== 'disabled') errors.push('notifications_email_must_be_disabled');
+  if (!['disabled', 'sandbox'].includes(input.emailMode))
+    errors.push('notifications_email_mode_not_safe');
   if (input.projectRef && input.confirmProjectRef !== input.projectRef)
     errors.push('supabase_project_ref_mismatch');
   if (!input.worker?.includes('-dev') || input.worker.includes('production'))
