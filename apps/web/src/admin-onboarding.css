@@ -132,7 +132,10 @@
   background: var(--surface);
   color: var(--text);
   text-align: left;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .organization-choice:hover {
