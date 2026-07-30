@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, PeopleIcon, SettingsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Skeleton, Surface } from '../components/ui';
 import {
@@ -16,6 +17,7 @@ import {
 type Props = {
   condominiumId: string;
   condominiumName: string;
+  session: Session;
 };
 
 type TeamData = {
@@ -52,7 +54,7 @@ function invitationStatus(status: AdminInvitation['status']) {
   return labels[status];
 }
 
-export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
+export function TeamAccessPage({ condominiumId, condominiumName, session }: Props) {
   const [data, setData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
@@ -110,6 +112,7 @@ export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
     try {
       const expiration = new Date(`${expirationDate}T23:59:59`);
       const result = await createAdminInvitation({
+        session,
         condominiumId,
         email,
         role,
@@ -117,7 +120,21 @@ export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
       });
       setCreatedLink(result.invitationUrl);
       setCreatedEmail(result.invitation.email);
-      setMessage('Invitación creada. Copia o envía el enlace antes de salir de esta pantalla.');
+      if (result.emailDelivery.status === 'sent') {
+        setMessage(
+          result.emailDelivery.recipient === result.invitation.email
+            ? 'Invitación creada y enviada automáticamente por correo.'
+            : 'Invitación creada y enviada al correo de pruebas configurado para este ambiente.',
+        );
+      } else if (result.emailDelivery.status === 'failed') {
+        setMessage(
+          'La invitación se creó, pero el correo no pudo enviarse. Usa el enlace seguro de respaldo.',
+        );
+      } else {
+        setMessage(
+          'La invitación se creó. El envío automático está desactivado; usa el enlace seguro de respaldo.',
+        );
+      }
       setEmail('');
       await load();
     } catch (requestError) {
@@ -216,11 +233,11 @@ export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
       {createdLink ? (
         <Surface className="team-invitation-link-card">
           <div>
-            <span className="settings-kicker">Enlace creado una sola vez</span>
-            <h3>Entrega esta invitación a {createdEmail}</h3>
+            <span className="settings-kicker">Enlace seguro de respaldo</span>
+            <h3>Invitación para {createdEmail}</h3>
             <p>
-              Habitta almacena únicamente el hash del token; el enlace completo no podrá recuperarse
-              después.
+              Habitta almacena únicamente el hash del token. Conserva este enlace hasta confirmar
+              que el invitado recibió el correo.
             </p>
           </div>
           <input aria-label="Enlace de invitación" className="input" readOnly value={createdLink} />
@@ -229,7 +246,7 @@ export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
               Copiar enlace
             </Button>
             <Button onClick={openEmail} type="button" variant="secondary">
-              Enviar por correo
+              Abrir en mi correo
             </Button>
           </div>
         </Surface>
@@ -292,7 +309,7 @@ export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
             </Field>
 
             <Button disabled={creating} type="submit">
-              {creating ? 'Creando invitación…' : 'Crear invitación segura'}
+              {creating ? 'Creando invitación…' : 'Crear y enviar invitación'}
             </Button>
           </form>
         </Surface>
