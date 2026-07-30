@@ -165,7 +165,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
       <div className="admin-onboarding-layout">
         <aside className="admin-onboarding-progress">
           <span className="access-kicker">Configuración inicial</span>
-          <h1>{hasOrganization ? 'Agrega otro condominio.' : 'Preparemos tu espacio en Habitta.'}</h1>
+          <h1>
+            {hasOrganization ? 'Agrega otro condominio.' : 'Preparemos tu espacio en Habitta.'}
+          </h1>
           <p>
             Solo pediremos la información necesaria para empezar. La configuración financiera y la
             carga de residentes se completan después.
@@ -175,7 +177,11 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
               const complete = index < activeIndex;
               const active = index === activeIndex;
               return (
-                <li data-active={active || undefined} data-complete={complete || undefined} key={item.key}>
+                <li
+                  data-active={active || undefined}
+                  data-complete={complete || undefined}
+                  key={item.key}
+                >
                   <span>{complete ? <CheckCircleIcon size={18} /> : index + 1}</span>
                   <div>
                     <strong>{item.label}</strong>
@@ -210,7 +216,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                         onClick={() => update('organizationType', choice.value)}
                         type="button"
                       >
-                        <span><Icon size={25} /></span>
+                        <span>
+                          <Icon size={25} />
+                        </span>
                         <strong>{choice.title}</strong>
                         <small>{choice.description}</small>
                       </button>
@@ -306,14 +314,15 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                           countryCode,
                           timezone: suggestedTimezone(countryCode),
                           primaryCurrencyCode,
-                          secondaryCurrencyCode:
-                            primaryCurrencyCode === 'USD' ? '' : 'USD',
+                          secondaryCurrencyCode: primaryCurrencyCode === 'USD' ? '' : 'USD',
                         }));
                       }}
                       value={input.countryCode}
                     >
                       {COUNTRY_OPTIONS.map((country) => (
-                        <option key={country.code} value={country.code}>{country.label}</option>
+                        <option key={country.code} value={country.code}>
+                          {country.label}
+                        </option>
                       ))}
                     </select>
                   </Field>
@@ -335,7 +344,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                       value={input.timezone}
                     >
                       {TIMEZONE_OPTIONS.map((timezone) => (
-                        <option key={timezone.value} value={timezone.value}>{timezone.label}</option>
+                        <option key={timezone.value} value={timezone.value}>
+                          {timezone.label}
+                        </option>
                       ))}
                     </select>
                   </Field>
@@ -347,7 +358,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                       value={input.primaryCurrencyCode}
                     >
                       {CURRENCY_OPTIONS.map((currency) => (
-                        <option key={currency.code} value={currency.code}>{currency.label}</option>
+                        <option key={currency.code} value={currency.code}>
+                          {currency.label}
+                        </option>
                       ))}
                     </select>
                   </Field>
@@ -366,7 +379,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                       {CURRENCY_OPTIONS.filter(
                         (currency) => currency.code !== input.primaryCurrencyCode,
                       ).map((currency) => (
-                        <option key={currency.code} value={currency.code}>{currency.label}</option>
+                        <option key={currency.code} value={currency.code}>
+                          {currency.label}
+                        </option>
                       ))}
                     </select>
                   </Field>
@@ -421,13 +436,18 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                 <div>
                   <span className="access-kicker">Confirmación</span>
                   <h2>Revisa antes de crear el espacio.</h2>
-                  <p>La organización, los roles y el condominio se crearán en una sola operación segura.</p>
+                  <p>
+                    La organización, los roles y el condominio se crearán en una sola operación
+                    segura.
+                  </p>
                 </div>
 
                 <dl className="admin-onboarding-review">
                   <div>
                     <dt>Administración</dt>
-                    <dd>{hasOrganization ? selectedOrganization?.name : input.organizationName.trim()}</dd>
+                    <dd>
+                      {hasOrganization ? selectedOrganization?.name : input.organizationName.trim()}
+                    </dd>
                   </div>
                   {!hasOrganization ? (
                     <div>
@@ -445,7 +465,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   </div>
                   <div>
                     <dt>Ubicación</dt>
-                    <dd>{input.city.trim()} · {input.countryCode} · {input.timezone}</dd>
+                    <dd>
+                      {input.city.trim()} · {input.countryCode} · {input.timezone}
+                    </dd>
                   </div>
                   <div>
                     <dt>Monedas</dt>
@@ -456,16 +478,24 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   </div>
                   <div>
                     <dt>Unidades / primera torre</dt>
-                    <dd>{reviewValue(input.approximateUnits)} / {reviewValue(input.firstBuildingName)}</dd>
+                    <dd>
+                      {reviewValue(input.approximateUnits)} / {reviewValue(input.firstBuildingName)}
+                    </dd>
                   </div>
                   <div>
                     <dt>Roles asignados</dt>
-                    <dd>{hasOrganization ? 'condominium_admin' : 'organization_owner + condominium_admin'}</dd>
+                    <dd>
+                      {hasOrganization
+                        ? 'condominium_admin'
+                        : 'organization_owner + condominium_admin'}
+                    </dd>
                   </div>
                 </dl>
 
                 {submitError ? (
-                  <p className="access-message" data-tone="error" role="alert">{submitError}</p>
+                  <p className="access-message" data-tone="error" role="alert">
+                    {submitError}
+                  </p>
                 ) : null}
 
                 <div className="onboarding-card__actions">
@@ -477,7 +507,11 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   >
                     Editar
                   </Button>
-                  <Button disabled={submitting} onClick={() => void createWorkspace()} type="button">
+                  <Button
+                    disabled={submitting}
+                    onClick={() => void createWorkspace()}
+                    type="button"
+                  >
                     {submitting ? 'Creando espacio…' : 'Crear condominio'}
                     {!submitting ? <ArrowRightIcon size={18} /> : null}
                   </Button>
@@ -487,12 +521,15 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
 
             {step === 'complete' ? (
               <div className="admin-onboarding-complete">
-                <span className="admin-onboarding-success"><CheckCircleIcon size={34} /></span>
+                <span className="admin-onboarding-success">
+                  <CheckCircleIcon size={34} />
+                </span>
                 <div>
                   <span className="access-kicker">Configuración completada</span>
                   <h2>Tu condominio está listo para comenzar.</h2>
                   <p>
-                    Los datos quedaron separados por comunidad y los permisos fueron asignados por el servidor.
+                    Los datos quedaron separados por comunidad y los permisos fueron asignados por
+                    el servidor.
                   </p>
                 </div>
 
@@ -511,7 +548,10 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   </div>
                   <ul>
                     {PROGRESSIVE_SETUP_ITEMS.map((item, index) => (
-                      <li key={item}><span>{index + 1}</span>{item}</li>
+                      <li key={item}>
+                        <span>{index + 1}</span>
+                        {item}
+                      </li>
                     ))}
                   </ul>
                 </section>

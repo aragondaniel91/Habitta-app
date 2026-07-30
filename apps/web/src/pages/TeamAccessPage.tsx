@@ -197,14 +197,20 @@ export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
           <p>{condominiumName} · invita administradores sin compartir contraseñas.</p>
         </div>
         <div className="team-access-metrics">
-          <span><strong>{data.members.length}</strong> miembros</span>
-          <span><strong>{pendingInvitations}</strong> pendientes</span>
+          <span>
+            <strong>{data.members.length}</strong> miembros
+          </span>
+          <span>
+            <strong>{pendingInvitations}</strong> pendientes
+          </span>
         </div>
       </header>
 
       {error ? <div className="settings-inline-alert">{error}</div> : null}
       {message ? (
-        <div className="settings-success-alert"><CheckCircleIcon size={17} /> {message}</div>
+        <div className="settings-success-alert">
+          <CheckCircleIcon size={17} /> {message}
+        </div>
       ) : null}
 
       {createdLink ? (
@@ -212,12 +218,19 @@ export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
           <div>
             <span className="settings-kicker">Enlace creado una sola vez</span>
             <h3>Entrega esta invitación a {createdEmail}</h3>
-            <p>Habitta almacena únicamente el hash del token; el enlace completo no podrá recuperarse después.</p>
+            <p>
+              Habitta almacena únicamente el hash del token; el enlace completo no podrá recuperarse
+              después.
+            </p>
           </div>
           <input aria-label="Enlace de invitación" className="input" readOnly value={createdLink} />
           <div>
-            <Button onClick={() => void copyLink()} type="button">Copiar enlace</Button>
-            <Button onClick={openEmail} type="button" variant="secondary">Enviar por correo</Button>
+            <Button onClick={() => void copyLink()} type="button">
+              Copiar enlace
+            </Button>
+            <Button onClick={openEmail} type="button" variant="secondary">
+              Enviar por correo
+            </Button>
           </div>
         </Surface>
       ) : null}
@@ -255,7 +268,9 @@ export function TeamAccessPage({ condominiumId, condominiumName }: Props) {
                 value={role}
               >
                 {ADMINISTRATIVE_ROLE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
                 ))}
               </select>
             </Field>

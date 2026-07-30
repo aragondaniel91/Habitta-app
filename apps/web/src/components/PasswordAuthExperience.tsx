@@ -329,7 +329,11 @@ export function SignInGate({
               </div>
               <AuthMessageBox message={message} />
               <div className="access-card__actions">
-                <Button disabled={submitting} onClick={() => void resendConfirmation()} type="button">
+                <Button
+                  disabled={submitting}
+                  onClick={() => void resendConfirmation()}
+                  type="button"
+                >
                   {submitting ? 'Reenviando…' : 'Reenviar correo'}
                 </Button>
                 <Button onClick={() => changeMode('sign-in')} type="button" variant="ghost">

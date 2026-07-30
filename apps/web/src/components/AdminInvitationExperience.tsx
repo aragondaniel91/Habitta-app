@@ -25,8 +25,13 @@ type Props = {
 function BrandLockup() {
   return (
     <div className="access-brand" data-inverse>
-      <span className="brand-mark"><HomeIcon size={21} /></span>
-      <span><strong>Habitta</strong><small>Gestión de condominios</small></span>
+      <span className="brand-mark">
+        <HomeIcon size={21} />
+      </span>
+      <span>
+        <strong>Habitta</strong>
+        <small>Gestión de condominios</small>
+      </span>
     </div>
   );
 }
@@ -168,11 +173,22 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
         <div>
           <span className="access-kicker">Invitación administrativa</span>
           <h1>Únete al equipo sin compartir contraseñas.</h1>
-          <p>El enlace asigna únicamente el condominio y el rol autorizados por la administración.</p>
+          <p>
+            El enlace asigna únicamente el condominio y el rol autorizados por la administración.
+          </p>
           <ul className="access-trust-list">
-            <li><CheckCircleIcon size={19} /><span>Token único con fecha de expiración</span></li>
-            <li><CheckCircleIcon size={19} /><span>Correo validado antes de asignar el rol</span></li>
-            <li><CheckCircleIcon size={19} /><span>Datos separados por comunidad</span></li>
+            <li>
+              <CheckCircleIcon size={19} />
+              <span>Token único con fecha de expiración</span>
+            </li>
+            <li>
+              <CheckCircleIcon size={19} />
+              <span>Correo validado antes de asignar el rol</span>
+            </li>
+            <li>
+              <CheckCircleIcon size={19} />
+              <span>Datos separados por comunidad</span>
+            </li>
           </ul>
         </div>
       </section>
@@ -187,23 +203,33 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
           ) : preview ? (
             <>
               <div className="admin-invite-summary">
-                <span><PeopleIcon size={26} /></span>
+                <span>
+                  <PeopleIcon size={26} />
+                </span>
                 <div>
                   <span className="access-kicker">{preview.condominium_name}</span>
                   <h2>{administrativeRoleLabel(preview.intended_role)}</h2>
-                  <p>Invitación para <strong>{preview.email}</strong></p>
+                  <p>
+                    Invitación para <strong>{preview.email}</strong>
+                  </p>
                 </div>
               </div>
 
               {message ? (
-                <p className="access-message" data-tone={message.tone} role={message.tone === 'error' ? 'alert' : 'status'}>
+                <p
+                  className="access-message"
+                  data-tone={message.tone}
+                  role={message.tone === 'error' ? 'alert' : 'status'}
+                >
                   {message.text}
                 </p>
               ) : null}
 
               {accepted ? (
                 <div className="admin-invite-success">
-                  <span><CheckCircleIcon size={34} /></span>
+                  <span>
+                    <CheckCircleIcon size={34} />
+                  </span>
                   <div>
                     <h2>Ya formas parte del equipo.</h2>
                     <p>El condominio aparecerá en tu selector de Habitta.</p>
@@ -213,13 +239,22 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
                   </Button>
                 </div>
               ) : preview.status !== 'pending' ? (
-                <Button onClick={() => { window.location.href = '/'; }} type="button" variant="secondary">
+                <Button
+                  onClick={() => {
+                    window.location.href = '/';
+                  }}
+                  type="button"
+                  variant="secondary"
+                >
                   Volver a Habitta
                 </Button>
               ) : session ? (
                 emailMatches ? (
                   <div className="admin-invite-accept">
-                    <p>Iniciaste sesión con el correo correcto. Confirma para agregar este condominio a tu cuenta.</p>
+                    <p>
+                      Iniciaste sesión con el correo correcto. Confirma para agregar este condominio
+                      a tu cuenta.
+                    </p>
                     <Button disabled={accepting} onClick={() => void accept()} type="button">
                       {accepting ? 'Aceptando…' : 'Aceptar invitación'}
                     </Button>
@@ -227,7 +262,8 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
                 ) : (
                   <div className="admin-invite-email-mismatch">
                     <p>
-                      Esta invitación pertenece a <strong>{preview.email}</strong>, pero la sesión actual usa <strong>{session.user.email}</strong>.
+                      Esta invitación pertenece a <strong>{preview.email}</strong>, pero la sesión
+                      actual usa <strong>{session.user.email}</strong>.
                     </p>
                     <Button onClick={onSignOut} type="button" variant="secondary">
                       <LogOutIcon size={17} /> Cerrar sesión y continuar
@@ -243,10 +279,18 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
               ) : (
                 <>
                   <div className="admin-invite-tabs">
-                    <button data-active={mode === 'sign-in' || undefined} onClick={() => setMode('sign-in')} type="button">
+                    <button
+                      data-active={mode === 'sign-in' || undefined}
+                      onClick={() => setMode('sign-in')}
+                      type="button"
+                    >
                       Ya tengo cuenta
                     </button>
-                    <button data-active={mode === 'register' || undefined} onClick={() => setMode('register')} type="button">
+                    <button
+                      data-active={mode === 'register' || undefined}
+                      onClick={() => setMode('register')}
+                      type="button"
+                    >
                       Crear contraseña
                     </button>
                   </div>
@@ -297,9 +341,15 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
                         />
                       </Field>
                       <div className="password-strength__requirements">
-                        <span data-complete={passwordAssessment.minimumLength || undefined}>10 caracteres</span>
-                        <span data-complete={passwordAssessment.uppercase || undefined}>Mayúscula</span>
-                        <span data-complete={passwordAssessment.lowercase || undefined}>Minúscula</span>
+                        <span data-complete={passwordAssessment.minimumLength || undefined}>
+                          10 caracteres
+                        </span>
+                        <span data-complete={passwordAssessment.uppercase || undefined}>
+                          Mayúscula
+                        </span>
+                        <span data-complete={passwordAssessment.lowercase || undefined}>
+                          Minúscula
+                        </span>
                         <span data-complete={passwordAssessment.number || undefined}>Número</span>
                       </div>
                       <Field label="Confirmar contraseña">
@@ -313,7 +363,11 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
                         />
                       </Field>
                       <label className="access-checkbox">
-                        <input checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} type="checkbox" />
+                        <input
+                          checked={acceptedTerms}
+                          onChange={(event) => setAcceptedTerms(event.target.checked)}
+                          type="checkbox"
+                        />
                         <span>Acepto los términos y el uso autorizado de Habitta.</span>
                       </label>
                       <Button disabled={submitting} type="submit">
@@ -327,8 +381,20 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
           ) : (
             <div className="admin-invite-invalid">
               <h2>Invitación no disponible</h2>
-              {message ? <p className="access-message" data-tone="error">{message.text}</p> : null}
-              <Button onClick={() => { window.location.href = '/'; }} type="button" variant="secondary">Volver a Habitta</Button>
+              {message ? (
+                <p className="access-message" data-tone="error">
+                  {message.text}
+                </p>
+              ) : null}
+              <Button
+                onClick={() => {
+                  window.location.href = '/';
+                }}
+                type="button"
+                variant="secondary"
+              >
+                Volver a Habitta
+              </Button>
             </div>
           )}
         </Surface>
