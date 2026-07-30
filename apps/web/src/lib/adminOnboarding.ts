@@ -16,9 +16,7 @@ export type AdminOnboardingInput = {
   firstBuildingName: string;
 };
 
-export type AdminOnboardingErrors = Partial<
-  Record<keyof AdminOnboardingInput, string | undefined>
->;
+export type AdminOnboardingErrors = Partial<Record<keyof AdminOnboardingInput, string | undefined>>;
 
 export type AdminOnboardingResult = {
   organization?: { id: string; name: string } | null;
@@ -151,10 +149,7 @@ export function validateAdminOnboarding(
   if (!/^[A-Z]{3}$/.test(input.primaryCurrencyCode)) {
     errors.primaryCurrencyCode = 'Selecciona la moneda principal.';
   }
-  if (
-    input.secondaryCurrencyCode &&
-    input.secondaryCurrencyCode === input.primaryCurrencyCode
-  ) {
+  if (input.secondaryCurrencyCode && input.secondaryCurrencyCode === input.primaryCurrencyCode) {
     errors.secondaryCurrencyCode = 'La moneda secundaria debe ser diferente.';
   }
   if (input.approximateUnits) {
