@@ -119,9 +119,10 @@ const sendWithZeptoMail = async (
   } catch (error) {
     return {
       ok: false,
-      errorCode: error instanceof DOMException && error.name === 'AbortError'
-        ? 'zeptomail_timeout'
-        : 'zeptomail_network_error',
+      errorCode:
+        error instanceof DOMException && error.name === 'AbortError'
+          ? 'zeptomail_timeout'
+          : 'zeptomail_network_error',
       retryable: true,
     };
   }
