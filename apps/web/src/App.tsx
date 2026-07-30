@@ -4,6 +4,7 @@ import { OnboardingLoading, WorkspaceLoadError } from './components/AuthExperien
 import { AdminOnboardingWizard } from './components/AdminOnboardingWizard';
 import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
+import { AddCondominiumPage } from './pages/AddCondominiumPage';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
@@ -29,6 +30,7 @@ export default function App() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [selectedCondominiumId, setSelectedCondominiumId] = useState('');
+  const [addingCondominium, setAddingCondominium] = useState(false);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [contextMessage, setContextMessage] = useState<ContextMessage>(null);
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() =>
@@ -54,6 +56,7 @@ export default function App() {
         setOrganizations([]);
         setCondominiums([]);
         setSelectedCondominiumId('');
+        setAddingCondominium(false);
         setContextMessage(null);
         if (event === 'SIGNED_OUT') setPasswordRecoveryMode(false);
       }
@@ -105,6 +108,7 @@ export default function App() {
   }, [session, passwordRecoveryMode]);
 
   const navigate = (route: AppRoute) => {
+    setAddingCondominium(false);
     window.history.pushState({}, '', route.path);
     setCurrentRoute(route);
   };
@@ -163,7 +167,19 @@ export default function App() {
   const condominiumName = selectedCondominium?.name ?? 'Condominio';
   let page;
 
-  if (currentRoute.key === DEFAULT_ROUTE.key) {
+  if (addingCondominium) {
+    page = (
+      <AddCondominiumPage
+        onCancel={() => setAddingCondominium(false)}
+        onCreated={async () => {
+          setSelectedCondominiumId('');
+          await loadWorkspace(session);
+          setAddingCondominium(false);
+        }}
+        organizations={organizations}
+      />
+    );
+  } else if (currentRoute.key === DEFAULT_ROUTE.key) {
     page = (
       <AdministrativeDashboard
         condominiumId={selectedCondominiumId}
@@ -248,8 +264,12 @@ export default function App() {
       contextMessage={contextMessage}
       currentRoute={currentRoute}
       notificationOpen={notificationOpen}
+      onAddCondominium={() => setAddingCondominium(true)}
       onCloseNotifications={() => setNotificationOpen(false)}
-      onCondominiumChange={setSelectedCondominiumId}
+      onCondominiumChange={(condominiumId) => {
+        setAddingCondominium(false);
+        setSelectedCondominiumId(condominiumId);
+      }}
       onNavigate={navigate}
       onOpenNotifications={() => setNotificationOpen(true)}
       onSignOut={signOut}
