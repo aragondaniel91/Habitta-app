@@ -1,31 +1,42 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { OnboardingLoading, WorkspaceLoadError } from './components/AuthExperience';
+import { AdminInvitationExperience } from './components/AdminInvitationExperience';
 import { AdminOnboardingWizard } from './components/AdminOnboardingWizard';
-import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
+import { OnboardingLoading, WorkspaceLoadError } from './components/AuthExperience';
+import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
+import { apiRequest } from './lib/api';
+import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
 import { AddCondominiumPage } from './pages/AddCondominiumPage';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
 import { CommunityPage } from './pages/CommunityPage';
+import { ModulePlaceholderPage } from './pages/ModulePage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ReceivablesPage } from './pages/ReceivablesPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { RequestsPage } from './pages/RequestsPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { apiRequest } from './lib/api';
-import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
-import { ModulePlaceholderPage } from './pages/ModulePage';
+import { TeamAccessPage } from './pages/TeamAccessPage';
 import { supabase } from './supabase';
 
 type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
+
+function invitationTokenFromPath(pathname: string) {
+  const prefix = '/admin-invite/';
+  if (!pathname.startsWith(prefix)) return '';
+  return decodeURIComponent(pathname.slice(prefix.length).split('/')[0] ?? '');
+}
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
   const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(
     () => window.location.pathname === '/reset-password',
+  );
+  const [adminInvitationToken, setAdminInvitationToken] = useState(() =>
+    invitationTokenFromPath(window.location.pathname),
   );
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
@@ -89,23 +100,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session && !passwordRecoveryMode) void loadWorkspace(session);
-  }, [session, passwordRecoveryMode, loadWorkspace]);
+    if (session && !passwordRecoveryMode && !adminInvitationToken) void loadWorkspace(session);
+  }, [session, passwordRecoveryMode, adminInvitationToken, loadWorkspace]);
 
   useEffect(() => {
-    const onPopState = () => setCurrentRoute(getRouteFromPath(window.location.pathname));
+    const onPopState = () => {
+      setAdminInvitationToken(invitationTokenFromPath(window.location.pathname));
+      setCurrentRoute(getRouteFromPath(window.location.pathname));
+    };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   useEffect(() => {
-    if (!session || passwordRecoveryMode) return;
+    if (!session || passwordRecoveryMode || adminInvitationToken) return;
     const resolved = getRouteFromPath(window.location.pathname);
     if (window.location.pathname !== resolved.path) {
       window.history.replaceState({}, '', resolved.path);
       setCurrentRoute(resolved);
     }
-  }, [session, passwordRecoveryMode]);
+  }, [session, passwordRecoveryMode, adminInvitationToken]);
 
   const navigate = (route: AppRoute) => {
     setAddingCondominium(false);
@@ -122,6 +136,23 @@ export default function App() {
   };
 
   if (!authResolved) return <OnboardingLoading />;
+
+  if (adminInvitationToken) {
+    return (
+      <AdminInvitationExperience
+        onAccepted={async () => {
+          if (session) await loadWorkspace(session);
+          setAdminInvitationToken('');
+          window.history.replaceState({}, '', DEFAULT_ROUTE.path);
+          setCurrentRoute(DEFAULT_ROUTE);
+        }}
+        onSignOut={signOut}
+        rawToken={adminInvitationToken}
+        session={session}
+      />
+    );
+  }
+
   if (passwordRecoveryMode && session) {
     return <PasswordRecoveryGate onComplete={completePasswordRecovery} />;
   }
@@ -244,6 +275,13 @@ export default function App() {
         condominiumName={condominiumName}
         onNavigate={navigate}
         session={session}
+      />
+    );
+  } else if (currentRoute.key === 'team') {
+    page = (
+      <TeamAccessPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
       />
     );
   } else if (currentRoute.key === 'settings') {
