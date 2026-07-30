@@ -12,13 +12,15 @@ describe('administrator invitation email route', () => {
     expect(source).toContain("app.route('/v1/condominiums', adminInvitationRoutes)");
   });
 
-  it('creates the invitation with the user token and sends through Resend', async () => {
+  it('creates the invitation with the user token and uses the configured email provider', async () => {
     const source = await readFile(routeSourceUrl, 'utf8');
 
     expect(source).toContain('rpc/create_admin_invitation');
     expect(source).toContain("Authorization: `Bearer ${c.get('token')}`");
-    expect(source).toContain('https://api.resend.com/emails');
-    expect(source).toContain('Idempotency-Key');
+    expect(source).toContain('sendNotificationEmail');
+    expect(source).toContain('notificationEnvironment.emailProvider');
+    expect(source).toContain('habitta-admin-invitation-${rpcData.invitation.id}');
+    expect(source).not.toContain('https://api.resend.com/emails');
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
   });
 

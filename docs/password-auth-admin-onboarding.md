@@ -102,18 +102,20 @@ Before production, add the production web origin to the Supabase redirect allowl
 
 Supabase authentication emails use the configured SMTP provider.
 
-Administrator invitations are created through the authenticated Worker endpoint and delivered with the existing Resend configuration:
+Administrator invitations are created through the authenticated Worker endpoint and delivered through the same transactional email provider abstraction used by Habitta notifications. Development currently selects ZeptoMail, while Resend remains available as a rollback provider:
 
 - `disabled`: creates the secure invitation and returns the backup link without sending email;
 - `sandbox`: sends the invitation to `NOTIFICATIONS_SANDBOX_EMAIL` with a development subject prefix;
 - `live`: sends directly to the invited administrator.
 
-The Worker uses a Resend idempotency key based on the invitation ID. The interface always displays the one-time invitation link as a backup when delivery is disabled or fails.
+The Worker uses a provider-independent deduplication key based on the invitation ID. ZeptoMail receives it as `client_reference`, while Resend receives it as `Idempotency-Key`. The interface always displays the one-time invitation link as a backup when delivery is disabled or fails.
 
 Required Worker bindings for email delivery:
 
 - `APP_BASE_URL`;
-- `RESEND_API_KEY`;
+- `NOTIFICATIONS_EMAIL_PROVIDER`;
+- `ZEPTOMAIL_SEND_TOKEN` when ZeptoMail is selected;
+- `RESEND_API_KEY` when Resend is selected;
 - `NOTIFICATIONS_EMAIL_MODE`;
 - `NOTIFICATIONS_FROM_EMAIL`;
 - `NOTIFICATIONS_FROM_NAME`;
