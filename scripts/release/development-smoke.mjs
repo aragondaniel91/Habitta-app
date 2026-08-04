@@ -27,7 +27,8 @@ export const validateSmokeOptions = ({
   if (!expectedCommit) errors.push('expected_commit_required');
   if (!expectedWebOrigin || !/^https:\/\//.test(expectedWebOrigin))
     errors.push('expected_web_origin_required');
-  if (emailMode !== 'disabled') errors.push('notifications_email_must_be_disabled');
+  if (!['disabled', 'sandbox'].includes(emailMode))
+    errors.push('notifications_email_mode_not_safe_for_development');
   return errors;
 };
 export const runDevelopmentSmoke = async ({
@@ -55,7 +56,7 @@ export const runDevelopmentSmoke = async ({
   if (metadata.commit !== expectedCommit) return ['commit_mismatch'];
   if (metadata.version === 'unknown' || Number.isNaN(Date.parse(metadata.buildTimestamp ?? '')))
     return ['invalid_build_metadata'];
-  if (metadata.notificationsEmailMode !== 'disabled') return ['invalid_email_mode'];
+  if (metadata.notificationsEmailMode !== emailMode) return ['invalid_email_mode'];
   if (detectsResendCall(metadata)) return ['resend_indicator_detected'];
   if (health.headers.get('Access-Control-Allow-Origin') !== expectedWebOrigin)
     return ['cors_origin_invalid'];
