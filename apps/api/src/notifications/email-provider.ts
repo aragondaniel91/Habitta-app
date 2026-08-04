@@ -3,6 +3,7 @@ import type { NotificationBindings } from './types';
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 const ZEPTOMAIL_ENDPOINT = 'https://api.zeptomail.com/v1.1/email';
+const ZEPTOMAIL_AUTH_SCHEME = 'Zoho-enczapikey';
 
 type EmailMessage = {
   fromEmail: string;
@@ -26,6 +27,12 @@ export type EmailProviderResult =
 const retryableStatus = (status: number) => status === 408 || status === 429 || status >= 500;
 const safeProviderCode = (value?: string) =>
   value?.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) || null;
+
+export const zeptoMailAuthorizationValue = (configuredValue: string) => {
+  const trimmed = configuredValue.trim();
+  const token = trimmed.replace(/^zoho-enczapikey\s+/i, '').trim();
+  return token ? `${ZEPTOMAIL_AUTH_SCHEME} ${token}` : null;
+};
 
 const sendWithResend = async (
   env: NotificationBindings,
@@ -80,8 +87,9 @@ const sendWithZeptoMail = async (
   message: EmailMessage,
   signal: AbortSignal,
 ): Promise<EmailProviderResult> => {
-  const token = env.ZEPTOMAIL_SEND_TOKEN?.trim();
-  if (!token) return { ok: false, errorCode: 'zeptomail_token_missing', retryable: false };
+  const configuredToken = env.ZEPTOMAIL_SEND_TOKEN;
+  const authorization = configuredToken ? zeptoMailAuthorizationValue(configuredToken) : null;
+  if (!authorization) return { ok: false, errorCode: 'zeptomail_token_missing', retryable: false };
 
   try {
     const response = await fetch(ZEPTOMAIL_ENDPOINT, {
@@ -89,7 +97,7 @@ const sendWithZeptoMail = async (
       signal,
       headers: {
         Accept: 'application/json',
-        Authorization: `zoho-enczapikey ${token}`,
+        Authorization: authorization,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
