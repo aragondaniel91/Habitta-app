@@ -262,8 +262,8 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
       {error ? <div className="settings-inline-alert">{error}</div> : null}
       {deliveryWarning ? (
         <div className="settings-inline-alert" role="alert">
-          <strong>La invitación se creó, pero el correo no pudo enviarse.</strong>{' '}
-          {deliveryWarning} Usa el enlace seguro de respaldo mientras corregimos la integración.
+          <strong>La invitación se creó, pero el correo no pudo enviarse.</strong> {deliveryWarning}{' '}
+          Usa el enlace seguro de respaldo mientras corregimos la integración.
         </div>
       ) : null}
       {message ? (
