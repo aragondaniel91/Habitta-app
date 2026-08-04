@@ -10,6 +10,7 @@ import {
   loadTeamAccess,
   revokeAdminInvitation,
   type AdminInvitation,
+  type AdminInvitationDelivery,
   type AdministrativeRole,
   type TeamMember,
 } from '../lib/teamAccess';
@@ -54,6 +55,39 @@ function invitationStatus(status: AdminInvitation['status']) {
   return labels[status];
 }
 
+export function invitationDeliveryFailureMessage(delivery: AdminInvitationDelivery) {
+  const errorCode = delivery.errorCode ?? 'unknown';
+  let explanation = 'El proveedor rechazó o no pudo procesar la solicitud.';
+
+  if (errorCode.includes('token_missing')) {
+    explanation = 'El Worker no recibió el Send Mail Token de ZeptoMail.';
+  } else if (errorCode.includes('sandbox_email_invalid')) {
+    explanation = 'El correo sandbox configurado en Cloudflare no es válido.';
+  } else if (errorCode.includes('from_email_invalid')) {
+    explanation = 'La dirección remitente configurada en Cloudflare no es válida.';
+  } else if (errorCode.startsWith('zeptomail_401')) {
+    explanation =
+      'ZeptoMail rechazó la autenticación. El token puede ser inválido, estar vencido o pertenecer a otro Agent.';
+  } else if (errorCode.startsWith('zeptomail_403')) {
+    explanation =
+      'El Agent o la cuenta de ZeptoMail no tienen autorización para enviar con este dominio.';
+  } else if (errorCode.startsWith('zeptomail_400')) {
+    explanation =
+      'ZeptoMail rechazó los datos del mensaje. Revisa la asociación entre el Agent y mihabitta.com.';
+  } else if (errorCode.startsWith('zeptomail_429')) {
+    explanation = 'ZeptoMail aplicó un límite temporal o no hay crédito disponible.';
+  } else if (errorCode.includes('timeout')) {
+    explanation = 'ZeptoMail no respondió antes del tiempo máximo de espera.';
+  } else if (errorCode.includes('network_error')) {
+    explanation = 'El Worker no pudo conectarse con la API de ZeptoMail.';
+  }
+
+  const requestReference = delivery.providerId
+    ? ` Referencia del proveedor: ${delivery.providerId}.`
+    : '';
+  return `${explanation} Código técnico: ${errorCode}.${requestReference}`;
+}
+
 export function TeamAccessPage({ condominiumId, condominiumName, session }: Props) {
   const [data, setData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +98,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
   const [revokingId, setRevokingId] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [deliveryWarning, setDeliveryWarning] = useState('');
   const [createdLink, setCreatedLink] = useState('');
   const [createdEmail, setCreatedEmail] = useState('');
 
@@ -91,6 +126,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
     setCreatedLink('');
     setCreatedEmail('');
     setMessage('');
+    setDeliveryWarning('');
   }, [condominiumId]);
 
   const pendingInvitations = useMemo(
@@ -108,6 +144,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
     setCreating(true);
     setError('');
     setMessage('');
+    setDeliveryWarning('');
     setCreatedLink('');
     try {
       const expiration = new Date(`${expirationDate}T23:59:59`);
@@ -127,12 +164,10 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
             : 'Invitación creada y enviada al correo de pruebas configurado para este ambiente.',
         );
       } else if (result.emailDelivery.status === 'failed') {
-        setMessage(
-          'La invitación se creó, pero el correo no pudo enviarse. Usa el enlace seguro de respaldo.',
-        );
+        setDeliveryWarning(invitationDeliveryFailureMessage(result.emailDelivery));
       } else {
-        setMessage(
-          'La invitación se creó. El envío automático está desactivado; usa el enlace seguro de respaldo.',
+        setDeliveryWarning(
+          'La invitación se creó, pero el envío automático está desactivado. Usa el enlace seguro de respaldo.',
         );
       }
       setEmail('');
@@ -169,6 +204,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
     setRevokingId(invitationId);
     setError('');
     setMessage('');
+    setDeliveryWarning('');
     try {
       await revokeAdminInvitation(invitationId);
       setMessage('Invitación revocada correctamente.');
@@ -224,6 +260,12 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
       </header>
 
       {error ? <div className="settings-inline-alert">{error}</div> : null}
+      {deliveryWarning ? (
+        <div className="settings-inline-alert" role="alert">
+          <strong>La invitación se creó, pero el correo no pudo enviarse.</strong>{' '}
+          {deliveryWarning} Usa el enlace seguro de respaldo mientras corregimos la integración.
+        </div>
+      ) : null}
       {message ? (
         <div className="settings-success-alert">
           <CheckCircleIcon size={17} /> {message}
