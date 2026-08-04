@@ -89,8 +89,7 @@ const sendWithZeptoMail = async (
 ): Promise<EmailProviderResult> => {
   const configuredToken = env.ZEPTOMAIL_SEND_TOKEN;
   const authorization = configuredToken ? zeptoMailAuthorizationValue(configuredToken) : null;
-  if (!authorization)
-    return { ok: false, errorCode: 'zeptomail_token_missing', retryable: false };
+  if (!authorization) return { ok: false, errorCode: 'zeptomail_token_missing', retryable: false };
 
   try {
     const response = await fetch(ZEPTOMAIL_ENDPOINT, {
