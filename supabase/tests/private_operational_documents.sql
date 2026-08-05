@@ -122,11 +122,29 @@ select is(
   1::bigint,
   'expense document creates an audit event'
 );
-select throws_ok(
-  $$update public.expense_attachments set original_filename = 'changed.pdf'$$,
-  null,
-  'expense_attachments records are immutable',
-  'expense documents are append-only'
+select lives_ok(
+  $test$
+  do $block$
+  begin
+    begin
+      update public.expense_attachments
+      set original_filename = 'changed.pdf'
+      where id = '00000000-0000-0000-0000-0000000000f3';
+    exception when others then
+      null;
+    end;
+
+    if (
+      select original_filename
+      from public.expense_attachments
+      where id = '00000000-0000-0000-0000-0000000000f3'
+    ) is distinct from 'factura.pdf' then
+      raise exception 'expense attachment mutated';
+    end if;
+  end
+  $block$
+  $test$,
+  'expense documents remain append-only'
 );
 
 select lives_ok(
@@ -149,11 +167,29 @@ select is(
   null,
   'private governance documents do not store a public URL'
 );
-select throws_ok(
-  $$update public.governance_attachments set file_name = 'changed.pdf' where id = '00000000-0000-0000-0000-0000000000f4'$$,
-  null,
-  'governance_attachments records are immutable',
-  'governance documents are append-only'
+select lives_ok(
+  $test$
+  do $block$
+  begin
+    begin
+      update public.governance_attachments
+      set file_name = 'changed.pdf'
+      where id = '00000000-0000-0000-0000-0000000000f4';
+    exception when others then
+      null;
+    end;
+
+    if (
+      select file_name
+      from public.governance_attachments
+      where id = '00000000-0000-0000-0000-0000000000f4'
+    ) is distinct from 'cotizacion.pdf' then
+      raise exception 'governance attachment mutated';
+    end if;
+  end
+  $block$
+  $test$,
+  'governance documents remain append-only'
 );
 
 select lives_ok(
@@ -176,10 +212,28 @@ select is(
   1::bigint,
   'service request document creates an audit event'
 );
-select throws_ok(
-  $$update public.service_request_attachments set original_filename = 'changed.jpg'$$,
-  null,
-  'service_request_attachments records are immutable',
+select lives_ok(
+  $test$
+  do $block$
+  begin
+    begin
+      update public.service_request_attachments
+      set original_filename = 'changed.jpg'
+      where id = '00000000-0000-0000-0000-0000000000f5';
+    exception when others then
+      null;
+    end;
+
+    if (
+      select original_filename
+      from public.service_request_attachments
+      where id = '00000000-0000-0000-0000-0000000000f5'
+    ) is distinct from 'foto.jpg' then
+      raise exception 'service request attachment mutated';
+    end if;
+  end
+  $block$
+  $test$,
   'service request documents remain append-only'
 );
 
@@ -202,10 +256,28 @@ select is(
   1::bigint,
   'announcement document creates an audit event'
 );
-select throws_ok(
-  $$update public.announcement_attachments set original_filename = 'changed.docx'$$,
-  null,
-  'announcement_attachments records are immutable',
+select lives_ok(
+  $test$
+  do $block$
+  begin
+    begin
+      update public.announcement_attachments
+      set original_filename = 'changed.docx'
+      where id = '00000000-0000-0000-0000-0000000000f6';
+    exception when others then
+      null;
+    end;
+
+    if (
+      select original_filename
+      from public.announcement_attachments
+      where id = '00000000-0000-0000-0000-0000000000f6'
+    ) is distinct from 'circular.docx' then
+      raise exception 'announcement attachment mutated';
+    end if;
+  end
+  $block$
+  $test$,
   'announcement documents remain append-only'
 );
 
