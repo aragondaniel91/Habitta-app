@@ -37,9 +37,7 @@ describe('guided CSV imports', () => {
   it('rejects missing columns before preview', () => {
     const parsed = parseCsv('unit_code,first_name\nA-101,Ana');
 
-    expect(() => validateImportRows('people', parsed)).toThrow(
-      /Faltan columnas obligatorias/,
-    );
+    expect(() => validateImportRows('people', parsed)).toThrow(/Faltan columnas obligatorias/);
   });
 
   it('detects duplicate unit codes and invalid percentages', () => {

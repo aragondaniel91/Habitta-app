@@ -55,12 +55,12 @@ const remoteErrorLabels: Record<string, string> = {
 };
 
 const normalizedOpeningBalance = (row: Record<string, string>) => ({
-  unit_code: row.unit_code.trim(),
-  balance_type: row.balance_type.trim(),
-  amount: row.amount.trim(),
-  currency_code: row.currency_code.trim().toUpperCase(),
-  effective_date: row.effective_date.trim(),
-  description: row.description.trim() || undefined,
+  unit_code: row.unit_code?.trim() ?? '',
+  balance_type: row.balance_type?.trim() ?? '',
+  amount: row.amount?.trim() ?? '',
+  currency_code: row.currency_code?.trim().toUpperCase() ?? '',
+  effective_date: row.effective_date?.trim() ?? '',
+  description: row.description?.trim() || undefined,
 });
 
 const mergeRemoteIssues = (rows: ValidatedImportRow[], issues: RemoteIssue[]) => {
@@ -211,7 +211,9 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
       setStage('complete');
       onImported?.();
     } catch (commitError) {
-      setError(commitError instanceof Error ? commitError.message : 'No se pudo importar el archivo.');
+      setError(
+        commitError instanceof Error ? commitError.message : 'No se pudo importar el archivo.',
+      );
     } finally {
       setBusy(false);
     }

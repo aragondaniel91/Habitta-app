@@ -122,8 +122,7 @@ importRoutes.post('/:condominiumId/imports/people/preview', async (c) => {
     else if (email && seenEmails.has(email)) issue = 'Duplicate email';
     else if (
       ownership &&
-      (!/^(100(?:\.0+)?|(?:[0-9]|[1-9][0-9])(?:\.\d+)?)$/.test(ownership) ||
-        Number(ownership) <= 0)
+      (!/^(100(?:\.0+)?|(?:[0-9]|[1-9][0-9])(?:\.\d+)?)$/.test(ownership) || Number(ownership) <= 0)
     )
       issue = 'Invalid ownership percentage';
     else if (ownership && !['owner', 'owner_occupant'].includes(relationship))

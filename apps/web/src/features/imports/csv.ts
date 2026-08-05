@@ -23,14 +23,7 @@ export const IMPORT_DEFINITIONS: Record<ImportKind, ImportDefinition> = {
   units: {
     title: 'Estructura y unidades',
     description: 'Crea torres o edificios faltantes y registra sus unidades.',
-    headers: [
-      'building_name',
-      'unit_code',
-      'unit_type',
-      'floor',
-      'ownership_percentage',
-      'status',
-    ],
+    headers: ['building_name', 'unit_code', 'unit_type', 'floor', 'ownership_percentage', 'status'],
     sample: {
       building_name: 'Torre A',
       unit_code: 'A-101',
@@ -163,7 +156,8 @@ export function parseCsv(text: string): ParsedCsv {
   }
   if (quoted) throw new Error('Hay una celda con comillas sin cerrar.');
   if (cell.length || row.length) pushRow();
-  if (matrix.length < 2) throw new Error('El archivo debe incluir encabezados y al menos una fila.');
+  if (matrix.length < 2)
+    throw new Error('El archivo debe incluir encabezados y al menos una fila.');
 
   const headerRow = matrix[0] ?? [];
   const headers = headerRow.map(normalizeHeader);
@@ -172,9 +166,11 @@ export function parseCsv(text: string): ParsedCsv {
 
   return {
     headers,
-    rows: matrix.slice(1).map((values) =>
-      Object.fromEntries(headers.map((header, index) => [header, values[index]?.trim() ?? ''])),
-    ),
+    rows: matrix
+      .slice(1)
+      .map((values) =>
+        Object.fromEntries(headers.map((header, index) => [header, values[index]?.trim() ?? ''])),
+      ),
   };
 }
 
@@ -184,8 +180,7 @@ const isPositiveMoney = (value: string) =>
   /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(value) && Number(value) > 0;
 const isPercentage = (value: string) =>
   value === '' ||
-  (/^(?:100(?:\.0+)?|(?:[0-9]|[1-9][0-9])(?:\.\d+)?)$/.test(value) &&
-    Number(value) > 0);
+  (/^(?:100(?:\.0+)?|(?:[0-9]|[1-9][0-9])(?:\.\d+)?)$/.test(value) && Number(value) > 0);
 
 export function validateImportRows(kind: ImportKind, parsed: ParsedCsv): ValidatedImportRow[] {
   const definition = IMPORT_DEFINITIONS[kind];
@@ -251,8 +246,7 @@ export function validateImportRows(kind: ImportKind, parsed: ParsedCsv): Validat
         errors.push('balance_type debe ser debit o credit');
       if (!isPositiveMoney(amount))
         errors.push('amount debe ser un monto positivo con hasta 2 decimales');
-      if (!/^[A-Za-z]{3}$/.test(currencyCode))
-        errors.push('currency_code debe tener tres letras');
+      if (!/^[A-Za-z]{3}$/.test(currencyCode)) errors.push('currency_code debe tener tres letras');
       if (!isDate(effectiveDate)) errors.push('effective_date debe usar YYYY-MM-DD');
     }
 

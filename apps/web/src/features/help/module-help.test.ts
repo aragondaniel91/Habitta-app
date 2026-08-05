@@ -4,9 +4,7 @@ import { MODULE_HELP } from './module-help';
 
 describe('contextual module help', () => {
   it('covers every application route', () => {
-    expect(Object.keys(MODULE_HELP).sort()).toEqual(
-      APP_ROUTES.map((route) => route.key).sort(),
-    );
+    expect(Object.keys(MODULE_HELP).sort()).toEqual(APP_ROUTES.map((route) => route.key).sort());
   });
 
   it('provides actionable guidance for every module', () => {
