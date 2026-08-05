@@ -108,7 +108,7 @@ const normalizeContentType = (value: string | undefined, filename: string) => {
   const extension = Object.keys(extensionContentTypes).find((candidate) =>
     filename.toLowerCase().endsWith(candidate),
   );
-  return extension ? extensionContentTypes[extension] : supplied;
+  return extension ? (extensionContentTypes[extension] ?? supplied) : supplied;
 };
 
 const digest = async (bytes: ArrayBuffer) =>
