@@ -50,11 +50,15 @@ export function PrivateDocumentUploader({
     setError('');
     setMessage('');
     try {
-      await uploadPrivateDocument(path, session, file, {
-        documentType: documentType || undefined,
-        visibility,
-        commentId,
-      });
+      const metadata: {
+        documentType?: string;
+        visibility?: 'public' | 'internal';
+        commentId?: string;
+      } = {};
+      if (documentType) metadata.documentType = documentType;
+      if (visibility) metadata.visibility = visibility;
+      if (commentId) metadata.commentId = commentId;
+      await uploadPrivateDocument(path, session, file, metadata);
       setFile(undefined);
       const input = document.getElementById(inputId) as HTMLInputElement | null;
       if (input) input.value = '';
