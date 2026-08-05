@@ -30,8 +30,9 @@ export function ModuleHelpDrawer({
 
   useEffect(() => {
     if (!open) return;
-    setView(initialView === 'import' && importKinds.length ? 'import' : 'guide');
-    setSelectedKind(importKinds[0] ?? null);
+    const routeImportKinds = MODULE_HELP[route.key].importKinds ?? [];
+    setView(initialView === 'import' && routeImportKinds.length ? 'import' : 'guide');
+    setSelectedKind(routeImportKinds[0] ?? null);
   }, [initialView, open, route.key]);
 
   if (!open) return null;
