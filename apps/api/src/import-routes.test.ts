@@ -15,7 +15,7 @@ describe('guided import API routes', () => {
     const source = await readFile(routeUrl, 'utf8');
     expect(source).toContain("'preview_structure_import'");
     expect(source).toContain("'import_structure_csv'");
-    expect(source).toContain("imports/people/preview");
+    expect(source).toContain('imports/people/preview');
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
   });
 });
