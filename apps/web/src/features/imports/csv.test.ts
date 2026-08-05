@@ -30,8 +30,8 @@ describe('guided CSV imports', () => {
         'A-101;debit;125.50;USD;2026-08-01;Saldo anterior',
     );
 
-    expect(parsed.rows[0].currency_code).toBe('USD');
-    expect(validateImportRows('opening_balances', parsed)[0].errors).toEqual([]);
+    expect(parsed.rows[0]?.currency_code).toBe('USD');
+    expect(validateImportRows('opening_balances', parsed)[0]?.errors).toEqual([]);
   });
 
   it('rejects missing columns before preview', () => {
@@ -50,8 +50,8 @@ describe('guided CSV imports', () => {
     );
     const rows = validateImportRows('units', parsed);
 
-    expect(rows[0].errors).toContain('ownership_percentage debe ser mayor que 0 y hasta 100');
-    expect(rows[1].errors).toContain('unit_code está duplicado dentro del archivo');
+    expect(rows[0]?.errors).toContain('ownership_percentage debe ser mayor que 0 y hasta 100');
+    expect(rows[1]?.errors).toContain('unit_code está duplicado dentro del archivo');
   });
 
   it('generates an editable template with the exact supported headers', () => {
