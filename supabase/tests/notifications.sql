@@ -16,6 +16,7 @@ insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_
 ('a0000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000000','authenticated','authenticated',null,'x',now(),now());
 insert into public.organizations(id,name,created_by) values ('a1000000-0000-0000-0000-000000000001','Notify A','a0000000-0000-0000-0000-000000000001'),('b1000000-0000-0000-0000-000000000001','Notify B','a0000000-0000-0000-0000-000000000011');
 insert into public.condominiums(id,organization_id,name,created_by) values ('a2000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000001','Condo A','a0000000-0000-0000-0000-000000000001'),('b2000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001','Condo B','a0000000-0000-0000-0000-000000000011');
+update public.condominium_notification_settings set timezone='UTC' where condominium_id in ('a2000000-0000-0000-0000-000000000001','b2000000-0000-0000-0000-000000000001');
 insert into public.organization_memberships(organization_id,user_id,role) values ('a1000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000001','organization_owner');
 insert into public.condominium_memberships(condominium_id,user_id,role) values
 ('a2000000-0000-0000-0000-000000000001','a0000000-0000-0000-0000-000000000001','condominium_admin'),

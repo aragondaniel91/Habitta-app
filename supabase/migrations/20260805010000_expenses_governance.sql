@@ -1168,7 +1168,7 @@ set row_security = off
 as $$
 declare
   proposal public.governance_proposals;
-  person_id uuid;
+  voter_person_id uuid;
   created_vote public.governance_votes;
 begin
   if auth.uid() is null or not public.can_read_governance(target_condominium) then
@@ -1201,14 +1201,14 @@ begin
   end if;
 
   select p.id
-  into person_id
+  into voter_person_id
   from public.people p
   where p.condominium_id = target_condominium
     and p.auth_user_id = auth.uid()
     and p.status = 'active'
   limit 1;
 
-  if person_id is null then
+  if voter_person_id is null then
     raise exception 'owner profile required';
   end if;
 
@@ -1221,7 +1221,7 @@ begin
       select 1
       from public.unit_owners uo
       join public.units u on u.id = uo.unit_id
-      where uo.person_id = person_id
+      where uo.person_id = voter_person_id
         and uo.ends_at is null
         and u.condominium_id = target_condominium
         and u.status = 'active'
@@ -1233,7 +1233,7 @@ begin
       select 1
       from public.unit_owners uo
       join public.units u on u.id = uo.unit_id
-      where uo.person_id = person_id
+      where uo.person_id = voter_person_id
         and uo.unit_id = target_unit
         and uo.ends_at is null
         and u.condominium_id = target_condominium
