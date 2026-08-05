@@ -239,7 +239,7 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
         <div className="csv-import__result">
           <div>
             <strong>{created}</strong>
-            <span>Creados</span>
+            <span>{created === 1 ? 'Registro creado' : 'Registros creados'}</span>
           </div>
           <div>
             <strong>{result?.reused ?? result?.created_buildings ?? 0}</strong>
@@ -270,6 +270,13 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
         </Button>
       </div>
 
+      <div className="csv-import__spreadsheet-note">
+        <strong>Puedes trabajar la plantilla en Excel o Google Sheets</strong>
+        <span>
+          Conserva los nombres de las columnas y guarda el archivo como CSV UTF-8 antes de subirlo.
+        </span>
+      </div>
+
       <ol className="csv-import__instructions">
         {definition.instructions.map((instruction) => (
           <li key={instruction}>{instruction}</li>
@@ -292,9 +299,14 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
           </label>
           {rows.length ? (
             <div className="csv-import__file-summary">
-              <span>{rows.length} filas detectadas</span>
+              <span>
+                {rows.length} {rows.length === 1 ? 'fila detectada' : 'filas detectadas'}
+              </span>
               <Badge tone={rows.some((row) => row.errors.length) ? 'warning' : 'success'}>
-                {rows.filter((row) => row.errors.length).length} errores locales
+                {rows.filter((row) => row.errors.length).length}{' '}
+                {rows.filter((row) => row.errors.length).length === 1
+                  ? 'error local'
+                  : 'errores locales'}
               </Badge>
             </div>
           ) : null}
@@ -309,15 +321,15 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
           <div className="csv-import__summary-grid">
             <div>
               <strong>{rows.length}</strong>
-              <span>Total de filas</span>
+              <span>{rows.length === 1 ? 'Fila en el archivo' : 'Filas en el archivo'}</span>
             </div>
             <div data-tone="success">
               <strong>{validRows.length}</strong>
-              <span>Listas para importar</span>
+              <span>{validRows.length === 1 ? 'Lista para importar' : 'Listas para importar'}</span>
             </div>
             <div data-tone="danger">
               <strong>{invalidRows.length}</strong>
-              <span>Requieren corrección</span>
+              <span>{invalidRows.length === 1 ? 'Requiere corrección' : 'Requieren corrección'}</span>
             </div>
           </div>
           <div className="csv-import__table-wrap">
@@ -357,7 +369,9 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
               disabled={busy || invalidRows.length > 0 || validRows.length === 0}
               onClick={() => void commit()}
             >
-              {busy ? 'Importando…' : `Importar ${validRows.length} filas`}
+              {busy
+                ? 'Importando…'
+                : `Importar ${validRows.length} ${validRows.length === 1 ? 'fila' : 'filas'}`}
             </Button>
           </div>
           {invalidRows.length ? (
