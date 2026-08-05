@@ -138,17 +138,13 @@ export const reverseTreasuryMovement = (
   session: Session,
   reason: string,
 ) =>
-  apiRequest<TreasuryMovement>(
-    `${base(condominiumId)}/movements/${movementId}/reverse`,
-    session,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        reason,
-        idempotencyKey: `treasury-reversal-${movementId}`,
-      }),
-    },
-  );
+  apiRequest<TreasuryMovement>(`${base(condominiumId)}/movements/${movementId}/reverse`, session, {
+    method: 'POST',
+    body: JSON.stringify({
+      reason,
+      idempotencyKey: `treasury-reversal-${movementId}`,
+    }),
+  });
 
 export const listTreasuryReconciliations = (condominiumId: string, session: Session) =>
   apiRequest<TreasuryReconciliation[]>(`${base(condominiumId)}/reconciliations`, session);
@@ -176,14 +172,10 @@ export const matchTreasuryMovement = (
   movementId: string,
   session: Session,
 ) =>
-  apiRequest(
-    `${base(condominiumId)}/reconciliations/${reconciliationId}/movements`,
-    session,
-    {
-      method: 'POST',
-      body: JSON.stringify({ movementId }),
-    },
-  );
+  apiRequest(`${base(condominiumId)}/reconciliations/${reconciliationId}/movements`, session, {
+    method: 'POST',
+    body: JSON.stringify({ movementId }),
+  });
 
 export const closeTreasuryReconciliation = (
   condominiumId: string,

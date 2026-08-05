@@ -22,6 +22,7 @@ import { RequestsPage } from './pages/RequestsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StructureManagementPage } from './pages/StructureManagementPage';
 import { TeamAccessPage } from './pages/TeamAccessPage';
+import { TreasuryPage } from './pages/TreasuryPage';
 import { supabase } from './supabase';
 
 type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
@@ -269,6 +270,14 @@ export default function App() {
   } else if (currentRoute.key === 'expenses') {
     page = (
       <ExpensesPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
+  } else if (currentRoute.key === 'treasury') {
+    page = (
+      <TreasuryPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         session={session}

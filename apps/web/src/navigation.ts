@@ -25,6 +25,7 @@ export type AppRoute = {
     | 'fees'
     | 'payments'
     | 'expenses'
+    | 'treasury'
     | 'reports'
     | 'community'
     | 'governance'
@@ -115,6 +116,18 @@ export const APP_ROUTES = [
     section: 'finanzas',
     icon: ExpensesIcon,
     scope: ['Registro de gastos', 'Proveedores', 'Soportes y categorías'],
+  },
+  {
+    key: 'treasury',
+    path: '/app/treasury',
+    label: 'Tesorería',
+    shortLabel: 'Tesorería',
+    title: 'Tesorería',
+    description:
+      'Controla cuentas, cajas, movimientos, transferencias y conciliaciones por moneda.',
+    section: 'finanzas',
+    icon: PaymentsIcon,
+    scope: ['Cuentas y cajas', 'Movimientos', 'Conciliación bancaria'],
   },
   {
     key: 'reports',

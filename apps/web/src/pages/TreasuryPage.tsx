@@ -41,9 +41,7 @@ const money = (value: string | number | null, currency: string) =>
   }).format(numeric(value));
 
 const shortDate = (value: string) =>
-  new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium' }).format(
-    new Date(`${value}T12:00:00`),
-  );
+  new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`));
 
 const movementLabels: Record<TreasuryMovement['movement_kind'], string> = {
   opening_balance: 'Saldo inicial',
@@ -109,7 +107,10 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   const totals = useMemo(() => {
     const result = new Map<string, number>();
     for (const account of accounts) {
-      result.set(account.currency_code, (result.get(account.currency_code) ?? 0) + numeric(account.balance));
+      result.set(
+        account.currency_code,
+        (result.get(account.currency_code) ?? 0) + numeric(account.balance),
+      );
     }
     return [...result.entries()].sort(([left], [right]) => left.localeCompare(right));
   }, [accounts]);
@@ -178,11 +179,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
     event.preventDefault();
     const values = new FormData(event.currentTarget);
     const movementKind = String(values.get('movementKind')) as
-      | 'opening_balance'
-      | 'deposit'
-      | 'withdrawal'
-      | 'fee'
-      | 'adjustment';
+      'opening_balance' | 'deposit' | 'withdrawal' | 'fee' | 'adjustment';
     const selectedDirection = String(values.get('direction')) as 'credit' | 'debit';
     const direction =
       movementKind === 'deposit'
@@ -300,7 +297,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           <Button onClick={() => setPanel('account')} variant="secondary">
             Nueva cuenta
           </Button>
-          <Button disabled={!accounts.length} onClick={() => setPanel('movement')} variant="secondary">
+          <Button
+            disabled={!accounts.length}
+            onClick={() => setPanel('movement')}
+            variant="secondary"
+          >
             Registrar movimiento
           </Button>
           <Button disabled={accounts.length < 2} onClick={() => setPanel('transfer')}>
@@ -309,20 +310,35 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
         </div>
       </header>
 
-      {error ? <div className="treasury-message" data-tone="error">{error}</div> : null}
-      {message ? <div className="treasury-message" data-tone="success">{message}</div> : null}
+      {error ? (
+        <div className="treasury-message" data-tone="error">
+          {error}
+        </div>
+      ) : null}
+      {message ? (
+        <div className="treasury-message" data-tone="success">
+          {message}
+        </div>
+      ) : null}
 
       <section aria-label="Saldos por moneda" className="treasury-summary-grid">
         {totals.map(([currency, balance]) => (
           <Surface className="treasury-summary-card" key={currency}>
-            <div className="treasury-summary-card__icon"><PaymentsIcon size={21} /></div>
+            <div className="treasury-summary-card__icon">
+              <PaymentsIcon size={21} />
+            </div>
             <span>Fondos disponibles</span>
             <strong>{money(balance, currency)}</strong>
-            <small>{accounts.filter((account) => account.currency_code === currency).length} cuentas en {currency}</small>
+            <small>
+              {accounts.filter((account) => account.currency_code === currency).length} cuentas en{' '}
+              {currency}
+            </small>
           </Surface>
         ))}
         <Surface className="treasury-summary-card">
-          <div className="treasury-summary-card__icon"><ReportsIcon size={21} /></div>
+          <div className="treasury-summary-card__icon">
+            <ReportsIcon size={21} />
+          </div>
           <span>Por conciliar</span>
           <strong>{reconciliations.filter((item) => item.status === 'draft').length}</strong>
           <small>Períodos abiertos</small>
@@ -339,7 +355,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
               role="tab"
               type="button"
             >
-              {item === 'accounts' ? 'Cuentas' : item === 'movements' ? 'Movimientos' : 'Conciliaciones'}
+              {item === 'accounts'
+                ? 'Cuentas'
+                : item === 'movements'
+                  ? 'Movimientos'
+                  : 'Conciliaciones'}
             </button>
           ))}
         </div>
@@ -352,11 +372,17 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
             >
               <option value="">Todas las cuentas</option>
               {accounts.map((account) => (
-                <option key={account.id} value={account.id}>{account.name} · {account.currency_code}</option>
+                <option key={account.id} value={account.id}>
+                  {account.name} · {account.currency_code}
+                </option>
               ))}
             </Select>
           ) : null}
-          {view === 'movements' ? <Button onClick={exportCsv} variant="secondary">Exportar CSV</Button> : null}
+          {view === 'movements' ? (
+            <Button onClick={exportCsv} variant="secondary">
+              Exportar CSV
+            </Button>
+          ) : null}
           {view === 'reconciliations' ? (
             <Button disabled={!accounts.length} onClick={() => setPanel('reconciliation')}>
               Nueva conciliación
@@ -371,13 +397,17 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
             {accounts.map((account) => (
               <Surface className="treasury-account-card" key={account.id}>
                 <div className="treasury-account-card__head">
-                  <div className="treasury-account-card__icon"><ExpensesIcon size={22} /></div>
+                  <div className="treasury-account-card__icon">
+                    <ExpensesIcon size={22} />
+                  </div>
                   <Badge tone={account.is_active ? 'success' : 'neutral'}>
                     {account.is_active ? 'Activa' : 'Inactiva'}
                   </Badge>
                 </div>
                 <div>
-                  <span>{accountTypeLabel(account.account_type)} · {account.currency_code}</span>
+                  <span>
+                    {accountTypeLabel(account.account_type)} · {account.currency_code}
+                  </span>
                   <h2>{account.name}</h2>
                   <p>{account.bank_name ?? 'Fondos bajo control de la administración'}</p>
                 </div>
@@ -411,20 +441,60 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           <Surface className="treasury-table-card">
             <div className="treasury-table-wrap">
               <table className="treasury-table">
-                <thead><tr><th>Fecha</th><th>Cuenta</th><th>Movimiento</th><th>Descripción</th><th>Débito</th><th>Crédito</th><th /></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Cuenta</th>
+                    <th>Movimiento</th>
+                    <th>Descripción</th>
+                    <th>Débito</th>
+                    <th>Crédito</th>
+                    <th />
+                  </tr>
+                </thead>
                 <tbody>
                   {visibleMovements.map((movement) => {
                     const account = accountById.get(movement.account_id);
-                    const reversible = !['transfer_in', 'transfer_out', 'reversal'].includes(movement.movement_kind);
+                    const reversible = !['transfer_in', 'transfer_out', 'reversal'].includes(
+                      movement.movement_kind,
+                    );
                     return (
                       <tr key={movement.id}>
                         <td>{shortDate(movement.occurred_on)}</td>
-                        <td><strong>{account?.name ?? 'Cuenta'}</strong><small>{movement.currency_code}</small></td>
-                        <td><Badge tone={movement.direction === 'credit' ? 'success' : 'warning'}>{movementLabels[movement.movement_kind]}</Badge></td>
-                        <td><strong>{movement.description}</strong><small>{movement.reference ?? 'Sin referencia'}</small></td>
-                        <td className="treasury-amount treasury-amount--debit">{movement.direction === 'debit' ? money(movement.amount, movement.currency_code) : '—'}</td>
-                        <td className="treasury-amount treasury-amount--credit">{movement.direction === 'credit' ? money(movement.amount, movement.currency_code) : '—'}</td>
-                        <td>{reversible ? <Button onClick={() => setReverseId(movement.id)} size="sm" variant="ghost">Reversar</Button> : null}</td>
+                        <td>
+                          <strong>{account?.name ?? 'Cuenta'}</strong>
+                          <small>{movement.currency_code}</small>
+                        </td>
+                        <td>
+                          <Badge tone={movement.direction === 'credit' ? 'success' : 'warning'}>
+                            {movementLabels[movement.movement_kind]}
+                          </Badge>
+                        </td>
+                        <td>
+                          <strong>{movement.description}</strong>
+                          <small>{movement.reference ?? 'Sin referencia'}</small>
+                        </td>
+                        <td className="treasury-amount treasury-amount--debit">
+                          {movement.direction === 'debit'
+                            ? money(movement.amount, movement.currency_code)
+                            : '—'}
+                        </td>
+                        <td className="treasury-amount treasury-amount--credit">
+                          {movement.direction === 'credit'
+                            ? money(movement.amount, movement.currency_code)
+                            : '—'}
+                        </td>
+                        <td>
+                          {reversible ? (
+                            <Button
+                              onClick={() => setReverseId(movement.id)}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              Reversar
+                            </Button>
+                          ) : null}
+                        </td>
                       </tr>
                     );
                   })}
@@ -433,7 +503,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
             </div>
           </Surface>
         ) : (
-          <EmptyState description="Selecciona otra cuenta o registra el primer movimiento." icon={<ReportsIcon size={26} />} title="No hay movimientos para mostrar" />
+          <EmptyState
+            description="Selecciona otra cuenta o registra el primer movimiento."
+            icon={<ReportsIcon size={26} />}
+            title="No hay movimientos para mostrar"
+          />
         )
       ) : null}
 
@@ -445,35 +519,72 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
               return (
                 <Surface className="treasury-reconciliation-card" key={item.id}>
                   <div>
-                    <Badge tone={item.status === 'closed' ? 'success' : 'warning'}>{item.status === 'closed' ? 'Cerrada' : 'Borrador'}</Badge>
+                    <Badge tone={item.status === 'closed' ? 'success' : 'warning'}>
+                      {item.status === 'closed' ? 'Cerrada' : 'Borrador'}
+                    </Badge>
                     <h2>{account?.name ?? 'Cuenta de tesorería'}</h2>
-                    <p>{shortDate(item.period_start)} – {shortDate(item.period_end)}</p>
+                    <p>
+                      {shortDate(item.period_start)} – {shortDate(item.period_end)}
+                    </p>
                   </div>
                   <div className="treasury-reconciliation-card__values">
-                    <span>Estado bancario<strong>{money(item.statement_closing_balance, account?.currency_code ?? 'USD')}</strong></span>
-                    <span>Libro Habitta<strong>{item.book_closing_balance === null ? 'Pendiente' : money(item.book_closing_balance, account?.currency_code ?? 'USD')}</strong></span>
-                    <span>Diferencia<strong>{item.difference === null ? 'Pendiente' : money(item.difference, account?.currency_code ?? 'USD')}</strong></span>
+                    <span>
+                      Estado bancario
+                      <strong>
+                        {money(item.statement_closing_balance, account?.currency_code ?? 'USD')}
+                      </strong>
+                    </span>
+                    <span>
+                      Libro Habitta
+                      <strong>
+                        {item.book_closing_balance === null
+                          ? 'Pendiente'
+                          : money(item.book_closing_balance, account?.currency_code ?? 'USD')}
+                      </strong>
+                    </span>
+                    <span>
+                      Diferencia
+                      <strong>
+                        {item.difference === null
+                          ? 'Pendiente'
+                          : money(item.difference, account?.currency_code ?? 'USD')}
+                      </strong>
+                    </span>
                   </div>
                   {item.status === 'draft' ? (
                     <Button
                       disabled={saving}
-                      onClick={() => void run(
-                        () => closeTreasuryReconciliation(condominiumId, item.id, session),
-                        'Conciliación cerrada con el saldo calculado por Habitta.',
-                      )}
-                    >Cerrar conciliación</Button>
+                      onClick={() =>
+                        void run(
+                          () => closeTreasuryReconciliation(condominiumId, item.id, session),
+                          'Conciliación cerrada con el saldo calculado por Habitta.',
+                        )
+                      }
+                    >
+                      Cerrar conciliación
+                    </Button>
                   ) : null}
                 </Surface>
               );
             })}
           </div>
         ) : (
-          <EmptyState actionLabel="Crear conciliación" description="Compara el saldo del banco con el libro de Habitta por cuenta y período." icon={<ReportsIcon size={26} />} onAction={() => setPanel('reconciliation')} title="No hay conciliaciones" />
+          <EmptyState
+            actionLabel="Crear conciliación"
+            description="Compara el saldo del banco con el libro de Habitta por cuenta y período."
+            icon={<ReportsIcon size={26} />}
+            onAction={() => setPanel('reconciliation')}
+            title="No hay conciliaciones"
+          />
         )
       ) : null}
 
       {panel ? (
-        <div className="treasury-dialog-backdrop" onMouseDown={() => !saving && setPanel(null)} role="presentation">
+        <div
+          className="treasury-dialog-backdrop"
+          onMouseDown={() => !saving && setPanel(null)}
+          role="presentation"
+        >
           <Surface
             aria-labelledby="treasury-dialog-title"
             aria-modal="true"
@@ -482,56 +593,195 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
             role="dialog"
           >
             <div className="treasury-dialog__head">
-              <div><span>TESORERÍA</span><h2 id="treasury-dialog-title">{panel === 'account' ? 'Nueva cuenta' : panel === 'movement' ? 'Registrar movimiento' : panel === 'transfer' ? 'Transferencia interna' : 'Nueva conciliación'}</h2></div>
-              <Button disabled={saving} onClick={() => setPanel(null)} variant="ghost">Cerrar</Button>
+              <div>
+                <span>TESORERÍA</span>
+                <h2 id="treasury-dialog-title">
+                  {panel === 'account'
+                    ? 'Nueva cuenta'
+                    : panel === 'movement'
+                      ? 'Registrar movimiento'
+                      : panel === 'transfer'
+                        ? 'Transferencia interna'
+                        : 'Nueva conciliación'}
+                </h2>
+              </div>
+              <Button disabled={saving} onClick={() => setPanel(null)} variant="ghost">
+                Cerrar
+              </Button>
             </div>
 
             {panel === 'account' ? (
               <form className="treasury-form" onSubmit={submitAccount}>
-                <Field label="Nombre de la cuenta"><input name="name" placeholder="Ej. Banco Mercantil USD" required /></Field>
+                <Field label="Nombre de la cuenta">
+                  <input name="name" placeholder="Ej. Banco Mercantil USD" required />
+                </Field>
                 <div className="treasury-form__grid">
-                  <Field label="Tipo"><Select name="accountType"><option value="bank">Cuenta bancaria</option><option value="cash">Caja</option></Select></Field>
-                  <Field hint="Tres letras, por ejemplo USD o VES." label="Moneda"><input defaultValue="USD" maxLength={3} minLength={3} name="currencyCode" pattern="[A-Za-z]{3}" required /></Field>
+                  <Field label="Tipo">
+                    <Select name="accountType">
+                      <option value="bank">Cuenta bancaria</option>
+                      <option value="cash">Caja</option>
+                    </Select>
+                  </Field>
+                  <Field hint="Tres letras, por ejemplo USD o VES." label="Moneda">
+                    <input
+                      defaultValue="USD"
+                      maxLength={3}
+                      minLength={3}
+                      name="currencyCode"
+                      pattern="[A-Za-z]{3}"
+                      required
+                    />
+                  </Field>
                 </div>
-                <Field label="Banco o institución"><input name="bankName" placeholder="Solo para cuentas bancarias" /></Field>
-                <Field label="Referencia visible"><input name="accountReference" placeholder="Ej. **** 1234" /></Field>
-                <Field label="Notas"><textarea name="notes" rows={3} /></Field>
-                <Button disabled={saving} type="submit">{saving ? 'Guardando…' : 'Crear cuenta'}</Button>
+                <Field label="Banco o institución">
+                  <input name="bankName" placeholder="Solo para cuentas bancarias" />
+                </Field>
+                <Field label="Referencia visible">
+                  <input name="accountReference" placeholder="Ej. **** 1234" />
+                </Field>
+                <Field label="Notas">
+                  <textarea name="notes" rows={3} />
+                </Field>
+                <Button disabled={saving} type="submit">
+                  {saving ? 'Guardando…' : 'Crear cuenta'}
+                </Button>
               </form>
             ) : null}
 
             {panel === 'movement' ? (
               <form className="treasury-form" onSubmit={submitMovement}>
-                <Field label="Cuenta"><Select defaultValue={selectedAccountId} name="accountId" required>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency_code}</option>)}</Select></Field>
+                <Field label="Cuenta">
+                  <Select defaultValue={selectedAccountId} name="accountId" required>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} · {account.currency_code}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
                 <div className="treasury-form__grid">
-                  <Field label="Tipo"><Select name="movementKind"><option value="deposit">Depósito</option><option value="withdrawal">Retiro</option><option value="fee">Comisión</option><option value="adjustment">Ajuste</option><option value="opening_balance">Saldo inicial</option></Select></Field>
-                  <Field label="Dirección"><Select name="direction"><option value="credit">Entrada</option><option value="debit">Salida</option></Select></Field>
+                  <Field label="Tipo">
+                    <Select name="movementKind">
+                      <option value="deposit">Depósito</option>
+                      <option value="withdrawal">Retiro</option>
+                      <option value="fee">Comisión</option>
+                      <option value="adjustment">Ajuste</option>
+                      <option value="opening_balance">Saldo inicial</option>
+                    </Select>
+                  </Field>
+                  <Field label="Dirección">
+                    <Select name="direction">
+                      <option value="credit">Entrada</option>
+                      <option value="debit">Salida</option>
+                    </Select>
+                  </Field>
                 </div>
-                <div className="treasury-form__grid"><Field label="Monto"><input inputMode="decimal" name="amount" pattern="(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?" required /></Field><Field label="Fecha"><input defaultValue={today()} name="occurredOn" required type="date" /></Field></div>
-                <Field label="Descripción"><input name="description" required /></Field>
-                <Field label="Referencia"><input name="reference" /></Field>
-                <Button disabled={saving} type="submit">{saving ? 'Registrando…' : 'Registrar movimiento'}</Button>
+                <div className="treasury-form__grid">
+                  <Field label="Monto">
+                    <input
+                      inputMode="decimal"
+                      name="amount"
+                      pattern="(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?"
+                      required
+                    />
+                  </Field>
+                  <Field label="Fecha">
+                    <input defaultValue={today()} name="occurredOn" required type="date" />
+                  </Field>
+                </div>
+                <Field label="Descripción">
+                  <input name="description" required />
+                </Field>
+                <Field label="Referencia">
+                  <input name="reference" />
+                </Field>
+                <Button disabled={saving} type="submit">
+                  {saving ? 'Registrando…' : 'Registrar movimiento'}
+                </Button>
               </form>
             ) : null}
 
             {panel === 'transfer' ? (
               <form className="treasury-form" onSubmit={submitTransfer}>
-                <Field hint="Las dos cuentas deben utilizar la misma moneda." label="Cuenta de origen"><Select name="fromAccountId" required>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency_code}</option>)}</Select></Field>
-                <Field label="Cuenta de destino"><Select name="toAccountId" required>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency_code}</option>)}</Select></Field>
-                <div className="treasury-form__grid"><Field label="Monto"><input inputMode="decimal" name="amount" required /></Field><Field label="Fecha"><input defaultValue={today()} name="occurredOn" required type="date" /></Field></div>
-                <Field label="Descripción"><input defaultValue="Transferencia interna" name="description" required /></Field>
-                <Field label="Referencia"><input name="reference" /></Field>
-                <Button disabled={saving} type="submit">{saving ? 'Transfiriendo…' : 'Registrar transferencia'}</Button>
+                <Field
+                  hint="Las dos cuentas deben utilizar la misma moneda."
+                  label="Cuenta de origen"
+                >
+                  <Select name="fromAccountId" required>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} · {account.currency_code}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Cuenta de destino">
+                  <Select name="toAccountId" required>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} · {account.currency_code}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <div className="treasury-form__grid">
+                  <Field label="Monto">
+                    <input inputMode="decimal" name="amount" required />
+                  </Field>
+                  <Field label="Fecha">
+                    <input defaultValue={today()} name="occurredOn" required type="date" />
+                  </Field>
+                </div>
+                <Field label="Descripción">
+                  <input defaultValue="Transferencia interna" name="description" required />
+                </Field>
+                <Field label="Referencia">
+                  <input name="reference" />
+                </Field>
+                <Button disabled={saving} type="submit">
+                  {saving ? 'Transfiriendo…' : 'Registrar transferencia'}
+                </Button>
               </form>
             ) : null}
 
             {panel === 'reconciliation' ? (
               <form className="treasury-form" onSubmit={submitReconciliation}>
-                <Field label="Cuenta"><Select defaultValue={selectedAccountId} name="accountId" required>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency_code}</option>)}</Select></Field>
-                <div className="treasury-form__grid"><Field label="Desde"><input defaultValue={monthStart()} name="periodStart" required type="date" /></Field><Field label="Hasta"><input defaultValue={today()} name="periodEnd" required type="date" /></Field></div>
-                <div className="treasury-form__grid"><Field label="Saldo inicial del estado"><input defaultValue="0.00" inputMode="decimal" name="statementOpeningBalance" required /></Field><Field label="Saldo final del estado"><input inputMode="decimal" name="statementClosingBalance" required /></Field></div>
-                <Field label="Notas"><textarea name="notes" rows={3} /></Field>
-                <Button disabled={saving} type="submit">{saving ? 'Creando…' : 'Crear conciliación'}</Button>
+                <Field label="Cuenta">
+                  <Select defaultValue={selectedAccountId} name="accountId" required>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} · {account.currency_code}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <div className="treasury-form__grid">
+                  <Field label="Desde">
+                    <input defaultValue={monthStart()} name="periodStart" required type="date" />
+                  </Field>
+                  <Field label="Hasta">
+                    <input defaultValue={today()} name="periodEnd" required type="date" />
+                  </Field>
+                </div>
+                <div className="treasury-form__grid">
+                  <Field label="Saldo inicial del estado">
+                    <input
+                      defaultValue="0.00"
+                      inputMode="decimal"
+                      name="statementOpeningBalance"
+                      required
+                    />
+                  </Field>
+                  <Field label="Saldo final del estado">
+                    <input inputMode="decimal" name="statementClosingBalance" required />
+                  </Field>
+                </div>
+                <Field label="Notas">
+                  <textarea name="notes" rows={3} />
+                </Field>
+                <Button disabled={saving} type="submit">
+                  {saving ? 'Creando…' : 'Crear conciliación'}
+                </Button>
               </form>
             ) : null}
           </Surface>
@@ -540,11 +790,56 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
 
       {reverseId ? (
         <div className="treasury-dialog-backdrop" role="presentation">
-          <Surface aria-modal="true" className="treasury-dialog treasury-dialog--small" role="dialog">
-            <div className="treasury-dialog__head"><div><span>CORRECCIÓN TRAZABLE</span><h2>Reversar movimiento</h2></div></div>
-            <p>El movimiento original permanecerá en el historial y Habitta agregará el movimiento contrario.</p>
-            <Field label="Motivo"><textarea autoFocus onChange={(event) => setReverseReason(event.target.value)} rows={3} value={reverseReason} /></Field>
-            <div className="treasury-dialog__actions"><Button disabled={saving} onClick={() => { setReverseId(''); setReverseReason(''); }} variant="secondary">Cancelar</Button><Button disabled={saving || reverseReason.trim().length < 2} onClick={() => void run(() => reverseTreasuryMovement(condominiumId, reverseId, session, reverseReason), 'Movimiento reversado sin borrar el historial.').finally(() => { setReverseId(''); setReverseReason(''); })} variant="danger">{saving ? 'Reversando…' : 'Confirmar reverso'}</Button></div>
+          <Surface
+            aria-modal="true"
+            className="treasury-dialog treasury-dialog--small"
+            role="dialog"
+          >
+            <div className="treasury-dialog__head">
+              <div>
+                <span>CORRECCIÓN TRAZABLE</span>
+                <h2>Reversar movimiento</h2>
+              </div>
+            </div>
+            <p>
+              El movimiento original permanecerá en el historial y Habitta agregará el movimiento
+              contrario.
+            </p>
+            <Field label="Motivo">
+              <textarea
+                autoFocus
+                onChange={(event) => setReverseReason(event.target.value)}
+                rows={3}
+                value={reverseReason}
+              />
+            </Field>
+            <div className="treasury-dialog__actions">
+              <Button
+                disabled={saving}
+                onClick={() => {
+                  setReverseId('');
+                  setReverseReason('');
+                }}
+                variant="secondary"
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={saving || reverseReason.trim().length < 2}
+                onClick={() =>
+                  void run(
+                    () => reverseTreasuryMovement(condominiumId, reverseId, session, reverseReason),
+                    'Movimiento reversado sin borrar el historial.',
+                  ).finally(() => {
+                    setReverseId('');
+                    setReverseReason('');
+                  })
+                }
+                variant="danger"
+              >
+                {saving ? 'Reversando…' : 'Confirmar reverso'}
+              </Button>
+            </div>
           </Surface>
         </div>
       ) : null}

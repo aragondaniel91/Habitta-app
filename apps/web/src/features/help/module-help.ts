@@ -130,6 +130,27 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     permissions:
       'Contadores pueden preparar borradores; administradores autorizados aprueban o anulan.',
   },
+  treasury: {
+    purpose:
+      'Controla dónde se encuentran los fondos del condominio y compara el libro de Habitta con bancos y cajas sin mezclar monedas.',
+    actions: [
+      'Crear cuentas bancarias y cajas por moneda.',
+      'Registrar depósitos, retiros, comisiones, ajustes y transferencias internas.',
+      'Reversar movimientos sin borrar el historial y cerrar conciliaciones.',
+    ],
+    steps: [
+      'Registra cada cuenta con su moneda correcta.',
+      'Carga el saldo inicial antes del primer movimiento.',
+      'Concilia cada período contra el estado de cuenta del banco.',
+    ],
+    tips: [
+      'Una transferencia interna no es un ingreso ni un gasto.',
+      'Las operaciones entre monedas diferentes requieren un flujo de cambio separado.',
+      'Los movimientos confirmados se corrigen con reversos, nunca eliminándolos.',
+    ],
+    permissions:
+      'Administradores y contadores autorizados gestionan Tesorería; otros roles financieros pueden consultar según sus permisos.',
+  },
   reports: {
     purpose:
       'Convierte la información financiera en indicadores de cobranza, cartera y comportamiento por unidad.',
