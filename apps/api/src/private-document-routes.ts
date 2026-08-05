@@ -85,12 +85,16 @@ const supabaseHeaders = (env: NotificationBindings, token: string) => ({
   'Content-Type': 'application/json',
 });
 
+const sanitizeFilenameCharacter = (character: string) => {
+  const codePoint = character.codePointAt(0) ?? 0;
+  return codePoint <= 0x1f || codePoint === 0x7f || '<>:"/\\|?*'.includes(character)
+    ? '_'
+    : character;
+};
+
 const safeFilename = (value: string) =>
-  value
-    .normalize('NFKC')
-    .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]/g, '_')
-    .trim()
-    .slice(0, 255) || 'documento';
+  Array.from(value.normalize('NFKC'), sanitizeFilenameCharacter).join('').trim().slice(0, 255) ||
+  'documento';
 
 const contentDispositionFilename = (value: string) => {
   const ascii = safeFilename(value).replace(/[^a-zA-Z0-9._ -]/g, '_');
