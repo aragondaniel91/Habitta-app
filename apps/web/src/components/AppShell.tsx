@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { ModuleHelpDrawer } from '../features/help/ModuleHelpDrawer';
+import { MODULE_HELP } from '../features/help/module-help';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
 import { APP_ROUTES, ROUTE_SECTION_LABELS, type AppRoute, type RouteSection } from '../navigation';
@@ -11,6 +13,7 @@ export type Organization = { id: string; name: string };
 export type Condominium = { id: string; name: string; organization_id: string };
 
 type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
+type HelpState = { open: boolean; initialView: 'guide' | 'import' };
 
 type Props = {
   session: Session;
@@ -63,11 +66,17 @@ export function AppShell({
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [helpState, setHelpState] = useState<HelpState>({
+    open: false,
+    initialView: 'guide',
+  });
 
   const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
   const selectedOrganization = organizations.find(
     (item) => item.id === selectedCondominium?.organization_id,
   );
+  const moduleHelp = MODULE_HELP[currentRoute.key];
+  const canImport = Boolean(moduleHelp.importKinds?.length);
   const userLabel =
     typeof session.user.user_metadata.full_name === 'string'
       ? session.user.user_metadata.full_name
@@ -94,6 +103,7 @@ export function AppShell({
   useEffect(() => {
     setMobileOpen(false);
     setProfileOpen(false);
+    setHelpState({ open: false, initialView: 'guide' });
   }, [currentRoute.key]);
 
   useEffect(() => {
@@ -101,12 +111,19 @@ export function AppShell({
       if (event.key === 'Escape') {
         setMobileOpen(false);
         setProfileOpen(false);
+        setHelpState((current) => ({ ...current, open: false }));
         onCloseNotifications();
       }
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [onCloseNotifications]);
+
+  const openHelp = (initialView: HelpState['initialView']) => {
+    setHelpState({ open: true, initialView });
+    setProfileOpen(false);
+    onCloseNotifications();
+  };
 
   const navContent = (mobile = false) => (
     <nav className="sidebar-nav" aria-label={mobile ? 'Navegación móvil' : 'Navegación principal'}>
@@ -255,6 +272,28 @@ export function AppShell({
               <h1>{currentRoute.title}</h1>
               <p>{currentRoute.description}</p>
             </div>
+            <div className="page-header__actions">
+              {canImport ? (
+                <Button
+                  className="page-import-button"
+                  onClick={() => openHelp('import')}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  Importar datos
+                </Button>
+              ) : null}
+              <Button
+                className="page-help-button"
+                onClick={() => openHelp('guide')}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Ayuda
+              </Button>
+            </div>
           </div>
 
           {contextMessage ? (
@@ -266,6 +305,15 @@ export function AppShell({
           {children}
         </main>
       </div>
+
+      <ModuleHelpDrawer
+        condominiumId={selectedCondominiumId}
+        initialView={helpState.initialView}
+        onClose={() => setHelpState((current) => ({ ...current, open: false }))}
+        open={helpState.open}
+        route={currentRoute}
+        session={session}
+      />
 
       <button
         aria-label="Cerrar navegación"
