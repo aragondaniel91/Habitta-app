@@ -1,0 +1,108 @@
+name: Fix Invitation Login Exit
+
+on:
+  push:
+    branches:
+      - fix/invitation-login-exit
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/invitation-login-exit
+          fetch-depth: 0
+      - name: Add a safe exit from invitation authentication
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/src/components/AdminInvitationExperience.tsx')
+          text = path.read_text()
+
+          old_confirmation = '''              ) : confirmationSent ? (
+                <div className="admin-invite-confirmation">
+                  <CheckCircleIcon size={30} />
+                  <h2>Revisa tu correo</h2>
+                  <p>Después de confirmar, vuelve a este enlace para terminar.</p>
+                </div>
+              ) : (
+'''
+          new_confirmation = '''              ) : confirmationSent ? (
+                <div className="admin-invite-confirmation">
+                  <CheckCircleIcon size={30} />
+                  <h2>Revisa tu correo</h2>
+                  <p>Después de confirmar, vuelve a este enlace para terminar.</p>
+                  <Button
+                    onClick={() => {
+                      window.location.href = '/';
+                    }}
+                    type="button"
+                    variant="ghost"
+                  >
+                    Ir al inicio de sesión
+                  </Button>
+                </div>
+              ) : (
+'''
+
+          old_forms_end = '''                      <Button disabled={submitting} type="submit">
+                        {submitting ? 'Creando cuenta…' : 'Crear cuenta y continuar'}
+                      </Button>
+                    </form>
+                  )}
+                </>
+              )}
+'''
+          new_forms_end = '''                      <Button disabled={submitting} type="submit">
+                        {submitting ? 'Creando cuenta…' : 'Crear cuenta y continuar'}
+                      </Button>
+                    </form>
+                  )}
+
+                  <div className="access-card__actions">
+                    <Button
+                      onClick={() => {
+                        window.location.href = '/';
+                      }}
+                      type="button"
+                      variant="ghost"
+                    >
+                      Entrar con otro correo
+                    </Button>
+                  </div>
+                  <p className="access-card__fine-print">
+                    El correo mostrado está protegido porque esta invitación pertenece únicamente a
+                    esa dirección. Para usar otra cuenta, vuelve al inicio de sesión.
+                  </p>
+                </>
+              )}
+'''
+
+          if 'Entrar con otro correo' in text:
+              print('Fix already present')
+          else:
+              if old_confirmation not in text:
+                  raise SystemExit('Confirmation marker not found')
+              if old_forms_end not in text:
+                  raise SystemExit('Form marker not found')
+              text = text.replace(old_confirmation, new_confirmation, 1)
+              text = text.replace(old_forms_end, new_forms_end, 1)
+              path.write_text(text)
+          PY
+      - name: Commit fix
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/components/AdminInvitationExperience.tsx
+          git commit -m "Add exit from invitation login"
+          git push origin HEAD:fix/invitation-login-exit
