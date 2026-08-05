@@ -329,7 +329,9 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
             </div>
             <div data-tone="danger">
               <strong>{invalidRows.length}</strong>
-              <span>{invalidRows.length === 1 ? 'Requiere corrección' : 'Requieren corrección'}</span>
+              <span>
+                {invalidRows.length === 1 ? 'Requiere corrección' : 'Requieren corrección'}
+              </span>
             </div>
           </div>
           <div className="csv-import__table-wrap">
