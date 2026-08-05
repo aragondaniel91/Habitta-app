@@ -13,6 +13,33 @@ const update = (path, transform) => {
   writeFileSync(path, next);
 };
 
+writeFileSync(
+  'apps/api/src/build-metadata.ts',
+  `import type { NotificationBindings } from './notifications/types';
+
+declare const HABITTA_BUILD_COMMIT: string;
+declare const HABITTA_BUILD_TIMESTAMP: string;
+declare const HABITTA_APP_VERSION: string;
+
+const compiled = (read: () => string, fallback?: string) => {
+  try {
+    const value = read();
+    return value || fallback || 'unknown';
+  } catch {
+    return fallback || 'unknown';
+  }
+};
+
+export const getWorkerBuildMetadata = (env?: Partial<NotificationBindings>) => ({
+  commit: compiled(() => HABITTA_BUILD_COMMIT, env?.BUILD_COMMIT),
+  version: compiled(() => HABITTA_APP_VERSION, env?.APP_VERSION),
+  buildTimestamp: compiled(() => HABITTA_BUILD_TIMESTAMP, env?.BUILD_TIMESTAMP),
+  workerVersionId: env?.CF_VERSION_METADATA?.id ?? 'unknown',
+  workerVersionTag: env?.CF_VERSION_METADATA?.tag ?? 'unknown',
+});
+`,
+);
+
 update('apps/api/src/index.ts', (source) => {
   let next = replaceOnce(
     source,
@@ -47,21 +74,20 @@ update('apps/api/wrangler.jsonc', (source) =>
   ),
 );
 
-update('.github/workflows/development-release-apply.yml', (source) => {
-  let next = replaceOnce(
+update('.github/workflows/development-release-apply.yml', (source) =>
+  replaceOnce(
     source,
     '            --var "BUILD_COMMIT:$SHA"\n            --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP"\n            --var "APP_VERSION:$APP_VERSION"\n',
     '            --define "HABITTA_BUILD_COMMIT:\u0027$SHA\u0027"\n            --define "HABITTA_BUILD_TIMESTAMP:\u0027$BUILD_TIMESTAMP\u0027"\n            --define "HABITTA_APP_VERSION:\u0027$APP_VERSION\u0027"\n',
     'compile-time release metadata',
-  );
-  return next;
-});
+  ),
+);
 
 update('scripts/release/development-smoke.mjs', (source) =>
   replaceOnce(
     source,
     "  const headers = { Origin: expectedWebOrigin };\n  const health = await request(`${apiUrl}/health`, { headers });\n",
-    "  const headers = { Origin: expectedWebOrigin };\n  const health = await request(`${apiUrl}/health?smoke=${Date.now()}`, {\n    headers: { ...headers, 'Cache-Control': 'no-cache' },\n  });\n",
-    'cache-busted health smoke',
+    "  const headers = { Origin: expectedWebOrigin, 'Cache-Control': 'no-cache' };\n  const health = await request(`${apiUrl}/health`, { headers });\n",
+    'non-cached health smoke',
   ),
 );
