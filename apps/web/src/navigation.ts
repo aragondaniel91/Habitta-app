@@ -11,6 +11,7 @@ import {
   RequestsIcon,
   SettingsIcon,
   UnitsIcon,
+  VoteIcon,
 } from './components/icons';
 import type { IconProps } from './components/icons';
 
@@ -26,6 +27,7 @@ export type AppRoute = {
     | 'expenses'
     | 'reports'
     | 'community'
+    | 'governance'
     | 'requests'
     | 'announcements'
     | 'team'
@@ -135,6 +137,18 @@ export const APP_ROUTES = [
     section: 'comunidad',
     icon: CommunityIcon,
     scope: ['Directorio', 'Documentos', 'Información compartida'],
+  },
+  {
+    key: 'governance',
+    path: '/app/governance',
+    label: 'Votaciones',
+    shortLabel: 'Votaciones',
+    title: 'Propuestas y votaciones',
+    description:
+      'Crea propuestas, adjunta presupuestos y registra decisiones con quórum y trazabilidad.',
+    section: 'comunidad',
+    icon: VoteIcon,
+    scope: ['Propuestas', 'Votaciones', 'Quórum y resultados'],
   },
   {
     key: 'requests',

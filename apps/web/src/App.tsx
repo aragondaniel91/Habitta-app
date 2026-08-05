@@ -12,6 +12,8 @@ import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
 import { CommunityPage } from './pages/CommunityPage';
+import { ExpensesPage } from './pages/ExpensesPage';
+import { GovernancePage } from './pages/GovernancePage';
 import { ModulePlaceholderPage } from './pages/ModulePage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ReceivablesPage } from './pages/ReceivablesPage';
@@ -264,6 +266,14 @@ export default function App() {
         session={session}
       />
     );
+  } else if (currentRoute.key === 'expenses') {
+    page = (
+      <ExpensesPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
   } else if (currentRoute.key === 'reports') {
     page = (
       <ReportsPage
@@ -294,6 +304,14 @@ export default function App() {
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         onNavigate={navigate}
+        session={session}
+      />
+    );
+  } else if (currentRoute.key === 'governance') {
+    page = (
+      <GovernancePage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
         session={session}
       />
     );

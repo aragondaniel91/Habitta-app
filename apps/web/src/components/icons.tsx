@@ -115,6 +115,15 @@ export function CommunityIcon(props: IconProps) {
   );
 }
 
+export function VoteIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path {...strokeProps} d="M5 4h14v16H5zM8 8h8M8 12h5" />
+      <path {...strokeProps} d="m8 16 1.8 1.8L13 14.5" />
+    </IconBase>
+  );
+}
+
 export function RequestsIcon(props: IconProps) {
   return (
     <IconBase {...props}>
