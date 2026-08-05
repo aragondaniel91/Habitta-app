@@ -158,14 +158,15 @@ export function parseCsv(text: string): ParsedCsv {
       if (character === '\r' && next === '\n') index += 1;
       pushRow();
     } else {
-      cell += character;
+      cell += character ?? '';
     }
   }
   if (quoted) throw new Error('Hay una celda con comillas sin cerrar.');
   if (cell.length || row.length) pushRow();
   if (matrix.length < 2) throw new Error('El archivo debe incluir encabezados y al menos una fila.');
 
-  const headers = matrix[0].map(normalizeHeader);
+  const headerRow = matrix[0] ?? [];
+  const headers = headerRow.map(normalizeHeader);
   if (new Set(headers).size !== headers.length)
     throw new Error('El archivo contiene encabezados duplicados.');
 
@@ -177,10 +178,14 @@ export function parseCsv(text: string): ParsedCsv {
   };
 }
 
+const valueFor = (data: Record<string, string>, key: string) => data[key]?.trim() ?? '';
 const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-const isPositiveMoney = (value: string) => /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(value) && Number(value) > 0;
+const isPositiveMoney = (value: string) =>
+  /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(value) && Number(value) > 0;
 const isPercentage = (value: string) =>
-  value === '' || (/^(?:100(?:\.0+)?|(?:[0-9]|[1-9][0-9])(?:\.\d+)?)$/.test(value) && Number(value) > 0);
+  value === '' ||
+  (/^(?:100(?:\.0+)?|(?:[0-9]|[1-9][0-9])(?:\.\d+)?)$/.test(value) &&
+    Number(value) > 0);
 
 export function validateImportRows(kind: ImportKind, parsed: ParsedCsv): ValidatedImportRow[] {
   const definition = IMPORT_DEFINITIONS[kind];
@@ -193,54 +198,62 @@ export function validateImportRows(kind: ImportKind, parsed: ParsedCsv): Validat
   return parsed.rows.map((data, index) => {
     const errors: string[] = [];
     const rowNumber = index + 2;
+    const unitCode = valueFor(data, 'unit_code');
+    const ownershipPercentage = valueFor(data, 'ownership_percentage');
 
     if (kind === 'units') {
-      const code = data.unit_code?.trim();
-      if (!code) errors.push('unit_code es obligatorio');
-      if (code && seenUnits.has(code.toLocaleLowerCase('en-US')))
+      const unitType = valueFor(data, 'unit_type');
+      const status = valueFor(data, 'status');
+      if (!unitCode) errors.push('unit_code es obligatorio');
+      if (unitCode && seenUnits.has(unitCode.toLocaleLowerCase('en-US')))
         errors.push('unit_code está duplicado dentro del archivo');
-      if (code) seenUnits.add(code.toLocaleLowerCase('en-US'));
-      if (!['apartment', 'house', 'commercial', 'parking', 'storage'].includes(data.unit_type))
+      if (unitCode) seenUnits.add(unitCode.toLocaleLowerCase('en-US'));
+      if (!['apartment', 'house', 'commercial', 'parking', 'storage'].includes(unitType))
         errors.push('unit_type no es válido');
-      if (data.status && !['active', 'inactive'].includes(data.status))
-        errors.push('status no es válido');
-      if (!isPercentage(data.ownership_percentage))
+      if (status && !['active', 'inactive'].includes(status)) errors.push('status no es válido');
+      if (!isPercentage(ownershipPercentage))
         errors.push('ownership_percentage debe ser mayor que 0 y hasta 100');
     }
 
     if (kind === 'people') {
-      if (!data.unit_code) errors.push('unit_code es obligatorio');
-      if (!data.first_name) errors.push('first_name es obligatorio');
-      if (!data.last_name) errors.push('last_name es obligatorio');
+      const firstName = valueFor(data, 'first_name');
+      const lastName = valueFor(data, 'last_name');
+      const email = valueFor(data, 'email');
+      const relationship = valueFor(data, 'relationship');
+      if (!unitCode) errors.push('unit_code es obligatorio');
+      if (!firstName) errors.push('first_name es obligatorio');
+      if (!lastName) errors.push('last_name es obligatorio');
       if (
         !['owner', 'owner_occupant', 'tenant', 'family_member', 'authorized_occupant'].includes(
-          data.relationship,
+          relationship,
         )
       )
         errors.push('relationship no es válido');
-      if (data.email && !/^\S+@\S+\.\S+$/.test(data.email)) errors.push('email no es válido');
-      const identity = data.email
-        ? data.email.toLocaleLowerCase('en-US')
-        : `${data.unit_code}|${data.first_name}|${data.last_name}`.toLocaleLowerCase('es');
+      if (email && !/^\S+@\S+\.\S+$/.test(email)) errors.push('email no es válido');
+      const identity = email
+        ? email.toLocaleLowerCase('en-US')
+        : `${unitCode}|${firstName}|${lastName}`.toLocaleLowerCase('es');
       if (seenPeople.has(identity)) errors.push('la persona está duplicada dentro del archivo');
       seenPeople.add(identity);
-      if (!isPercentage(data.ownership_percentage))
+      if (!isPercentage(ownershipPercentage))
         errors.push('ownership_percentage debe ser mayor que 0 y hasta 100');
-      if (
-        data.ownership_percentage &&
-        !['owner', 'owner_occupant'].includes(data.relationship)
-      )
+      if (ownershipPercentage && !['owner', 'owner_occupant'].includes(relationship))
         errors.push('ownership_percentage solo aplica a propietarios');
     }
 
     if (kind === 'opening_balances') {
-      if (!data.unit_code) errors.push('unit_code es obligatorio');
-      if (!['debit', 'credit'].includes(data.balance_type))
+      const balanceType = valueFor(data, 'balance_type');
+      const amount = valueFor(data, 'amount');
+      const currencyCode = valueFor(data, 'currency_code');
+      const effectiveDate = valueFor(data, 'effective_date');
+      if (!unitCode) errors.push('unit_code es obligatorio');
+      if (!['debit', 'credit'].includes(balanceType))
         errors.push('balance_type debe ser debit o credit');
-      if (!isPositiveMoney(data.amount)) errors.push('amount debe ser un monto positivo con hasta 2 decimales');
-      if (!/^[A-Za-z]{3}$/.test(data.currency_code))
+      if (!isPositiveMoney(amount))
+        errors.push('amount debe ser un monto positivo con hasta 2 decimales');
+      if (!/^[A-Za-z]{3}$/.test(currencyCode))
         errors.push('currency_code debe tener tres letras');
-      if (!isDate(data.effective_date)) errors.push('effective_date debe usar YYYY-MM-DD');
+      if (!isDate(effectiveDate)) errors.push('effective_date debe usar YYYY-MM-DD');
     }
 
     return { rowNumber, data, errors };
