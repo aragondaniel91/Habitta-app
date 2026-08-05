@@ -38,6 +38,7 @@ import {
   uuidSchema,
 } from '@habitta/validation';
 import { adminInvitationRoutes } from './admin-invitations';
+import { operationsRoutes } from './operations-routes';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
@@ -93,6 +94,7 @@ app.use('/v1/*', async (c, n) => {
   await n();
 });
 app.route('/v1/condominiums', adminInvitationRoutes);
+app.route('/v1/condominiums', operationsRoutes);
 const rest = (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   path: string,
