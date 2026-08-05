@@ -146,7 +146,8 @@ jobs:
             await page.getByRole('button', { name: 'Ayuda', exact: true }).click();
             await page.getByRole('heading', { name: 'Unidades' }).last().waitFor();
             await page.screenshot({ path: `visual-review/${prefix}-help.png`, fullPage: true });
-            await page.getByRole('button', { name: 'Cerrar ayuda' }).first().click();
+            await page.keyboard.press('Escape');
+            await page.getByRole('button', { name: 'Importar datos', exact: true }).waitFor();
 
             await page.getByRole('button', { name: 'Importar datos', exact: true }).click();
             await page.getByText('Importación guiada').waitFor();
