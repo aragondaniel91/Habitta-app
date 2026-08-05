@@ -10,6 +10,8 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { apiRequest } from '../lib/api';
+import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
+import { downloadPrivateDocument } from '../features/documents/api';
 import {
   audienceLabels,
   eventLabels,
@@ -849,20 +851,39 @@ function AnnouncementDetailDrawer({
             </div>
             {detail?.attachments.length ? (
               detail.attachments.map((attachment) => (
-                <div className="announcement-attachment" key={attachment.id}>
-                  <AnnouncementsIcon size={17} />
+                <div className="announcement-attachment private-document-row" key={attachment.id}>
                   <div>
-                    <strong>{attachment.original_filename}</strong>
-                    <small>{Math.ceil(attachment.size_bytes / 1024)} KB</small>
+                    <AnnouncementsIcon size={17} />
+                    <span>
+                      <strong>{attachment.original_filename}</strong>
+                      <small>{Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB</small>
+                    </span>
                   </div>
+                  <Button
+                    onClick={() =>
+                      void downloadPrivateDocument(
+                        `/v1/condominiums/${condominiumId}/announcements/${announcement.id}/attachments/${attachment.id}/file`,
+                        session,
+                        attachment.original_filename,
+                      ).catch((downloadError: Error) => setError(downloadError.message))
+                    }
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Descargar
+                  </Button>
                 </div>
               ))
             ) : (
               <div className="announcement-detail-empty">No hay archivos adjuntos.</div>
             )}
-            <small className="announcement-attachments-panel__note">
-              La carga segura se habilitará al conectar el almacenamiento del módulo.
-            </small>
+            <PrivateDocumentUploader
+              disabled={announcement.status === 'published' || announcement.status === 'archived'}
+              onUploaded={loadDetail}
+              path={`/v1/condominiums/${condominiumId}/announcements/${announcement.id}/attachments`}
+              session={session}
+              title="Adjuntar documento privado"
+            />
           </Surface>
           {published ? (
             <Surface className="announcement-archive-panel">

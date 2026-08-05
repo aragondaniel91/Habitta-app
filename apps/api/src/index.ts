@@ -40,6 +40,7 @@ import {
 import { adminInvitationRoutes } from './admin-invitations';
 import { operationsRoutes } from './operations-routes';
 import { importRoutes } from './import-routes';
+import { privateDocumentRoutes } from './private-document-routes';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
@@ -70,7 +71,14 @@ app.use(
   cors({
     origin: (origin, c) =>
       allowedCorsOrigins(c.env?.CORS_ALLOWED_ORIGINS).has(origin) ? origin : undefined,
-    allowHeaders: ['Authorization', 'Content-Type', 'X-Filename'],
+    allowHeaders: [
+      'Authorization',
+      'Content-Type',
+      'X-Filename',
+      'X-Document-Type',
+      'X-Visibility',
+      'X-Comment-Id',
+    ],
   }),
 );
 app.get('/health', (c) =>
@@ -97,6 +105,7 @@ app.use('/v1/*', async (c, n) => {
 app.route('/v1/condominiums', adminInvitationRoutes);
 app.route('/v1/condominiums', operationsRoutes);
 app.route('/v1/condominiums', importRoutes);
+app.route('/v1/condominiums', privateDocumentRoutes);
 const rest = (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   path: string,

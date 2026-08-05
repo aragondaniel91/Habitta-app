@@ -1,0 +1,146 @@
+.private-document-uploader {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  background: var(--surface-subtle);
+}
+
+.private-document-uploader__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.private-document-uploader__heading > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.private-document-uploader__heading span,
+.private-document-uploader__file small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.private-document-uploader__privacy {
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  background: var(--green-soft);
+  color: var(--green-dark) !important;
+  font-size: 0.68rem !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.private-document-uploader__file {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.private-document-uploader__file:hover {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.private-document-uploader__file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.private-document-uploader__file span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.private-document-message {
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.private-document-message[data-tone='error'] {
+  background: color-mix(in srgb, var(--red) 9%, var(--surface));
+  color: var(--red);
+}
+
+.private-document-message[data-tone='success'] {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.private-document-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.private-document-row > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.private-document-row strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.private-document-row small {
+  color: var(--muted);
+}
+
+@media (max-width: 520px) {
+  .private-document-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .private-document-row .button {
+    width: 100%;
+  }
+}
+
+.expenses-documents,
+.governance-documents,
+.expenses-documents__list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.expenses-documents,
+.governance-documents {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.private-document-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  background: var(--surface);
+}

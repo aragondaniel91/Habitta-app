@@ -10,6 +10,8 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { apiRequest } from '../lib/api';
+import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
+import { downloadPrivateDocument } from '../features/documents/api';
 import {
   expenseEventLabels,
   expenseStatusLabels,
@@ -20,6 +22,7 @@ import {
   nextExpenseActions,
 } from '../lib/expenses';
 import type {
+  ExpenseAttachment,
   ExpenseCategory,
   ExpenseEvent,
   ExpenseRecord,
@@ -158,7 +161,6 @@ function CreateExpenseForm({
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentReference, setPaymentReference] = useState('');
-  const [supportUrl, setSupportUrl] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -184,7 +186,6 @@ function CreateExpenseForm({
             currencyCode,
             paymentMethod: paymentMethod || undefined,
             paymentReference: paymentReference || undefined,
-            supportUrl: supportUrl || undefined,
             notes: notes || undefined,
           }),
         },
@@ -306,15 +307,6 @@ function CreateExpenseForm({
           />
         </Field>
       </div>
-      <Field label="Enlace al soporte" hint="Factura, recibo o cotización en una URL segura.">
-        <input
-          className="input"
-          onChange={(event) => setSupportUrl(event.target.value)}
-          placeholder="https://…"
-          type="url"
-          value={supportUrl}
-        />
-      </Field>
       <Field label="Notas" hint="Opcional">
         <textarea
           className="textarea"
@@ -460,6 +452,7 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [selectedExpenseId, setSelectedExpenseId] = useState('');
   const [events, setEvents] = useState<ExpenseEvent[]>([]);
+  const [attachments, setAttachments] = useState<ExpenseAttachment[]>([]);
   const [transitioning, setTransitioning] = useState(false);
   const [filters, setFilters] = useState({ query: '', status: '', currency: '' });
 
@@ -496,6 +489,7 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
   useEffect(() => {
     setDrawer(null);
     setSelectedExpenseId('');
+    setAttachments([]);
     setFilters({ query: '', status: '', currency: '' });
   }, [condominiumId]);
 
@@ -510,19 +504,33 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     [data?.expenses],
   );
 
+  const loadExpenseDocuments = useCallback(
+    async (expenseId: string) => {
+      try {
+        setAttachments(
+          await apiRequest<ExpenseAttachment[]>(
+            `/v1/condominiums/${condominiumId}/expenses/${expenseId}/attachments`,
+            session,
+          ),
+        );
+      } catch {
+        setAttachments([]);
+      }
+    },
+    [condominiumId, session],
+  );
+
   const openDetail = async (expense: ExpenseRecord) => {
     setSelectedExpenseId(expense.id);
     setDrawer('detail');
-    try {
-      setEvents(
-        await apiRequest<ExpenseEvent[]>(
-          `/v1/condominiums/${condominiumId}/expenses/${expense.id}/events`,
-          session,
-        ),
-      );
-    } catch {
-      setEvents([]);
-    }
+    const [eventsResult] = await Promise.allSettled([
+      apiRequest<ExpenseEvent[]>(
+        `/v1/condominiums/${condominiumId}/expenses/${expense.id}/events`,
+        session,
+      ),
+      loadExpenseDocuments(expense.id),
+    ]);
+    setEvents(eventsResult.status === 'fulfilled' ? eventsResult.value : []);
   };
 
   const transition = async (action: string) => {
@@ -824,16 +832,66 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             {selectedExpense.notes ? (
               <p className="expenses-detail__notes">{selectedExpense.notes}</p>
             ) : null}
-            {selectedExpense.support_url ? (
-              <a
-                className="expenses-support-link"
-                href={selectedExpense.support_url}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Abrir soporte del gasto
-              </a>
-            ) : null}
+            <section className="expenses-documents">
+              <h3>Documentos privados</h3>
+              {attachments.length ? (
+                <div className="expenses-documents__list">
+                  {attachments.map((attachment) => (
+                    <div className="private-document-row" key={attachment.id}>
+                      <div>
+                        <ExpensesIcon size={17} />
+                        <span>
+                          <strong>{attachment.original_filename}</strong>
+                          <small>
+                            {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB ·{' '}
+                            {attachment.document_type}
+                          </small>
+                        </span>
+                      </div>
+                      <Button
+                        onClick={() =>
+                          void downloadPrivateDocument(
+                            `/v1/condominiums/${condominiumId}/expenses/${selectedExpense.id}/attachments/${attachment.id}/file`,
+                            session,
+                            attachment.original_filename,
+                          ).catch((downloadError: Error) => setError(downloadError.message))
+                        }
+                        size="sm"
+                        variant="secondary"
+                      >
+                        Descargar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>No hay documentos adjuntos.</p>
+              )}
+              {selectedExpense.support_url ? (
+                <a
+                  className="expenses-support-link"
+                  href={selectedExpense.support_url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Abrir soporte externo anterior
+                </a>
+              ) : null}
+              <PrivateDocumentUploader
+                defaultDocumentType="invoice"
+                documentTypes={[
+                  { value: 'invoice', label: 'Factura' },
+                  { value: 'receipt', label: 'Recibo' },
+                  { value: 'quote', label: 'Cotización' },
+                  { value: 'support', label: 'Soporte' },
+                  { value: 'other', label: 'Otro' },
+                ]}
+                onUploaded={() => loadExpenseDocuments(selectedExpense.id)}
+                path={`/v1/condominiums/${condominiumId}/expenses/${selectedExpense.id}/attachments`}
+                session={session}
+                title="Adjuntar factura o soporte"
+              />
+            </section>
             <div className="expenses-detail__actions">
               {nextExpenseActions(selectedExpense.status).map((action) => (
                 <Button

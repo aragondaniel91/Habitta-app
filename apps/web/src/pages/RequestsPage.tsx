@@ -10,6 +10,8 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { apiRequest } from '../lib/api';
+import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
+import { downloadPrivateDocument } from '../features/documents/api';
 import {
   eventLabel,
   filterServiceRequests,
@@ -886,23 +888,43 @@ function RequestDetailDrawer({
             </div>
             {detail?.attachments.length ? (
               detail.attachments.map((attachment) => (
-                <div className="request-attachment" key={attachment.id}>
-                  <RequestsIcon size={17} />
+                <div className="request-attachment private-document-row" key={attachment.id}>
                   <div>
-                    <strong>{attachment.original_filename}</strong>
-                    <small>
-                      {Math.ceil(attachment.size_bytes / 1024)} KB ·{' '}
-                      {attachment.visibility === 'internal' ? 'Interno' : 'Público'}
-                    </small>
+                    <RequestsIcon size={17} />
+                    <span>
+                      <strong>{attachment.original_filename}</strong>
+                      <small>
+                        {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB ·{' '}
+                        {attachment.visibility === 'internal' ? 'Interno' : 'Público'}
+                      </small>
+                    </span>
                   </div>
+                  <Button
+                    onClick={() =>
+                      void downloadPrivateDocument(
+                        `/v1/condominiums/${condominiumId}/requests/${request.id}/attachments/${attachment.id}/file`,
+                        session,
+                        attachment.original_filename,
+                      ).catch((downloadError: Error) => setError(downloadError.message))
+                    }
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Descargar
+                  </Button>
                 </div>
               ))
             ) : (
               <div className="request-detail-empty">No hay archivos adjuntos.</div>
             )}
-            <small className="request-attachments-panel__note">
-              La carga segura de archivos se habilitará al conectar el almacenamiento del módulo.
-            </small>
+            <PrivateDocumentUploader
+              description="La visibilidad seguirá la selección usada para comentarios y notas."
+              onUploaded={loadDetail}
+              path={`/v1/condominiums/${condominiumId}/requests/${request.id}/attachments`}
+              session={session}
+              title="Adjuntar documento o fotografía"
+              visibility={visibility}
+            />
           </Surface>
           {!terminal ? (
             <Surface className="request-cancel-panel">

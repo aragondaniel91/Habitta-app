@@ -44,6 +44,17 @@ export type ExpenseRecord = {
   updated_at: string;
 };
 
+export type ExpenseAttachment = {
+  id: string;
+  expense_id: string;
+  condominium_id: string;
+  document_type: 'invoice' | 'receipt' | 'quote' | 'support' | 'other';
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+};
+
 export type ExpenseEvent = {
   id: string;
   expense_id: string;
