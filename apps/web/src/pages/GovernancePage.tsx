@@ -10,6 +10,8 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { apiRequest } from '../lib/api';
+import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
+import { downloadPrivateDocument } from '../features/documents/api';
 import { formatMoney } from '../lib/expenses';
 import {
   filterGovernanceProposals,
@@ -165,8 +167,6 @@ function CreateProposalForm({
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [closesAt, setClosesAt] = useState(localDateTime(new Date(Date.now() + 7 * 86_400_000)));
   const [options, setOptions] = useState(['A favor', 'En contra']);
-  const [attachmentName, setAttachmentName] = useState('');
-  const [attachmentUrl, setAttachmentUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -194,16 +194,6 @@ function CreateProposalForm({
               .map((label) => label.trim())
               .filter(Boolean)
               .map((label) => ({ label })),
-            attachments:
-              attachmentName && attachmentUrl
-                ? [
-                    {
-                      documentType: category === 'budget' ? 'budget' : 'support',
-                      fileName: attachmentName,
-                      url: attachmentUrl,
-                    },
-                  ]
-                : undefined,
           }),
         },
       );
@@ -360,27 +350,8 @@ function CreateProposalForm({
       </section>
       <section className="governance-support-editor">
         <div>
-          <h3>Documento de soporte</h3>
-          <p>Adjunta una cotización, presupuesto o documento mediante una URL segura.</p>
-        </div>
-        <div className="governance-form-grid">
-          <Field label="Nombre del documento">
-            <input
-              className="input"
-              onChange={(event) => setAttachmentName(event.target.value)}
-              placeholder="Cotización proveedor A"
-              value={attachmentName}
-            />
-          </Field>
-          <Field label="URL del documento">
-            <input
-              className="input"
-              onChange={(event) => setAttachmentUrl(event.target.value)}
-              placeholder="https://…"
-              type="url"
-              value={attachmentUrl}
-            />
-          </Field>
+          <h3>Documentos de soporte</h3>
+          <p>Después de crear el borrador podrás cargar cotizaciones y presupuestos privados.</p>
         </div>
       </section>
       <div className="governance-form__actions">
@@ -762,17 +733,65 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
                 </dl>
               </div>
 
-              {detail.attachments.length ? (
-                <section className="governance-documents">
-                  <h3>Documentos de soporte</h3>
-                  {detail.attachments.map((attachment) => (
-                    <a href={attachment.url} key={attachment.id} rel="noreferrer" target="_blank">
-                      <AnnouncementsIcon size={17} />
-                      <span>{attachment.file_name}</span>
-                    </a>
-                  ))}
-                </section>
-              ) : null}
+              <section className="governance-documents">
+                <h3>Documentos de soporte</h3>
+                {detail.attachments.length ? (
+                  detail.attachments.map((attachment) =>
+                    attachment.storage_key ? (
+                      <div className="private-document-row" key={attachment.id}>
+                        <div>
+                          <AnnouncementsIcon size={17} />
+                          <span>
+                            <strong>{attachment.file_name}</strong>
+                            <small>
+                              {attachment.size_bytes
+                                ? `${Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB · `
+                                : ''}
+                              {attachment.document_type}
+                            </small>
+                          </span>
+                        </div>
+                        <Button
+                          onClick={() =>
+                            void downloadPrivateDocument(
+                              `/v1/condominiums/${condominiumId}/governance-proposals/${selectedProposal.id}/attachments/${attachment.id}/file`,
+                              session,
+                              attachment.file_name,
+                            ).catch((downloadError: Error) => setError(downloadError.message))
+                          }
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Descargar
+                        </Button>
+                      </div>
+                    ) : attachment.url ? (
+                      <a href={attachment.url} key={attachment.id} rel="noreferrer" target="_blank">
+                        <AnnouncementsIcon size={17} />
+                        <span>{attachment.file_name} · enlace anterior</span>
+                      </a>
+                    ) : null,
+                  )
+                ) : (
+                  <p>No hay documentos adjuntos.</p>
+                )}
+                <PrivateDocumentUploader
+                  defaultDocumentType={
+                    selectedProposal.category === 'budget' ? 'budget' : 'support'
+                  }
+                  documentTypes={[
+                    { value: 'quote', label: 'Cotización' },
+                    { value: 'budget', label: 'Presupuesto' },
+                    { value: 'support', label: 'Soporte' },
+                    { value: 'minutes', label: 'Acta' },
+                    { value: 'other', label: 'Otro' },
+                  ]}
+                  onUploaded={() => loadDetail(selectedProposal)}
+                  path={`/v1/condominiums/${condominiumId}/governance-proposals/${selectedProposal.id}/attachments`}
+                  session={session}
+                  title="Adjuntar documento privado"
+                />
+              </section>
 
               <section className="governance-results">
                 <div className="governance-section-heading">

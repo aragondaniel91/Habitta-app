@@ -36,7 +36,11 @@ export type GovernanceAttachment = {
   proposal_id: string;
   document_type: 'quote' | 'budget' | 'support' | 'minutes' | 'other';
   file_name: string;
-  url: string;
+  url: string | null;
+  storage_key: string | null;
+  content_type: string | null;
+  size_bytes: number | null;
+  sha256: string | null;
 };
 
 export type GovernanceEligibility = {
