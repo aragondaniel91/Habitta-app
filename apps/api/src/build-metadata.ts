@@ -13,10 +13,10 @@ const compiled = (read: () => string, fallback?: string) => {
   }
 };
 
-export const getWorkerBuildMetadata = (env: NotificationBindings) => ({
-  commit: compiled(() => HABITTA_BUILD_COMMIT, env.BUILD_COMMIT),
-  version: compiled(() => HABITTA_APP_VERSION, env.APP_VERSION),
-  buildTimestamp: compiled(() => HABITTA_BUILD_TIMESTAMP, env.BUILD_TIMESTAMP),
-  workerVersionId: env.CF_VERSION_METADATA?.id ?? 'unknown',
-  workerVersionTag: env.CF_VERSION_METADATA?.tag ?? 'unknown',
+export const getWorkerBuildMetadata = (env?: Partial<NotificationBindings>) => ({
+  commit: compiled(() => HABITTA_BUILD_COMMIT, env?.BUILD_COMMIT),
+  version: compiled(() => HABITTA_APP_VERSION, env?.APP_VERSION),
+  buildTimestamp: compiled(() => HABITTA_BUILD_TIMESTAMP, env?.BUILD_TIMESTAMP),
+  workerVersionId: env?.CF_VERSION_METADATA?.id ?? 'unknown',
+  workerVersionTag: env?.CF_VERSION_METADATA?.tag ?? 'unknown',
 });

@@ -47,7 +47,7 @@ export const runDevelopmentSmoke = async ({
     emailMode,
   });
   if (errors.length) return errors;
-  const headers = { Origin: expectedWebOrigin };
+  const headers = { Origin: expectedWebOrigin, 'Cache-Control': 'no-cache' };
   const health = await request(`${apiUrl}/health`, { headers });
   if (!health.ok) return ['health_failed'];
   const metadata = await health.json();

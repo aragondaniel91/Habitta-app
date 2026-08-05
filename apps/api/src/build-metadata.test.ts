@@ -9,7 +9,11 @@ describe('Worker build metadata', () => {
       BUILD_COMMIT: 'test-commit',
       BUILD_TIMESTAMP: '2026-08-05T10:00:00Z',
       APP_VERSION: '0.1.0',
-      CF_VERSION_METADATA: { id: 'version-id', tag: 'release-test', timestamp: '2026-08-05T10:00:00Z' },
+      CF_VERSION_METADATA: {
+        id: 'version-id',
+        tag: 'release-test',
+        timestamp: '2026-08-05T10:00:00Z',
+      },
     } as NotificationBindings);
 
     expect(metadata).toEqual({

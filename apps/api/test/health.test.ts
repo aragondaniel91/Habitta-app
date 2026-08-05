@@ -11,6 +11,8 @@ describe('health endpoint', () => {
       commit: 'unknown',
       version: 'unknown',
       buildTimestamp: 'unknown',
+      workerVersionId: 'unknown',
+      workerVersionTag: 'unknown',
       notificationsEmailMode: 'disabled',
     });
   });

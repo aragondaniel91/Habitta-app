@@ -41,6 +41,7 @@ import { adminInvitationRoutes } from './admin-invitations';
 import { operationsRoutes } from './operations-routes';
 import { importRoutes } from './import-routes';
 import { privateDocumentRoutes } from './private-document-routes';
+import { getWorkerBuildMetadata } from './build-metadata';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
@@ -81,16 +82,18 @@ app.use(
     ],
   }),
 );
-app.get('/health', (c) =>
-  c.json({
+app.get('/health', (c) => {
+  const metadata = getWorkerBuildMetadata(c.env);
+  c.header('Cache-Control', 'no-store, max-age=0');
+  c.header('X-Habitta-Commit', metadata.commit);
+  c.header('X-Habitta-Worker-Version', metadata.workerVersionId);
+  return c.json({
     status: 'ok' as const,
     environment: c.env?.APP_ENV ?? 'development',
-    commit: c.env?.BUILD_COMMIT ?? 'unknown',
-    version: c.env?.APP_VERSION ?? 'unknown',
-    buildTimestamp: c.env?.BUILD_TIMESTAMP ?? 'unknown',
+    ...metadata,
     notificationsEmailMode: c.env?.NOTIFICATIONS_EMAIL_MODE ?? 'disabled',
-  }),
-);
+  });
+});
 app.use('/v1/*', async (c, n) => {
   const token = c.req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return c.json({ error: 'Unauthorized' }, 401);
