@@ -17,6 +17,11 @@
   gap: 16px;
 }
 
+.expenses-overview,
+.expenses-toolbar {
+  flex-wrap: wrap;
+}
+
 .expenses-overview h2,
 .expenses-drawer h2 {
   margin: 4px 0 0;
@@ -135,10 +140,12 @@
   justify-content: flex-start;
 }
 .expenses-search {
+  min-width: min(280px, 100%);
   flex: 1 1 320px;
 }
 .expenses-toolbar .select {
-  min-width: 190px;
+  min-width: min(190px, 100%);
+  flex: 1 1 190px;
 }
 .expenses-table-wrap {
   overflow-x: auto;
@@ -355,6 +362,48 @@
 .expenses-timeline article small {
   margin-top: 3px;
   color: var(--muted);
+}
+
+@container page (max-width: 1120px) {
+  .expenses-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .expenses-search {
+    flex-basis: 100%;
+  }
+}
+
+@container page (max-width: 760px) {
+  .expenses-overview,
+  .expenses-currency-strip {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .expenses-overview__actions {
+    width: 100%;
+  }
+
+  .expenses-overview__actions .button {
+    flex: 1;
+  }
+
+  .expenses-metrics-grid,
+  .expenses-form-grid,
+  .expenses-form-grid--three,
+  .expenses-detail-list {
+    grid-template-columns: 1fr;
+  }
+
+  .expenses-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .expenses-toolbar .select {
+    width: 100%;
+  }
 }
 
 @media (max-width: 1080px) {

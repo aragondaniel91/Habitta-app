@@ -17,6 +17,11 @@
   justify-content: space-between;
   gap: 16px;
 }
+
+.governance-overview,
+.governance-toolbar {
+  flex-wrap: wrap;
+}
 .governance-overview h2,
 .governance-drawer h2 {
   margin: 4px 0 0;
@@ -108,10 +113,12 @@
   border-bottom: 1px solid var(--border);
 }
 .governance-search {
+  min-width: min(280px, 100%);
   flex: 1 1 320px;
 }
 .governance-toolbar .select {
-  min-width: 190px;
+  min-width: min(190px, 100%);
+  flex: 1 1 190px;
 }
 .governance-card-grid {
   display: grid;
@@ -417,6 +424,45 @@
 .governance-detail-loading {
   display: grid;
   gap: 14px;
+}
+
+@container page (max-width: 1120px) {
+  .governance-metrics-grid,
+  .governance-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .governance-search {
+    flex-basis: 100%;
+  }
+}
+
+@container page (max-width: 760px) {
+  .governance-overview {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .governance-overview .button {
+    width: 100%;
+  }
+
+  .governance-metrics-grid,
+  .governance-card-grid,
+  .governance-form-grid,
+  .governance-form-grid--three,
+  .governance-detail__summary dl {
+    grid-template-columns: 1fr;
+  }
+
+  .governance-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .governance-toolbar .select {
+    width: 100%;
+  }
 }
 
 @media (max-width: 1120px) {

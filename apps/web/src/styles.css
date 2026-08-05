@@ -53,12 +53,14 @@
 html,
 body,
 #root {
+  width: 100%;
   min-width: 320px;
   min-height: 100%;
 }
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background: var(--background);
   color: var(--text);
 }
@@ -257,8 +259,11 @@ p {
 
 .app-shell {
   display: grid;
+  width: 100%;
+  min-width: 0;
   min-height: 100vh;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  overflow-x: clip;
   background: var(--background);
   transition: grid-template-columns 180ms ease;
 }
@@ -319,6 +324,21 @@ p {
   flex: 1;
   overflow-y: auto;
   padding: 1.25rem 0.75rem;
+  scrollbar-color: rgb(255 255 255 / 0.24) transparent;
+  scrollbar-width: thin;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.24);
 }
 
 .nav-section + .nav-section {
@@ -400,7 +420,9 @@ p {
 }
 
 .shell-body {
+  width: 100%;
   min-width: 0;
+  overflow-x: clip;
 }
 
 .topbar {
@@ -408,6 +430,7 @@ p {
   z-index: 20;
   top: 0;
   display: flex;
+  min-width: 0;
   min-height: var(--topbar-height);
   align-items: center;
   justify-content: space-between;
@@ -430,32 +453,52 @@ p {
   gap: 0.75rem;
 }
 
+.topbar__start {
+  flex: 1 1 auto;
+}
+
+.topbar__actions {
+  flex: 0 0 auto;
+}
+
 .mobile-menu-button {
   display: none;
 }
 
 .condo-switcher {
-  display: grid;
-  min-width: min(360px, 42vw);
-  grid-template-columns: auto minmax(180px, 1fr);
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: 0.75rem;
 }
 
-.condo-switcher > span {
+.condo-switcher > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.condo-switcher > div > span {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.055em;
   text-transform: uppercase;
 }
 
 .condo-switcher .select {
+  width: clamp(210px, 24vw, 320px);
   min-height: 40px;
   border-color: transparent;
   background: #f0f2f5;
   font-size: 0.875rem;
   font-weight: 700;
+}
+
+.condo-switcher__add {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .notification-bell span {
@@ -561,7 +604,9 @@ p {
 }
 
 .main-content {
+  container: page / inline-size;
   width: 100%;
+  min-width: 0;
   max-width: 1540px;
   margin: 0 auto;
   padding: clamp(1.5rem, 3vw, 2.5rem);
@@ -1006,6 +1051,62 @@ p {
   }
 }
 
+@media (max-width: 1180px) {
+  .app-shell,
+  .app-shell--collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .mobile-menu-button {
+    display: inline-grid;
+  }
+
+  .mobile-backdrop {
+    position: fixed;
+    z-index: 69;
+    inset: 0;
+    display: block;
+    visibility: hidden;
+    border: 0;
+    background: rgb(13 27 42 / 0.54);
+    opacity: 0;
+    transition:
+      opacity 180ms ease,
+      visibility 180ms ease;
+  }
+
+  .mobile-backdrop.is-open {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .mobile-drawer {
+    position: fixed;
+    z-index: 70;
+    inset: 0 auto 0 0;
+    display: flex;
+    width: min(310px, calc(100vw - 44px));
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--navy);
+    color: #fff;
+    transform: translateX(-102%);
+    transition: transform 180ms ease;
+  }
+
+  .mobile-drawer.is-open {
+    transform: translateX(0);
+  }
+
+  .mobile-drawer .sidebar-nav {
+    flex: 1;
+  }
+}
+
 @media (max-width: 960px) {
   .app-shell,
   .app-shell--collapsed {
@@ -1082,16 +1183,25 @@ p {
 
   .condo-switcher {
     min-width: 0;
-    grid-template-columns: minmax(0, 1fr);
+    flex: 1 1 auto;
   }
 
-  .condo-switcher > span {
+  .condo-switcher > div {
+    flex: 1 1 auto;
+  }
+
+  .condo-switcher > div > span {
     display: none;
   }
 
   .condo-switcher .select {
     width: min(46vw, 220px);
+    max-width: 100%;
     font-size: 0.78rem;
+  }
+
+  .condo-switcher__add {
+    display: none;
   }
 
   .profile-trigger {
