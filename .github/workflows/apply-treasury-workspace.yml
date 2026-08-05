@@ -1,0 +1,43 @@
+name: Apply treasury workspace integration
+
+on:
+  push:
+    branches:
+      - feature/treasury-workspace
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/treasury-workspace
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: node scripts/apply-treasury-workspace.mjs
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write apps/api/src/index.ts apps/api/src/treasury-routes.ts apps/api/src/treasury-routes.test.ts apps/web/src/App.tsx apps/web/src/navigation.ts apps/web/src/main.tsx apps/web/src/features/help/module-help.ts apps/web/src/features/treasury/api.ts apps/web/src/pages/TreasuryPage.tsx apps/web/src/treasury.css
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Commit real implementation and remove temporary files
+        run: |
+          rm .github/workflows/apply-treasury-workspace.yml scripts/apply-treasury-workspace.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Integrate treasury API and workspace"
+          git push origin HEAD:feature/treasury-workspace
