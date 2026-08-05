@@ -91,3 +91,12 @@ update('scripts/release/development-smoke.mjs', (source) =>
     'non-cached health smoke',
   ),
 );
+
+update('apps/api/test/health.test.ts', (source) =>
+  replaceOnce(
+    source,
+    "      buildTimestamp: 'unknown',\n      notificationsEmailMode: 'disabled',\n",
+    "      buildTimestamp: 'unknown',\n      workerVersionId: 'unknown',\n      workerVersionTag: 'unknown',\n      notificationsEmailMode: 'disabled',\n",
+    'health version metadata expectation',
+  ),
+);
