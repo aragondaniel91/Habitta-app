@@ -32,7 +32,7 @@ jobs:
                   <p>Después de confirmar, vuelve a este enlace para terminar.</p>
                 </div>
               ) : (
-'''
+          '''
           new_confirmation = '''              ) : confirmationSent ? (
                 <div className="admin-invite-confirmation">
                   <CheckCircleIcon size={30} />
@@ -49,7 +49,7 @@ jobs:
                   </Button>
                 </div>
               ) : (
-'''
+          '''
 
           old_forms_end = '''                      <Button disabled={submitting} type="submit">
                         {submitting ? 'Creando cuenta…' : 'Crear cuenta y continuar'}
@@ -58,7 +58,7 @@ jobs:
                   )}
                 </>
               )}
-'''
+          '''
           new_forms_end = '''                      <Button disabled={submitting} type="submit">
                         {submitting ? 'Creando cuenta…' : 'Crear cuenta y continuar'}
                       </Button>
@@ -82,7 +82,7 @@ jobs:
                   </p>
                 </>
               )}
-'''
+          '''
 
           if 'Entrar con otro correo' in text:
               print('Fix already present')
