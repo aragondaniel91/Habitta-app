@@ -21,7 +21,9 @@ type Props = {
 };
 
 type ImportResult = {
+  count?: number;
   created?: number;
+  created_buildings?: number;
   reused?: number;
   rejected?: number;
   imported?: number;
@@ -29,20 +31,27 @@ type ImportResult = {
 };
 
 type RemoteIssue = { row: number; error: string };
-type Building = { id: string; name: string };
-type Unit = { id: string; code: string };
-
+type PreviewResponse = { errors?: RemoteIssue[] };
 type Stage = 'file' | 'preview' | 'complete';
 
-const escapeCsv = (value: string) =>
-  /[",\n\r;]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
-
-const canonicalCsv = (kind: ImportKind, parsed: ParsedCsv) => {
-  const headers = IMPORT_DEFINITIONS[kind].headers;
-  return [
-    headers.join(','),
-    ...parsed.rows.map((row) => headers.map((header) => escapeCsv(row[header] ?? '')).join(',')),
-  ].join('\n');
+const remoteErrorLabels: Record<string, string> = {
+  'Unknown unit': 'La unidad no existe en Habitta',
+  'Missing name': 'Falta el nombre o apellido',
+  'Duplicate email': 'El correo está duplicado dentro del archivo',
+  'Invalid email': 'El correo no es válido',
+  'Invalid relationship': 'La relación con la unidad no es válida',
+  'Invalid ownership percentage': 'El porcentaje de propiedad no es válido',
+  'Ownership percentage only applies to owners':
+    'El porcentaje de propiedad solo aplica a propietarios',
+  'unit already exists': 'La unidad ya existe en Habitta',
+  'unit_code is duplicated in the file': 'El código de unidad está duplicado en el archivo',
+  'invalid unit_type': 'El tipo de unidad no es válido',
+  'invalid status': 'El estado no es válido',
+  'invalid ownership_percentage': 'El porcentaje de propiedad no es válido',
+  'Invalid balance type': 'El tipo de saldo no es válido',
+  'Invalid currency': 'La moneda no es válida',
+  'Invalid amount': 'El monto no es válido',
+  'Invalid date': 'La fecha no es válida',
 };
 
 const normalizedOpeningBalance = (row: Record<string, string>) => ({
@@ -57,11 +66,12 @@ const normalizedOpeningBalance = (row: Record<string, string>) => ({
 const mergeRemoteIssues = (rows: ValidatedImportRow[], issues: RemoteIssue[]) => {
   const byRow = new Map<number, string[]>();
   issues.forEach((issue) => {
-    byRow.set(issue.row, [...(byRow.get(issue.row) ?? []), issue.error]);
+    const label = remoteErrorLabels[issue.error] ?? issue.error;
+    byRow.set(issue.row, [...(byRow.get(issue.row) ?? []), label]);
   });
   return rows.map((row) => ({
     ...row,
-    errors: [...row.errors, ...(byRow.get(row.rowNumber) ?? [])],
+    errors: [...new Set([...row.errors, ...(byRow.get(row.rowNumber) ?? [])])],
   }));
 };
 
@@ -89,7 +99,8 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
       const text = await file.text();
       const nextParsed = parseCsv(text);
       const nextRows = validateImportRows(kind, nextParsed);
-      if (nextRows.length > 1000) throw new Error('La importación permite hasta 1.000 filas por archivo.');
+      if (nextRows.length > 1000)
+        throw new Error('La importación permite hasta 1.000 filas por archivo.');
       setFileName(file.name);
       setParsed(nextParsed);
       setRows(nextRows);
@@ -107,49 +118,40 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
     setBusy(true);
     setError('');
     try {
-      let nextRows = rows;
+      if (rows.some((row) => row.errors.length > 0)) {
+        setStage('preview');
+        return;
+      }
+
+      let response: PreviewResponse;
       if (kind === 'units') {
-        const [buildings, units] = await Promise.all([
-          apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-          apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-        ]);
-        const existingCodes = new Set(units.map((unit) => unit.code.toLocaleLowerCase('en-US')));
-        const buildingNames = new Set(
-          buildings.map((building) => building.name.toLocaleLowerCase('es')),
-        );
-        nextRows = rows.map((row) => {
-          const issues = [...row.errors];
-          if (existingCodes.has(row.data.unit_code.toLocaleLowerCase('en-US')))
-            issues.push('La unidad ya existe en Habitta');
-          if (!row.data.building_name && buildingNames.size > 0)
-            issues.push('building_name está vacío; la unidad se creará sin torre');
-          return { ...row, errors: issues };
-        });
-      }
-      if (kind === 'people') {
-        const response = await apiRequest<{ errors?: RemoteIssue[] }>(
-          `/v1/condominiums/${condominiumId}/people/import/preview`,
+        response = await apiRequest<PreviewResponse>(
+          `/v1/condominiums/${condominiumId}/imports/units/preview`,
           session,
-          { method: 'POST', body: JSON.stringify({ csv: canonicalCsv(kind, parsed) }) },
+          { method: 'POST', body: JSON.stringify({ rows: parsed.rows }) },
         );
-        nextRows = mergeRemoteIssues(rows, response.errors ?? []);
-      }
-      if (kind === 'opening_balances') {
-        const response = await apiRequest<{ errors?: RemoteIssue[] }>(
+      } else if (kind === 'people') {
+        response = await apiRequest<PreviewResponse>(
+          `/v1/condominiums/${condominiumId}/imports/people/preview`,
+          session,
+          { method: 'POST', body: JSON.stringify({ rows: parsed.rows }) },
+        );
+      } else {
+        response = await apiRequest<PreviewResponse>(
           `/v1/condominiums/${condominiumId}/opening-balances/preview`,
           session,
           {
             method: 'POST',
             body: JSON.stringify({
-              rows: rows.filter((row) => row.errors.length === 0).map((row) => normalizedOpeningBalance(row.data)),
+              rows: rows.map((row) => normalizedOpeningBalance(row.data)),
               idempotencyKey: `preview-${crypto.randomUUID()}`,
               filename: fileName,
             }),
           },
         );
-        nextRows = mergeRemoteIssues(rows, response.errors ?? []);
       }
-      setRows(nextRows);
+
+      setRows(mergeRemoteIssues(rows, response.errors ?? []));
       setStage('preview');
     } catch (previewError) {
       setError(
@@ -160,56 +162,6 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
     }
   };
 
-  const importUnits = async () => {
-    const [existingBuildings] = await Promise.all([
-      apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-    ]);
-    const buildings = new Map(
-      existingBuildings.map((building) => [building.name.toLocaleLowerCase('es'), building]),
-    );
-    let imported = 0;
-    let rejected = 0;
-
-    for (const row of validRows) {
-      try {
-        let buildingId: string | undefined;
-        const buildingName = row.data.building_name.trim();
-        if (buildingName) {
-          const key = buildingName.toLocaleLowerCase('es');
-          let building = buildings.get(key);
-          if (!building) {
-            const created = await apiRequest<Building[] | Building>(
-              `/v1/condominiums/${condominiumId}/buildings`,
-              session,
-              { method: 'POST', body: JSON.stringify({ name: buildingName }) },
-            );
-            building = Array.isArray(created) ? created[0] : created;
-            if (!building?.id) throw new Error('No se pudo crear la torre.');
-            buildings.set(key, building);
-          }
-          buildingId = building.id;
-        }
-        await apiRequest(`/v1/condominiums/${condominiumId}/units`, session, {
-          method: 'POST',
-          body: JSON.stringify({
-            buildingId,
-            code: row.data.unit_code.trim(),
-            type: row.data.unit_type.trim(),
-            floor: row.data.floor.trim() || undefined,
-            ownershipPercentage: row.data.ownership_percentage
-              ? Number(row.data.ownership_percentage)
-              : undefined,
-            status: row.data.status.trim() || 'active',
-          }),
-        });
-        imported += 1;
-      } catch {
-        rejected += 1;
-      }
-    }
-    return { imported, rejected };
-  };
-
   const commit = async () => {
     if (!validRows.length || invalidRows.length) return;
     setBusy(true);
@@ -217,7 +169,18 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
     try {
       let nextResult: ImportResult;
       if (kind === 'units') {
-        nextResult = await importUnits();
+        nextResult = await apiRequest<ImportResult>(
+          `/v1/condominiums/${condominiumId}/imports/units/commit`,
+          session,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              rows: validRows.map((row) => row.data),
+              idempotencyKey: crypto.randomUUID(),
+              filename: fileName,
+            }),
+          },
+        );
       } else if (kind === 'people') {
         nextResult = await apiRequest<ImportResult>(
           `/v1/condominiums/${condominiumId}/people/import/commit`,
@@ -265,17 +228,29 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
   };
 
   if (stage === 'complete') {
+    const created = result?.imported ?? result?.created ?? result?.count ?? 0;
     return (
       <div className="csv-import csv-import--complete">
         <span className="csv-import__success">✓</span>
         <h3>Importación finalizada</h3>
         <p>Habitta procesó el archivo {fileName}.</p>
         <div className="csv-import__result">
-          <div><strong>{result?.imported ?? result?.created ?? 0}</strong><span>Creados</span></div>
-          <div><strong>{result?.reused ?? 0}</strong><span>Reutilizados</span></div>
-          <div><strong>{result?.rejected ?? 0}</strong><span>Rechazados</span></div>
+          <div>
+            <strong>{created}</strong>
+            <span>Creados</span>
+          </div>
+          <div>
+            <strong>{result?.reused ?? result?.created_buildings ?? 0}</strong>
+            <span>{kind === 'units' ? 'Torres creadas' : 'Reutilizados'}</span>
+          </div>
+          <div>
+            <strong>{result?.rejected ?? 0}</strong>
+            <span>Rechazados</span>
+          </div>
         </div>
-        <Button onClick={reset} variant="secondary">Importar otro archivo</Button>
+        <Button onClick={reset} variant="secondary">
+          Importar otro archivo
+        </Button>
       </div>
     );
   }
@@ -294,7 +269,9 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
       </div>
 
       <ol className="csv-import__instructions">
-        {definition.instructions.map((instruction) => <li key={instruction}>{instruction}</li>)}
+        {definition.instructions.map((instruction) => (
+          <li key={instruction}>{instruction}</li>
+        ))}
       </ol>
 
       {error ? <div className="csv-import__alert">{error}</div> : null}
@@ -328,35 +305,65 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
       ) : (
         <>
           <div className="csv-import__summary-grid">
-            <div><strong>{rows.length}</strong><span>Total de filas</span></div>
-            <div data-tone="success"><strong>{validRows.length}</strong><span>Listas para importar</span></div>
-            <div data-tone="danger"><strong>{invalidRows.length}</strong><span>Requieren corrección</span></div>
+            <div>
+              <strong>{rows.length}</strong>
+              <span>Total de filas</span>
+            </div>
+            <div data-tone="success">
+              <strong>{validRows.length}</strong>
+              <span>Listas para importar</span>
+            </div>
+            <div data-tone="danger">
+              <strong>{invalidRows.length}</strong>
+              <span>Requieren corrección</span>
+            </div>
           </div>
           <div className="csv-import__table-wrap">
             <table className="csv-import__table">
               <thead>
-                <tr><th>Fila</th><th>Referencia</th><th>Estado</th><th>Detalle</th></tr>
+                <tr>
+                  <th>Fila</th>
+                  <th>Referencia</th>
+                  <th>Estado</th>
+                  <th>Detalle</th>
+                </tr>
               </thead>
               <tbody>
                 {rows.slice(0, 100).map((row) => (
                   <tr key={row.rowNumber}>
                     <td>{row.rowNumber}</td>
                     <td>{row.data.unit_code || row.data.first_name || '—'}</td>
-                    <td><Badge tone={row.errors.length ? 'warning' : 'success'}>{row.errors.length ? 'Corregir' : 'Válida'}</Badge></td>
+                    <td>
+                      <Badge tone={row.errors.length ? 'warning' : 'success'}>
+                        {row.errors.length ? 'Corregir' : 'Válida'}
+                      </Badge>
+                    </td>
                     <td>{row.errors.join(' · ') || 'Lista para importar'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {rows.length > 100 ? <p className="csv-import__note">Se muestran las primeras 100 filas.</p> : null}
+          {rows.length > 100 ? (
+            <p className="csv-import__note">Se muestran las primeras 100 filas.</p>
+          ) : null}
           <div className="csv-import__actions">
-            <Button onClick={() => setStage('file')} variant="secondary">Cambiar archivo</Button>
-            <Button disabled={busy || invalidRows.length > 0 || validRows.length === 0} onClick={() => void commit()}>
+            <Button onClick={() => setStage('file')} variant="secondary">
+              Cambiar archivo
+            </Button>
+            <Button
+              disabled={busy || invalidRows.length > 0 || validRows.length === 0}
+              onClick={() => void commit()}
+            >
               {busy ? 'Importando…' : `Importar ${validRows.length} filas`}
             </Button>
           </div>
-          {invalidRows.length ? <p className="csv-import__note">Corrige el archivo y vuelve a validarlo. Habitta no importará parcialmente una vista previa con errores.</p> : null}
+          {invalidRows.length ? (
+            <p className="csv-import__note">
+              Corrige el archivo y vuelve a validarlo. Habitta no guardará ninguna fila mientras
+              existan errores en la vista previa.
+            </p>
+          ) : null}
         </>
       )}
     </div>
