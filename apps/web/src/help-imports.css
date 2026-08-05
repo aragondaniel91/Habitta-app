@@ -185,6 +185,26 @@
   margin-bottom: 0;
 }
 
+.csv-import__spreadsheet-note {
+  display: grid;
+  gap: 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem;
+  background: var(--blue-soft);
+}
+
+.csv-import__spreadsheet-note strong {
+  color: var(--blue);
+  font-size: 0.86rem;
+}
+
+.csv-import__spreadsheet-note span {
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .csv-import__dropzone {
   display: grid;
   min-height: 160px;
