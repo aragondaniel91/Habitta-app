@@ -23,7 +23,14 @@ export const IMPORT_DEFINITIONS: Record<ImportKind, ImportDefinition> = {
   units: {
     title: 'Estructura y unidades',
     description: 'Crea torres o edificios faltantes y registra sus unidades.',
-    headers: ['building_name', 'unit_code', 'unit_type', 'floor', 'ownership_percentage', 'status'],
+    headers: [
+      'building_name',
+      'unit_code',
+      'unit_type',
+      'floor',
+      'ownership_percentage',
+      'status',
+    ],
     sample: {
       building_name: 'Torre A',
       unit_code: 'A-101',
@@ -33,10 +40,10 @@ export const IMPORT_DEFINITIONS: Record<ImportKind, ImportDefinition> = {
       status: 'active',
     },
     instructions: [
-      'unit_code debe ser único dentro del condominio.',
-      'unit_type acepta apartment, house, commercial, parking o storage.',
-      'status acepta active o inactive.',
-      'building_name, floor y ownership_percentage son opcionales.',
+      'Código de unidad (unit_code): debe ser único, por ejemplo A-101.',
+      'Tipo (unit_type): usa apartment, house, commercial, parking o storage.',
+      'Estado (status): usa active para activa o inactive para inactiva.',
+      'Torre, piso y alícuota (building_name, floor y ownership_percentage) son opcionales.',
     ],
   },
   people: {
@@ -61,10 +68,10 @@ export const IMPORT_DEFINITIONS: Record<ImportKind, ImportDefinition> = {
       ownership_percentage: '100',
     },
     instructions: [
-      'La unidad debe existir antes de importar personas.',
-      'relationship acepta owner, owner_occupant, tenant, family_member o authorized_occupant.',
-      'ownership_percentage solo se usa para owner u owner_occupant.',
-      'El correo permite reutilizar una persona existente y evitar duplicados.',
+      'La unidad indicada en unit_code debe existir antes de importar personas.',
+      'Relación (relationship): owner, owner_occupant, tenant, family_member o authorized_occupant.',
+      'Alícuota de propiedad (ownership_percentage): solo se usa para propietarios.',
+      'Incluye el correo siempre que sea posible para evitar personas duplicadas.',
     ],
   },
   opening_balances: {
@@ -87,10 +94,10 @@ export const IMPORT_DEFINITIONS: Record<ImportKind, ImportDefinition> = {
       description: 'Saldo anterior a la migración',
     },
     instructions: [
-      'balance_type acepta debit para deuda o credit para saldo a favor.',
-      'amount debe ser positivo y usar punto decimal.',
-      'currency_code debe tener tres letras, por ejemplo USD, VES o EUR.',
-      'effective_date debe usar formato YYYY-MM-DD.',
+      'Tipo de saldo (balance_type): debit para deuda o credit para saldo a favor.',
+      'Monto (amount): debe ser positivo y usar punto decimal, por ejemplo 125.50.',
+      'Moneda (currency_code): usa tres letras, por ejemplo USD, VES o EUR.',
+      'Fecha efectiva (effective_date): usa el formato YYYY-MM-DD.',
     ],
   },
 };
@@ -156,8 +163,7 @@ export function parseCsv(text: string): ParsedCsv {
   }
   if (quoted) throw new Error('Hay una celda con comillas sin cerrar.');
   if (cell.length || row.length) pushRow();
-  if (matrix.length < 2)
-    throw new Error('El archivo debe incluir encabezados y al menos una fila.');
+  if (matrix.length < 2) throw new Error('El archivo debe incluir encabezados y al menos una fila.');
 
   const headerRow = matrix[0] ?? [];
   const headers = headerRow.map(normalizeHeader);
@@ -166,11 +172,9 @@ export function parseCsv(text: string): ParsedCsv {
 
   return {
     headers,
-    rows: matrix
-      .slice(1)
-      .map((values) =>
-        Object.fromEntries(headers.map((header, index) => [header, values[index]?.trim() ?? ''])),
-      ),
+    rows: matrix.slice(1).map((values) =>
+      Object.fromEntries(headers.map((header, index) => [header, values[index]?.trim() ?? ''])),
+    ),
   };
 }
 
@@ -180,7 +184,8 @@ const isPositiveMoney = (value: string) =>
   /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(value) && Number(value) > 0;
 const isPercentage = (value: string) =>
   value === '' ||
-  (/^(?:100(?:\.0+)?|(?:[0-9]|[1-9][0-9])(?:\.\d+)?)$/.test(value) && Number(value) > 0);
+  (/^(?:100(?:\.0+)?|(?:[0-9]|[1-9][0-9])(?:\.\d+)?)$/.test(value) &&
+    Number(value) > 0);
 
 export function validateImportRows(kind: ImportKind, parsed: ParsedCsv): ValidatedImportRow[] {
   const definition = IMPORT_DEFINITIONS[kind];
@@ -246,7 +251,8 @@ export function validateImportRows(kind: ImportKind, parsed: ParsedCsv): Validat
         errors.push('balance_type debe ser debit o credit');
       if (!isPositiveMoney(amount))
         errors.push('amount debe ser un monto positivo con hasta 2 decimales');
-      if (!/^[A-Za-z]{3}$/.test(currencyCode)) errors.push('currency_code debe tener tres letras');
+      if (!/^[A-Za-z]{3}$/.test(currencyCode))
+        errors.push('currency_code debe tener tres letras');
       if (!isDate(effectiveDate)) errors.push('effective_date debe usar YYYY-MM-DD');
     }
 
