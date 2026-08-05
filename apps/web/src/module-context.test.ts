@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
-import moduleContextCss from './module-context.css?raw';
+const moduleContextCss = readFileSync(new URL('./module-context.css', import.meta.url), 'utf8');
 
 describe('module context header', () => {
   it('keeps the shell title accessible while removing the visual duplicate', () => {
