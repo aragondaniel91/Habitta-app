@@ -1,0 +1,535 @@
+name: Fix Responsive App Shell
+
+on:
+  push:
+    branches:
+      - fix/responsive-app-shell-audit
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/responsive-app-shell-audit
+          fetch-depth: 0
+
+      - name: Apply responsive layout corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'Marker not found: {label}')
+              return text.replace(old, new, 1)
+
+          p = Path('apps/web/src/styles.css')
+          s = p.read_text()
+          s = once(s, """html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+}
+""", """html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--background);
+  color: var(--text);
+}
+""", 'root sizing')
+          s = once(s, """.app-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  background: var(--background);
+  transition: grid-template-columns 180ms ease;
+}
+""", """.app-shell {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  overflow-x: clip;
+  background: var(--background);
+  transition: grid-template-columns 180ms ease;
+}
+""", 'app shell sizing')
+          s = once(s, """.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 0.75rem;
+}
+""", """.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 0.75rem;
+  scrollbar-color: rgb(255 255 255 / 0.24) transparent;
+  scrollbar-width: thin;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.24);
+}
+""", 'sidebar scrollbar')
+          s = once(s, """.shell-body {
+  min-width: 0;
+}
+""", """.shell-body {
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+""", 'shell body sizing')
+          s = once(s, """.topbar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: flex;
+  min-height: var(--topbar-height);
+""", """.topbar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: flex;
+  min-width: 0;
+  min-height: var(--topbar-height);
+""", 'topbar sizing')
+          s = once(s, """.topbar__start,
+.topbar__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+""", """.topbar__start,
+.topbar__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.topbar__start {
+  flex: 1 1 auto;
+}
+
+.topbar__actions {
+  flex: 0 0 auto;
+}
+""", 'topbar flex behavior')
+          s = once(s, """.condo-switcher {
+  display: grid;
+  min-width: min(360px, 42vw);
+  grid-template-columns: auto minmax(180px, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.condo-switcher > span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.condo-switcher .select {
+  min-height: 40px;
+  border-color: transparent;
+  background: #f0f2f5;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+""", """.condo-switcher {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.condo-switcher > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.condo-switcher > div > span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.condo-switcher .select {
+  width: clamp(210px, 24vw, 320px);
+  min-height: 40px;
+  border-color: transparent;
+  background: #f0f2f5;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.condo-switcher__add {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+""", 'condominium switcher')
+          s = once(s, """.main-content {
+  width: 100%;
+  max-width: 1540px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+""", """.main-content {
+  container: page / inline-size;
+  width: 100%;
+  min-width: 0;
+  max-width: 1540px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+""", 'main content container')
+
+          block = """@media (max-width: 1180px) {
+  .app-shell,
+  .app-shell--collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .mobile-menu-button {
+    display: inline-grid;
+  }
+
+  .mobile-backdrop {
+    position: fixed;
+    z-index: 69;
+    inset: 0;
+    display: block;
+    visibility: hidden;
+    border: 0;
+    background: rgb(13 27 42 / 0.54);
+    opacity: 0;
+    transition:
+      opacity 180ms ease,
+      visibility 180ms ease;
+  }
+
+  .mobile-backdrop.is-open {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .mobile-drawer {
+    position: fixed;
+    z-index: 70;
+    inset: 0 auto 0 0;
+    display: flex;
+    width: min(310px, calc(100vw - 44px));
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--navy);
+    color: #fff;
+    transform: translateX(-102%);
+    transition: transform 180ms ease;
+  }
+
+  .mobile-drawer.is-open {
+    transform: translateX(0);
+  }
+
+  .mobile-drawer .sidebar-nav {
+    flex: 1;
+  }
+}
+
+"""
+          marker = '@media (max-width: 960px) {'
+          if block.strip() not in s:
+              s = once(s, marker, block + marker, 'responsive shell insertion')
+
+          s = s.replace('.condo-switcher > span {\n    display: none;', '.condo-switcher > div > span {\n    display: none;', 1)
+          s = once(s, """  .condo-switcher {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .condo-switcher > div > span {
+    display: none;
+  }
+
+  .condo-switcher .select {
+    width: min(46vw, 220px);
+    font-size: 0.78rem;
+  }
+""", """  .condo-switcher {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .condo-switcher > div {
+    flex: 1 1 auto;
+  }
+
+  .condo-switcher > div > span {
+    display: none;
+  }
+
+  .condo-switcher .select {
+    width: min(46vw, 220px);
+    max-width: 100%;
+    font-size: 0.78rem;
+  }
+
+  .condo-switcher__add {
+    display: none;
+  }
+""", 'mobile condominium switcher')
+          p.write_text(s)
+
+          p = Path('apps/web/src/expenses.css')
+          s = p.read_text()
+          s = once(s, """.expenses-overview,
+.expenses-toolbar,
+.expenses-currency-strip,
+.expenses-metric__top,
+.expenses-detail__amount,
+.expenses-drawer__header,
+.expenses-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+""", """.expenses-overview,
+.expenses-toolbar,
+.expenses-currency-strip,
+.expenses-metric__top,
+.expenses-detail__amount,
+.expenses-drawer__header,
+.expenses-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.expenses-overview,
+.expenses-toolbar {
+  flex-wrap: wrap;
+}
+""", 'expenses wrapping')
+          s = once(s, """.expenses-search {
+  flex: 1 1 320px;
+}
+.expenses-toolbar .select {
+  min-width: 190px;
+}
+""", """.expenses-search {
+  min-width: min(280px, 100%);
+  flex: 1 1 320px;
+}
+.expenses-toolbar .select {
+  min-width: min(190px, 100%);
+  flex: 1 1 190px;
+}
+""", 'expenses toolbar')
+          block = """@container page (max-width: 1120px) {
+  .expenses-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .expenses-search {
+    flex-basis: 100%;
+  }
+}
+
+@container page (max-width: 760px) {
+  .expenses-overview,
+  .expenses-currency-strip {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .expenses-overview__actions {
+    width: 100%;
+  }
+
+  .expenses-overview__actions .button {
+    flex: 1;
+  }
+
+  .expenses-metrics-grid,
+  .expenses-form-grid,
+  .expenses-form-grid--three,
+  .expenses-detail-list {
+    grid-template-columns: 1fr;
+  }
+
+  .expenses-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .expenses-toolbar .select {
+    width: 100%;
+  }
+}
+
+"""
+          marker = '@media (max-width: 1080px) {'
+          if block.strip() not in s:
+              s = once(s, marker, block + marker, 'expenses containers')
+          p.write_text(s)
+
+          p = Path('apps/web/src/governance.css')
+          s = p.read_text()
+          s = once(s, """.governance-overview,
+.governance-metric__top,
+.governance-toolbar,
+.governance-drawer__header,
+.governance-section-heading,
+.governance-card__heading,
+.governance-card__footer,
+.governance-form__actions,
+.governance-detail__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+""", """.governance-overview,
+.governance-metric__top,
+.governance-toolbar,
+.governance-drawer__header,
+.governance-section-heading,
+.governance-card__heading,
+.governance-card__footer,
+.governance-form__actions,
+.governance-detail__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.governance-overview,
+.governance-toolbar {
+  flex-wrap: wrap;
+}
+""", 'governance wrapping')
+          s = once(s, """.governance-search {
+  flex: 1 1 320px;
+}
+.governance-toolbar .select {
+  min-width: 190px;
+}
+""", """.governance-search {
+  min-width: min(280px, 100%);
+  flex: 1 1 320px;
+}
+.governance-toolbar .select {
+  min-width: min(190px, 100%);
+  flex: 1 1 190px;
+}
+""", 'governance toolbar')
+          block = """@container page (max-width: 1120px) {
+  .governance-metrics-grid,
+  .governance-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .governance-search {
+    flex-basis: 100%;
+  }
+}
+
+@container page (max-width: 760px) {
+  .governance-overview {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .governance-overview .button {
+    width: 100%;
+  }
+
+  .governance-metrics-grid,
+  .governance-card-grid,
+  .governance-form-grid,
+  .governance-form-grid--three,
+  .governance-detail__summary dl {
+    grid-template-columns: 1fr;
+  }
+
+  .governance-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .governance-toolbar .select {
+    width: 100%;
+  }
+}
+
+"""
+          marker = '@media (max-width: 1120px) {'
+          if block.strip() not in s:
+              s = once(s, marker, block + marker, 'governance containers')
+          p.write_text(s)
+          PY
+
+      - name: Format and validate
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write apps/web/src/styles.css apps/web/src/expenses.css apps/web/src/governance.css
+          pnpm format:check
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm build
+          git diff --check
+
+      - name: Commit responsive fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/styles.css apps/web/src/expenses.css apps/web/src/governance.css
+          git commit -m "Fix responsive application shell and operations layouts"
+          git push origin HEAD:fix/responsive-app-shell-audit
