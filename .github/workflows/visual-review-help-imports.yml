@@ -161,7 +161,7 @@ jobs:
             await writeFile(csvPath, csv);
             await page.locator('input[type=file]').setInputFiles(csvPath);
             await page.getByRole('button', { name: 'Validar y previsualizar' }).click();
-            await page.getByText('Lista para importar', { exact: true }).waitFor();
+            await page.getByRole('cell', { name: 'Lista para importar' }).waitFor();
             await page.screenshot({ path: `visual-review/${prefix}-import-preview.png`, fullPage: true });
             await context.close();
           };
