@@ -24,6 +24,7 @@ import './announcements.css';
 import './help-imports.css';
 import './brand-palette.css';
 import './brand-assets.css';
+import './module-context.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
