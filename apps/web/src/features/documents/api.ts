@@ -32,7 +32,7 @@ export const normalizedPrivateDocumentType = (file: File) => {
   const extension = Object.keys(extensionContentTypes).find((value) =>
     file.name.toLowerCase().endsWith(value),
   );
-  return extension ? extensionContentTypes[extension] : supplied;
+  return extension ? (extensionContentTypes[extension] ?? supplied) : supplied;
 };
 
 export const privateDocumentError = (file: File) => {
