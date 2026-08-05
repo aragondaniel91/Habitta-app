@@ -74,15 +74,6 @@ update('apps/api/wrangler.jsonc', (source) =>
   ),
 );
 
-update('.github/workflows/development-release-apply.yml', (source) =>
-  replaceOnce(
-    source,
-    '            --var "BUILD_COMMIT:$SHA"\n            --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP"\n            --var "APP_VERSION:$APP_VERSION"\n',
-    '            --define "HABITTA_BUILD_COMMIT:\u0027$SHA\u0027"\n            --define "HABITTA_BUILD_TIMESTAMP:\u0027$BUILD_TIMESTAMP\u0027"\n            --define "HABITTA_APP_VERSION:\u0027$APP_VERSION\u0027"\n',
-    'compile-time release metadata',
-  ),
-);
-
 update('scripts/release/development-smoke.mjs', (source) =>
   replaceOnce(
     source,
