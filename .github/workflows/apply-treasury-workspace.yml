@@ -24,7 +24,7 @@ jobs:
           cache: pnpm
       - run: node scripts/apply-treasury-workspace.mjs
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec prettier --write apps/api/src/index.ts apps/api/src/treasury-routes.ts apps/api/src/treasury-routes.test.ts apps/web/src/App.tsx apps/web/src/navigation.ts apps/web/src/main.tsx apps/web/src/features/help/module-help.ts apps/web/src/features/treasury/api.ts apps/web/src/pages/TreasuryPage.tsx apps/web/src/treasury.css
+      - run: pnpm exec prettier --write scripts/apply-treasury-workspace.mjs apps/api/src/index.ts apps/api/src/treasury-routes.ts apps/api/src/treasury-routes.test.ts apps/web/src/App.tsx apps/web/src/navigation.ts apps/web/src/main.tsx apps/web/src/features/help/module-help.ts apps/web/src/features/treasury/api.ts apps/web/src/pages/TreasuryPage.tsx apps/web/src/treasury.css
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
