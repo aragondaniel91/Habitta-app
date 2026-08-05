@@ -275,6 +275,15 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
                   <CheckCircleIcon size={30} />
                   <h2>Revisa tu correo</h2>
                   <p>Después de confirmar, vuelve a este enlace para terminar.</p>
+                  <Button
+                    onClick={() => {
+                      window.location.href = '/';
+                    }}
+                    type="button"
+                    variant="ghost"
+                  >
+                    Ir al inicio de sesión
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -375,6 +384,22 @@ export function AdminInvitationExperience({ rawToken, session, onAccepted, onSig
                       </Button>
                     </form>
                   )}
+
+                  <div className="access-card__actions">
+                    <Button
+                      onClick={() => {
+                        window.location.href = '/';
+                      }}
+                      type="button"
+                      variant="ghost"
+                    >
+                      Entrar con otro correo
+                    </Button>
+                  </div>
+                  <p className="access-card__fine-print">
+                    El correo mostrado está protegido porque esta invitación pertenece únicamente a
+                    esa dirección. Para usar otra cuenta, vuelve al inicio de sesión.
+                  </p>
                 </>
               )}
             </>
