@@ -41,7 +41,7 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      INPUT_RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || 'main' }}
+      INPUT_RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.sha }}
       INPUT_CONFIRMATION: ${{ inputs.confirmation }}
       INPUT_CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
     steps:
@@ -80,6 +80,7 @@ jobs:
           git fetch origin main
           SHA=$(git rev-parse HEAD)
           git merge-base --is-ancestor "$SHA" origin/main
+          echo "RELEASE_COMMIT=$SHA" >> "$GITHUB_ENV"
       - run: pnpm install --frozen-lockfile
       - name: Validate repository
         run: |
@@ -151,7 +152,7 @@ jobs:
           node --input-type=module <<'NODE'
           const apiUrl = process.env.CLOUDFLARE_WORKER_PROD_URL;
           const origin = process.env.CLOUDFLARE_PAGES_PROD_URL;
-          const expectedCommit = process.env.GITHUB_SHA;
+          const expectedCommit = process.env.RELEASE_COMMIT;
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
           let lastError;
           for (let attempt = 1; attempt <= 10; attempt += 1) {
