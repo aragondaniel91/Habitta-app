@@ -145,6 +145,17 @@ export function AnnouncementsIcon(props: IconProps) {
   );
 }
 
+export function MaintenanceIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path
+        {...strokeProps}
+        d="M14.7 6.3a4 4 0 0 0-5-5L12 3.6 9.6 6 7.3 3.7a4 4 0 0 0 5 5L20 16.4a2.5 2.5 0 1 1-3.6 3.6L8.7 12.3a4 4 0 0 0-5-5L6 9.6 3.6 12 1.3 9.7a4 4 0 0 0 5 5"
+      />
+    </IconBase>
+  );
+}
+
 export function SettingsIcon(props: IconProps) {
   return (
     <IconBase {...props}>

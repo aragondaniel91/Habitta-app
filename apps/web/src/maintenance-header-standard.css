@@ -1,0 +1,75 @@
+/* Maintenance follows the same approved administrative module header contract. */
+.maintenance-overview {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: var(--module-header-gap) !important;
+  min-height: 0 !important;
+  margin: 0 0 1.5rem !important;
+  padding: 0 0 1.25rem !important;
+  color: var(--text) !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.maintenance-overview > :first-child {
+  min-width: 0;
+  max-width: var(--module-header-copy-width);
+}
+
+.maintenance-overview h2 {
+  margin: 0.25rem 0 0.4rem !important;
+  color: var(--text-strong) !important;
+  font-size: var(--module-header-title-size) !important;
+  font-weight: 750 !important;
+  line-height: var(--module-header-title-line-height) !important;
+  letter-spacing: -0.03em !important;
+  text-wrap: balance;
+}
+
+.maintenance-kicker {
+  display: block !important;
+  margin: 0 !important;
+  color: var(--blue) !important;
+  font-size: 0.75rem !important;
+  font-weight: 750 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.09em !important;
+  text-transform: uppercase !important;
+}
+
+.maintenance-overview > :first-child > p {
+  max-width: 48rem;
+  margin: 0 !important;
+  color: var(--muted) !important;
+  font-size: 0.9375rem !important;
+  font-weight: 400 !important;
+  line-height: 1.55 !important;
+}
+
+.maintenance-overview > :last-child:not(:first-child) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex: 0 0 auto;
+  flex-wrap: wrap !important;
+  gap: 0.625rem !important;
+}
+
+@media (max-width: 720px) {
+  .maintenance-overview {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    margin-bottom: 1.25rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .maintenance-overview > :last-child:not(:first-child) {
+    justify-content: flex-start !important;
+    width: 100%;
+  }
+}

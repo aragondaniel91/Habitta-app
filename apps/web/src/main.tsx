@@ -21,12 +21,14 @@ import './community.css';
 import './governance.css';
 import './requests.css';
 import './announcements.css';
+import './maintenance.css';
 import './help-imports.css';
 import './private-documents.css';
 import './brand-palette.css';
 import './brand-assets.css';
 import './module-context.css';
 import './module-header-standard.css';
+import './maintenance-header-standard.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -5,6 +5,7 @@ import {
   DashboardIcon,
   ExpensesIcon,
   FeesIcon,
+  MaintenanceIcon,
   PaymentsIcon,
   PeopleIcon,
   ReportsIcon,
@@ -22,6 +23,7 @@ export type AppRoute = {
     | 'dashboard'
     | 'units'
     | 'people'
+    | 'maintenance'
     | 'fees'
     | 'payments'
     | 'expenses'
@@ -82,6 +84,17 @@ export const APP_ROUTES = [
     section: 'principal',
     icon: PeopleIcon,
     scope: ['Propietarios', 'Inquilinos', 'Invitaciones y contactos'],
+  },
+  {
+    key: 'maintenance',
+    path: '/app/maintenance',
+    label: 'Mantenimiento',
+    shortLabel: 'Mantenimiento',
+    title: 'Activos y mantenimiento',
+    description: 'Controla equipos, rutinas preventivas, órdenes de trabajo e historial técnico.',
+    section: 'principal',
+    icon: MaintenanceIcon,
+    scope: ['Inventario técnico', 'Planes recurrentes', 'Órdenes e historial'],
   },
   {
     key: 'fees',
