@@ -44,7 +44,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const readPostgrestError = async (response: Response): Promise<PostgrestError | null> => {
-  if (response.ok || !response.headers.get('Content-Type')?.includes('application/json')) return null;
+  if (
+    response.ok ||
+    !response.headers.get('Content-Type')?.includes('application/json')
+  )
+    return null;
 
   try {
     const value = (await response.clone().json()) as unknown;
