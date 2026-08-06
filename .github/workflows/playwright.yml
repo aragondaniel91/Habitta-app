@@ -34,7 +34,7 @@ jobs:
       - name: Install Playwright test dependencies
         run: npm ci --prefix e2e
       - name: Install Chromium
-        run: npm --prefix e2e exec playwright install --with-deps chromium
+        run: npm --prefix e2e exec -- playwright install --with-deps chromium
       - name: Run public browser suite
         run: npm --prefix e2e run test:public
       - name: Upload Playwright report
