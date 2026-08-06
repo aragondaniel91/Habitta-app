@@ -50,7 +50,7 @@ export default defineConfig({
     {
       name: 'public-mobile',
       testMatch: /public-.*\.spec\.ts/,
-      use: { ...devices['iPhone 15'] },
+      use: { ...devices['Pixel 7'] },
     },
     {
       name: 'financial-chromium',
