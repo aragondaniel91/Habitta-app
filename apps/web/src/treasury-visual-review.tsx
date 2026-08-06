@@ -162,7 +162,10 @@ const json = (value: unknown, status = 200) =>
   });
 
 window.fetch = async (input, init) => {
-  const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, window.location.href);
+  const url = new URL(
+    typeof input === 'string' ? input : input instanceof URL ? input.href : input.url,
+    window.location.href,
+  );
   if ((init?.method ?? 'GET') !== 'GET') return json({ id: crypto.randomUUID() }, 201);
   if (url.pathname.endsWith('/treasury/accounts')) return json(accounts);
   if (url.pathname.endsWith('/treasury/movements')) return json(movements);
