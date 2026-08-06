@@ -5,8 +5,15 @@ const requiredEnvironment = [
   'E2E_ADMIN_EMAIL',
   'E2E_ADMIN_PASSWORD',
   'E2E_CONDOMINIUM_NAME',
+  'E2E_FIXTURE_ID',
 ];
 const missingEnvironment = requiredEnvironment.filter((name) => !process.env[name]);
+const baseUrl = process.env.E2E_BASE_URL;
+const productionHost = 'habitta-web-prod.pages.dev';
+
+if (baseUrl && new URL(baseUrl).hostname === productionHost) {
+  throw new Error('Financial E2E tests are forbidden against the Habitta production web app.');
+}
 
 test.describe('Preparación del flujo financiero', () => {
   test.skip(
