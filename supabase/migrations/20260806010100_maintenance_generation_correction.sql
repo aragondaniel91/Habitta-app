@@ -1,4 +1,4 @@
--- Corrects recurrence advancement so every frequency records the actual generated due date.
+-- Corrects recurrence advancement and closes maintenance authorization gaps.
 
 create or replace function public.generate_due_maintenance_work_orders(
   target_condominium uuid,
@@ -21,7 +21,7 @@ begin
   if through_date is null then
     raise exception 'maintenance generation date required';
   end if;
-  if auth.role() <> 'service_role'
+  if coalesce(auth.role(), '') <> 'service_role'
     and (auth.uid() is null or not public.can_manage_maintenance(target_condominium)) then
     raise exception 'maintenance generation denied';
   end if;
@@ -141,3 +141,17 @@ $$;
 revoke execute on function public.generate_due_maintenance_work_orders(uuid, date) from public;
 grant execute on function public.generate_due_maintenance_work_orders(uuid, date)
   to authenticated, service_role;
+
+-- Statement-level guards reject every mutation attempt, including statements
+-- that RLS would otherwise reduce to zero visible rows.
+drop trigger if exists maintenance_service_logs_append_only
+  on public.maintenance_service_logs;
+create trigger maintenance_service_logs_append_only
+before update or delete on public.maintenance_service_logs
+for each statement execute function public.maintenance_append_only();
+
+drop trigger if exists maintenance_events_append_only
+  on public.maintenance_events;
+create trigger maintenance_events_append_only
+before update or delete on public.maintenance_events
+for each statement execute function public.maintenance_append_only();
