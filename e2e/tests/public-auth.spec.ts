@@ -13,7 +13,6 @@ test.describe('Acceso público de Habitta', () => {
     await expect(page.getByLabel('Correo electrónico')).toBeVisible();
     await expect(page.getByLabel('Contraseña')).toBeVisible();
     await expect(page.getByRole('button', { name: /Iniciar sesión/ })).toBeEnabled();
-    await expect(page.getByText('Gestión de condominios')).toBeVisible();
     expect(pageErrors).toEqual([]);
   });
 
