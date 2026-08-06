@@ -32,7 +32,9 @@ jobs:
       - name: Install application dependencies
         run: pnpm install --frozen-lockfile
       - name: Install Playwright test dependencies
-        run: npm ci --prefix e2e
+        run: npm install --prefix e2e --no-package-lock --ignore-scripts --no-audit --no-fund
+      - name: Typecheck Playwright configuration
+        run: pnpm exec tsc -p e2e/tsconfig.json --noEmit
       - name: Install Chromium
         run: npm --prefix e2e exec -- playwright install --with-deps chromium
       - name: Run public browser suite
