@@ -9,7 +9,7 @@ This note records the abuse controls that are enforced in application code and t
 - Payment proofs larger than 10 MB are rejected.
 - The payment-proof upload checks authorization before storing metadata permanently.
 - Production CORS accepts only origins configured through `CORS_ALLOWED_ORIGINS`; localhost is limited to non-production environments.
-- PostgREST error details are written to private Worker logs and replaced with a stable public error plus a request ID.
+- PostgREST error codes and messages are written to private Worker logs; schema details are replaced publicly with a stable error plus a request ID.
 
 ## Required before the first external pilot
 
