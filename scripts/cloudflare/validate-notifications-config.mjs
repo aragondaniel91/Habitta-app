@@ -68,6 +68,32 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
   }
   if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
     errors.push('missing_notification_cron');
+
+  const prod = config.env?.prod;
+  if (!prod || prod.name !== 'habitta-api-prod') errors.push('missing_prod_environment');
+  else {
+    requiredQueue(prod, 'habitta-notifications-prod', errors);
+    requiredR2(prod, 'habitta-payment-proofs-prod', errors);
+    const consumer = prod.queues?.consumers?.find(
+      (entry) => entry.queue === 'habitta-notifications-prod',
+    );
+    if (consumer?.dead_letter_queue !== 'habitta-notifications-dlq-prod')
+      errors.push('invalid_prod_dead_letter_queue');
+    if (prod.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
+      errors.push('unsafe_prod_email_mode');
+    if (prod.vars?.NOTIFICATIONS_EMAIL_PROVIDER !== 'zeptomail')
+      errors.push('invalid_prod_email_provider');
+    if (prod.vars?.APP_ENV !== 'production') errors.push('invalid_prod_app_environment');
+    if (prod.vars?.APP_BASE_URL !== 'https://habitta-web-prod.pages.dev')
+      errors.push('invalid_prod_app_base_url');
+    const requiredSecrets = new Set(prod.secrets?.required ?? []);
+    for (const secret of ['SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']) {
+      if (!requiredSecrets.has(secret)) errors.push(`missing_prod_required_secret:${secret}`);
+    }
+  }
+  if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
+    errors.push('missing_prod_notification_cron');
+
   if (config.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
     errors.push('unsafe_default_email_mode');
   const secretAssignment =
