@@ -72,6 +72,29 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     permissions: 'Administradores y asistentes autorizados pueden gestionar personas y relaciones.',
     importKinds: ['people'],
   },
+  maintenance: {
+    purpose:
+      'Organiza los activos comunes, el mantenimiento preventivo, las órdenes de trabajo y el historial técnico del condominio.',
+    actions: [
+      'Registrar equipos y su ubicación.',
+      'Crear planes recurrentes de mantenimiento o inspección.',
+      'Generar, asignar y cerrar órdenes de trabajo.',
+      'Documentar servicios, proveedores, referencias y costos por moneda.',
+    ],
+    steps: [
+      'Registra primero los activos que requieren seguimiento.',
+      'Crea planes preventivos para los trabajos recurrentes.',
+      'Genera las órdenes vencidas o registra una orden correctiva manual.',
+      'Actualiza el estado y documenta el servicio antes de cerrar.',
+    ],
+    tips: [
+      'Retira un activo en lugar de borrarlo para conservar su historial.',
+      'El costo técnico registrado no crea automáticamente un gasto en Tesorería.',
+      'Usa la prioridad urgente solo cuando exista riesgo operativo o de seguridad.',
+    ],
+    permissions:
+      'Administradores y asistentes autorizados gestionan mantenimiento; contadores y junta pueden tener visibilidad de solo lectura según su rol.',
+  },
   fees: {
     purpose:
       'Controla cuotas, cargos, saldos pendientes, créditos y cuentas por cobrar por unidad.',
