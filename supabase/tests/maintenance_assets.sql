@@ -289,27 +289,13 @@ select is(
   'completed'::public.maintenance_work_order_status,
   'work order completes with a summary'
 );
-select lives_ok(
-  $test$
-  do $block$
-  begin
-    begin
-      update public.maintenance_service_logs
-      set summary = 'Contenido alterado'
-      where id = (select (service_log).id from maintenance_log_created);
-    exception when others then
-      null;
-    end;
-
-    if (
-      select summary from public.maintenance_service_logs
-      where id = (select (service_log).id from maintenance_log_created)
-    ) is distinct from 'Se ajustó el mecanismo y se verificaron tres ciclos de apertura.' then
-      raise exception 'maintenance service log mutated';
-    end if;
-  end
-  $block$
-  $test$,
+select throws_like(
+  format(
+    'update public.maintenance_service_logs set summary = %L where id = %L::uuid',
+    'Contenido alterado',
+    (select (service_log).id::text from maintenance_log_created)
+  ),
+  '%maintenance_service_logs records are immutable%',
   'service history remains immutable'
 );
 
