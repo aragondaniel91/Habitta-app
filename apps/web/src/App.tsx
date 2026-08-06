@@ -14,6 +14,7 @@ import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
 import { CommunityPage } from './pages/CommunityPage';
 import { ExpensesPage } from './pages/ExpensesPage';
 import { GovernancePage } from './pages/GovernancePage';
+import { MaintenancePage } from './pages/MaintenancePage';
 import { ModulePlaceholderPage } from './pages/ModulePage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ReceivablesPage } from './pages/ReceivablesPage';
@@ -247,6 +248,14 @@ export default function App() {
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         mode="people"
+        session={session}
+      />
+    );
+  } else if (currentRoute.key === 'maintenance') {
+    page = (
+      <MaintenancePage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
         session={session}
       />
     );

@@ -72,6 +72,27 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     permissions: 'Administradores y asistentes autorizados pueden gestionar personas y relaciones.',
     importKinds: ['people'],
   },
+  maintenance: {
+    purpose:
+      'Controla el inventario técnico, los planes recurrentes, las órdenes de trabajo y el historial de servicio del condominio.',
+    actions: [
+      'Registrar activos y su ubicación.',
+      'Crear planes preventivos o de inspección.',
+      'Abrir, programar, ejecutar y cerrar órdenes de trabajo.',
+    ],
+    steps: [
+      'Registra primero los equipos o activos relevantes.',
+      'Crea planes para las tareas recurrentes.',
+      'Revisa las órdenes abiertas y documenta cada servicio antes de cerrar.',
+    ],
+    tips: [
+      'No retires un activo hasta confirmar que su historial esté completo.',
+      'Registra costos con su moneda; Habitta no mezcla USD, VES o EUR.',
+      'La generación de órdenes vencidas puede repetirse sin crear duplicados.',
+    ],
+    permissions:
+      'Propietarios de organización, administradores y asistentes pueden gestionar; junta y contabilidad tienen visibilidad de consulta.',
+  },
   fees: {
     purpose:
       'Controla cuotas, cargos, saldos pendientes, créditos y cuentas por cobrar por unidad.',

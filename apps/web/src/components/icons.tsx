@@ -98,6 +98,18 @@ export function ExpensesIcon(props: IconProps) {
   );
 }
 
+export function MaintenanceIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path
+        {...strokeProps}
+        d="M14.5 6.5a4 4 0 0 0-5-5l2.2 2.2-2.5 2.5L7 4a4 4 0 0 0 5 5l7.5 7.5a2.1 2.1 0 0 1-3 3L9 12"
+      />
+      <path {...strokeProps} d="m5.5 13.5-3 3a2.1 2.1 0 0 0 3 3l3-3M15 4l5-2-2 5" />
+    </IconBase>
+  );
+}
+
 export function ReportsIcon(props: IconProps) {
   return (
     <IconBase {...props}>
