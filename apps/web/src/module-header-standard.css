@@ -1,0 +1,237 @@
+:root {
+  --module-header-title-size: clamp(1.75rem, 2.2vw, 2rem);
+  --module-header-title-line-height: 1.15;
+  --module-header-copy-width: 52rem;
+  --module-header-gap: 1.5rem;
+}
+
+/*
+ * All administrative modules share this presentation contract.
+ * Module-specific styles can arrange their internal content, but must not
+ * redefine the primary heading hierarchy, surface, or spacing.
+ */
+:where(
+  .announcements-overview,
+  .directory-heading,
+  .community-overview,
+  .expenses-overview,
+  .governance-overview,
+  .payments-overview,
+  .receivables-overview,
+  .reports-overview,
+  .requests-overview,
+  .settings-overview,
+  .structure-hero,
+  .team-access-overview,
+  .treasury-overview
+) {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: var(--module-header-gap) !important;
+  min-height: 0 !important;
+  margin: 0 0 1.5rem !important;
+  padding: 0 0 1.25rem !important;
+  color: var(--text) !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+:where(
+    .announcements-overview,
+    .directory-heading,
+    .community-overview,
+    .expenses-overview,
+    .governance-overview,
+    .payments-overview,
+    .receivables-overview,
+    .reports-overview,
+    .requests-overview,
+    .settings-overview,
+    .structure-hero,
+    .team-access-overview,
+    .treasury-overview
+  )
+  > :first-child {
+  min-width: 0;
+  max-width: var(--module-header-copy-width);
+}
+
+:where(
+    .announcements-overview,
+    .directory-heading,
+    .community-overview,
+    .expenses-overview,
+    .governance-overview,
+    .payments-overview,
+    .receivables-overview,
+    .reports-overview,
+    .requests-overview,
+    .settings-overview,
+    .structure-hero,
+    .team-access-overview,
+    .treasury-overview
+  )
+  :where(h1, h2) {
+  margin: 0.25rem 0 0.4rem !important;
+  color: var(--text-strong) !important;
+  font-size: var(--module-header-title-size) !important;
+  font-weight: 750 !important;
+  line-height: var(--module-header-title-line-height) !important;
+  letter-spacing: -0.03em !important;
+  text-wrap: balance;
+}
+
+:where(
+  .announcements-kicker,
+  .directory-kicker,
+  .community-kicker,
+  .expenses-kicker,
+  .governance-kicker,
+  .payments-kicker,
+  .receivables-kicker,
+  .reports-kicker,
+  .requests-kicker,
+  .settings-kicker,
+  .structure-eyebrow,
+  .treasury-kicker
+) {
+  display: block !important;
+  margin: 0 !important;
+  color: var(--blue) !important;
+  font-size: 0.75rem !important;
+  font-weight: 750 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.09em !important;
+  text-transform: uppercase !important;
+}
+
+:where(
+    .announcements-overview,
+    .directory-heading,
+    .community-overview,
+    .expenses-overview,
+    .governance-overview,
+    .payments-overview,
+    .receivables-overview,
+    .reports-overview,
+    .requests-overview,
+    .settings-overview,
+    .structure-hero,
+    .team-access-overview,
+    .treasury-overview
+  )
+  > :first-child
+  > p {
+  max-width: 48rem;
+  margin: 0 !important;
+  color: var(--muted) !important;
+  font-size: 0.9375rem !important;
+  font-weight: 400 !important;
+  line-height: 1.55 !important;
+}
+
+:where(
+    .announcements-overview,
+    .directory-heading,
+    .community-overview,
+    .expenses-overview,
+    .governance-overview,
+    .payments-overview,
+    .receivables-overview,
+    .reports-overview,
+    .requests-overview,
+    .settings-overview,
+    .structure-hero,
+    .team-access-overview,
+    .treasury-overview
+  )
+  > :last-child:not(:first-child) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 0.625rem !important;
+  flex: 0 0 auto;
+}
+
+/* Placeholder modules use the same typography while preserving their icon. */
+.module-overview {
+  margin: 0 0 1.5rem !important;
+  padding: 0 0 1.25rem !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.module-overview__copy h2 {
+  margin: 0.25rem 0 0.4rem !important;
+  color: var(--text-strong) !important;
+  font-size: var(--module-header-title-size) !important;
+  font-weight: 750 !important;
+  line-height: var(--module-header-title-line-height) !important;
+  letter-spacing: -0.03em !important;
+}
+
+.module-overview__copy p {
+  max-width: 48rem;
+  margin: 0 !important;
+  color: var(--muted) !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.55 !important;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --module-header-title-size: 1.75rem;
+    --module-header-gap: 1rem;
+  }
+
+  :where(
+    .announcements-overview,
+    .directory-heading,
+    .community-overview,
+    .expenses-overview,
+    .governance-overview,
+    .payments-overview,
+    .receivables-overview,
+    .reports-overview,
+    .requests-overview,
+    .settings-overview,
+    .structure-hero,
+    .team-access-overview,
+    .treasury-overview
+  ) {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    margin-bottom: 1.25rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  :where(
+      .announcements-overview,
+      .directory-heading,
+      .community-overview,
+      .expenses-overview,
+      .governance-overview,
+      .payments-overview,
+      .receivables-overview,
+      .reports-overview,
+      .requests-overview,
+      .settings-overview,
+      .structure-hero,
+      .team-access-overview,
+      .treasury-overview
+    )
+    > :last-child:not(:first-child) {
+    justify-content: flex-start !important;
+    width: 100%;
+  }
+}
