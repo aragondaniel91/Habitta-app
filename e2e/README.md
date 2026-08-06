@@ -4,7 +4,7 @@ This directory is intentionally isolated from the pnpm workspaces. It has its ow
 
 ## Public suite
 
-The public suite starts the local Vite application and validates the unauthenticated experience in desktop Chromium and a mobile Safari profile:
+The public suite starts the local Vite application and validates the unauthenticated experience in desktop Chromium and a mobile profile:
 
 - sign-in screen renders without JavaScript errors;
 - registration and password-recovery modes remain reachable;
@@ -14,7 +14,7 @@ Run it with:
 
 ```bash
 npm ci --prefix e2e
-npm --prefix e2e exec playwright install chromium
+npm --prefix e2e exec -- playwright install chromium
 npm --prefix e2e run test:public
 ```
 
@@ -36,7 +36,10 @@ E2E_BASE_URL
 E2E_ADMIN_EMAIL
 E2E_ADMIN_PASSWORD
 E2E_CONDOMINIUM_NAME
+E2E_FIXTURE_ID
 ```
+
+`E2E_FIXTURE_ID` identifies the disposable dataset used by the run. The financial test code rejects `https://habitta-web-prod.pages.dev` even when credentials are provided.
 
 Authentication state files belong under `e2e/playwright/.auth/` and must never be committed. Playwright storage state can impersonate a test user.
 
