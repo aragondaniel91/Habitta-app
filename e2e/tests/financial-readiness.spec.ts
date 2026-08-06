@@ -28,7 +28,7 @@ test.describe('Preparación del flujo financiero', () => {
     await page.getByRole('button', { name: /Iniciar sesión/ }).click();
 
     await page.waitForURL(/\/app\/dashboard/);
-    await expect(page.getByText(process.env.E2E_CONDOMINIUM_NAME ?? '')).toBeVisible();
+    await expect(page.getByText(process.env.E2E_CONDOMINIUM_NAME ?? '').first()).toBeVisible();
 
     await page.goto('/app/fees');
     await expect(page.getByRole('heading', { name: 'Cuotas y cuentas por cobrar' })).toBeVisible();
