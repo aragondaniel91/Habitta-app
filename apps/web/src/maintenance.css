@@ -209,7 +209,10 @@
 .maintenance-order-list__head,
 .maintenance-order-list > button {
   display: grid;
-  grid-template-columns: minmax(16rem, 1.45fr) minmax(12rem, 1fr) minmax(11rem, 0.9fr) minmax(8rem, 0.65fr);
+  grid-template-columns: minmax(16rem, 1.45fr) minmax(12rem, 1fr) minmax(11rem, 0.9fr) minmax(
+      8rem,
+      0.65fr
+    );
   align-items: center;
   gap: 1rem;
 }

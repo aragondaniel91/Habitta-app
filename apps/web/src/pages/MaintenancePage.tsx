@@ -190,7 +190,9 @@ function CreateAssetDrawer({
       await onCreated();
       onClose();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear el activo.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear el activo.',
+      );
     } finally {
       setSaving(false);
     }
@@ -268,7 +270,9 @@ function CreateAssetDrawer({
           </Field>
           <Field label="Modelo">
             <input
-              onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, model: event.target.value }))
+              }
               value={form.model}
             />
           </Field>
@@ -389,7 +393,9 @@ function CreatePlanDrawer({
       <form className="maintenance-form" onSubmit={(event) => void submit(event)}>
         <Field label="Activo">
           <Select
-            onChange={(event) => setForm((current) => ({ ...current, assetId: event.target.value }))}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, assetId: event.target.value }))
+            }
             required
             value={form.assetId}
           >
@@ -595,7 +601,9 @@ function CreateOrderDrawer({
           </Field>
           <Field label="Activo">
             <Select
-              onChange={(event) => setForm((current) => ({ ...current, assetId: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, assetId: event.target.value }))
+              }
               value={form.assetId}
             >
               <option value="">Área común / sin activo</option>
@@ -610,7 +618,9 @@ function CreateOrderDrawer({
           </Field>
           <Field label="Proveedor">
             <Select
-              onChange={(event) => setForm((current) => ({ ...current, vendorId: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, vendorId: event.target.value }))
+              }
               value={form.vendorId}
             >
               <option value="">Sin proveedor</option>
@@ -634,7 +644,9 @@ function CreateOrderDrawer({
           </Field>
           <Field label="Fecha límite">
             <input
-              onChange={(event) => setForm((current) => ({ ...current, dueOn: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, dueOn: event.target.value }))
+              }
               type="date"
               value={form.dueOn}
             />
@@ -756,7 +768,9 @@ function OrderDetailDrawer({
       await onChanged();
       if (status === 'completed' || status === 'cancelled') onClose();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar la orden.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo actualizar la orden.',
+      );
     } finally {
       setSaving(false);
     }
@@ -796,7 +810,9 @@ function OrderDetailDrawer({
       setMessage('Servicio agregado al historial técnico.');
       await loadDetail();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo registrar el servicio.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo registrar el servicio.',
+      );
     } finally {
       setSaving(false);
     }
@@ -1064,7 +1080,11 @@ function OrdersView({
             value={query}
           />
         </label>
-        <Select aria-label="Estado" onChange={(event) => setStatus(event.target.value)} value={status}>
+        <Select
+          aria-label="Estado"
+          onChange={(event) => setStatus(event.target.value)}
+          value={status}
+        >
           <option value="">Todos los estados</option>
           {Object.entries(workOrderStatusLabels).map(([value, label]) => (
             <option key={value} value={value}>
@@ -1100,8 +1120,12 @@ function OrdersView({
                 </span>
                 <span>{asset ? `${asset.code} · ${asset.name}` : 'Área común'}</span>
                 <span>
-                  <Badge tone={statusTone(order.status)}>{workOrderStatusLabels[order.status]}</Badge>
-                  <Badge tone={priorityTone(order.priority)}>{priorityLabels[order.priority]}</Badge>
+                  <Badge tone={statusTone(order.status)}>
+                    {workOrderStatusLabels[order.status]}
+                  </Badge>
+                  <Badge tone={priorityTone(order.priority)}>
+                    {priorityLabels[order.priority]}
+                  </Badge>
                 </span>
                 <span data-overdue={isMaintenanceOverdue(order) || undefined}>
                   {formatMaintenanceDate(order.due_on)}
@@ -1143,7 +1167,9 @@ function AssetsView({
           {assets.map((asset) => {
             const building = buildings.find((item) => item.id === asset.building_id);
             const unit = units.find((item) => item.id === asset.unit_id);
-            const activePlans = plans.filter((plan) => plan.asset_id === asset.id && plan.is_active).length;
+            const activePlans = plans.filter(
+              (plan) => plan.asset_id === asset.id && plan.is_active,
+            ).length;
             return (
               <article key={asset.id}>
                 <header>
@@ -1161,12 +1187,15 @@ function AssetsView({
                   <div>
                     <dt>Ubicación</dt>
                     <dd>
-                      {building?.name ?? (unit ? `Unidad ${unit.code}` : asset.location_notes ?? 'Sin definir')}
+                      {building?.name ??
+                        (unit ? `Unidad ${unit.code}` : (asset.location_notes ?? 'Sin definir'))}
                     </dd>
                   </div>
                   <div>
                     <dt>Fabricante</dt>
-                    <dd>{[asset.manufacturer, asset.model].filter(Boolean).join(' · ') || 'Sin datos'}</dd>
+                    <dd>
+                      {[asset.manufacturer, asset.model].filter(Boolean).join(' · ') || 'Sin datos'}
+                    </dd>
                   </div>
                   <div>
                     <dt>Planes activos</dt>
@@ -1280,7 +1309,11 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
       apiRequest<MaintenanceUnit[]>(`${base}/units`, session),
     ]);
 
-    if (assets.status === 'rejected' || plans.status === 'rejected' || orders.status === 'rejected') {
+    if (
+      assets.status === 'rejected' ||
+      plans.status === 'rejected' ||
+      orders.status === 'rejected'
+    ) {
       const reason =
         assets.status === 'rejected'
           ? assets.reason
@@ -1342,7 +1375,9 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
       );
       await load();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudieron generar órdenes.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudieron generar órdenes.',
+      );
     } finally {
       setGenerating(false);
     }
@@ -1378,11 +1413,17 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
           <span className="maintenance-kicker">Activos y operación técnica</span>
           <h2>Mantenimiento</h2>
           <p>
-            {condominiumName} · inventario, planes preventivos, órdenes de trabajo e historial técnico.
+            {condominiumName} · inventario, planes preventivos, órdenes de trabajo e historial
+            técnico.
           </p>
         </div>
         <div className="maintenance-overview__actions">
-          <Button disabled={generating} onClick={() => void generate()} size="sm" variant="secondary">
+          <Button
+            disabled={generating}
+            onClick={() => void generate()}
+            size="sm"
+            variant="secondary"
+          >
             <CheckCircleIcon size={17} />
             {generating ? 'Generando…' : 'Generar vencidas'}
           </Button>
@@ -1433,13 +1474,25 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
 
       <div className="maintenance-view-bar">
         <div className="maintenance-view-tabs" role="tablist">
-          <button data-active={view === 'orders' || undefined} onClick={() => setView('orders')} type="button">
+          <button
+            data-active={view === 'orders' || undefined}
+            onClick={() => setView('orders')}
+            type="button"
+          >
             Órdenes <span>{data.orders.length}</span>
           </button>
-          <button data-active={view === 'assets' || undefined} onClick={() => setView('assets')} type="button">
+          <button
+            data-active={view === 'assets' || undefined}
+            onClick={() => setView('assets')}
+            type="button"
+          >
             Activos <span>{data.assets.length}</span>
           </button>
-          <button data-active={view === 'plans' || undefined} onClick={() => setView('plans')} type="button">
+          <button
+            data-active={view === 'plans' || undefined}
+            onClick={() => setView('plans')}
+            type="button"
+          >
             Planes <span>{data.plans.length}</span>
           </button>
         </div>

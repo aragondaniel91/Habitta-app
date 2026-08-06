@@ -4,11 +4,7 @@ export type MaintenanceFrequencyUnit = 'days' | 'weeks' | 'months' | 'years';
 export type MaintenanceWorkOrderKind = 'preventive' | 'corrective' | 'inspection' | 'emergency';
 export type MaintenancePriority = 'low' | 'normal' | 'high' | 'urgent';
 export type MaintenanceWorkOrderStatus =
-  | 'draft'
-  | 'scheduled'
-  | 'in_progress'
-  | 'completed'
-  | 'cancelled';
+  'draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
 
 export type MaintenanceAsset = {
   id: string;
@@ -181,8 +177,8 @@ export const formatMaintenanceDate = (value: string | null, includeTime = false)
 export const isMaintenanceOverdue = (order: MaintenanceWorkOrder) =>
   Boolean(
     order.due_on &&
-      !['completed', 'cancelled'].includes(order.status) &&
-      order.due_on < new Date().toISOString().slice(0, 10),
+    !['completed', 'cancelled'].includes(order.status) &&
+    order.due_on < new Date().toISOString().slice(0, 10),
   );
 
 export const maintenanceStats = (
