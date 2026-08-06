@@ -43,11 +43,10 @@ app.use('*', async (c, next) => {
     status: c.res.status,
     code: upstreamError.code,
     message: upstreamError.message,
-    details: upstreamError.details,
-    hint: upstreamError.hint,
   });
 
   const headers = new Headers(c.res.headers);
+  headers.set('Cache-Control', 'no-store');
   headers.set('Content-Type', 'application/json; charset=UTF-8');
   headers.set('X-Request-Id', requestId);
   headers.delete('Content-Length');
