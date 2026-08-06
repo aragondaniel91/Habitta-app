@@ -1,10 +1,10 @@
 # Habitta end-to-end tests
 
-This directory is intentionally isolated from the pnpm workspaces. It has its own reproducible npm lock so browser-test dependencies do not affect the application runtime or production bundle.
+This directory is intentionally isolated from the pnpm workspaces so browser-test dependencies do not affect the application runtime or production bundle. Playwright is pinned to an exact version and installed only inside `e2e/`.
 
 ## Public suite
 
-The public suite starts the local Vite application and validates the unauthenticated experience in desktop Chromium and a mobile profile:
+The public suite starts the local Vite application and validates the unauthenticated experience in desktop Chromium and a mobile Chromium profile:
 
 - sign-in screen renders without JavaScript errors;
 - registration and password-recovery modes remain reachable;
@@ -13,8 +13,9 @@ The public suite starts the local Vite application and validates the unauthentic
 Run it with:
 
 ```bash
-npm ci --prefix e2e
+npm install --prefix e2e --no-package-lock --ignore-scripts --no-audit --no-fund
 npm --prefix e2e exec -- playwright install chromium
+pnpm exec tsc -p e2e/tsconfig.json --noEmit
 npm --prefix e2e run test:public
 ```
 
