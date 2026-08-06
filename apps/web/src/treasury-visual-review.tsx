@@ -55,7 +55,7 @@ const movements = [
   {
     id: '20000000-0000-0000-0000-000000000001',
     condominium_id: '30000000-0000-0000-0000-000000000001',
-    account_id: accounts[0].id,
+    account_id: accounts[0]!.id,
     transfer_id: null,
     direction: 'credit',
     movement_kind: 'deposit',
@@ -72,7 +72,7 @@ const movements = [
   {
     id: '20000000-0000-0000-0000-000000000002',
     condominium_id: '30000000-0000-0000-0000-000000000001',
-    account_id: accounts[0].id,
+    account_id: accounts[0]!.id,
     transfer_id: null,
     direction: 'debit',
     movement_kind: 'fee',
@@ -89,7 +89,7 @@ const movements = [
   {
     id: '20000000-0000-0000-0000-000000000003',
     condominium_id: '30000000-0000-0000-0000-000000000001',
-    account_id: accounts[1].id,
+    account_id: accounts[1]!.id,
     transfer_id: '40000000-0000-0000-0000-000000000001',
     direction: 'credit',
     movement_kind: 'transfer_in',
@@ -106,7 +106,7 @@ const movements = [
   {
     id: '20000000-0000-0000-0000-000000000004',
     condominium_id: '30000000-0000-0000-0000-000000000001',
-    account_id: accounts[2].id,
+    account_id: accounts[2]!.id,
     transfer_id: null,
     direction: 'debit',
     movement_kind: 'withdrawal',
@@ -126,7 +126,7 @@ const reconciliations = [
   {
     id: '50000000-0000-0000-0000-000000000001',
     condominium_id: '30000000-0000-0000-0000-000000000001',
-    account_id: accounts[0].id,
+    account_id: accounts[0]!.id,
     period_start: '2026-08-01',
     period_end: '2026-08-31',
     statement_opening_balance: '3613.25',
@@ -141,7 +141,7 @@ const reconciliations = [
   {
     id: '50000000-0000-0000-0000-000000000002',
     condominium_id: '30000000-0000-0000-0000-000000000001',
-    account_id: accounts[2].id,
+    account_id: accounts[2]!.id,
     period_start: '2026-07-01',
     period_end: '2026-07-31',
     statement_opening_balance: '120000.00',
