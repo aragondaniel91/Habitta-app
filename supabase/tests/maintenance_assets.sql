@@ -35,6 +35,8 @@ select public.create_admin_workspace(
   'Torre Mantenimiento'
 ) as payload;
 
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000002a2', true);
+
 create temporary table maintenance_other_workspace as
 select public.create_admin_workspace(
   'Habitta Maintenance Other',
@@ -49,6 +51,8 @@ select public.create_admin_workspace(
   'Torre Externa'
 ) as payload;
 
+reset role;
+
 insert into public.buildings (id, condominium_id, name, created_by) values
   (
     '00000000-0000-0000-0000-0000000002b1',
@@ -60,7 +64,7 @@ insert into public.buildings (id, condominium_id, name, created_by) values
     '00000000-0000-0000-0000-0000000002b2',
     (select (payload #>> '{condominium,id}')::uuid from maintenance_other_workspace),
     'Torre Ajena',
-    '00000000-0000-0000-0000-0000000002a1'
+    '00000000-0000-0000-0000-0000000002a2'
   );
 
 insert into public.vendors (
@@ -80,8 +84,11 @@ insert into public.vendors (
     'Proveedor Ajeno',
     'other@test.local',
     '+58 241 555 0102',
-    '00000000-0000-0000-0000-0000000002a1'
+    '00000000-0000-0000-0000-0000000002a2'
   );
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000002a1', true);
 
 create temporary table maintenance_asset_created as
 select public.create_maintenance_asset(
