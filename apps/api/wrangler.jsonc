@@ -54,5 +54,34 @@
       },
       "triggers": { "crons": ["*/5 * * * *"] },
     },
+    "prod": {
+      "name": "habitta-api-prod",
+      "vars": {
+        "APP_ENV": "production",
+        "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
+        "NOTIFICATIONS_EMAIL_MODE": "disabled",
+        "NOTIFICATIONS_EMAIL_PROVIDER": "zeptomail",
+        "NOTIFICATIONS_FROM_EMAIL": "notifications@mihabitta.com",
+        "NOTIFICATIONS_FROM_NAME": "Habitta",
+        "APP_BASE_URL": "https://habitta-web-prod.pages.dev",
+      },
+      "secrets": {
+        "required": ["SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
+      },
+      "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-prod" }],
+      "queues": {
+        "producers": [{ "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-prod" }],
+        "consumers": [
+          {
+            "queue": "habitta-notifications-prod",
+            "max_batch_size": 10,
+            "max_retries": 5,
+            "max_concurrency": 1,
+            "dead_letter_queue": "habitta-notifications-dlq-prod",
+          },
+        ],
+      },
+      "triggers": { "crons": ["*/5 * * * *"] },
+    },
   },
 }

@@ -1,0 +1,220 @@
+name: Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Main or a commit contained in main
+        required: true
+        default: main
+      confirmation:
+        description: Type DEPLOY-HABITTA-PRODUCTION
+        required: true
+      confirm_project_ref:
+        description: Must exactly match SUPABASE_PROJECT_REF
+        required: true
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/production-release.yml
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: production
+      NOTIFICATIONS_EMAIL_MODE: disabled
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_API_BASE_URL: https://habitta-api-prod.aragondaniel91.workers.dev
+      CLOUDFLARE_WORKER_PROD_URL: https://habitta-api-prod.aragondaniel91.workers.dev
+      CLOUDFLARE_PAGES_PROJECT_NAME: habitta-web-prod
+      CLOUDFLARE_PAGES_PROD_URL: https://habitta-web-prod.pages.dev
+      CORS_ALLOWED_ORIGINS: https://habitta-web-prod.pages.dev
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      INPUT_RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || 'main' }}
+      INPUT_CONFIRMATION: ${{ inputs.confirmation }}
+      INPUT_CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.INPUT_RELEASE_REF }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.84.2
+      - name: Validate production release invariants
+        run: |
+          set -euo pipefail
+          test "$APP_ENV" = production
+          test "$NOTIFICATIONS_EMAIL_MODE" = disabled
+          test -n "$SUPABASE_PROJECT_REF"
+          test -n "$SUPABASE_URL"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$SUPABASE_DB_PASSWORD"
+          test -n "$SUPABASE_ANON_KEY"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test "$VITE_API_BASE_URL" = "$CLOUDFLARE_WORKER_PROD_URL"
+          test "$CORS_ALLOWED_ORIGINS" = "$CLOUDFLARE_PAGES_PROD_URL"
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            test "$INPUT_CONFIRMATION" = DEPLOY-HABITTA-PRODUCTION
+            test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
+          fi
+          git fetch origin main
+          SHA=$(git rev-parse HEAD)
+          git merge-base --is-ancestor "$SHA" origin/main
+      - run: pnpm install --frozen-lockfile
+      - name: Validate repository
+        run: |
+          pnpm notifications:config:check
+          pnpm format:check
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm build
+          git diff --check
+      - name: Provision isolated production resources
+        run: |
+          set -euo pipefail
+          QUEUES=$(pnpm --filter @habitta/api exec wrangler queues list --json)
+          for NAME in habitta-notifications-prod habitta-notifications-dlq-prod; do
+            if ! printf '%s' "$QUEUES" | jq -e --arg name "$NAME" '.. | objects | select((.queue_name? // .name? // "") == $name)' >/dev/null; then
+              pnpm --filter @habitta/api exec wrangler queues create "$NAME"
+            fi
+          done
+          BUCKETS=$(pnpm --filter @habitta/api exec wrangler r2 bucket list --json)
+          if ! printf '%s' "$BUCKETS" | jq -e '.. | objects | select((.name? // "") == "habitta-payment-proofs-prod")' >/dev/null; then
+            pnpm --filter @habitta/api exec wrangler r2 bucket create habitta-payment-proofs-prod
+          fi
+          PAGES=$(pnpm --filter @habitta/api exec wrangler pages project list --json)
+          if ! printf '%s' "$PAGES" | jq -e '.. | objects | select((.name? // "") == "habitta-web-prod")' >/dev/null; then
+            pnpm --filter @habitta/api exec wrangler pages project create habitta-web-prod --production-branch main
+          fi
+      - name: Apply reviewed Supabase migrations
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          supabase migration list --linked
+          supabase db push --dry-run
+          supabase db push
+          supabase migration list --linked
+      - name: Build production artifacts
+        env:
+          HABITTA_REMOTE_RELEASE: 'true'
+          VITE_APP_ENV: production
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          pnpm --filter @habitta/api build
+          pnpm --filter @habitta/web build
+          pnpm release:dev:verify-web
+      - name: Deploy production Worker
+        run: |
+          set -euo pipefail
+          SECRETS_FILE="$RUNNER_TEMP/production-worker-secrets"
+          trap 'rm -f "$SECRETS_FILE"' EXIT
+          node scripts/release/create-worker-secrets-file.mjs "$SECRETS_FILE"
+          SHA=$(git rev-parse HEAD)
+          BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          APP_VERSION=$(node -p "require('./apps/api/package.json').version || '0.0.0'")
+          pnpm --filter @habitta/api exec wrangler deploy \
+            --env prod \
+            --secrets-file "$SECRETS_FILE" \
+            --keep-vars \
+            --message "production-$SHA" \
+            --var "BUILD_COMMIT:$SHA" \
+            --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
+            --var "APP_VERSION:$APP_VERSION" \
+            --var "APP_ENV:production" \
+            --var "SUPABASE_URL:$SUPABASE_URL" \
+            --var "NOTIFICATIONS_EMAIL_MODE:disabled" \
+            --var "CORS_ALLOWED_ORIGINS:$CORS_ALLOWED_ORIGINS" \
+            --var "APP_BASE_URL:$CLOUDFLARE_PAGES_PROD_URL"
+      - name: Smoke production Worker
+        run: |
+          node --input-type=module <<'NODE'
+          const apiUrl = process.env.CLOUDFLARE_WORKER_PROD_URL;
+          const origin = process.env.CLOUDFLARE_PAGES_PROD_URL;
+          const expectedCommit = process.env.GITHUB_SHA;
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          let lastError;
+          for (let attempt = 1; attempt <= 10; attempt += 1) {
+            try {
+              const health = await fetch(`${apiUrl}/health`, { headers: { Origin: origin } });
+              if (!health.ok) throw new Error(`health_${health.status}`);
+              const metadata = await health.json();
+              if (metadata.environment !== 'production') throw new Error('environment_mismatch');
+              if (metadata.commit !== expectedCommit) throw new Error('commit_mismatch');
+              if (metadata.notificationsEmailMode !== 'disabled') throw new Error('email_mode_mismatch');
+              if (health.headers.get('access-control-allow-origin') !== origin)
+                throw new Error('cors_mismatch');
+              const missing = await fetch(`${apiUrl}/not-a-route`, { headers: { Origin: origin } });
+              if (missing.status !== 404) throw new Error('missing_route_mismatch');
+              const unauthorized = await fetch(`${apiUrl}/v1/organizations`, {
+                headers: { Origin: origin },
+              });
+              if (unauthorized.status !== 401) throw new Error('auth_guard_mismatch');
+              lastError = undefined;
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 10) await sleep(5_000);
+            }
+          }
+          if (lastError) throw lastError;
+          NODE
+      - name: Deploy production Pages
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse HEAD)
+          pnpm --filter @habitta/api exec wrangler pages deploy apps/web/dist \
+            --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" \
+            --branch main \
+            --commit-hash "$SHA" \
+            --commit-message "production-$SHA"
+      - name: End-to-end production smoke
+        run: |
+          node --input-type=module <<'NODE'
+          const webUrl = process.env.CLOUDFLARE_PAGES_PROD_URL;
+          const apiUrl = process.env.CLOUDFLARE_WORKER_PROD_URL;
+          const origin = webUrl;
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          let lastError;
+          for (let attempt = 1; attempt <= 10; attempt += 1) {
+            try {
+              const web = await fetch(webUrl);
+              if (!web.ok) throw new Error(`web_${web.status}`);
+              const preflight = await fetch(`${apiUrl}/v1/organizations`, {
+                method: 'OPTIONS',
+                headers: {
+                  Origin: origin,
+                  'Access-Control-Request-Method': 'GET',
+                },
+              });
+              if (!preflight.ok || preflight.headers.get('access-control-allow-origin') !== origin)
+                throw new Error('preflight_mismatch');
+              lastError = undefined;
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 10) await sleep(5_000);
+            }
+          }
+          if (lastError) throw lastError;
+          NODE
