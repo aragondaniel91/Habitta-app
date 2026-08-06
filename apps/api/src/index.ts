@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import legacyHandler, { app as legacyApp } from './legacy-app';
 import {
-  allowedCorsOrigins,
   isAllowedCorsOrigin,
   publicErrorForStatus,
   readPostgrestError,
