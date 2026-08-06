@@ -1,0 +1,49 @@
+name: Playwright Browser Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'e2e/**'
+      - '.github/workflows/playwright.yml'
+      - 'pnpm-lock.yaml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'e2e/**'
+      - '.github/workflows/playwright.yml'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  public-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install application dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Playwright test dependencies
+        run: npm ci --prefix e2e
+      - name: Install Chromium
+        run: npm --prefix e2e exec playwright install --with-deps chromium
+      - name: Run public browser suite
+        run: npm --prefix e2e run test:public
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-public-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 14
+          if-no-files-found: ignore

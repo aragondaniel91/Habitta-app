@@ -1,0 +1,19 @@
+{
+  "name": "@habitta/e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:public": "playwright test --project=public-chromium --project=public-mobile",
+    "test:financial": "playwright test --project=financial-chromium",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}
