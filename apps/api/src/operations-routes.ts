@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { z } from 'zod';
+import { maintenanceRoutes } from './maintenance-routes';
 import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
@@ -552,3 +553,5 @@ operationsRoutes.post('/:id/governance-proposals/:proposalId/votes', async (c) =
   });
   return responseJson(c, response, 201);
 });
+
+operationsRoutes.route('/', maintenanceRoutes);
