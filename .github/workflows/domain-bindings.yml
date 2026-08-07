@@ -54,16 +54,25 @@ jobs:
           ensure_project() {
             local project="$1"
             local production_branch="$2"
-            local existing
-            existing=$(api GET 'pages/projects')
-            if printf '%s' "$existing" | jq -e --arg project "$project" '.result[]? | select(.name == $project)' >/dev/null; then
-              echo "Pages project already exists: $project"
+            local response
+            local current_branch
+
+            if response=$(api GET "pages/projects/$project" 2>/dev/null); then
+              printf '%s' "$response" | jq -e '.success == true' >/dev/null
+              current_branch=$(printf '%s' "$response" | jq -r '.result.production_branch // empty')
+              if [ "$current_branch" != "$production_branch" ]; then
+                response=$(api PATCH "pages/projects/$project" "$(jq -cn --arg branch "$production_branch" '{production_branch:$branch}')")
+                printf '%s' "$response" | jq -e --arg branch "$production_branch" '.success == true and .result.production_branch == $branch' >/dev/null
+                echo "Updated Pages production branch: $project -> $production_branch"
+              else
+                echo "Pages project already configured: $project -> $production_branch"
+              fi
               return
             fi
 
             response=$(api POST 'pages/projects' "$(jq -cn --arg name "$project" --arg branch "$production_branch" '{name:$name,production_branch:$branch}')")
-            printf '%s' "$response" | jq -e '.success == true' >/dev/null
-            echo "Created Pages project: $project"
+            printf '%s' "$response" | jq -e --arg branch "$production_branch" '.success == true and .result.production_branch == $branch' >/dev/null
+            echo "Created Pages project: $project -> $production_branch"
           }
 
           ensure_domain() {
