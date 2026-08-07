@@ -25,9 +25,7 @@ test('mantiene seguro y determinista el fixture financiero', async () => {
   expect(new Set(condominiumKeys).size).toBe(condominiumKeys.length);
   expect(condominiumKeys).toEqual(expect.arrayContaining(['primary', 'isolation']));
 
-  const unitCodes = fixture.condominiums.flatMap(({ units }) =>
-    units.map(({ code }) => code),
-  );
+  const unitCodes = fixture.condominiums.flatMap(({ units }) => units.map(({ code }) => code));
   expect(new Set(unitCodes).size).toBe(unitCodes.length);
   expect(unitCodes.every((code) => code.startsWith('E2E-'))).toBe(true);
 
@@ -36,9 +34,9 @@ test('mantiene seguro y determinista el fixture financiero', async () => {
     expect.arrayContaining(['administrator', 'reviewer', 'payer', 'isolationUser']),
   );
   expect(fixture.users.every(({ email }) => email.endsWith('@example.invalid'))).toBe(true);
-  expect(
-    fixture.users.every(({ condominium }) => condominiumKeys.includes(condominium)),
-  ).toBe(true);
+  expect(fixture.users.every(({ condominium }) => condominiumKeys.includes(condominium))).toBe(
+    true,
+  );
 
   expect(fixture.financial.chargeConcept.code).toMatch(/^E2E-/);
   expect(fixture.financial.paymentMethod.code).toMatch(/^E2E-/);
