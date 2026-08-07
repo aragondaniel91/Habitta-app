@@ -36,13 +36,17 @@ describe('module header visual standard', () => {
     }
   });
 
-  it('defines one hierarchy for kicker, title, description, actions, and mobile layout', () => {
+  it('defines one hierarchy for kicker, title, description, actions, and responsive layout', () => {
     const stylesheet = readSource('./module-header-standard.css');
 
-    expect(stylesheet).toContain('--module-header-title-size');
+    expect(stylesheet).toContain('--module-header-title-size: clamp(2rem, 3vw, 3rem);');
+    expect(stylesheet).toContain('--module-header-title-size: clamp(2rem, 5vw, 2.5rem);');
+    expect(stylesheet).toContain('--module-header-title-size: 2rem;');
     expect(stylesheet).toContain('font-size: 0.75rem !important;');
-    expect(stylesheet).toContain('font-size: 0.9375rem !important;');
+    expect(stylesheet).toContain('font-size: 1rem !important;');
+    expect(stylesheet).toContain('font-family: var(--font-heading) !important;');
     expect(stylesheet).toContain('> :last-child:not(:first-child)');
+    expect(stylesheet).toContain('@media (max-width: 960px)');
     expect(stylesheet).toContain('@media (max-width: 720px)');
     expect(stylesheet).toContain('background: transparent !important;');
     expect(stylesheet).toContain('border-bottom: 1px solid var(--border) !important;');
