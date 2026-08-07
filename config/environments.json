@@ -1,0 +1,20 @@
+{
+  "production": {
+    "site": "https://mihabitta.com",
+    "app": "https://app.mihabitta.com",
+    "admin": "https://admin.mihabitta.com",
+    "api": "https://habitta-api-prod.aragondaniel91.workers.dev"
+  },
+  "development": {
+    "app": "https://preview.mihabitta.com",
+    "admin": "https://admin-preview.mihabitta.com",
+    "api": "https://habitta-api-dev.aragondaniel91.workers.dev"
+  },
+  "cloudflare": {
+    "siteProject": "habitta-site-prod",
+    "appProject": "habitta-web-prod",
+    "developmentAppProject": "habitta-web-dev",
+    "adminProject": "habitta-admin-prod",
+    "developmentAdminProject": "habitta-admin-dev"
+  }
+}
