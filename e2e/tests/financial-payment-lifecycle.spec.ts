@@ -1,10 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
-const requiredEnvironment = [
-  'E2E_SUPABASE_URL',
-  'E2E_SUPABASE_ANON_KEY',
-  'E2E_FIXTURE_PASSWORD',
-];
+const requiredEnvironment = ['E2E_SUPABASE_URL', 'E2E_SUPABASE_ANON_KEY', 'E2E_FIXTURE_PASSWORD'];
 const missingEnvironment = requiredEnvironment.filter((name) => !process.env[name]);
 const supabaseUrl = process.env.E2E_SUPABASE_URL;
 const anonKey = process.env.E2E_SUPABASE_ANON_KEY;
@@ -26,7 +22,9 @@ const emails = {
 if (supabaseUrl) {
   const target = new URL(supabaseUrl);
   if (!['127.0.0.1', 'localhost'].includes(target.hostname) || target.port !== '54321') {
-    throw new Error(`Financial E2E requires local Supabase at localhost:54321, received ${target.host}`);
+    throw new Error(
+      `Financial E2E requires local Supabase at localhost:54321, received ${target.host}`,
+    );
   }
 }
 
@@ -72,7 +70,8 @@ const balance = async (request: APIRequestContext, token: string) => {
   expect(response.ok(), await response.text()).toBe(true);
   const entries = (await response.json()) as LedgerEntry[];
   return entries.reduce(
-    (total, entry) => total + (entry.direction === 'debit' ? Number(entry.amount) : -Number(entry.amount)),
+    (total, entry) =>
+      total + (entry.direction === 'debit' ? Number(entry.amount) : -Number(entry.amount)),
     0,
   );
 };
