@@ -17,21 +17,33 @@ describe('development release workflow', () => {
     expect(workflow).toContain('jq -e \'type == "object"\' "$PREVIOUS_STATUS_FILE"');
   });
 
-  it('validates structured Wrangler output before extracting release metadata', async () => {
+  it('validates structured Worker output without depending on Pages list metadata', async () => {
     const workflow = await readFile(workflowUrl, 'utf8');
 
-    expect(workflow.match(/jq -e 'type == \"array\"'/g)).toHaveLength(3);
+    expect(workflow.match(/jq -e 'type == \"array\"'/g)).toHaveLength(1);
     expect(workflow.match(/jq -e 'type == \"object\"'/g)).toHaveLength(2);
     expect(workflow).toContain('$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT');
     expect(workflow).toContain('versions list --env dev --json >"$VERSION_LIST_FILE"');
     expect(workflow).toContain('deployments status --env dev --json >"$ACTIVE_STATUS_FILE"');
+    expect(workflow).not.toContain('pages deployment list');
   });
 
-  it('deploys Pages from the absolute workspace path', async () => {
+  it('keeps Direct Upload custom domains on the development production branch', async () => {
+    const workflow = await readFile(workflowUrl, 'utf8');
+
+    expect(workflow).toContain('Ensure development Pages production branch');
+    expect(workflow).toContain('--data \'{"production_branch":"development"}\'');
+    expect(workflow).toContain('.result.production_branch == "development"');
+  });
+
+  it('deploys Pages from the absolute workspace path and records Wrangler URLs', async () => {
     const workflow = await readFile(workflowUrl, 'utf8');
 
     expect(workflow).toContain('pages deploy "$GITHUB_WORKSPACE/apps/web/dist"');
     expect(workflow).not.toContain('pages deploy apps/web/dist');
     expect(workflow).toContain('--project-name "$CLOUDFLARE_PAGES_PROJECT_NAME"');
+    expect(workflow).toContain('Take a peek over at');
+    expect(workflow).toContain('Deployment alias URL:');
+    expect(workflow).toContain('deploymentUrl:$deploymentUrl');
   });
 });
