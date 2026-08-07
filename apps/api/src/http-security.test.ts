@@ -25,6 +25,30 @@ describe('HTTP security helpers', () => {
     expect(isAllowedCorsOrigin('http://localhost:5173', undefined, 'development')).toBe(true);
   });
 
+  it('allows deployment previews only for the configured Pages project outside production', () => {
+    const configured = 'https://development.habitta-web-dev.pages.dev';
+
+    expect(
+      isAllowedCorsOrigin('https://7238fa53.habitta-web-dev.pages.dev', configured, 'development'),
+    ).toBe(true);
+    expect(
+      isAllowedCorsOrigin('https://preview.other-project.pages.dev', configured, 'development'),
+    ).toBe(false);
+    expect(
+      isAllowedCorsOrigin('http://7238fa53.habitta-web-dev.pages.dev', configured, 'development'),
+    ).toBe(false);
+  });
+
+  it('does not broaden production CORS to Pages deployment previews', () => {
+    expect(
+      isAllowedCorsOrigin(
+        'https://7238fa53.habitta-web-prod.pages.dev',
+        'https://habitta-web-prod.pages.dev',
+        'production',
+      ),
+    ).toBe(false);
+  });
+
   it('normalizes configured origins and ignores invalid values', () => {
     const origins = allowedCorsOrigins(
       'https://habitta.example/path,not a url, https://admin.habitta.example',
