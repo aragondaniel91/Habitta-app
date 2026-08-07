@@ -98,18 +98,18 @@ jobs:
       - name: Provision isolated production resources
         run: |
           set -euo pipefail
-          QUEUES=$(pnpm --filter @habitta/api exec wrangler queues list --json)
+          QUEUES=$(pnpm --filter @habitta/api exec wrangler queues list)
           for NAME in habitta-notifications-prod habitta-notifications-dlq-prod; do
-            if ! printf '%s' "$QUEUES" | jq -e --arg name "$NAME" '.. | objects | select((.queue_name? // .name? // "") == $name)' >/dev/null; then
+            if ! printf '%s\n' "$QUEUES" | grep -Fq "$NAME"; then
               pnpm --filter @habitta/api exec wrangler queues create "$NAME"
             fi
           done
-          BUCKETS=$(pnpm --filter @habitta/api exec wrangler r2 bucket list --json)
-          if ! printf '%s' "$BUCKETS" | jq -e '.. | objects | select((.name? // "") == "habitta-payment-proofs-prod")' >/dev/null; then
+          BUCKETS=$(pnpm --filter @habitta/api exec wrangler r2 bucket list)
+          if ! printf '%s\n' "$BUCKETS" | grep -Fq 'habitta-payment-proofs-prod'; then
             pnpm --filter @habitta/api exec wrangler r2 bucket create habitta-payment-proofs-prod
           fi
-          PAGES=$(pnpm --filter @habitta/api exec wrangler pages project list --json)
-          if ! printf '%s' "$PAGES" | jq -e '.. | objects | select((.name? // "") == "habitta-web-prod")' >/dev/null; then
+          PAGES=$(pnpm --filter @habitta/api exec wrangler pages project list)
+          if ! printf '%s\n' "$PAGES" | grep -Fq 'habitta-web-prod'; then
             pnpm --filter @habitta/api exec wrangler pages project create habitta-web-prod --production-branch main
           fi
       - name: Apply reviewed Supabase migrations
