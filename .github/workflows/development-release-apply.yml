@@ -180,8 +180,10 @@ jobs:
         run: |
           BEFORE_PAGES_FILE="$RUNNER_TEMP/pages-deployments-before.json"
           AFTER_PAGES_FILE="$RUNNER_TEMP/pages-deployments-after.json"
+          DEPLOY_OUTPUT_FILE="$RUNNER_TEMP/pages-deploy-output.log"
+          CLEAN_DEPLOY_OUTPUT_FILE="$RUNNER_TEMP/pages-deploy-output-clean.log"
           cleanup() {
-            rm -f "$BEFORE_PAGES_FILE" "$AFTER_PAGES_FILE"
+            rm -f "$BEFORE_PAGES_FILE" "$AFTER_PAGES_FILE" "$DEPLOY_OUTPUT_FILE" "$CLEAN_DEPLOY_OUTPUT_FILE"
           }
           trap cleanup EXIT
           pnpm --filter @habitta/api exec wrangler pages deployment list --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --json >"$BEFORE_PAGES_FILE"
@@ -189,22 +191,29 @@ jobs:
           PREVIOUS_PAGE_ID=$(jq -r '[.[] | select(.deployment_trigger.metadata.branch == "development")] | sort_by(.created_on) | reverse | .[0].id // empty' "$BEFORE_PAGES_FILE")
           PREVIOUS_PAGE_URL=$(jq -r '[.[] | select(.deployment_trigger.metadata.branch == "development")] | sort_by(.created_on) | reverse | .[0].url // empty' "$BEFORE_PAGES_FILE")
           SHA=$(git rev-parse HEAD)
-          pnpm --filter @habitta/api exec wrangler pages deploy "$GITHUB_WORKSPACE/apps/web/dist" --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --branch development --commit-hash "$SHA" --commit-message "release-$SHA"
-          pnpm --filter @habitta/api exec wrangler pages deployment list --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --json >"$AFTER_PAGES_FILE"
-          jq -e 'type == "array"' "$AFTER_PAGES_FILE" >/dev/null
-          CURRENT_PAGE=$(jq -cn --slurpfile before "$BEFORE_PAGES_FILE" --slurpfile after "$AFTER_PAGES_FILE" --arg sha "$SHA" '
-            ($before[0] | map(.id)) as $beforeIds |
-            [$after[0][] | . as $candidate | select(
-              .deployment_trigger.metadata.branch == "development" and
-              .deployment_trigger.metadata.commit_hash == $sha and
-              (($beforeIds | index($candidate.id)) == null)
-            )] |
-            if length == 1 then .[0] else empty end
-          ')
-          PAGE_URL=$(printf '%s' "$CURRENT_PAGE" | jq -r '.url // empty')
-          PAGE_ID=$(printf '%s' "$CURRENT_PAGE" | jq -r '.id // empty')
-          PAGE_ALIAS=$(printf '%s' "$CURRENT_PAGE" | jq -r '.aliases[0] // empty')
-          test -n "$PAGE_URL" && test -n "$PAGE_ID"
+          pnpm --filter @habitta/api exec wrangler pages deploy "$GITHUB_WORKSPACE/apps/web/dist" \
+            --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" \
+            --branch development \
+            --commit-hash "$SHA" \
+            --commit-message "release-$SHA" 2>&1 | tee "$DEPLOY_OUTPUT_FILE"
+          sed -E 's/\x1B\[[0-9;]*[mK]//g' "$DEPLOY_OUTPUT_FILE" >"$CLEAN_DEPLOY_OUTPUT_FILE"
+          PAGE_URL=$(sed -nE 's/.*Take a peek over at (https:\/\/[^[:space:]]+).*/\1/p' "$CLEAN_DEPLOY_OUTPUT_FILE" | tail -1)
+          PAGE_ALIAS=$(sed -nE 's/.*Deployment alias URL: (https:\/\/[^[:space:]]+).*/\1/p' "$CLEAN_DEPLOY_OUTPUT_FILE" | tail -1)
+          test -n "$PAGE_URL"
+          test -n "$PAGE_ALIAS"
+          PAGE_ID=''
+          for attempt in 1 2 3 4 5 6; do
+            pnpm --filter @habitta/api exec wrangler pages deployment list --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --json >"$AFTER_PAGES_FILE"
+            jq -e 'type == "array"' "$AFTER_PAGES_FILE" >/dev/null
+            PAGE_ID=$(jq -r --arg url "$PAGE_URL" '[.[] | select(.url == $url)] | if length >= 1 then .[0].id else empty end' "$AFTER_PAGES_FILE")
+            if [ -n "$PAGE_ID" ]; then
+              break
+            fi
+            if [ "$attempt" -lt 6 ]; then
+              sleep 3
+            fi
+          done
+          test -n "$PAGE_ID"
           jq -n \
             --arg deploymentId "$PAGE_ID" \
             --arg deploymentUrl "$PAGE_URL" \
@@ -235,12 +244,15 @@ jobs:
         run: |
           SMOKE_WEB_URL="${EXACT_PAGES_URL:-${PAGES_ALIAS_URL:-$CLOUDFLARE_PAGES_DEV_URL}}"
           test -n "$SMOKE_WEB_URL"
-          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$SMOKE_WEB_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode sandbox; then
+          if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$SMOKE_WEB_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode sandbox --attempts 12 --retry-delay-ms 5000; then
             if [ -n "$PREVIOUS_WORKER_VERSION" ]; then
               pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env dev --yes
             fi
             exit 1
           fi
           if [ "$CLOUDFLARE_PAGES_DEV_URL" != "$SMOKE_WEB_URL" ]; then
-            pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$CLOUDFLARE_PAGES_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode sandbox
+            if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$CLOUDFLARE_PAGES_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode sandbox --attempts 18 --retry-delay-ms 5000; then
+              echo "::error::The exact Pages deployment and Worker are healthy, but $CLOUDFLARE_PAGES_DEV_URL did not converge in time."
+              exit 1
+            fi
           fi
