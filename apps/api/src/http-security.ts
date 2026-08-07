@@ -15,6 +15,25 @@ const normalizeOrigin = (value: string) => {
   }
 };
 
+const configuredPagesProjectHosts = (raw?: string) =>
+  (raw ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .flatMap((value) => {
+      try {
+        const url = new URL(value);
+        if (url.protocol !== 'https:' || !url.hostname.endsWith('.pages.dev')) return [];
+
+        const labels = url.hostname.split('.');
+        if (labels.length < 3) return [];
+
+        return [labels.slice(-3).join('.')];
+      } catch {
+        return [];
+      }
+    });
+
 export const allowedCorsOrigins = (raw?: string, appEnv = 'development') => {
   const candidates = [
     ...(appEnv.trim().toLowerCase() === 'production' ? [] : [LOCAL_DEV_ORIGIN]),
@@ -37,7 +56,20 @@ export const isAllowedCorsOrigin = (
 ) => {
   if (!origin) return true;
   const normalized = normalizeOrigin(origin);
-  return normalized !== null && allowedCorsOrigins(raw, appEnv).has(normalized);
+  if (normalized === null) return false;
+  if (allowedCorsOrigins(raw, appEnv).has(normalized)) return true;
+  if (appEnv.trim().toLowerCase() === 'production') return false;
+
+  try {
+    const url = new URL(normalized);
+    if (url.protocol !== 'https:') return false;
+
+    return configuredPagesProjectHosts(raw).some(
+      (projectHost) => url.hostname.endsWith(`.${projectHost}`),
+    );
+  } catch {
+    return false;
+  }
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
