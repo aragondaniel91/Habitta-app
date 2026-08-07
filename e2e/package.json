@@ -8,6 +8,8 @@
   },
   "scripts": {
     "fixture:validate": "node scripts/validate-financial-fixture.mjs",
+    "fixture:provision": "node scripts/provision-financial-fixture.mjs",
+    "fixture:reset": "node scripts/reset-financial-fixture.mjs",
     "test": "playwright test",
     "test:public": "playwright test --project=public-chromium --project=public-mobile",
     "test:financial": "playwright test --project=financial-chromium",
