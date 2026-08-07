@@ -14,8 +14,10 @@ const fail = (message) => {
 
 if (!supabaseUrl) fail('SUPABASE_URL is required');
 if (!serviceRoleKey) fail('SUPABASE_SERVICE_ROLE_KEY is required');
-if (!password || password.length < 12) fail('E2E_FIXTURE_PASSWORD must contain at least 12 characters');
-if (fixture.environment !== 'isolated-test-only') fail('fixture environment must be isolated-test-only');
+if (!password || password.length < 12)
+  fail('E2E_FIXTURE_PASSWORD must contain at least 12 characters');
+if (fixture.environment !== 'isolated-test-only')
+  fail('fixture environment must be isolated-test-only');
 
 const target = new URL(supabaseUrl);
 const localHosts = new Set(['127.0.0.1', 'localhost']);
