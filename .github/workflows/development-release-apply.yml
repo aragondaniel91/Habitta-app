@@ -212,7 +212,9 @@ jobs:
           PAGE_URL=$(sed -nE 's/.*Take a peek over at (https:\/\/[^[:space:]]+).*/\1/p' "$CLEAN_DEPLOY_OUTPUT_FILE" | tail -1)
           PAGE_ALIAS=$(sed -nE 's/.*Deployment alias URL: (https:\/\/[^[:space:]]+).*/\1/p' "$CLEAN_DEPLOY_OUTPUT_FILE" | tail -1)
           test -n "$PAGE_URL"
-          test -n "$PAGE_ALIAS"
+          if [ -z "$PAGE_ALIAS" ]; then
+            PAGE_ALIAS="$CLOUDFLARE_PAGES_TECHNICAL_URL"
+          fi
           jq -n \
             --arg deploymentUrl "$PAGE_URL" \
             --arg aliasUrl "$PAGE_ALIAS" \
