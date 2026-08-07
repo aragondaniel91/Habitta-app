@@ -79,8 +79,7 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
     );
     if (consumer?.dead_letter_queue !== 'habitta-notifications-dlq-prod')
       errors.push('invalid_prod_dead_letter_queue');
-    if (prod.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
-      errors.push('unsafe_prod_email_mode');
+    if (prod.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled') errors.push('unsafe_prod_email_mode');
     if (prod.vars?.NOTIFICATIONS_EMAIL_PROVIDER !== 'zeptomail')
       errors.push('invalid_prod_email_provider');
     if (prod.vars?.APP_ENV !== 'production') errors.push('invalid_prod_app_environment');
