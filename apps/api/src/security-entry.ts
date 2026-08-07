@@ -1,10 +1,6 @@
 import { Hono } from 'hono';
 import applicationHandler, { app as applicationApp } from './index';
-import {
-  isAllowedCorsOrigin,
-  publicErrorForStatus,
-  readPostgrestError,
-} from './http-security';
+import { isAllowedCorsOrigin, publicErrorForStatus, readPostgrestError } from './http-security';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
 type Bindings = NotificationBindings;
@@ -51,14 +47,11 @@ app.use('*', async (c, next) => {
   headers.set('X-Request-Id', requestId);
   headers.delete('Content-Length');
 
-  c.res = new Response(
-    JSON.stringify({ error: publicErrorForStatus(c.res.status), requestId }),
-    {
-      status: c.res.status,
-      statusText: c.res.statusText,
-      headers,
-    },
-  );
+  c.res = new Response(JSON.stringify({ error: publicErrorForStatus(c.res.status), requestId }), {
+    status: c.res.status,
+    statusText: c.res.statusText,
+    headers,
+  });
 });
 
 app.route('/', applicationApp);
