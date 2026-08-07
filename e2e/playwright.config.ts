@@ -25,7 +25,7 @@ export default defineConfig({
   ...(useLocalWebServer
     ? {
         webServer: {
-          command: 'pnpm --filter @habitta/web dev -- --host 127.0.0.1 --port 4173',
+          command: 'pnpm --filter @habitta/web exec vite --host 127.0.0.1 --port 4173',
           cwd: '..',
           env: {
             VITE_APP_ENV: 'e2e',
