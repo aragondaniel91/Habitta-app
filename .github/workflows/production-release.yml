@@ -188,7 +188,8 @@ jobs:
         run: |
           set -euo pipefail
           SHA=$(git rev-parse HEAD)
-          pnpm --filter @habitta/api exec wrangler pages deploy apps/web/dist \
+          # pnpm --filter executes Wrangler from apps/api, so the web dist is one level up.
+          pnpm --filter @habitta/api exec wrangler pages deploy ../web/dist \
             --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" \
             --branch main \
             --commit-hash "$SHA" \
