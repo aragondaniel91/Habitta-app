@@ -31,28 +31,22 @@ describe('HTTP security helpers', () => {
       'production',
     );
 
-    expect([...origins]).toEqual([
-      'https://habitta.example',
-      'https://admin.habitta.example',
-    ]);
+    expect([...origins]).toEqual(['https://habitta.example', 'https://admin.habitta.example']);
   });
 
-  it(
-    'recognizes PostgREST errors without treating validation responses as internal errors',
-    async () => {
-      const postgrest = new Response(
-        JSON.stringify({ code: '23505', message: 'duplicate key', details: 'constraint_name' }),
-        { status: 409, headers: { 'Content-Type': 'application/json' } },
-      );
-      const validation = new Response(JSON.stringify({ error: { fieldErrors: {} } }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+  it('recognizes PostgREST errors without treating validation responses as internal errors', async () => {
+    const postgrest = new Response(
+      JSON.stringify({ code: '23505', message: 'duplicate key', details: 'constraint_name' }),
+      { status: 409, headers: { 'Content-Type': 'application/json' } },
+    );
+    const validation = new Response(JSON.stringify({ error: { fieldErrors: {} } }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-      await expect(readPostgrestError(postgrest)).resolves.toMatchObject({ code: '23505' });
-      await expect(readPostgrestError(validation)).resolves.toBeNull();
-    },
-  );
+    await expect(readPostgrestError(postgrest)).resolves.toMatchObject({ code: '23505' });
+    await expect(readPostgrestError(validation)).resolves.toBeNull();
+  });
 
   it('maps internal failures to stable public messages', () => {
     expect(publicErrorForStatus(403)).toBe('Forbidden');
