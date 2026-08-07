@@ -1,0 +1,100 @@
+name: Financial E2E
+
+on:
+  pull_request:
+    paths:
+      - 'e2e/**'
+      - 'supabase/**'
+      - '.github/workflows/financial-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'e2e/**'
+      - 'supabase/**'
+      - '.github/workflows/financial-e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  financial-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_SUPABASE_URL: http://127.0.0.1:54321
+      SUPABASE_URL: http://127.0.0.1:54321
+      E2E_FIXTURE_PASSWORD: Habitta-E2E-Local-2026
+      E2E_CONFIRM_RESET: habitta-financial-e2e-v1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.84.2
+          github-token: ${{ github.token }}
+
+      - name: Start local Supabase and apply migrations
+        run: |
+          set -o pipefail
+          supabase start --debug 2>&1 | tee supabase-start.log
+
+      - name: Export local Supabase credentials
+        run: |
+          supabase status -o env > supabase.env
+          set -a
+          source supabase.env
+          set +a
+          test -n "$ANON_KEY"
+          test -n "$SERVICE_ROLE_KEY"
+          echo "E2E_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Validate financial fixture contract
+        run: pnpm --filter @habitta/e2e fixture:validate
+
+      - name: Provision isolated financial fixture
+        run: pnpm --filter @habitta/e2e fixture:provision
+
+      - name: Install Chromium
+        run: pnpm --filter @habitta/e2e exec playwright install --with-deps chromium
+
+      - name: Run authenticated financial lifecycle
+        run: pnpm --filter @habitta/e2e test:financial
+
+      - name: Reset financial fixture
+        if: always()
+        continue-on-error: true
+        run: pnpm --filter @habitta/e2e fixture:reset
+
+      - name: Upload financial E2E diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: financial-e2e-diagnostics
+          path: |
+            supabase-start.log
+            supabase.env
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop local Supabase services
+        if: always()
+        run: supabase stop --no-backup
