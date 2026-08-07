@@ -10,7 +10,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  ...(process.env.CI ? { workers: 1 } : {}),
   reporter: process.env.CI
     ? [
         ['github'],
@@ -28,19 +28,21 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  webServer: useLocalWebServer
+  ...(useLocalWebServer
     ? {
-        command: 'pnpm --filter @habitta/web dev -- --host 127.0.0.1 --port 4173',
-        cwd: '..',
-        env: {
-          VITE_APP_ENV: 'e2e',
-          VITE_API_URL: 'http://127.0.0.1:8787',
+        webServer: {
+          command: 'pnpm --filter @habitta/web dev -- --host 127.0.0.1 --port 4173',
+          cwd: '..',
+          env: {
+            VITE_APP_ENV: 'e2e',
+            VITE_API_URL: 'http://127.0.0.1:8787',
+          },
+          url: localBaseUrl,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
         },
-        url: localBaseUrl,
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
       }
-    : undefined,
+    : {}),
   projects: [
     {
       name: 'public-chromium',
