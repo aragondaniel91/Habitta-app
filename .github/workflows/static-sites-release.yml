@@ -1,0 +1,106 @@
+name: Static Sites Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Static surface to deploy
+        required: true
+        type: choice
+        options:
+          - site-production
+          - admin-production
+          - admin-preview
+      confirmation:
+        description: Type DEPLOY-HABITTA-STATIC
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: static-sites-${{ inputs.target }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      INPUT_TARGET: ${{ inputs.target }}
+      INPUT_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Validate deployment request
+        run: |
+          set -euo pipefail
+          test "$INPUT_CONFIRMATION" = DEPLOY-HABITTA-STATIC
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Resolve target
+        run: |
+          set -euo pipefail
+          case "$INPUT_TARGET" in
+            site-production)
+              echo 'DEPLOY_DIR=apps/site' >> "$GITHUB_ENV"
+              echo 'PAGES_PROJECT=habitta-site-prod' >> "$GITHUB_ENV"
+              echo 'PAGES_BRANCH=main' >> "$GITHUB_ENV"
+              echo 'EXPECTED_URL=https://mihabitta.com' >> "$GITHUB_ENV"
+              ;;
+            admin-production)
+              echo 'DEPLOY_DIR=apps/platform-admin' >> "$GITHUB_ENV"
+              echo 'PAGES_PROJECT=habitta-admin-prod' >> "$GITHUB_ENV"
+              echo 'PAGES_BRANCH=main' >> "$GITHUB_ENV"
+              echo 'EXPECTED_URL=https://admin.mihabitta.com' >> "$GITHUB_ENV"
+              ;;
+            admin-preview)
+              echo 'DEPLOY_DIR=apps/platform-admin' >> "$GITHUB_ENV"
+              echo 'PAGES_PROJECT=habitta-admin-dev' >> "$GITHUB_ENV"
+              echo 'PAGES_BRANCH=development' >> "$GITHUB_ENV"
+              echo 'EXPECTED_URL=https://admin-preview.mihabitta.com' >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Unknown target: $INPUT_TARGET" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Validate static surface
+        run: |
+          set -euo pipefail
+          test -f "$DEPLOY_DIR/index.html"
+          test -f "$DEPLOY_DIR/_headers"
+
+      - name: Deploy Pages surface
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse HEAD)
+          pnpm --filter @habitta/api exec wrangler pages deploy "$GITHUB_WORKSPACE/$DEPLOY_DIR" \
+            --project-name "$PAGES_PROJECT" \
+            --branch "$PAGES_BRANCH" \
+            --commit-hash "$SHA" \
+            --commit-message "static-$INPUT_TARGET-$SHA"
+
+      - name: Smoke canonical domain
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            if curl -fsS "$EXPECTED_URL" >/dev/null; then
+              echo "Healthy: $EXPECTED_URL"
+              exit 0
+            fi
+            if [ "$attempt" -lt 12 ]; then
+              sleep 5
+            fi
+          done
+          echo "Canonical domain did not become healthy: $EXPECTED_URL" >&2
+          exit 1

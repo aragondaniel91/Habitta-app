@@ -1,0 +1,98 @@
+name: Domain Bindings
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type CONFIGURE-HABITTA-DOMAINS
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: domain-bindings
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      INPUT_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate confirmation and credentials
+        run: |
+          set -euo pipefail
+          test "$INPUT_CONFIRMATION" = CONFIGURE-HABITTA-DOMAINS
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Provision Pages projects and bind canonical domains
+        run: |
+          set -euo pipefail
+
+          api() {
+            local method="$1"
+            local path="$2"
+            local body="${3:-}"
+            local args=(
+              -fsS
+              -X "$method"
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+              -H 'Content-Type: application/json'
+            )
+            if [ -n "$body" ]; then
+              args+=(--data "$body")
+            fi
+            curl "${args[@]}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/$path"
+          }
+
+          ensure_project() {
+            local project="$1"
+            local production_branch="$2"
+            local existing
+            existing=$(api GET 'pages/projects')
+            if printf '%s' "$existing" | jq -e --arg project "$project" '.result[]? | select(.name == $project)' >/dev/null; then
+              echo "Pages project already exists: $project"
+              return
+            fi
+
+            response=$(api POST 'pages/projects' "$(jq -cn --arg name "$project" --arg branch "$production_branch" '{name:$name,production_branch:$branch}')")
+            printf '%s' "$response" | jq -e '.success == true' >/dev/null
+            echo "Created Pages project: $project"
+          }
+
+          ensure_domain() {
+            local project="$1"
+            local domain="$2"
+            local existing
+            existing=$(api GET "pages/projects/$project/domains")
+            if printf '%s' "$existing" | jq -e --arg domain "$domain" '.result[]? | select(.name == $domain)' >/dev/null; then
+              echo "Domain already attached: $domain -> $project"
+              return
+            fi
+
+            response=$(api POST "pages/projects/$project/domains" "$(jq -cn --arg name "$domain" '{name:$name}')")
+            printf '%s' "$response" | jq -e '.success == true' >/dev/null
+            echo "Attached domain: $domain -> $project"
+          }
+
+          ensure_project habitta-site-prod main
+          ensure_project habitta-web-prod main
+          ensure_project habitta-web-dev development
+          ensure_project habitta-admin-prod main
+          ensure_project habitta-admin-dev development
+
+          ensure_domain habitta-site-prod mihabitta.com
+          ensure_domain habitta-site-prod www.mihabitta.com
+          ensure_domain habitta-web-prod app.mihabitta.com
+          ensure_domain habitta-web-dev preview.mihabitta.com
+          ensure_domain habitta-admin-prod admin.mihabitta.com
+          ensure_domain habitta-admin-dev admin-preview.mihabitta.com
+
+      - name: Print canonical domain map
+        run: cat config/environments.json

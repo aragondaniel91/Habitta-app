@@ -3,3 +3,5 @@ README.md
 node_modules/
 dist/
 coverage/
+apps/site/index.html
+apps/platform-admin/index.html

@@ -27,10 +27,19 @@ describe('development Worker bootstrap', () => {
     expect(workflow).toContain(
       'SMOKE_WEB_URL="${EXACT_PAGES_URL:-${PAGES_ALIAS_URL:-$CLOUDFLARE_PAGES_DEV_URL}}"',
     );
+    expect(workflow).toContain('CLOUDFLARE_PAGES_DEV_URL: https://preview.mihabitta.com');
     expect(workflow).toContain(
-      "CLOUDFLARE_PAGES_DEV_URL: ${{ format('https://development.{0}.pages.dev', vars.CLOUDFLARE_PAGES_PROJECT_NAME) }}",
+      "CLOUDFLARE_PAGES_TECHNICAL_URL: ${{ format('https://development.{0}.pages.dev', vars.CLOUDFLARE_PAGES_PROJECT_NAME) }}",
     );
-    expect(workflow).toContain('test "$CORS_ALLOWED_ORIGINS" = "$CLOUDFLARE_PAGES_DEV_URL"');
+    expect(workflow).toContain(
+      "CORS_ALLOWED_ORIGINS: ${{ format('https://preview.mihabitta.com,https://development.{0}.pages.dev', vars.CLOUDFLARE_PAGES_PROJECT_NAME) }}",
+    );
+    expect(workflow).toContain(
+      'printf \'%s\' "$CORS_ALLOWED_ORIGINS" | grep -Fq "$CLOUDFLARE_PAGES_DEV_URL"',
+    );
+    expect(workflow).toContain(
+      'printf \'%s\' "$CORS_ALLOWED_ORIGINS" | grep -Fq "$CLOUDFLARE_PAGES_TECHNICAL_URL"',
+    );
   });
 
   it('records whether the Worker was bootstrapped without exposing secrets', async () => {

@@ -37,8 +37,8 @@ jobs:
       VITE_API_BASE_URL: https://habitta-api-prod.aragondaniel91.workers.dev
       CLOUDFLARE_WORKER_PROD_URL: https://habitta-api-prod.aragondaniel91.workers.dev
       CLOUDFLARE_PAGES_PROJECT_NAME: habitta-web-prod
-      CLOUDFLARE_PAGES_PROD_URL: https://habitta-web-prod.pages.dev
-      CORS_ALLOWED_ORIGINS: https://habitta-web-prod.pages.dev
+      CLOUDFLARE_PAGES_PROD_URL: https://app.mihabitta.com
+      CORS_ALLOWED_ORIGINS: https://app.mihabitta.com
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
