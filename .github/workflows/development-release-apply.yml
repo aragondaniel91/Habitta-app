@@ -202,14 +202,23 @@ jobs:
           test -n "$PAGE_URL"
           test -n "$PAGE_ALIAS"
           PAGE_ID=''
-          for attempt in 1 2 3 4 5 6; do
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
             pnpm --filter @habitta/api exec wrangler pages deployment list --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --json >"$AFTER_PAGES_FILE"
             jq -e 'type == "array"' "$AFTER_PAGES_FILE" >/dev/null
-            PAGE_ID=$(jq -r --arg url "$PAGE_URL" '[.[] | select(.url == $url)] | if length >= 1 then .[0].id else empty end' "$AFTER_PAGES_FILE")
+            PAGE_ID=$(jq -r --slurpfile before "$BEFORE_PAGES_FILE" --arg sha "$SHA" '
+              ($before[0] | map(.id)) as $beforeIds |
+              [.[] | . as $candidate | select(
+                .deployment_trigger.metadata.branch == "development" and
+                .deployment_trigger.metadata.commit_hash == $sha and
+                (($beforeIds | index($candidate.id)) == null)
+              )] |
+              sort_by(.created_on) | reverse |
+              .[0].id // empty
+            ' "$AFTER_PAGES_FILE")
             if [ -n "$PAGE_ID" ]; then
               break
             fi
-            if [ "$attempt" -lt 6 ]; then
+            if [ "$attempt" -lt 10 ]; then
               sleep 3
             fi
           done
