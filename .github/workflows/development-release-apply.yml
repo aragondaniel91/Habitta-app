@@ -175,21 +175,33 @@ jobs:
             fi
             exit 1
           fi
+      - name: Ensure development Pages production branch
+        run: |
+          set -euo pipefail
+          PROJECT_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT_NAME"
+          PROJECT_JSON=$(curl -fsS \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Content-Type: application/json' \
+            "$PROJECT_URL")
+          printf '%s' "$PROJECT_JSON" | jq -e '.success == true' >/dev/null
+          CURRENT_BRANCH=$(printf '%s' "$PROJECT_JSON" | jq -r '.result.production_branch // empty')
+          if [ "$CURRENT_BRANCH" != development ]; then
+            UPDATED_JSON=$(curl -fsS -X PATCH \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data '{"production_branch":"development"}' \
+              "$PROJECT_URL")
+            printf '%s' "$UPDATED_JSON" | jq -e '.success == true and .result.production_branch == "development"' >/dev/null
+          fi
       - name: Deploy Pages and capture exact deployment metadata
         id: pages
         run: |
-          BEFORE_PAGES_FILE="$RUNNER_TEMP/pages-deployments-before.json"
-          AFTER_PAGES_FILE="$RUNNER_TEMP/pages-deployments-after.json"
           DEPLOY_OUTPUT_FILE="$RUNNER_TEMP/pages-deploy-output.log"
           CLEAN_DEPLOY_OUTPUT_FILE="$RUNNER_TEMP/pages-deploy-output-clean.log"
           cleanup() {
-            rm -f "$BEFORE_PAGES_FILE" "$AFTER_PAGES_FILE" "$DEPLOY_OUTPUT_FILE" "$CLEAN_DEPLOY_OUTPUT_FILE"
+            rm -f "$DEPLOY_OUTPUT_FILE" "$CLEAN_DEPLOY_OUTPUT_FILE"
           }
           trap cleanup EXIT
-          pnpm --filter @habitta/api exec wrangler pages deployment list --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --json >"$BEFORE_PAGES_FILE"
-          jq -e 'type == "array"' "$BEFORE_PAGES_FILE" >/dev/null
-          PREVIOUS_PAGE_ID=$(jq -r '[.[] | select(.deployment_trigger.metadata.branch == "development")] | sort_by(.created_on) | reverse | .[0].id // empty' "$BEFORE_PAGES_FILE")
-          PREVIOUS_PAGE_URL=$(jq -r '[.[] | select(.deployment_trigger.metadata.branch == "development")] | sort_by(.created_on) | reverse | .[0].url // empty' "$BEFORE_PAGES_FILE")
           SHA=$(git rev-parse HEAD)
           pnpm --filter @habitta/api exec wrangler pages deploy "$GITHUB_WORKSPACE/apps/web/dist" \
             --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" \
@@ -201,40 +213,14 @@ jobs:
           PAGE_ALIAS=$(sed -nE 's/.*Deployment alias URL: (https:\/\/[^[:space:]]+).*/\1/p' "$CLEAN_DEPLOY_OUTPUT_FILE" | tail -1)
           test -n "$PAGE_URL"
           test -n "$PAGE_ALIAS"
-          PAGE_ID=''
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            pnpm --filter @habitta/api exec wrangler pages deployment list --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --json >"$AFTER_PAGES_FILE"
-            jq -e 'type == "array"' "$AFTER_PAGES_FILE" >/dev/null
-            PAGE_ID=$(jq -r --slurpfile before "$BEFORE_PAGES_FILE" --arg sha "$SHA" '
-              ($before[0] | map(.id)) as $beforeIds |
-              [.[] | . as $candidate | select(
-                .deployment_trigger.metadata.branch == "development" and
-                .deployment_trigger.metadata.commit_hash == $sha and
-                (($beforeIds | index($candidate.id)) == null)
-              )] |
-              sort_by(.created_on) | reverse |
-              .[0].id // empty
-            ' "$AFTER_PAGES_FILE")
-            if [ -n "$PAGE_ID" ]; then
-              break
-            fi
-            if [ "$attempt" -lt 10 ]; then
-              sleep 3
-            fi
-          done
-          test -n "$PAGE_ID"
           jq -n \
-            --arg deploymentId "$PAGE_ID" \
             --arg deploymentUrl "$PAGE_URL" \
             --arg aliasUrl "$PAGE_ALIAS" \
-            --arg previousDeploymentId "$PREVIOUS_PAGE_ID" \
-            --arg previousDeploymentUrl "$PREVIOUS_PAGE_URL" \
             --arg commit "$SHA" \
             --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{deploymentId:$deploymentId,deploymentUrl:$deploymentUrl,aliasUrl:$aliasUrl,previousDeploymentId:$previousDeploymentId,previousDeploymentUrl:$previousDeploymentUrl,commit:$commit,timestamp:$timestamp,environment:"development"}' \
+            '{deploymentUrl:$deploymentUrl,aliasUrl:$aliasUrl,commit:$commit,timestamp:$timestamp,environment:"development"}' \
             > release-pages-metadata.json
           echo "EXACT_PAGES_URL=$PAGE_URL" >> "$GITHUB_ENV"
-          echo "PAGES_DEPLOYMENT_ID=$PAGE_ID" >> "$GITHUB_ENV"
           echo "PAGES_ALIAS_URL=$PAGE_ALIAS" >> "$GITHUB_ENV"
           echo "exact_pages_url=$PAGE_URL" >> "$GITHUB_OUTPUT"
           echo "pages_alias_url=$PAGE_ALIAS" >> "$GITHUB_OUTPUT"
