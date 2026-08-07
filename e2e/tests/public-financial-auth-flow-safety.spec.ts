@@ -10,8 +10,8 @@ test('mantiene el flujo financiero autenticado limitado a Supabase local', async
   expect(source).toContain("target.port !== '54321'");
   expect(source).toContain('E2E_SUPABASE_ANON_KEY');
   expect(source).toContain('E2E_FIXTURE_PASSWORD');
-  expect(source).toContain("expect(await balance(request, payer.access_token)).toBe(125)");
-  expect(source).toContain("expect(await balance(request, payer.access_token)).toBe(0)");
+  expect(source).toContain('expect(await balance(request, payer.access_token)).toBe(125)');
+  expect(source).toContain('expect(await balance(request, payer.access_token)).toBe(0)');
   expect(source).toContain("next_status: 'correction_requested'");
   expect(source).toContain('expect(denied.ok()).toBe(false)');
   expect(source).toContain('payment_receipts');
