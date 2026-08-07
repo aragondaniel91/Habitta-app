@@ -11,7 +11,7 @@ test.describe('Acceso público de Habitta', () => {
 
     await expect(page.getByRole('heading', { name: 'Bienvenido a Habitta' })).toBeVisible();
     await expect(page.getByLabel('Correo electrónico')).toBeVisible();
-    await expect(page.getByLabel('Contraseña')).toBeVisible();
+    await expect(page.locator('input[autocomplete="current-password"]')).toBeVisible();
     await expect(page.getByRole('button', { name: /Iniciar sesión/ })).toBeEnabled();
     expect(pageErrors).toEqual([]);
   });
