@@ -23,11 +23,7 @@ const configuredPagesProjectHosts = (raw?: string) =>
     .flatMap((value) => {
       try {
         const url = new URL(value);
-        if (
-          url.protocol !== 'https:' ||
-          !url.hostname.endsWith('.pages.dev')
-        )
-          return [];
+        if (url.protocol !== 'https:' || !url.hostname.endsWith('.pages.dev')) return [];
 
         const labels = url.hostname.split('.');
         if (labels.length < 3) return [];
@@ -68,8 +64,8 @@ export const isAllowedCorsOrigin = (
     const url = new URL(normalized);
     if (url.protocol !== 'https:') return false;
 
-    return configuredPagesProjectHosts(raw).some(
-      (projectHost) => url.hostname.endsWith(`.${projectHost}`),
+    return configuredPagesProjectHosts(raw).some((projectHost) =>
+      url.hostname.endsWith(`.${projectHost}`),
     );
   } catch {
     return false;
