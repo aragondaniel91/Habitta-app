@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "habitta-financial-e2e-v1",
+  "environment": "isolated-test-only",
+  "organization": {
+    "name": "Habitta E2E Organization"
+  },
+  "condominiums": [
+    {
+      "key": "primary",
+      "name": "Residencias Habitta E2E",
+      "currencyCode": "USD",
+      "units": [
+        {
+          "code": "E2E-A101",
+          "name": "Apartamento A-101"
+        },
+        {
+          "code": "E2E-A102",
+          "name": "Apartamento A-102"
+        }
+      ]
+    },
+    {
+      "key": "isolation",
+      "name": "Residencias Habitta Isolation E2E",
+      "currencyCode": "USD",
+      "units": [
+        {
+          "code": "E2E-B201",
+          "name": "Apartamento B-201"
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "key": "administrator",
+      "email": "habitta-e2e-admin@example.invalid",
+      "role": "administrator",
+      "condominium": "primary"
+    },
+    {
+      "key": "reviewer",
+      "email": "habitta-e2e-reviewer@example.invalid",
+      "role": "payment_reviewer",
+      "condominium": "primary"
+    },
+    {
+      "key": "payer",
+      "email": "habitta-e2e-payer@example.invalid",
+      "role": "owner",
+      "condominium": "primary",
+      "unitCode": "E2E-A101"
+    },
+    {
+      "key": "isolationUser",
+      "email": "habitta-e2e-isolation@example.invalid",
+      "role": "administrator",
+      "condominium": "isolation"
+    }
+  ],
+  "financial": {
+    "chargeConcept": {
+      "code": "E2E-MONTHLY-DUES",
+      "name": "Cuota mensual E2E",
+      "category": "regular_dues",
+      "currencyCode": "USD",
+      "amount": "125.00"
+    },
+    "paymentMethod": {
+      "code": "E2E-BANK-TRANSFER",
+      "name": "Transferencia bancaria E2E"
+    },
+    "openingState": {
+      "unitCode": "E2E-A101",
+      "receivableAmount": "125.00",
+      "expectedPendingBalance": "125.00",
+      "expectedApprovedBalance": "0.00"
+    }
+  },
+  "cleanup": {
+    "strategy": "fixture-id-prefix",
+    "requiredPrefix": "E2E-",
+    "deleteOrganizationLast": true
+  }
+}
