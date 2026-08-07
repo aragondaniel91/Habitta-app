@@ -96,7 +96,13 @@ describe('maintenance workspace helpers', () => {
   it('filters assets by status and recognizable equipment data', () => {
     const assets = [
       asset(),
-      asset({ id: 'asset-2', code: 'ASC-01', name: 'Ascensor', status: 'retired' }),
+      asset({
+        id: 'asset-2',
+        code: 'ASC-01',
+        name: 'Ascensor',
+        category: 'Elevación',
+        status: 'retired',
+      }),
     ];
     expect(filterMaintenanceAssets(assets, 'bomba', '')).toHaveLength(1);
     expect(filterMaintenanceAssets(assets, '', 'retired')).toHaveLength(1);
@@ -105,7 +111,12 @@ describe('maintenance workspace helpers', () => {
   it('filters work orders by query, status and priority', () => {
     const workOrders = [
       workOrder(),
-      workOrder({ id: 'work-2', title: 'Pintura', priority: 'low' }),
+      workOrder({
+        id: 'work-2',
+        title: 'Pintura',
+        description: 'Pintura de áreas comunes.',
+        priority: 'low',
+      }),
     ];
     expect(filterMaintenanceWorkOrders(workOrders, 'fuga', '', '')).toHaveLength(1);
     expect(filterMaintenanceWorkOrders(workOrders, '', 'scheduled', 'urgent')).toHaveLength(1);
