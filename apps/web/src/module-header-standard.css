@@ -1,6 +1,6 @@
 :root {
-  --module-header-title-size: clamp(1.75rem, 2.2vw, 2rem);
-  --module-header-title-line-height: 1.15;
+  --module-header-title-size: clamp(2rem, 3vw, 3rem);
+  --module-header-title-line-height: 1.08;
   --module-header-copy-width: 52rem;
   --module-header-gap: 1.5rem;
 }
@@ -77,12 +77,13 @@
     .treasury-overview
   )
   :where(h1, h2) {
-  margin: 0.25rem 0 0.4rem !important;
+  margin: 0.35rem 0 0.55rem !important;
   color: var(--text-strong) !important;
+  font-family: var(--font-heading) !important;
   font-size: var(--module-header-title-size) !important;
   font-weight: 750 !important;
   line-height: var(--module-header-title-line-height) !important;
-  letter-spacing: -0.03em !important;
+  letter-spacing: -0.045em !important;
   text-wrap: balance;
 }
 
@@ -104,9 +105,9 @@
   margin: 0 !important;
   color: var(--blue) !important;
   font-size: 0.75rem !important;
-  font-weight: 750 !important;
+  font-weight: 800 !important;
   line-height: 1.25 !important;
-  letter-spacing: 0.09em !important;
+  letter-spacing: 0.1em !important;
   text-transform: uppercase !important;
 }
 
@@ -130,7 +131,7 @@
   max-width: 48rem;
   margin: 0 !important;
   color: var(--muted) !important;
-  font-size: 0.9375rem !important;
+  font-size: 1rem !important;
   font-weight: 400 !important;
   line-height: 1.55 !important;
 }
@@ -172,25 +173,32 @@
 }
 
 .module-overview__copy h2 {
-  margin: 0.25rem 0 0.4rem !important;
+  margin: 0.35rem 0 0.55rem !important;
   color: var(--text-strong) !important;
+  font-family: var(--font-heading) !important;
   font-size: var(--module-header-title-size) !important;
   font-weight: 750 !important;
   line-height: var(--module-header-title-line-height) !important;
-  letter-spacing: -0.03em !important;
+  letter-spacing: -0.045em !important;
 }
 
 .module-overview__copy p {
   max-width: 48rem;
   margin: 0 !important;
   color: var(--muted) !important;
-  font-size: 0.9375rem !important;
+  font-size: 1rem !important;
   line-height: 1.55 !important;
+}
+
+@media (max-width: 960px) {
+  :root {
+    --module-header-title-size: clamp(2rem, 5vw, 2.5rem);
+  }
 }
 
 @media (max-width: 720px) {
   :root {
-    --module-header-title-size: 1.75rem;
+    --module-header-title-size: 2rem;
     --module-header-gap: 1rem;
   }
 
