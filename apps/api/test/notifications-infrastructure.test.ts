@@ -1,9 +1,15 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { resolveNotificationsEnvironment } from '../src/config/notifications-env';
+import { validateNotificationsConfig } from '../../../scripts/cloudflare/validate-notifications-config.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
+
+const wranglerSource = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+const devVarsSource = readFileSync(new URL('../.dev.vars.example', import.meta.url), 'utf8');
+const validate = (source: string) => validateNotificationsConfig(source, devVarsSource) as string[];
 
 const providerConfiguration = {
   RESEND_API_KEY: 'test-key',
@@ -81,6 +87,47 @@ describe('notification environment modes', () => {
         ...providerConfiguration,
       }),
     ).toThrow('notifications_live_mode_not_allowed');
+  });
+});
+
+describe('production notification cron guard', () => {
+  const productionCron = '*/5 * * * *';
+  const withProduction = (mutate: (prod: Record<string, unknown>) => void) => {
+    const config = JSON.parse(wranglerSource.replace(/,\s*([}\]])/g, '$1'));
+    mutate(config.env.prod);
+    return JSON.stringify(config);
+  };
+
+  it('keeps production without a cron while it shares the development database', () => {
+    const config = JSON.parse(wranglerSource.replace(/,\s*([}\]])/g, '$1'));
+
+    expect(config.env.prod.vars.SUPABASE_URL).toBe(config.env.dev.vars.SUPABASE_URL);
+    expect(config.env.prod.triggers?.crons ?? []).toEqual([]);
+    expect(config.env.dev.triggers.crons).toContain(productionCron);
+  });
+
+  it('rejects a production cron while the database is shared', () => {
+    const source = withProduction((prod) => {
+      prod.triggers = { crons: [productionCron] };
+    });
+
+    expect(validate(source)).toContain('unsafe_prod_cron_on_shared_database');
+  });
+
+  it('requires the production cron again once production has its own database', () => {
+    const withoutCron = withProduction((prod) => {
+      (prod.vars as Record<string, string>).SUPABASE_URL = 'https://habitta-prod.supabase.co';
+    });
+
+    expect(validate(withoutCron)).toContain('missing_prod_notification_cron');
+
+    const withCron = withProduction((prod) => {
+      (prod.vars as Record<string, string>).SUPABASE_URL = 'https://habitta-prod.supabase.co';
+      prod.triggers = { crons: [productionCron] };
+    });
+
+    expect(validate(withCron)).not.toContain('missing_prod_notification_cron');
+    expect(validate(withCron)).not.toContain('unsafe_prod_cron_on_shared_database');
   });
 });
 

@@ -90,7 +90,15 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
       if (!requiredSecrets.has(secret)) errors.push(`missing_prod_required_secret:${secret}`);
     }
   }
-  if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
+  // Only one scheduled Worker may claim notification deliveries. claim_due_notification_deliveries
+  // filters by status and due date alone, so while production points at the development Supabase
+  // project both crons would compete for the same rows and production would discard deliveries
+  // development still needs. The guard flips automatically once the projects differ.
+  const sharesDevelopmentDatabase =
+    Boolean(dev?.vars?.SUPABASE_URL) && dev?.vars?.SUPABASE_URL === prod?.vars?.SUPABASE_URL;
+  if (sharesDevelopmentDatabase) {
+    if ((prod?.triggers?.crons ?? []).length) errors.push('unsafe_prod_cron_on_shared_database');
+  } else if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
     errors.push('missing_prod_notification_cron');
 
   if (config.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')

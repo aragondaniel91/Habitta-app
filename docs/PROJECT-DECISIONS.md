@@ -26,6 +26,23 @@ Habitta será una plataforma SaaS multi-condominio para administradoras, condomi
 
 La infraestructura comenzará gratuita. Los planes se ampliarán cuando Habitta tenga clientes o uso real, sin cambiar arquitectura ni reescribir la aplicación.
 
+## Base de datos compartida entre desarrollo y producción
+
+Desarrollo y producción usan el mismo proyecto Supabase mientras Habitta no tenga ingresos. Es una decisión deliberada de costo, no un descuido.
+
+Mientras la base sea compartida se aplican dos restricciones obligatorias:
+
+1. **El correo de producción permanece en `disabled`.** Activarlo enviaría mensajes reales a las direcciones que aparezcan en datos de prueba.
+2. **El entorno `prod` no declara cron.** `claim_due_notification_deliveries` filtra solo por estado y fecha de vencimiento, sin columna de entorno. Dos Workers programados sobre la misma base competirían por las mismas entregas: el de producción las reclamaría y, al estar el correo desactivado, las descartaría como `skipped`, dejando sin enviar las que desarrollo necesita en su bandeja sandbox.
+
+`scripts/cloudflare/validate-notifications-config.mjs` hace cumplir la segunda restricción y corre en CI y en el release de producción. El guardarraíl es condicional: compara `env.dev.vars.SUPABASE_URL` con `env.prod.vars.SUPABASE_URL` y, en cuanto dejen de coincidir, vuelve a **exigir** el cron en producción. No hay que acordarse de revertirlo.
+
+**Condición para separar los entornos:** el primer condominio real con datos de personas y pagos verdaderos. La vía sin costo adicional es mover el desarrollo diario a Supabase local — `supabase/config.toml` ya existe y `financial-e2e.yml` ya lo usa — dejando el proyecto en la nube como exclusivo de producción.
+
+Al separar, ambas restricciones se levantan juntas: se activa el correo de producción y se restaura `"triggers": { "crons": ["*/5 * * * *"] }` en el entorno `prod`.
+
+> Nota para quien edite `apps/api/wrangler.jsonc`: pese a la extensión `.jsonc`, el archivo **no admite comentarios**. Los dos validadores que lo leen (`validate-notifications-config.mjs` y `validate-development-release.mjs`) solo eliminan comas finales antes de `JSON.parse`, así que un comentario `//` rompe CI.
+
 ## Stack
 
 - Aplicación web: React + Vite + TypeScript
