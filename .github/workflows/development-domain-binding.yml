@@ -1,0 +1,100 @@
+name: Development Domain Binding
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/development-domain-binding.yml'
+      - 'config/environments.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: development-domain-binding
+  cancel-in-progress: false
+
+jobs:
+  ensure-preview-domain:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_PAGES_PROJECT_NAME: habitta-web-dev
+      CLOUDFLARE_PAGES_PRODUCTION_BRANCH: development
+      CLOUDFLARE_PAGES_PREVIEW_DOMAIN: preview.mihabitta.com
+    steps:
+      - name: Validate credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Ensure Pages project and preview domain
+        run: |
+          set -euo pipefail
+
+          api() {
+            local method="$1"
+            local path="$2"
+            local body="${3:-}"
+            local args=(
+              -fsS
+              -X "$method"
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+              -H 'Content-Type: application/json'
+            )
+            if [ -n "$body" ]; then
+              args+=(--data "$body")
+            fi
+            curl "${args[@]}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/$path"
+          }
+
+          PROJECT_PATH="pages/projects/$CLOUDFLARE_PAGES_PROJECT_NAME"
+          PROJECT_JSON=$(api GET "$PROJECT_PATH")
+          printf '%s' "$PROJECT_JSON" | jq -e '.success == true' >/dev/null
+
+          CURRENT_BRANCH=$(printf '%s' "$PROJECT_JSON" | jq -r '.result.production_branch // empty')
+          if [ "$CURRENT_BRANCH" != "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" ]; then
+            UPDATED_JSON=$(api PATCH "$PROJECT_PATH" "$(jq -cn --arg branch "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" '{production_branch:$branch}')")
+            printf '%s' "$UPDATED_JSON" | jq -e --arg branch "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" '.success == true and .result.production_branch == $branch' >/dev/null
+            echo "Updated Pages production branch to $CLOUDFLARE_PAGES_PRODUCTION_BRANCH"
+          else
+            echo "Pages production branch already set to $CLOUDFLARE_PAGES_PRODUCTION_BRANCH"
+          fi
+
+          DOMAINS_PATH="$PROJECT_PATH/domains"
+          DOMAINS_JSON=$(api GET "$DOMAINS_PATH")
+          printf '%s' "$DOMAINS_JSON" | jq -e '.success == true' >/dev/null
+
+          if printf '%s' "$DOMAINS_JSON" | jq -e --arg domain "$CLOUDFLARE_PAGES_PREVIEW_DOMAIN" '.result[]? | select(.name == $domain)' >/dev/null; then
+            echo "Preview domain is already attached: $CLOUDFLARE_PAGES_PREVIEW_DOMAIN"
+          else
+            CREATE_JSON=$(api POST "$DOMAINS_PATH" "$(jq -cn --arg name "$CLOUDFLARE_PAGES_PREVIEW_DOMAIN" '{name:$name}')")
+            printf '%s' "$CREATE_JSON" | jq -e '.success == true' >/dev/null
+            echo "Attached preview domain: $CLOUDFLARE_PAGES_PREVIEW_DOMAIN"
+          fi
+
+      - name: Wait for preview domain to become active
+        run: |
+          set -euo pipefail
+          DOMAIN_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT_NAME/domains/$CLOUDFLARE_PAGES_PREVIEW_DOMAIN"
+
+          for attempt in $(seq 1 30); do
+            RESPONSE=$(curl -fsS \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' \
+              "$DOMAIN_URL")
+            printf '%s' "$RESPONSE" | jq -e '.success == true' >/dev/null
+            STATUS=$(printf '%s' "$RESPONSE" | jq -r '.result.status // empty')
+            echo "Preview domain status attempt $attempt/30: ${STATUS:-unknown}"
+            if [ "$STATUS" = active ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "::error::preview.mihabitta.com did not become active in Cloudflare Pages within 5 minutes."
+          exit 1
