@@ -131,6 +131,27 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     ],
     permissions: 'Los revisores y administradores autorizados gestionan la aprobación de pagos.',
   },
+  treasury: {
+    purpose:
+      'Controla las cuentas bancarias y de caja del condominio, sus movimientos y la conciliación con el estado de cuenta del banco.',
+    actions: [
+      'Crear cuentas de banco o caja por moneda.',
+      'Registrar saldos iniciales, depósitos, retiros, comisiones y ajustes.',
+      'Transferir entre cuentas y conciliar períodos.',
+    ],
+    steps: [
+      'Crea la cuenta y registra su saldo inicial.',
+      'Anota los movimientos del período.',
+      'Abre la conciliación con los saldos del estado de cuenta y ciérrala al cuadrar.',
+    ],
+    tips: [
+      'El saldo se calcula a partir de los movimientos: no se edita a mano.',
+      'Una transferencia mueve dinero entre cuentas; no es un ingreso ni un gasto.',
+      'Un movimiento equivocado se corrige con un reverso, nunca borrándolo.',
+    ],
+    permissions:
+      'Administradores y contadores registran y concilian; la junta puede consultar los saldos.',
+  },
   expenses: {
     purpose:
       'Registra egresos, proveedores, facturas, aprobaciones y pagos realizados por el condominio.',

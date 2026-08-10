@@ -14,6 +14,7 @@ import './community-directory.css';
 import './structure-management.css';
 import './receivables.css';
 import './payments.css';
+import './treasury.css';
 import './expenses.css';
 import './maintenance.css';
 import './reports.css';

@@ -1,0 +1,430 @@
+import { useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
+import { Button, Field, Select } from '../../components/ui';
+import {
+  accountTypeLabels,
+  movementKindLabels,
+  recordableKinds,
+  type TreasuryAccount,
+  type TreasuryMovementKind,
+} from './types';
+
+export type TreasuryDrawer = 'account' | 'movement' | 'transfer' | 'reconciliation' | null;
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+function DrawerShell({
+  title,
+  eyebrow,
+  onClose,
+  children,
+}: {
+  title: string;
+  eyebrow: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="treasury-drawer-layer" role="presentation">
+      <button
+        aria-label="Cerrar panel"
+        className="treasury-drawer-backdrop"
+        onClick={onClose}
+        type="button"
+      />
+      <aside aria-label={title} className="treasury-drawer">
+        <header className="treasury-drawer__header">
+          <div>
+            <span>{eyebrow}</span>
+            <h2>{title}</h2>
+          </div>
+          <Button aria-label="Cerrar" onClick={onClose} size="sm" variant="ghost">
+            ×
+          </Button>
+        </header>
+        <div className="treasury-drawer__body">{children}</div>
+      </aside>
+    </div>
+  );
+}
+
+type Submitting = { saving: boolean; error: string };
+
+const useSubmit = (action: () => Promise<void>) => {
+  const [state, setState] = useState<Submitting>({ saving: false, error: '' });
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setState({ saving: true, error: '' });
+    try {
+      await action();
+    } catch (error) {
+      setState({
+        saving: false,
+        error: error instanceof Error ? error.message : 'No se pudo completar la operación.',
+      });
+      return;
+    }
+    setState({ saving: false, error: '' });
+  };
+  return { ...state, submit };
+};
+
+export function AccountDrawer({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (input: {
+    name: string;
+    accountType: string;
+    currencyCode: string;
+    bankName?: string;
+  }) => Promise<void>;
+}) {
+  const [name, setName] = useState('');
+  const [accountType, setAccountType] = useState('bank');
+  const [currencyCode, setCurrencyCode] = useState('USD');
+  const [bankName, setBankName] = useState('');
+  const { saving, error, submit } = useSubmit(() =>
+    onSubmit({
+      name,
+      accountType,
+      currencyCode,
+      ...(bankName.trim() ? { bankName: bankName.trim() } : {}),
+    }),
+  );
+
+  return (
+    <DrawerShell eyebrow="Tesorería" onClose={onClose} title="Nueva cuenta">
+      <form className="treasury-form" onSubmit={(event) => void submit(event)}>
+        {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        <Field label="Nombre">
+          <input
+            className="input"
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Banco Nacional USD"
+            required
+            value={name}
+          />
+        </Field>
+        <div className="treasury-form-grid">
+          <Field label="Tipo">
+            <Select onChange={(event) => setAccountType(event.target.value)} value={accountType}>
+              {Object.entries(accountTypeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field hint="Una cuenta nunca mezcla monedas." label="Moneda">
+            <Select onChange={(event) => setCurrencyCode(event.target.value)} value={currencyCode}>
+              <option value="USD">USD</option>
+              <option value="VES">VES</option>
+              <option value="EUR">EUR</option>
+            </Select>
+          </Field>
+        </div>
+        {accountType === 'bank' ? (
+          <Field label="Institución financiera">
+            <input
+              className="input"
+              onChange={(event) => setBankName(event.target.value)}
+              placeholder="Banco de Venezuela"
+              value={bankName}
+            />
+          </Field>
+        ) : null}
+        <Button disabled={saving} type="submit">
+          {saving ? 'Guardando…' : 'Crear cuenta'}
+        </Button>
+      </form>
+    </DrawerShell>
+  );
+}
+
+export function MovementDrawer({
+  accounts,
+  onClose,
+  onSubmit,
+}: {
+  accounts: TreasuryAccount[];
+  onClose: () => void;
+  onSubmit: (input: {
+    accountId: string;
+    movementKind: TreasuryMovementKind;
+    amount: string;
+    occurredOn: string;
+    description: string;
+  }) => Promise<void>;
+}) {
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
+  const [movementKind, setMovementKind] = useState<TreasuryMovementKind>('deposit');
+  const [amount, setAmount] = useState('');
+  const [occurredOn, setOccurredOn] = useState(today);
+  const [description, setDescription] = useState('');
+  const { saving, error, submit } = useSubmit(() =>
+    onSubmit({ accountId, movementKind, amount, occurredOn, description }),
+  );
+
+  return (
+    <DrawerShell eyebrow="Tesorería" onClose={onClose} title="Registrar movimiento">
+      <form className="treasury-form" onSubmit={(event) => void submit(event)}>
+        {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        <Field label="Cuenta">
+          <Select onChange={(event) => setAccountId(event.target.value)} required value={accountId}>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} · {account.currency_code}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className="treasury-form-grid">
+          <Field
+            hint={
+              movementKind === 'opening_balance'
+                ? 'Solo se admite en una cuenta sin movimientos.'
+                : undefined
+            }
+            label="Tipo"
+          >
+            <Select
+              onChange={(event) => setMovementKind(event.target.value as TreasuryMovementKind)}
+              value={movementKind}
+            >
+              {recordableKinds.map((kind) => (
+                <option key={kind} value={kind}>
+                  {movementKindLabels[kind]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Fecha">
+            <input
+              className="input"
+              onChange={(event) => setOccurredOn(event.target.value)}
+              required
+              type="date"
+              value={occurredOn}
+            />
+          </Field>
+        </div>
+        <Field label="Monto">
+          <input
+            className="input"
+            inputMode="decimal"
+            onChange={(event) => setAmount(event.target.value)}
+            placeholder="0.00"
+            required
+            value={amount}
+          />
+        </Field>
+        <Field label="Descripción">
+          <input
+            className="input"
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Cobro de cuotas de agosto"
+            required
+            value={description}
+          />
+        </Field>
+        <Button disabled={saving} type="submit">
+          {saving ? 'Registrando…' : 'Registrar movimiento'}
+        </Button>
+      </form>
+    </DrawerShell>
+  );
+}
+
+export function TransferDrawer({
+  accounts,
+  onClose,
+  onSubmit,
+}: {
+  accounts: TreasuryAccount[];
+  onClose: () => void;
+  onSubmit: (input: {
+    fromAccountId: string;
+    toAccountId: string;
+    amount: string;
+    occurredOn: string;
+    description: string;
+  }) => Promise<void>;
+}) {
+  const [fromAccountId, setFromAccountId] = useState(accounts[0]?.id ?? '');
+  const [toAccountId, setToAccountId] = useState(accounts[1]?.id ?? '');
+  const [amount, setAmount] = useState('');
+  const [occurredOn, setOccurredOn] = useState(today);
+  const [description, setDescription] = useState('');
+  const { saving, error, submit } = useSubmit(() =>
+    onSubmit({ fromAccountId, toAccountId, amount, occurredOn, description }),
+  );
+
+  const origin = accounts.find((account) => account.id === fromAccountId);
+  // A transfer moves money between accounts, so both sides must hold the same currency.
+  const destinations = accounts.filter(
+    (account) => account.id !== fromAccountId && account.currency_code === origin?.currency_code,
+  );
+
+  return (
+    <DrawerShell eyebrow="Tesorería" onClose={onClose} title="Transferencia interna">
+      <form className="treasury-form" onSubmit={(event) => void submit(event)}>
+        {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        <Field label="Cuenta origen">
+          <Select
+            onChange={(event) => {
+              setFromAccountId(event.target.value);
+              setToAccountId('');
+            }}
+            required
+            value={fromAccountId}
+          >
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} · {account.currency_code}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field
+          hint={destinations.length ? undefined : 'No hay otra cuenta en la misma moneda.'}
+          label="Cuenta destino"
+        >
+          <Select
+            onChange={(event) => setToAccountId(event.target.value)}
+            required
+            value={toAccountId}
+          >
+            <option value="">Selecciona una cuenta</option>
+            {destinations.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} · {account.currency_code}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className="treasury-form-grid">
+          <Field label="Monto">
+            <input
+              className="input"
+              inputMode="decimal"
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+              required
+              value={amount}
+            />
+          </Field>
+          <Field label="Fecha">
+            <input
+              className="input"
+              onChange={(event) => setOccurredOn(event.target.value)}
+              required
+              type="date"
+              value={occurredOn}
+            />
+          </Field>
+        </div>
+        <Field label="Descripción">
+          <input
+            className="input"
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Fondeo de caja chica"
+            required
+            value={description}
+          />
+        </Field>
+        <Button disabled={saving || !toAccountId} type="submit">
+          {saving ? 'Transfiriendo…' : 'Registrar transferencia'}
+        </Button>
+      </form>
+    </DrawerShell>
+  );
+}
+
+export function ReconciliationDrawer({
+  accounts,
+  onClose,
+  onSubmit,
+}: {
+  accounts: TreasuryAccount[];
+  onClose: () => void;
+  onSubmit: (input: {
+    accountId: string;
+    startsOn: string;
+    endsOn: string;
+    statementOpeningBalance: string;
+    statementClosingBalance: string;
+  }) => Promise<void>;
+}) {
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
+  const [startsOn, setStartsOn] = useState('');
+  const [endsOn, setEndsOn] = useState(today);
+  const [statementOpeningBalance, setOpening] = useState('');
+  const [statementClosingBalance, setClosing] = useState('');
+  const { saving, error, submit } = useSubmit(() =>
+    onSubmit({ accountId, startsOn, endsOn, statementOpeningBalance, statementClosingBalance }),
+  );
+
+  return (
+    <DrawerShell eyebrow="Tesorería" onClose={onClose} title="Nueva conciliación">
+      <form className="treasury-form" onSubmit={(event) => void submit(event)}>
+        {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        <Field label="Cuenta">
+          <Select onChange={(event) => setAccountId(event.target.value)} required value={accountId}>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} · {account.currency_code}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div className="treasury-form-grid">
+          <Field label="Desde">
+            <input
+              className="input"
+              onChange={(event) => setStartsOn(event.target.value)}
+              required
+              type="date"
+              value={startsOn}
+            />
+          </Field>
+          <Field label="Hasta">
+            <input
+              className="input"
+              onChange={(event) => setEndsOn(event.target.value)}
+              required
+              type="date"
+              value={endsOn}
+            />
+          </Field>
+        </div>
+        <div className="treasury-form-grid">
+          <Field label="Saldo inicial del estado">
+            <input
+              className="input"
+              inputMode="decimal"
+              onChange={(event) => setOpening(event.target.value)}
+              placeholder="0.00"
+              required
+              value={statementOpeningBalance}
+            />
+          </Field>
+          <Field label="Saldo final del estado">
+            <input
+              className="input"
+              inputMode="decimal"
+              onChange={(event) => setClosing(event.target.value)}
+              placeholder="0.00"
+              required
+              value={statementClosingBalance}
+            />
+          </Field>
+        </div>
+        <Button disabled={saving} type="submit">
+          {saving ? 'Creando…' : 'Crear conciliación'}
+        </Button>
+      </form>
+    </DrawerShell>
+  );
+}

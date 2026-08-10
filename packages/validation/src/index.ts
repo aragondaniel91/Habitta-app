@@ -467,3 +467,73 @@ export const announcementScheduleSchema = z.object({
 export const announcementActionSchema = z.object({
   expectedVersion: z.number().int().positive().optional(),
 });
+
+const currencyCodeSchema = z.string().regex(/^[A-Z]{3}$/);
+const treasuryAccountTypeSchema = z.enum(['bank', 'cash']);
+const treasuryDirectionSchema = z.enum(['credit', 'debit']);
+const treasuryMovementKindSchema = z.enum([
+  'opening_balance',
+  'deposit',
+  'withdrawal',
+  'fee',
+  'adjustment',
+  'reversal',
+]);
+
+export const treasuryAccountSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  accountType: treasuryAccountTypeSchema,
+  currencyCode: currencyCodeSchema,
+  bankName: z.string().trim().min(2).max(120).optional(),
+  accountReference: z.string().trim().min(2).max(120).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+// transfer_in and transfer_out are produced by create_treasury_transfer, and reversal by
+// reverse_treasury_movement, so neither can be recorded straight from this endpoint.
+export const treasuryMovementSchema = z.object({
+  accountId: uuidSchema,
+  direction: treasuryDirectionSchema,
+  movementKind: treasuryMovementKindSchema.exclude(['reversal']),
+  amount: decimalAmountSchema,
+  occurredOn: z.string().date(),
+  description: z.string().trim().min(2).max(500),
+  reference: z.string().trim().max(160).optional(),
+  idempotencyKey: z.string().trim().min(8).max(180),
+});
+
+export const treasuryTransferSchema = z
+  .object({
+    fromAccountId: uuidSchema,
+    toAccountId: uuidSchema,
+    amount: decimalAmountSchema,
+    occurredOn: z.string().date(),
+    description: z.string().trim().min(2).max(500),
+    reference: z.string().trim().max(160).optional(),
+    idempotencyKey: z.string().trim().min(8).max(160),
+  })
+  .refine((value) => value.fromAccountId !== value.toAccountId, {
+    message: 'A transfer needs two different accounts',
+    path: ['toAccountId'],
+  });
+
+export const treasuryReversalSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+  idempotencyKey: z.string().trim().min(8).max(180),
+});
+
+export const treasuryReconciliationSchema = z
+  .object({
+    accountId: uuidSchema,
+    startsOn: z.string().date(),
+    endsOn: z.string().date(),
+    statementOpeningBalance: z.string().regex(/^-?(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/),
+    statementClosingBalance: z.string().regex(/^-?(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/),
+    notes: z.string().trim().max(1000).optional(),
+  })
+  .refine((value) => value.startsOn <= value.endsOn, {
+    message: 'The period cannot end before it starts',
+    path: ['endsOn'],
+  });
+
+export const treasuryMatchSchema = z.object({ movementId: uuidSchema });

@@ -27,6 +27,7 @@ export type AppRoute = {
     | 'maintenance'
     | 'fees'
     | 'payments'
+    | 'treasury'
     | 'expenses'
     | 'reports'
     | 'community'
@@ -150,6 +151,18 @@ export const APP_ROUTES = [
       'owner',
       'tenant',
     ],
+  },
+  {
+    key: 'treasury',
+    path: '/app/treasury',
+    label: 'Tesorería',
+    shortLabel: 'Tesorería',
+    title: 'Tesorería',
+    description: 'Controla bancos, caja, transferencias internas y conciliación.',
+    section: 'finanzas',
+    icon: PaymentsIcon,
+    scope: ['Bancos y caja', 'Transferencias internas', 'Conciliación bancaria'],
+    roles: ['condominium_admin', 'accountant', 'board_member'],
   },
   {
     key: 'expenses',

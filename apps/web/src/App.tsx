@@ -30,6 +30,7 @@ import { RequestsPage } from './pages/RequestsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StructureManagementPage } from './pages/StructureManagementPage';
 import { TeamAccessPage } from './pages/TeamAccessPage';
+import { TreasuryPage } from './pages/TreasuryPage';
 import { supabase } from './supabase';
 
 type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
@@ -293,6 +294,14 @@ export default function App() {
         session={session}
       />
     );
+  } else if (activeRoute.key === 'treasury') {
+    page = (
+      <TreasuryPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
   } else if (activeRoute.key === 'expenses') {
     page = (
       <ExpensesPage
@@ -368,24 +377,24 @@ export default function App() {
   return (
     <RolesProvider value={roles}>
       <AppShell
-      condominiums={condominiums}
-      contextMessage={contextMessage}
-      currentRoute={activeRoute}
-      notificationOpen={notificationOpen}
-      onAddCondominium={() => setAddingCondominium(true)}
-      onCloseNotifications={() => setNotificationOpen(false)}
-      onCondominiumChange={(condominiumId) => {
-        setAddingCondominium(false);
-        setSelectedCondominiumId(condominiumId);
-      }}
-      onNavigate={navigate}
-      onOpenNotifications={() => setNotificationOpen(true)}
-      onSignOut={signOut}
-      organizations={organizations}
-      selectedCondominiumId={selectedCondominiumId}
-      session={session}
-      visibleRoutes={visibleRoutes}
-    >
+        condominiums={condominiums}
+        contextMessage={contextMessage}
+        currentRoute={activeRoute}
+        notificationOpen={notificationOpen}
+        onAddCondominium={() => setAddingCondominium(true)}
+        onCloseNotifications={() => setNotificationOpen(false)}
+        onCondominiumChange={(condominiumId) => {
+          setAddingCondominium(false);
+          setSelectedCondominiumId(condominiumId);
+        }}
+        onNavigate={navigate}
+        onOpenNotifications={() => setNotificationOpen(true)}
+        onSignOut={signOut}
+        organizations={organizations}
+        selectedCondominiumId={selectedCondominiumId}
+        session={session}
+        visibleRoutes={visibleRoutes}
+      >
         {page}
       </AppShell>
     </RolesProvider>

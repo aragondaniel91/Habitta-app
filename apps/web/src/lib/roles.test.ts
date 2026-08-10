@@ -31,7 +31,15 @@ describe('role aware navigation', () => {
   it('never offers a resident an administrative module', () => {
     for (const role of ['owner', 'tenant'] as CondominiumRole[]) {
       const keys = keysFor([role]);
-      for (const forbidden of ['expenses', 'reports', 'units', 'people', 'maintenance', 'team']) {
+      for (const forbidden of [
+        'expenses',
+        'reports',
+        'treasury',
+        'units',
+        'people',
+        'maintenance',
+        'team',
+      ]) {
         expect(keys).not.toContain(forbidden);
       }
     }
@@ -55,6 +63,7 @@ describe('role aware navigation', () => {
 
     expect(keys).toContain('expenses');
     expect(keys).toContain('reports');
+    expect(keys).toContain('treasury');
     expect(keys).not.toContain('team');
     expect(canManage(['board_member'])).toBe(false);
     expect(canManageGovernance(['board_member'])).toBe(true);
