@@ -26,6 +26,7 @@ import {
   notificationTypeMetadata,
 } from '../lib/settings';
 import type { NotificationPreferenceDraft, NotificationType } from '../lib/settings';
+import '../settings.css';
 
 type Props = {
   condominiumId: string;

@@ -5,6 +5,7 @@ import { CheckCircleIcon, SettingsIcon, UnitsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import '../structure-management.css';
 
 type Building = {
   id: string;

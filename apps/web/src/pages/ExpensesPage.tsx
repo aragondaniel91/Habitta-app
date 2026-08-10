@@ -32,6 +32,7 @@ import type {
   ExpenseSummary,
   ExpenseVendor,
 } from '../lib/expenses';
+import '../expenses.css';
 
 type Props = {
   condominiumId: string;

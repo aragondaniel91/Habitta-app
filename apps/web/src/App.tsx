@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AdminInvitationExperience } from './components/AdminInvitationExperience';
 import { AdminOnboardingWizard } from './components/AdminOnboardingWizard';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
 import { OnboardingLoading, WorkspaceLoadError } from './components/AuthExperience';
 import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
+import { ModuleLoading } from './components/ui';
 import { apiRequest } from './lib/api';
 import {
   allowedRoutes,
@@ -15,23 +16,62 @@ import {
   type MembershipResponse,
 } from './lib/roles';
 import { APP_ROUTES, DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
-import { AddCondominiumPage } from './pages/AddCondominiumPage';
-import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
-import { AnnouncementsPage } from './pages/AnnouncementsPage';
-import { CommunityDirectoryPage } from './pages/CommunityDirectoryPage';
-import { CommunityPage } from './pages/CommunityPage';
-import { ExpensesPage } from './pages/ExpensesPage';
-import { GovernancePage } from './pages/GovernancePage';
-import { MaintenancePage } from './pages/MaintenancePage';
-import { PaymentsPage } from './pages/PaymentsPage';
-import { ReceivablesPage } from './pages/ReceivablesPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { RequestsPage } from './pages/RequestsPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { StructureManagementPage } from './pages/StructureManagementPage';
-import { TeamAccessPage } from './pages/TeamAccessPage';
-import { TreasuryPage } from './pages/TreasuryPage';
 import { supabase } from './supabase';
+
+const AddCondominiumPage = lazy(() =>
+  import('./pages/AddCondominiumPage').then((module) => ({ default: module.AddCondominiumPage })),
+);
+const AdministrativeDashboard = lazy(() =>
+  import('./pages/AdministrativeDashboard').then((module) => ({
+    default: module.AdministrativeDashboard,
+  })),
+);
+const AnnouncementsPage = lazy(() =>
+  import('./pages/AnnouncementsPage').then((module) => ({ default: module.AnnouncementsPage })),
+);
+const CommunityDirectoryPage = lazy(() =>
+  import('./pages/CommunityDirectoryPage').then((module) => ({
+    default: module.CommunityDirectoryPage,
+  })),
+);
+const CommunityPage = lazy(() =>
+  import('./pages/CommunityPage').then((module) => ({ default: module.CommunityPage })),
+);
+const ExpensesPage = lazy(() =>
+  import('./pages/ExpensesPage').then((module) => ({ default: module.ExpensesPage })),
+);
+const GovernancePage = lazy(() =>
+  import('./pages/GovernancePage').then((module) => ({ default: module.GovernancePage })),
+);
+const MaintenancePage = lazy(() =>
+  import('./pages/MaintenancePage').then((module) => ({ default: module.MaintenancePage })),
+);
+const PaymentsPage = lazy(() =>
+  import('./pages/PaymentsPage').then((module) => ({ default: module.PaymentsPage })),
+);
+const ReceivablesPage = lazy(() =>
+  import('./pages/ReceivablesPage').then((module) => ({ default: module.ReceivablesPage })),
+);
+const ReportsPage = lazy(() =>
+  import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })),
+);
+const RequestsPage = lazy(() =>
+  import('./pages/RequestsPage').then((module) => ({ default: module.RequestsPage })),
+);
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+);
+const StructureManagementPage = lazy(() =>
+  import('./pages/StructureManagementPage').then((module) => ({
+    default: module.StructureManagementPage,
+  })),
+);
+const TeamAccessPage = lazy(() =>
+  import('./pages/TeamAccessPage').then((module) => ({ default: module.TeamAccessPage })),
+);
+const TreasuryPage = lazy(() =>
+  import('./pages/TreasuryPage').then((module) => ({ default: module.TreasuryPage })),
+);
 
 type ContextMessage = { tone: 'error' | 'info'; text: string } | null;
 
@@ -395,7 +435,8 @@ export default function App() {
         session={session}
         visibleRoutes={visibleRoutes}
       >
-        {page}
+        {/* Each module is its own chunk, so the shell stays on screen while one arrives. */}
+        <Suspense fallback={<ModuleLoading />}>{page}</Suspense>
       </AppShell>
     </RolesProvider>
   );

@@ -11,7 +11,10 @@ describe('physical structure management workspace', () => {
 
     expect(app).toContain("activeRoute.key === 'units'");
     expect(app).toContain('<StructureManagementPage');
-    expect(main).toContain("import './structure-management.css'");
+    // The stylesheet ships inside the Units chunk rather than the initial bundle, since a resident
+    // who never opens that module should not download its CSS either.
+    expect(await readFile(pageUrl, 'utf8')).toContain("import '../structure-management.css'");
+    expect(main).not.toContain("import './structure-management.css'");
   });
 
   it('supports building administration and non-destructive unit editing', async () => {

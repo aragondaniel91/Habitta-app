@@ -30,7 +30,10 @@ describe('maintenance administrator workspace integration', () => {
     expect(pageSource).toContain('/maintenance/generate-due');
   });
 
-  it('loads dedicated responsive styles', () => {
-    expect(mainSource).toContain("import './maintenance.css'");
+  it('loads dedicated responsive styles inside its own chunk', () => {
+    // Not from main.tsx: the sheet moved into the module so it ships with that chunk instead of
+    // the initial bundle, alongside every other module's styles.
+    expect(pageSource).toContain("import '../maintenance.css'");
+    expect(mainSource).not.toContain("import './maintenance.css'");
   });
 });

@@ -35,6 +35,7 @@ import type {
   GovernanceStatus,
   GovernanceVotingBasis,
 } from '../lib/governance';
+import '../governance.css';
 
 type Props = {
   condominiumId: string;

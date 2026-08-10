@@ -30,6 +30,7 @@ import {
   type TreasuryTransfer,
 } from '../features/treasury/types';
 import { canManage, useCondominiumRoles } from '../lib/roles';
+import '../treasury.css';
 
 type Props = {
   condominiumId: string;

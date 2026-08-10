@@ -29,6 +29,10 @@ import type {
   ReceivableUnit,
 } from '../lib/receivables';
 import { ReceivablesDrawerHost, type ReceivablesDrawerMode } from './ReceivablesDrawers';
+import '../receivables.css';
+import '../receivables-core.css';
+import '../receivables-drawers.css';
+import '../receivables-responsive.css';
 
 type ReceivablesData = {
   units: ReceivableUnit[];

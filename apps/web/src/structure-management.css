@@ -526,7 +526,7 @@
 @media (max-width: 480px) {
   .structure-hero__actions,
   .structure-metrics {
-    grid-template-colums: 1fr;
+    grid-template-columns: 1fr;
   }
 
   .structure-metric:last-child {

@@ -30,6 +30,7 @@ import {
 } from '../lib/payments';
 import type { PaymentFilters } from '../lib/payments';
 import { PaymentsDrawerHost, type PaymentsDrawerMode } from './PaymentsDrawers';
+import '../payments.css';
 
 type Unit = { id: string; code: string; status?: string };
 

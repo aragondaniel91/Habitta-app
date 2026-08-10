@@ -23,6 +23,7 @@ import {
 import type { CommunityBuilding, CommunityPerson, CommunityUnit } from '../lib/community';
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
+import '../community.css';
 
 type CommunityData = {
   units: CommunityUnit[];

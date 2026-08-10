@@ -38,6 +38,7 @@ import type {
   AnnouncementStatus,
   AnnouncementUnit,
 } from '../lib/announcements';
+import '../announcements.css';
 
 const priorities: AnnouncementPriority[] = ['normal', 'important', 'urgent'];
 const audiences: AnnouncementAudience[] = [

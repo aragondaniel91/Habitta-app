@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Button, Select } from '../../components/ui';
 import { PRIVATE_DOCUMENT_ACCEPT, privateDocumentError, uploadPrivateDocument } from './api';
+import '../../private-documents.css';
 
 type DocumentTypeOption = { value: string; label: string };
 

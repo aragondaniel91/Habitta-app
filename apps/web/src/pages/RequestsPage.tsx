@@ -41,6 +41,7 @@ import type {
   ServiceRequestUnit,
   ServiceRequestVisibility,
 } from '../lib/service-requests';
+import '../requests.css';
 
 const priorities: ServiceRequestPriority[] = ['low', 'normal', 'high', 'urgent'];
 const statuses: ServiceRequestStatus[] = [

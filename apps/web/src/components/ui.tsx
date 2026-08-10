@@ -89,3 +89,20 @@ export function EmptyState({
 export function Skeleton({ className }: { className?: string }) {
   return <span aria-hidden="true" className={['skeleton', className].filter(Boolean).join(' ')} />;
 }
+
+/**
+ * Shown inside the shell while a module's chunk arrives. It mirrors the shape every module opens
+ * with — a header and a row of cards — so the layout does not jump once the real page renders.
+ */
+export function ModuleLoading() {
+  return (
+    <div aria-busy="true" aria-label="Cargando módulo" className="module-loading">
+      <Skeleton className="skeleton--title" />
+      <div className="module-loading__grid">
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton className="skeleton--card" key={index} />
+        ))}
+      </div>
+    </div>
+  );
+}

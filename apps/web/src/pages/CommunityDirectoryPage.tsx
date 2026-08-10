@@ -24,6 +24,7 @@ import type {
   UnitOccupancyAssignment,
   UnitOwnerAssignment,
 } from '../lib/community-directory';
+import '../community-directory.css';
 
 const unitTypes = [
   ['apartment', 'Apartamento'],

@@ -15,6 +15,7 @@ import {
   type AdministrativeRole,
   type TeamMember,
 } from '../lib/teamAccess';
+import '../team-access.css';
 
 type Props = {
   condominiumId: string;

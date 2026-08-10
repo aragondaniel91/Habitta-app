@@ -39,6 +39,7 @@ import {
   getReportCurrencies,
 } from '../lib/reports';
 import type { PaymentStatusRow, ReportPeriod, UnitFinancialRow } from '../lib/reports';
+import '../reports.css';
 
 type ReportsData = {
   units: DashboardUnit[];

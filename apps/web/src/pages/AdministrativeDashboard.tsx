@@ -43,6 +43,8 @@ import type {
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
 import { buildDashboardSourceWarning, settleDashboardSource } from '../lib/dashboard-sources';
+import '../dashboard.css';
+import '../dashboard-mobile.css';
 
 const PORTFOLIO_COLORS = ['#28a745', '#78aee8', '#3978bd', '#e39b45', '#c94d58'] as const;
 

@@ -15,6 +15,7 @@ import {
   type AdminOnboardingErrors,
   type AdminOnboardingInput,
 } from '../lib/adminOnboarding';
+import '../add-condominium.css';
 
 type Props = {
   organizations: Organization[];

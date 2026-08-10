@@ -30,6 +30,7 @@ import type {
   MaintenanceWorkOrder,
   MaintenanceWorkOrderStatus,
 } from '../lib/maintenance';
+import '../maintenance.css';
 
 type Props = {
   condominiumId: string;
