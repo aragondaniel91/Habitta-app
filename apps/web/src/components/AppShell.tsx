@@ -5,6 +5,7 @@ import { ModuleHelpDrawer } from '../features/help/ModuleHelpDrawer';
 import { MODULE_HELP } from '../features/help/module-help';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import { ROUTE_SECTION_LABELS, type AppRoute, type RouteSection } from '../navigation';
 import { ChevronDownIcon, ChevronLeftIcon, HomeIcon, LogOutIcon, MenuIcon } from './icons';
 import { PageChromeProvider, type PageChrome } from './PageHeader';
@@ -65,6 +66,7 @@ export function AppShell({
   onCloseNotifications,
   onSignOut,
 }: Props) {
+  const roles = useCondominiumRoles();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem('habitta:sidebar-collapsed') === 'true',
   );
@@ -80,7 +82,9 @@ export function AppShell({
     (item) => item.id === selectedCondominium?.organization_id,
   );
   const moduleHelp = MODULE_HELP[currentRoute.key];
-  const canImport = Boolean(moduleHelp.importKinds?.length);
+  // Bulk import writes on behalf of the whole condominium, so it follows the same boundary as the
+  // rest of the administrative actions rather than just the module's help metadata.
+  const canImport = Boolean(moduleHelp.importKinds?.length) && canManage(roles);
   const userLabel =
     typeof session.user.user_metadata.full_name === 'string'
       ? session.user.user_metadata.full_name

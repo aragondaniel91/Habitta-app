@@ -366,7 +366,8 @@ export default function App() {
   }
 
   return (
-    <AppShell
+    <RolesProvider value={roles}>
+      <AppShell
       condominiums={condominiums}
       contextMessage={contextMessage}
       currentRoute={activeRoute}
@@ -385,7 +386,8 @@ export default function App() {
       session={session}
       visibleRoutes={visibleRoutes}
     >
-      <RolesProvider value={roles}>{page}</RolesProvider>
-    </AppShell>
+        {page}
+      </AppShell>
+    </RolesProvider>
   );
 }
