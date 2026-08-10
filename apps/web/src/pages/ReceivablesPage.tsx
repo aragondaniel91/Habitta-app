@@ -29,6 +29,7 @@ import type {
   ReceivableUnit,
 } from '../lib/receivables';
 import { ReceivablesDrawerHost, type ReceivablesDrawerMode } from './ReceivablesDrawers';
+import { LateFeeSettingsDrawer } from '../features/receivables/LateFeeSettingsDrawer';
 import '../receivables.css';
 import '../receivables-core.css';
 import '../receivables-drawers.css';
@@ -144,6 +145,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
   const [filters, setFilters] = useState<ReceivableFilters>(initialFilters);
   const [drawer, setDrawer] = useState<ReceivablesDrawerMode>(null);
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
+  const [lateFeeDrawerOpen, setLateFeeDrawerOpen] = useState(false);
 
   const load = useCallback(
     async (background = false) => {
@@ -246,6 +248,9 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             </Button>
             {manage ? (
               <>
+                <Button onClick={() => setLateFeeDrawerOpen(true)} size="sm" variant="secondary">
+                  Recargos por mora
+                </Button>
                 <Button onClick={() => openDrawer('batch')} size="sm" variant="secondary">
                   Crear lote
                 </Button>
@@ -588,6 +593,15 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
         session={session}
         units={data.units}
       />
+
+      {lateFeeDrawerOpen ? (
+        <LateFeeSettingsDrawer
+          canManage={manage}
+          condominiumId={condominiumId}
+          onClose={() => setLateFeeDrawerOpen(false)}
+          session={session}
+        />
+      ) : null}
     </div>
   );
 }

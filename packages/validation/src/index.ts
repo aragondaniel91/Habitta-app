@@ -244,6 +244,15 @@ export const notificationSettingsSchema = z.object({
   timezone: z.string().trim().min(1).max(64),
 });
 
+export const lateFeeSettingsSchema = z.object({
+  enabled: z.boolean(),
+  ratePercent: z.number().min(0).max(100),
+  gracePeriodDays: z.number().int().min(0).max(365),
+  capPercent: z.number().min(0).max(500).nullable(),
+  localCurrencyCode: z.string().regex(/^[A-Z]{3}$/),
+  appliesToForeignCurrency: z.boolean(),
+});
+
 export const serviceRequestPrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
 export const serviceRequestStatusSchema = z.enum([
   'submitted',

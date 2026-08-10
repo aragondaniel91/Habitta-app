@@ -22,6 +22,7 @@ import {
   approvePaymentSchema,
   notificationPreferencesSchema,
   notificationSettingsSchema,
+  lateFeeSettingsSchema,
   serviceRequestCategoryInputSchema,
   serviceRequestCategoryUpdateSchema,
   serviceRequestCreateSchema,
@@ -1310,6 +1311,33 @@ app.patch('/v1/condominiums/:id/notification-settings', async (c) => {
     target_due_soon_days: p.dueSoonDays,
     target_overdue_enabled: p.overdueEnabled,
     target_timezone: p.timezone,
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.get('/v1/condominiums/:id/late-fee-settings', async (c) => {
+  const r = await rpc(c, 'get_late_fee_settings', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+  });
+  return responseJson(c, r, 200, 403);
+});
+app.put('/v1/condominiums/:id/late-fee-settings', async (c) => {
+  const p = await body(c, lateFeeSettingsSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'update_late_fee_settings', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+    target_enabled: p.enabled,
+    target_rate_percent: p.ratePercent,
+    target_grace_period_days: p.gracePeriodDays,
+    target_cap_percent: p.capPercent,
+    target_local_currency_code: p.localCurrencyCode,
+    target_applies_to_foreign_currency: p.appliesToForeignCurrency,
+  });
+  return responseJson(c, r, 200, 403);
+});
+// Explicit admin action, never a cron: this database is shared between dev and prod today.
+app.post('/v1/condominiums/:id/late-fees/apply', async (c) => {
+  const r = await rpc(c, 'apply_late_fees', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
   });
   return responseJson(c, r, 200, 403);
 });
