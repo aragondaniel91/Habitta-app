@@ -1,5 +1,5 @@
 begin;
-select plan(59);
+select plan(72);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('80000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@pay.test','x',now(),now()),
@@ -138,6 +138,21 @@ select lives_ok($$select public.reverse_payment('81100000-0000-0000-0000-0000000
 select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='owner-proof') and entry_type='reversal'),2::bigint,'reversal creates one opposite entry per credit');
 select is((select count(*) from public.payment_allocations)+(select count(*) from public.payment_receipts),2::bigint,'reversal preserves allocation and receipt');
 select throws_ok($$select public.reverse_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'again')$$,null,null,'second reversal is rejected');
+
+select is((select array_agg(event_type order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof')),'{created,updated,submitted,under_review,approved,reversed}','payment trail records every transition in order');
+select is((select array_agg(coalesce(previous_status::text,'-') order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof')),'{-,draft,draft,submitted,under_review,approved}','payment trail records the previous state of each transition');
+select is((select count(*) from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='approved'),1::bigint,'idempotent approval does not duplicate the approval event');
+select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='reversed'),'bank reversal','reversal event keeps its reason');
+select is((select actor_user_id from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='approved'),'80000000-0000-0000-0000-000000000003'::uuid,'approval event records the reviewer who approved');
+select is((select array_agg(event_type order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant')),'{created,submitted,correction_requested,submitted,rejected}','correction and rejection are both recorded');
+select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant') and event_type='correction_requested'),'fix','correction event keeps its reason');
+select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant') and event_type='rejected'),'duplicate','rejection event keeps its reason');
+
+reset role;
+select throws_ok($$update public.payment_events set reason='tampered'$$,null,'payment events are immutable','payment trail cannot be edited');
+select throws_ok($$delete from public.payment_events$$,null,'payment events are immutable','payment trail cannot be deleted');
+set local role authenticated;
+
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000001',true);
 select throws_ok($$delete from public.condominium_payment_methods where id='81130000-0000-0000-0000-000000000004'$$,null,null,'payment methods cannot be deleted');
 select throws_ok($$select * from public.payment_receipt_sequences$$,null,null,'receipt sequences are private');
@@ -147,6 +162,11 @@ select is((select count(*) from public.payments where condominium_id='82200000-0
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000006',true);
 select is((select count(*) from public.payments),0::bigint,'board member cannot read individual payments');
 select is((select count(*) from public.payment_proofs),0::bigint,'board member cannot read proof metadata');
+select is((select count(*) from public.payment_events),0::bigint,'board member cannot read the payment trail');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004',true);
+select is((select count(*) from public.payment_events),0::bigint,'payer cannot read internal review reasons');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
+select ok((select count(*) from public.payment_events)>0,'payment reviewer can read the payment trail');
 
 select * from finish();
 rollback;
