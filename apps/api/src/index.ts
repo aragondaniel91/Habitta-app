@@ -1153,6 +1153,15 @@ app.get('/v1/condominiums/:id/payments/:paymentId/receipt', async (c) => {
   const rows = (await r.json()) as unknown[];
   return rows.length ? c.json(rows[0]) : c.json({ error: 'Receipt not found' }, 404);
 });
+app.get('/v1/condominiums/:id/payments/:paymentId/events', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const paymentId = uuidSchema.parse(c.req.param('paymentId'));
+  const r = await rest(
+    c,
+    `payment_events?condominium_id=eq.${id}&payment_id=eq.${paymentId}&select=*&order=sequence_number.asc`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'proof';
 app.put('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
   const type = c.req.header('Content-Type') ?? '';
