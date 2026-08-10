@@ -26,6 +26,9 @@ release-worker-secrets.*
 supabase/.branches/
 supabase/.temp/
 
+# Platform admin static site (anon key is public-safe but kept out of git like every other env file)
+apps/platform-admin/config.js
+
 # Editors and OS
 .vscode/
 .idea/

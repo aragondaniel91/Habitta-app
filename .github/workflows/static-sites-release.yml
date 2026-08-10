@@ -80,6 +80,20 @@ jobs:
           test -f "$DEPLOY_DIR/index.html"
           test -f "$DEPLOY_DIR/_headers"
 
+      - name: Write platform admin config
+        if: startsWith(inputs.target, 'admin-')
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.PLATFORM_ADMIN_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ANON_KEY"
+          cat > apps/platform-admin/config.js <<JS
+          window.HABITTA_ADMIN_CONFIG = {
+            supabaseUrl: 'https://kgsfaahixbcwcmykmhat.supabase.co',
+            supabaseAnonKey: '$SUPABASE_ANON_KEY',
+          };
+          JS
+
       - name: Deploy Pages surface
         run: |
           set -euo pipefail
