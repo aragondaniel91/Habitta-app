@@ -93,6 +93,8 @@ test.describe('Ciclo financiero autenticado', () => {
       target: ids.primaryCondominium,
       target_unit: ids.primaryUnit,
       target_method: ids.paymentMethod,
+      // PostgREST matches overloads on the exact argument set; omitting this finds no function.
+      submitted_for: null,
       payment_on: '2026-08-06',
       amount: '125.00',
       currency: 'USD',
