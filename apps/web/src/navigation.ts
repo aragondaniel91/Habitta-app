@@ -15,6 +15,7 @@ import {
   VoteIcon,
 } from './components/icons';
 import type { IconProps } from './components/icons';
+import type { CondominiumRole } from './lib/roles';
 
 export type RouteSection = 'principal' | 'finanzas' | 'comunidad' | 'sistema';
 
@@ -42,6 +43,8 @@ export type AppRoute = {
   section: RouteSection;
   icon: ComponentType<IconProps>;
   scope: readonly string[];
+  /** Roles allowed to open this module. Presentation only; RLS enforces the real boundary. */
+  roles: readonly CondominiumRole[];
 };
 
 export const ROUTE_SECTION_LABELS: Record<RouteSection, string> = {
@@ -62,6 +65,15 @@ export const APP_ROUTES = [
     section: 'principal',
     icon: DashboardIcon,
     scope: ['Resumen financiero', 'Alertas operativas', 'Actividad reciente'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
   },
   {
     key: 'units',
@@ -73,6 +85,7 @@ export const APP_ROUTES = [
     section: 'principal',
     icon: UnitsIcon,
     scope: ['Inventario de unidades', 'Torres y ubicación', 'Estado de ocupación'],
+    roles: ['condominium_admin', 'accountant', 'assistant', 'board_member'],
   },
   {
     key: 'people',
@@ -84,6 +97,7 @@ export const APP_ROUTES = [
     section: 'principal',
     icon: PeopleIcon,
     scope: ['Propietarios', 'Inquilinos', 'Invitaciones y contactos'],
+    roles: ['condominium_admin', 'accountant', 'assistant'],
   },
   {
     key: 'maintenance',
@@ -95,6 +109,7 @@ export const APP_ROUTES = [
     section: 'principal',
     icon: MaintenanceIcon,
     scope: ['Inventario de activos', 'Planes recurrentes', 'Órdenes e historial de servicio'],
+    roles: ['condominium_admin', 'accountant', 'assistant', 'board_member'],
   },
   {
     key: 'fees',
@@ -106,6 +121,15 @@ export const APP_ROUTES = [
     section: 'finanzas',
     icon: FeesIcon,
     scope: ['Obligaciones', 'Saldos VES y USD', 'Ajustes y reversos'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
   },
   {
     key: 'payments',
@@ -117,6 +141,15 @@ export const APP_ROUTES = [
     section: 'finanzas',
     icon: PaymentsIcon,
     scope: ['Comprobantes', 'Revisión manual', 'Asignaciones y sobrepagos'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
   },
   {
     key: 'expenses',
@@ -128,6 +161,7 @@ export const APP_ROUTES = [
     section: 'finanzas',
     icon: ExpensesIcon,
     scope: ['Registro de gastos', 'Proveedores', 'Soportes y categorías'],
+    roles: ['condominium_admin', 'accountant', 'board_member'],
   },
   {
     key: 'reports',
@@ -139,6 +173,7 @@ export const APP_ROUTES = [
     section: 'finanzas',
     icon: ReportsIcon,
     scope: ['Cobranza', 'Estado de cuenta', 'Exportaciones'],
+    roles: ['condominium_admin', 'accountant', 'board_member'],
   },
   {
     key: 'community',
@@ -150,6 +185,15 @@ export const APP_ROUTES = [
     section: 'comunidad',
     icon: CommunityIcon,
     scope: ['Directorio', 'Documentos', 'Información compartida'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
   },
   {
     key: 'governance',
@@ -162,6 +206,15 @@ export const APP_ROUTES = [
     section: 'comunidad',
     icon: VoteIcon,
     scope: ['Propuestas', 'Votaciones', 'Quórum y resultados'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
   },
   {
     key: 'requests',
@@ -173,6 +226,15 @@ export const APP_ROUTES = [
     section: 'comunidad',
     icon: RequestsIcon,
     scope: ['Bandeja de solicitudes', 'Prioridades', 'Seguimiento'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
   },
   {
     key: 'announcements',
@@ -184,6 +246,15 @@ export const APP_ROUTES = [
     section: 'comunidad',
     icon: AnnouncementsIcon,
     scope: ['Comunicados', 'Audiencias', 'Historial de publicación'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
   },
   {
     key: 'team',
@@ -195,6 +266,7 @@ export const APP_ROUTES = [
     section: 'sistema',
     icon: PeopleIcon,
     scope: ['Administradores', 'Roles', 'Invitaciones y expiración'],
+    roles: ['condominium_admin'],
   },
   {
     key: 'settings',
@@ -206,6 +278,15 @@ export const APP_ROUTES = [
     section: 'sistema',
     icon: SettingsIcon,
     scope: ['Condominio', 'Preferencias', 'Notificaciones'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
   },
 ] as const satisfies readonly AppRoute[];
 

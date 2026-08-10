@@ -5,6 +5,7 @@ import { ArrowRightIcon, CheckCircleIcon, FeesIcon, ReportsIcon } from '../compo
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import type { ReceivableAging, ReceivableSummary } from '../lib/dashboard';
 import {
@@ -130,6 +131,8 @@ function ReceivablesLoading() {
 }
 
 export function ReceivablesPage({ condominiumId, condominiumName, session }: Props) {
+  const roles = useCondominiumRoles();
+  const manage = canManage(roles);
   const [data, setData] = useState<ReceivablesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -237,12 +240,16 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             <Button onClick={() => openDrawer('statement')} size="sm" variant="secondary">
               Estado de cuenta
             </Button>
-            <Button onClick={() => openDrawer('batch')} size="sm" variant="secondary">
-              Crear lote
-            </Button>
-            <Button onClick={() => openDrawer('manual')} size="sm">
-              Nueva cuota
-            </Button>
+            {manage ? (
+              <>
+                <Button onClick={() => openDrawer('batch')} size="sm" variant="secondary">
+                  Crear lote
+                </Button>
+                <Button onClick={() => openDrawer('manual')} size="sm">
+                  Nueva cuota
+                </Button>
+              </>
+            ) : null}
           </>
         }
         description={`${condominiumName} · cartera separada por moneda y trazabilidad completa.`}

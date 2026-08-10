@@ -11,6 +11,7 @@ import {
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import {
@@ -906,6 +907,8 @@ function AnnouncementDetailDrawer({
 }
 
 export function AnnouncementsPage({ condominiumId, condominiumName, session }: Props) {
+  const roles = useCondominiumRoles();
+  const manage = canManage(roles);
   const [data, setData] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1000,9 +1003,11 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
     <div className="announcements-page">
       <PageHeader
         actions={
-          <Button onClick={() => setDrawer('create')} size="sm">
-            <AnnouncementsIcon size={17} /> Nuevo anuncio
-          </Button>
+          manage ? (
+            <Button onClick={() => setDrawer('create')} size="sm">
+              <AnnouncementsIcon size={17} /> Nuevo anuncio
+            </Button>
+          ) : null
         }
         description={`${condominiumName} · mensajes claros, segmentados y con trazabilidad.`}
         eyebrow="Comunicación comunitaria"

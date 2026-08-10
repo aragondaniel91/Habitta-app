@@ -14,9 +14,10 @@ const pageSource = readFileSync(
 const mainSource = readFileSync(fileURLToPath(new URL('./main.tsx', import.meta.url)), 'utf8');
 
 describe('maintenance administrator workspace integration', () => {
-  it('uses the shared AppShell header instead of rendering a duplicate page title', () => {
+  it('renders its title through the shared PageHeader instead of its own markup', () => {
     expect(navigationSource).toContain("title: 'Activos y mantenimiento'");
-    expect(appSource).toContain("currentRoute.key === 'maintenance'");
+    expect(appSource).toContain("activeRoute.key === 'maintenance'");
+    expect(pageSource).toContain('<PageHeader');
     expect(pageSource).not.toContain('<h1>');
     expect(pageSource).not.toContain('className="page-header"');
   });

@@ -13,6 +13,7 @@ import {
 import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import {
   buildBuildingCommunityRows,
   getCommunityDirectoryRows,
@@ -81,6 +82,8 @@ function CommunityLoading() {
 }
 
 export function CommunityPage({ condominiumId, condominiumName, session, onNavigate }: Props) {
+  const roles = useCondominiumRoles();
+  const manage = canManage(roles);
   const [data, setData] = useState<CommunityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -143,14 +146,16 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
       <PageHeader
         actions={
           <>
-            <Button
-              disabled={!peopleRoute}
-              onClick={() => peopleRoute && onNavigate(peopleRoute)}
-              size="sm"
-              variant="secondary"
-            >
-              Abrir directorio
-            </Button>
+            {manage ? (
+              <Button
+                disabled={!peopleRoute}
+                onClick={() => peopleRoute && onNavigate(peopleRoute)}
+                size="sm"
+                variant="secondary"
+              >
+                Abrir directorio
+              </Button>
+            ) : null}
             <Button
               disabled={!requestsRoute}
               onClick={() => requestsRoute && onNavigate(requestsRoute)}

@@ -11,6 +11,7 @@ import {
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import {
@@ -948,6 +949,8 @@ function RequestDetailDrawer({
 }
 
 export function RequestsPage({ condominiumId, condominiumName, session }: Props) {
+  const roles = useCondominiumRoles();
+  const manage = canManage(roles);
   const [data, setData] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1052,10 +1055,12 @@ export function RequestsPage({ condominiumId, condominiumName, session }: Props)
       <PageHeader
         actions={
           <>
-            <Button onClick={() => setDrawer('categories')} size="sm" variant="secondary">
-              <SettingsIcon size={17} />
-              Categorías
-            </Button>
+            {manage ? (
+              <Button onClick={() => setDrawer('categories')} size="sm" variant="secondary">
+                <SettingsIcon size={17} />
+                Categorías
+              </Button>
+            ) : null}
             <Button onClick={() => setDrawer('create')} size="sm">
               <RequestsIcon size={17} />
               Nueva solicitud

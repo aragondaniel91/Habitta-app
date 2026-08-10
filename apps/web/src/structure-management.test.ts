@@ -9,7 +9,7 @@ describe('physical structure management workspace', () => {
   it('routes Units to the dedicated structure workspace and loads its styles', async () => {
     const [app, main] = await Promise.all([readFile(appUrl, 'utf8'), readFile(mainUrl, 'utf8')]);
 
-    expect(app).toContain("currentRoute.key === 'units'");
+    expect(app).toContain("activeRoute.key === 'units'");
     expect(app).toContain('<StructureManagementPage');
     expect(main).toContain("import './structure-management.css'");
   });

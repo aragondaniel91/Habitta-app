@@ -127,6 +127,19 @@ const body = async (c: any, s: any) => {
   const p = s.safeParse(await c.req.json());
   return p.success ? p.data : c.json({ error: p.error.flatten() }, 400);
 };
+// The web app needs the caller's own roles to decide which modules to offer. RLS already limits
+// both tables to the caller's rows, so this exposes nothing the browser could not read directly.
+app.get('/v1/memberships', async (c) => {
+  const [condominium, organization] = await Promise.all([
+    rest(c, 'condominium_memberships?select=condominium_id,role'),
+    rest(c, 'organization_memberships?select=organization_id,role'),
+  ]);
+  if (!condominium.ok || !organization.ok) return c.json({ error: 'Request failed' }, 403);
+  return c.json({
+    condominiums: await condominium.json(),
+    organizations: await organization.json(),
+  });
+});
 app.get('/v1/organizations', async (c) =>
   c.json(await (await rest(c, 'organizations?select=*&order=created_at')).json()),
 );

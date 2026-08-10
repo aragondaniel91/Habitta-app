@@ -18,6 +18,7 @@ import type {
   Receivable,
 } from '../features/payments/types';
 import { ApiRequestError, apiRequest } from '../lib/api';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import {
   filterPayments,
@@ -123,6 +124,8 @@ function CurrencyTabs({
 }
 
 export function PaymentsPage({ condominiumId, condominiumName, session }: Props) {
+  const roles = useCondominiumRoles();
+  const manage = canManage(roles);
   const [data, setData] = useState<PaymentsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -277,9 +280,11 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       <PageHeader
         actions={
           <>
-            <Button onClick={() => setDrawer({ type: 'methods' })} size="sm" variant="secondary">
-              <SettingsIcon size={17} /> Métodos
-            </Button>
+            {manage ? (
+              <Button onClick={() => setDrawer({ type: 'methods' })} size="sm" variant="secondary">
+                <SettingsIcon size={17} /> Métodos
+              </Button>
+            ) : null}
             <Button onClick={() => setDrawer({ type: 'create' })} size="sm">
               Registrar pago
             </Button>

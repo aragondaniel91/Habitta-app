@@ -5,7 +5,7 @@ import { ModuleHelpDrawer } from '../features/help/ModuleHelpDrawer';
 import { MODULE_HELP } from '../features/help/module-help';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
-import { APP_ROUTES, ROUTE_SECTION_LABELS, type AppRoute, type RouteSection } from '../navigation';
+import { ROUTE_SECTION_LABELS, type AppRoute, type RouteSection } from '../navigation';
 import { ChevronDownIcon, ChevronLeftIcon, HomeIcon, LogOutIcon, MenuIcon } from './icons';
 import { PageChromeProvider, type PageChrome } from './PageHeader';
 import { Button, Select } from './ui';
@@ -22,6 +22,8 @@ type Props = {
   condominiums: Condominium[];
   selectedCondominiumId: string;
   currentRoute: AppRoute;
+  /** Only the modules the active role may open; the sidebar never offers anything else. */
+  visibleRoutes: readonly AppRoute[];
   contextMessage: ContextMessage;
   notificationOpen: boolean;
   children: ReactNode;
@@ -52,6 +54,7 @@ export function AppShell({
   condominiums,
   selectedCondominiumId,
   currentRoute,
+  visibleRoutes,
   contextMessage,
   notificationOpen,
   children,
@@ -159,7 +162,7 @@ export function AppShell({
   const navContent = (mobile = false) => (
     <nav className="sidebar-nav" aria-label={mobile ? 'Navegación móvil' : 'Navegación principal'}>
       {sections.map((section) => {
-        const routes = APP_ROUTES.filter((route) => route.section === section);
+        const routes = visibleRoutes.filter((route) => route.section === section);
         return (
           <div className="nav-section" key={section}>
             <span className="nav-section__label">{ROUTE_SECTION_LABELS[section]}</span>

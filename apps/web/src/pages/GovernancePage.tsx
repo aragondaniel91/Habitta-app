@@ -11,6 +11,7 @@ import {
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import { canManageGovernance, useCondominiumRoles } from '../lib/roles';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import { formatMoney } from '../lib/expenses';
@@ -365,6 +366,8 @@ function CreateProposalForm({
 }
 
 export function GovernancePage({ condominiumId, condominiumName, session }: Props) {
+  const roles = useCondominiumRoles();
+  const manage = canManageGovernance(roles);
   const [proposals, setProposals] = useState<GovernanceProposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -532,9 +535,11 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
     <div className="governance-page">
       <PageHeader
         actions={
-          <Button onClick={() => setDrawer('create')} size="sm">
-            Crear propuesta
-          </Button>
+          manage ? (
+            <Button onClick={() => setDrawer('create')} size="sm">
+              Crear propuesta
+            </Button>
+          ) : null
         }
         description={`${condominiumName} · decisiones comunitarias con elegibilidad, quórum y trazabilidad.`}
         eyebrow="Participación comunitaria"

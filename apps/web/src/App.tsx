@@ -6,7 +6,15 @@ import { AppShell, type Condominium, type Organization } from './components/AppS
 import { OnboardingLoading, WorkspaceLoadError } from './components/AuthExperience';
 import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
 import { apiRequest } from './lib/api';
-import { DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
+import {
+  allowedRoutes,
+  canAccessRoute,
+  rolesForCondominium,
+  RolesProvider,
+  type Membership,
+  type MembershipResponse,
+} from './lib/roles';
+import { APP_ROUTES, DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
 import { AddCondominiumPage } from './pages/AddCondominiumPage';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
@@ -47,6 +55,7 @@ export default function App() {
   );
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
   const [selectedCondominiumId, setSelectedCondominiumId] = useState('');
   const [addingCondominium, setAddingCondominium] = useState(false);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
@@ -73,6 +82,7 @@ export default function App() {
       if (!nextSession) {
         setOrganizations([]);
         setCondominiums([]);
+        setMemberships([]);
         setSelectedCondominiumId('');
         setAddingCondominium(false);
         setContextMessage(null);
@@ -86,12 +96,14 @@ export default function App() {
     setWorkspaceLoading(true);
     setContextMessage(null);
     try {
-      const [organizationItems, condominiumItems] = await Promise.all([
+      const [organizationItems, condominiumItems, membershipResponse] = await Promise.all([
         apiRequest<Organization[]>('/v1/organizations', activeSession),
         apiRequest<Condominium[]>('/v1/condominiums', activeSession),
+        apiRequest<MembershipResponse>('/v1/memberships', activeSession),
       ]);
       setOrganizations(organizationItems);
       setCondominiums(condominiumItems);
+      setMemberships(membershipResponse.condominiums);
       setSelectedCondominiumId((current) => {
         if (
           preferredCondominiumId &&
@@ -209,6 +221,13 @@ export default function App() {
 
   const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
   const condominiumName = selectedCondominium?.name ?? 'Condominio';
+  const roles = rolesForCondominium(memberships, selectedCondominiumId);
+  const visibleRoutes = allowedRoutes(APP_ROUTES, roles);
+  // A deep link to a module this role cannot open lands on the first one it can, so the interface
+  // never renders a module the API is going to refuse.
+  const activeRoute = canAccessRoute(currentRoute, roles)
+    ? currentRoute
+    : (visibleRoutes[0] ?? currentRoute);
   let page;
 
   if (addingCondominium) {
@@ -224,7 +243,7 @@ export default function App() {
         organizations={organizations}
       />
     );
-  } else if (currentRoute.key === 'dashboard') {
+  } else if (activeRoute.key === 'dashboard') {
     page = (
       <AdministrativeDashboard
         condominiumId={selectedCondominiumId}
@@ -233,7 +252,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'units') {
+  } else if (activeRoute.key === 'units') {
     page = (
       <StructureManagementPage
         condominiumId={selectedCondominiumId}
@@ -241,7 +260,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'people') {
+  } else if (activeRoute.key === 'people') {
     page = (
       <CommunityDirectoryPage
         condominiumId={selectedCondominiumId}
@@ -250,7 +269,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'maintenance') {
+  } else if (activeRoute.key === 'maintenance') {
     page = (
       <MaintenancePage
         condominiumId={selectedCondominiumId}
@@ -258,7 +277,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'fees') {
+  } else if (activeRoute.key === 'fees') {
     page = (
       <ReceivablesPage
         condominiumId={selectedCondominiumId}
@@ -266,7 +285,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'payments') {
+  } else if (activeRoute.key === 'payments') {
     page = (
       <PaymentsPage
         condominiumId={selectedCondominiumId}
@@ -274,7 +293,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'expenses') {
+  } else if (activeRoute.key === 'expenses') {
     page = (
       <ExpensesPage
         condominiumId={selectedCondominiumId}
@@ -282,7 +301,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'reports') {
+  } else if (activeRoute.key === 'reports') {
     page = (
       <ReportsPage
         condominiumId={selectedCondominiumId}
@@ -290,7 +309,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'requests') {
+  } else if (activeRoute.key === 'requests') {
     page = (
       <RequestsPage
         condominiumId={selectedCondominiumId}
@@ -298,7 +317,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'announcements') {
+  } else if (activeRoute.key === 'announcements') {
     page = (
       <AnnouncementsPage
         condominiumId={selectedCondominiumId}
@@ -306,7 +325,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'community') {
+  } else if (activeRoute.key === 'community') {
     page = (
       <CommunityPage
         condominiumId={selectedCondominiumId}
@@ -315,7 +334,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'governance') {
+  } else if (activeRoute.key === 'governance') {
     page = (
       <GovernancePage
         condominiumId={selectedCondominiumId}
@@ -323,7 +342,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'team') {
+  } else if (activeRoute.key === 'team') {
     page = (
       <TeamAccessPage
         condominiumId={selectedCondominiumId}
@@ -331,7 +350,7 @@ export default function App() {
         session={session}
       />
     );
-  } else if (currentRoute.key === 'settings') {
+  } else if (activeRoute.key === 'settings') {
     page = (
       <SettingsPage
         condominiumId={selectedCondominiumId}
@@ -342,7 +361,7 @@ export default function App() {
   } else {
     // Exhaustive by construction: every AppRoute key above is handled, so TypeScript narrows
     // currentRoute.key to never here and a new route cannot ship without its page.
-    const unreachable: never = currentRoute.key;
+    const unreachable: never = activeRoute.key;
     throw new Error(`Ruta sin página asignada: ${String(unreachable)}`);
   }
 
@@ -350,7 +369,7 @@ export default function App() {
     <AppShell
       condominiums={condominiums}
       contextMessage={contextMessage}
-      currentRoute={currentRoute}
+      currentRoute={activeRoute}
       notificationOpen={notificationOpen}
       onAddCondominium={() => setAddingCondominium(true)}
       onCloseNotifications={() => setNotificationOpen(false)}
@@ -364,8 +383,9 @@ export default function App() {
       organizations={organizations}
       selectedCondominiumId={selectedCondominiumId}
       session={session}
+      visibleRoutes={visibleRoutes}
     >
-      {page}
+      <RolesProvider value={roles}>{page}</RolesProvider>
     </AppShell>
   );
 }
