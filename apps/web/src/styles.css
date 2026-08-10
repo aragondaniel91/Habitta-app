@@ -612,16 +612,6 @@ p {
   padding: clamp(1.5rem, 3vw, 2.5rem);
 }
 
-.page-header {
-  min-height: 96px;
-  margin-bottom: 1.5rem;
-}
-
-.page-header p {
-  max-width: 720px;
-  margin-bottom: 0;
-}
-
 .breadcrumbs {
   display: flex;
   align-items: center;

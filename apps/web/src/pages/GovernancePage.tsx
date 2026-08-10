@@ -9,6 +9,7 @@ import {
   VoteIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
@@ -134,10 +135,7 @@ function DrawerShell({
 function GovernanceLoading() {
   return (
     <div aria-label="Cargando votaciones" className="governance-page">
-      <div className="governance-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Participación comunitaria" title="Propuestas y votaciones" />
       <div className="governance-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -532,18 +530,16 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
 
   return (
     <div className="governance-page">
-      <header className="governance-overview">
-        <div>
-          <span className="governance-kicker">Participación comunitaria</span>
-          <h2>Propuestas y votaciones</h2>
-          <p>
-            {condominiumName} · decisiones comunitarias con elegibilidad, quórum y trazabilidad.
-          </p>
-        </div>
-        <Button onClick={() => setDrawer('create')} size="sm">
-          Crear propuesta
-        </Button>
-      </header>
+      <PageHeader
+        actions={
+          <Button onClick={() => setDrawer('create')} size="sm">
+            Crear propuesta
+          </Button>
+        }
+        description={`${condominiumName} · decisiones comunitarias con elegibilidad, quórum y trazabilidad.`}
+        eyebrow="Participación comunitaria"
+        title="Propuestas y votaciones"
+      />
 
       {error ? <div className="governance-inline-alert">{error}</div> : null}
       {message ? (

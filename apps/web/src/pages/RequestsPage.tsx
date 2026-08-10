@@ -9,6 +9,7 @@ import {
   UnitsIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
@@ -177,10 +178,7 @@ function RequestCard({
 function RequestsLoading() {
   return (
     <div aria-label="Cargando solicitudes" className="requests-page">
-      <div className="requests-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Operación y atención" title="Solicitudes" />
       <div className="requests-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -1051,23 +1049,23 @@ export function RequestsPage({ condominiumId, condominiumName, session }: Props)
 
   return (
     <div className="requests-page">
-      <header className="requests-overview">
-        <div>
-          <span className="requests-kicker">Operación y atención</span>
-          <h2>Solicitudes</h2>
-          <p>{condominiumName} · seguimiento claro desde el reporte hasta la resolución.</p>
-        </div>
-        <div className="requests-overview__actions">
-          <Button onClick={() => setDrawer('categories')} size="sm" variant="secondary">
-            <SettingsIcon size={17} />
-            Categorías
-          </Button>
-          <Button onClick={() => setDrawer('create')} size="sm">
-            <RequestsIcon size={17} />
-            Nueva solicitud
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <>
+            <Button onClick={() => setDrawer('categories')} size="sm" variant="secondary">
+              <SettingsIcon size={17} />
+              Categorías
+            </Button>
+            <Button onClick={() => setDrawer('create')} size="sm">
+              <RequestsIcon size={17} />
+              Nueva solicitud
+            </Button>
+          </>
+        }
+        description={`${condominiumName} · seguimiento claro desde el reporte hasta la resolución.`}
+        eyebrow="Operación y atención"
+        title="Solicitudes"
+      />
 
       {warning ? (
         <div className="requests-inline-message" data-tone="warning">

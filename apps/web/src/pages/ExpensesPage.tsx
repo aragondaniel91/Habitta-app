@@ -9,6 +9,7 @@ import {
   PeopleIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
@@ -124,10 +125,7 @@ function DrawerShell({
 function ExpensesLoading() {
   return (
     <div aria-label="Cargando gastos" className="expenses-page">
-      <div className="expenses-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Operación financiera" title="Gastos" />
       <div className="expenses-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -580,21 +578,21 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
 
   return (
     <div className="expenses-page">
-      <header className="expenses-overview">
-        <div>
-          <span className="expenses-kicker">Operación financiera</span>
-          <h2>Gastos</h2>
-          <p>{condominiumName} · egresos, proveedores, soportes y aprobaciones con trazabilidad.</p>
-        </div>
-        <div className="expenses-overview__actions">
-          <Button onClick={() => setDrawer('catalogs')} size="sm" variant="secondary">
-            Categorías y proveedores
-          </Button>
-          <Button onClick={() => setDrawer('create')} size="sm">
-            Registrar gasto
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <>
+            <Button onClick={() => setDrawer('catalogs')} size="sm" variant="secondary">
+              Categorías y proveedores
+            </Button>
+            <Button onClick={() => setDrawer('create')} size="sm">
+              Registrar gasto
+            </Button>
+          </>
+        }
+        description={`${condominiumName} · egresos, proveedores, soportes y aprobaciones con trazabilidad.`}
+        eyebrow="Operación financiera"
+        title="Gastos"
+      />
 
       {error ? <div className="expenses-inline-alert">{error}</div> : null}
 

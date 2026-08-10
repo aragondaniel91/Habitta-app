@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, SettingsIcon, UnitsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 
 type Building = {
@@ -213,25 +214,22 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
 
   return (
     <div className="structure-page">
-      <header className="structure-hero">
-        <div>
-          <span className="structure-eyebrow">ESTRUCTURA DEL CONDOMINIO</span>
-          <h1>Unidades, torres y edificios</h1>
-          <p>
-            Organiza la estructura física de {condominiumName}. Los cambios preservan el historial:
-            una unidad se inactiva en lugar de eliminarse.
-          </p>
-        </div>
-        <div className="structure-hero__actions">
-          <Button
-            onClick={() => setEditor({ kind: 'building', building: null })}
-            variant="secondary"
-          >
-            Nueva torre o edificio
-          </Button>
-          <Button onClick={() => setEditor({ kind: 'unit', unit: null })}>Nueva unidad</Button>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <>
+            <Button
+              onClick={() => setEditor({ kind: 'building', building: null })}
+              variant="secondary"
+            >
+              Nueva torre o edificio
+            </Button>
+            <Button onClick={() => setEditor({ kind: 'unit', unit: null })}>Nueva unidad</Button>
+          </>
+        }
+        description={`Organiza la estructura física de ${condominiumName}. Los cambios preservan el historial: una unidad se inactiva en lugar de eliminarse.`}
+        eyebrow="Estructura del condominio"
+        title="Unidades, torres y edificios"
+      />
 
       {message ? (
         <div className="structure-message" data-tone={message.tone} role="status">

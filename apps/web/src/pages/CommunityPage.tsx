@@ -11,6 +11,7 @@ import {
   UnitsIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import {
   buildBuildingCommunityRows,
@@ -65,10 +66,7 @@ function MetricCard({
 function CommunityLoading() {
   return (
     <div aria-label="Cargando comunidad" className="community-page">
-      <div className="community-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Vida del condominio" title="Comunidad" />
       <div className="community-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -142,30 +140,30 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
 
   return (
     <div className="community-page">
-      <header className="community-overview">
-        <div>
-          <span className="community-kicker">Vida del condominio</span>
-          <h2>Comunidad</h2>
-          <p>{condominiumName} · directorio, cobertura de contacto y estructura residencial.</p>
-        </div>
-        <div className="community-overview__actions">
-          <Button
-            disabled={!peopleRoute}
-            onClick={() => peopleRoute && onNavigate(peopleRoute)}
-            size="sm"
-            variant="secondary"
-          >
-            Abrir directorio
-          </Button>
-          <Button
-            disabled={!requestsRoute}
-            onClick={() => requestsRoute && onNavigate(requestsRoute)}
-            size="sm"
-          >
-            Ver solicitudes
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <>
+            <Button
+              disabled={!peopleRoute}
+              onClick={() => peopleRoute && onNavigate(peopleRoute)}
+              size="sm"
+              variant="secondary"
+            >
+              Abrir directorio
+            </Button>
+            <Button
+              disabled={!requestsRoute}
+              onClick={() => requestsRoute && onNavigate(requestsRoute)}
+              size="sm"
+            >
+              Ver solicitudes
+            </Button>
+          </>
+        }
+        description={`${condominiumName} · directorio, cobertura de contacto y estructura residencial.`}
+        eyebrow="Vida del condominio"
+        title="Comunidad"
+      />
 
       {error ? (
         <div className="community-inline-alert" role="status">

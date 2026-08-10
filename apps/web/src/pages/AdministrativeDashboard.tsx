@@ -14,6 +14,7 @@ import {
   RequestsIcon,
   UnitsIcon,
 } from '../components/icons';
+import { PageHeader } from '../components/PageHeader';
 import type { IconProps } from '../components/icons';
 import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
 import { ApiRequestError, apiRequest } from '../lib/api';
@@ -97,10 +98,7 @@ const toneForStatus = (status: string) => {
 function DashboardLoading() {
   return (
     <div className="dashboard-page" aria-label="Cargando dashboard">
-      <div className="dashboard-overview-heading">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Resumen general" title="Dashboard administrativo" />
       <div className="dashboard-kpi-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -506,22 +504,22 @@ export function AdministrativeDashboard({
 
   return (
     <div className="dashboard-page">
-      <div className="dashboard-overview-heading">
-        <div>
-          <span className="dashboard-section-kicker">Resumen general</span>
-          <h2>{condominiumName}</h2>
-          <p>Cobranza, comunidad y movimientos recientes en una sola vista.</p>
-        </div>
-        <div className="dashboard-overview-heading__actions">
-          <span>
-            <CheckCircleIcon size={17} />
-            Datos reales del condominio
-          </span>
-          <Button disabled={loading} onClick={() => void load()} size="sm" variant="secondary">
-            {loading ? 'Actualizando…' : 'Actualizar datos'}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        actions={
+          <>
+            <span className="dashboard-overview-heading__badge">
+              <CheckCircleIcon size={17} />
+              Datos reales del condominio
+            </span>
+            <Button disabled={loading} onClick={() => void load()} size="sm" variant="secondary">
+              {loading ? 'Actualizando…' : 'Actualizar datos'}
+            </Button>
+          </>
+        }
+        description="Cobranza, comunidad y movimientos recientes en una sola vista."
+        eyebrow="Resumen general"
+        title={condominiumName}
+      />
 
       {error ? (
         <div className="dashboard-inline-alert" role="status">

@@ -9,6 +9,7 @@ import {
   SettingsIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { paymentApi } from '../features/payments/api';
 import type {
   Payment,
@@ -81,10 +82,7 @@ function MetricCard({
 function PaymentsLoading() {
   return (
     <div aria-label="Cargando pagos" className="payments-page">
-      <div className="payments-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Tesorería y validación" title="Pagos y comprobantes" />
       <div className="payments-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -276,23 +274,21 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
 
   return (
     <div className="payments-page">
-      <header className="payments-overview">
-        <div>
-          <span className="payments-kicker">Tesorería y validación</span>
-          <h2>Pagos y comprobantes</h2>
-          <p>
-            {condominiumName} · registro, revisión, aplicación y recibos en una sola experiencia.
-          </p>
-        </div>
-        <div className="payments-overview__actions">
-          <Button onClick={() => setDrawer({ type: 'methods' })} size="sm" variant="secondary">
-            <SettingsIcon size={17} /> Métodos
-          </Button>
-          <Button onClick={() => setDrawer({ type: 'create' })} size="sm">
-            Registrar pago
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <>
+            <Button onClick={() => setDrawer({ type: 'methods' })} size="sm" variant="secondary">
+              <SettingsIcon size={17} /> Métodos
+            </Button>
+            <Button onClick={() => setDrawer({ type: 'create' })} size="sm">
+              Registrar pago
+            </Button>
+          </>
+        }
+        description={`${condominiumName} · registro, revisión, aplicación y recibos en una sola experiencia.`}
+        eyebrow="Tesorería y validación"
+        title="Pagos y comprobantes"
+      />
 
       {error ? (
         <div className="payments-inline-alert" role="status">

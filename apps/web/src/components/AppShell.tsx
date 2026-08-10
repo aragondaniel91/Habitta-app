@@ -7,6 +7,7 @@ import { NotificationBell } from '../features/notifications/NotificationBell';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
 import { APP_ROUTES, ROUTE_SECTION_LABELS, type AppRoute, type RouteSection } from '../navigation';
 import { ChevronDownIcon, ChevronLeftIcon, HomeIcon, LogOutIcon, MenuIcon } from './icons';
+import { PageChromeProvider, type PageChrome } from './PageHeader';
 import { Button, Select } from './ui';
 
 export type Organization = { id: string; name: string };
@@ -123,6 +124,36 @@ export function AppShell({
     setHelpState({ open: true, initialView });
     setProfileOpen(false);
     onCloseNotifications();
+  };
+
+  // Contributed to whichever PageHeader the active module renders, so help and import stay in the
+  // same row as the module's own actions instead of needing a second header.
+  const pageChrome: PageChrome = {
+    breadcrumb: currentRoute.label,
+    actions: (
+      <>
+        {canImport ? (
+          <Button
+            className="page-import-button"
+            onClick={() => openHelp('import')}
+            size="sm"
+            type="button"
+            variant="secondary"
+          >
+            Importar datos
+          </Button>
+        ) : null}
+        <Button
+          className="page-help-button"
+          onClick={() => openHelp('guide')}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          Ayuda
+        </Button>
+      </>
+    ),
   };
 
   const navContent = (mobile = false) => (
@@ -262,47 +293,13 @@ export function AppShell({
         />
 
         <main className="main-content">
-          <div className="page-header">
-            <div>
-              <div className="breadcrumbs" aria-label="Ruta actual">
-                <span>Habitta</span>
-                <span aria-hidden="true">/</span>
-                <strong>{currentRoute.label}</strong>
-              </div>
-              <h1>{currentRoute.title}</h1>
-              <p>{currentRoute.description}</p>
-            </div>
-            <div className="page-header__actions">
-              {canImport ? (
-                <Button
-                  className="page-import-button"
-                  onClick={() => openHelp('import')}
-                  size="sm"
-                  type="button"
-                  variant="secondary"
-                >
-                  Importar datos
-                </Button>
-              ) : null}
-              <Button
-                className="page-help-button"
-                onClick={() => openHelp('guide')}
-                size="sm"
-                type="button"
-                variant="secondary"
-              >
-                Ayuda
-              </Button>
-            </div>
-          </div>
-
           {contextMessage ? (
             <div className="alert" data-tone={contextMessage.tone} role="status">
               {contextMessage.text}
             </div>
           ) : null}
 
-          {children}
+          <PageChromeProvider value={pageChrome}>{children}</PageChromeProvider>
         </main>
       </div>
 
