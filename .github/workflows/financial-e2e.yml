@@ -5,12 +5,16 @@ on:
     paths:
       - 'e2e/**'
       - 'supabase/**'
+      - 'apps/api/**'
+      - 'packages/**'
       - '.github/workflows/financial-e2e.yml'
   push:
     branches: [main]
     paths:
       - 'e2e/**'
       - 'supabase/**'
+      - 'apps/api/**'
+      - 'packages/**'
       - '.github/workflows/financial-e2e.yml'
 
 permissions:
@@ -65,22 +69,30 @@ jobs:
           echo "E2E_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
 
+      # e2e lives outside the pnpm workspace, so `pnpm --filter @habitta/e2e` matched nothing and
+      # exited 0 without running anything. npm --prefix is the form playwright.yml already proves.
+      - name: Install E2E dependencies
+        run: npm install --prefix e2e --no-package-lock --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck E2E suite
+        run: pnpm exec tsc -p e2e/tsconfig.json --noEmit
+
       - name: Validate financial fixture contract
-        run: pnpm --filter @habitta/e2e fixture:validate
+        run: npm --prefix e2e run fixture:validate
 
       - name: Provision isolated financial fixture
-        run: pnpm --filter @habitta/e2e fixture:provision
+        run: npm --prefix e2e run fixture:provision
 
       - name: Install Chromium
-        run: pnpm --filter @habitta/e2e exec playwright install --with-deps chromium
+        run: npm --prefix e2e exec -- playwright install --with-deps chromium
 
       - name: Run authenticated financial lifecycle
-        run: pnpm --filter @habitta/e2e test:financial
+        run: npm --prefix e2e run test:financial
 
       - name: Reset financial fixture
         if: always()
         continue-on-error: true
-        run: pnpm --filter @habitta/e2e fixture:reset
+        run: npm --prefix e2e run fixture:reset
 
       - name: Upload financial E2E diagnostics
         if: always()
