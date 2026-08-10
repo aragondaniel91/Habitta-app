@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowRightIcon, CommunityIcon, PeopleIcon, UnitsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import {
   countUnitsByStatus,
@@ -463,36 +464,36 @@ export function CommunityDirectoryPage({ condominiumId, condominiumName, mode, s
 
   return (
     <div className="directory-page">
-      <header className="directory-heading">
-        <div>
-          <span className="directory-kicker">Comunidad · {condominiumName}</span>
-          <h2>{isUnits ? 'Unidades' : 'Personas'}</h2>
-          <p>
-            {isUnits
-              ? 'Organiza el inventario y abre cada unidad para administrar propietarios y residentes.'
-              : 'Un directorio centralizado para contactos, residentes, propietarios e inquilinos.'}
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setMessage('');
-            if (isUnits) setPanel({ kind: 'create-unit' });
-            else {
-              setPersonDraft({
-                firstName: '',
-                lastName: '',
-                email: '',
-                phone: '',
-                status: 'active',
-              });
-              setPanel({ kind: 'create-person' });
-            }
-          }}
-        >
-          <PlusIcon />
-          {isUnits ? 'Nueva unidad' : 'Nueva persona'}
-        </Button>
-      </header>
+      <PageHeader
+        actions={
+          <Button
+            onClick={() => {
+              setMessage('');
+              if (isUnits) setPanel({ kind: 'create-unit' });
+              else {
+                setPersonDraft({
+                  firstName: '',
+                  lastName: '',
+                  email: '',
+                  phone: '',
+                  status: 'active',
+                });
+                setPanel({ kind: 'create-person' });
+              }
+            }}
+          >
+            <PlusIcon />
+            {isUnits ? 'Nueva unidad' : 'Nueva persona'}
+          </Button>
+        }
+        description={
+          isUnits
+            ? 'Organiza el inventario y abre cada unidad para administrar propietarios y residentes.'
+            : 'Un directorio centralizado para contactos, residentes, propietarios e inquilinos.'
+        }
+        eyebrow={`Comunidad · ${condominiumName}`}
+        title={isUnits ? 'Unidades' : 'Personas'}
+      />
 
       {error ? (
         <div className="directory-inline-alert">

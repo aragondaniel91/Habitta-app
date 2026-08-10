@@ -10,6 +10,7 @@ import {
   SettingsIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import {
   getNotificationSettings,
   getPreferences,
@@ -111,10 +112,7 @@ function MetricCard({
 function SettingsLoading() {
   return (
     <div aria-label="Cargando configuración" className="settings-page">
-      <div className="settings-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Sistema y preferencias" title="Configuración" />
       <div className="settings-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -273,23 +271,23 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
 
   return (
     <div className="settings-page">
-      <header className="settings-overview">
-        <div>
-          <span className="settings-kicker">Sistema y preferencias</span>
-          <h2>Configuración</h2>
-          <p>{condominiumName} · controla canales, recordatorios y preferencias personales.</p>
-        </div>
-        <div className="settings-overview__actions">
-          <span className="settings-save-state">
-            {changedPreferences.length
-              ? `${changedPreferences.length} preferencias modificadas`
-              : 'Preferencias sincronizadas'}
-          </span>
-          <Button disabled={saving || !hasChanges} onClick={() => void save()} size="sm">
-            {saving ? 'Guardando…' : 'Guardar cambios'}
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <>
+            <span className="settings-save-state">
+              {changedPreferences.length
+                ? `${changedPreferences.length} preferencias modificadas`
+                : 'Preferencias sincronizadas'}
+            </span>
+            <Button disabled={saving || !hasChanges} onClick={() => void save()} size="sm">
+              {saving ? 'Guardando…' : 'Guardar cambios'}
+            </Button>
+          </>
+        }
+        description={`${condominiumName} · controla canales, recordatorios y preferencias personales.`}
+        eyebrow="Sistema y preferencias"
+        title="Configuración"
+      />
 
       {error ? <div className="settings-inline-alert">{error}</div> : null}
       {message ? (

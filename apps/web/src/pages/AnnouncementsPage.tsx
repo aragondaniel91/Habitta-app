@@ -9,6 +9,7 @@ import {
   UnitsIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
@@ -189,10 +190,7 @@ function AnnouncementCard({
 function AnnouncementsLoading() {
   return (
     <div aria-label="Cargando anuncios" className="announcements-page">
-      <div className="announcements-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Comunicación comunitaria" title="Anuncios" />
       <div className="announcements-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -1000,16 +998,16 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
 
   return (
     <div className="announcements-page">
-      <header className="announcements-overview">
-        <div>
-          <span className="announcements-kicker">Comunicación comunitaria</span>
-          <h2>Anuncios</h2>
-          <p>{condominiumName} · mensajes claros, segmentados y con trazabilidad.</p>
-        </div>
-        <Button onClick={() => setDrawer('create')} size="sm">
-          <AnnouncementsIcon size={17} /> Nuevo anuncio
-        </Button>
-      </header>
+      <PageHeader
+        actions={
+          <Button onClick={() => setDrawer('create')} size="sm">
+            <AnnouncementsIcon size={17} /> Nuevo anuncio
+          </Button>
+        }
+        description={`${condominiumName} · mensajes claros, segmentados y con trazabilidad.`}
+        eyebrow="Comunicación comunitaria"
+        title="Anuncios"
+      />
 
       {warning ? (
         <div className="announcements-inline-message" data-tone="warning">

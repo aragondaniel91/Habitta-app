@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowRightIcon, CheckCircleIcon, FeesIcon, ReportsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import type { ReceivableAging, ReceivableSummary } from '../lib/dashboard';
@@ -114,10 +115,7 @@ function StatusBadge({ status }: { status: string }) {
 function ReceivablesLoading() {
   return (
     <div className="receivables-page" aria-label="Cargando cuentas por cobrar">
-      <div className="receivables-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Control financiero" title="Cuotas y cuentas por cobrar" />
       <div className="receivables-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -233,24 +231,24 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
 
   return (
     <div className="receivables-page">
-      <header className="receivables-overview">
-        <div>
-          <span className="receivables-kicker">Control financiero</span>
-          <h2>Cuotas y cuentas por cobrar</h2>
-          <p>{condominiumName} · cartera separada por moneda y trazabilidad completa.</p>
-        </div>
-        <div className="receivables-overview__actions">
-          <Button onClick={() => openDrawer('statement')} size="sm" variant="secondary">
-            Estado de cuenta
-          </Button>
-          <Button onClick={() => openDrawer('batch')} size="sm" variant="secondary">
-            Crear lote
-          </Button>
-          <Button onClick={() => openDrawer('manual')} size="sm">
-            Nueva cuota
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <>
+            <Button onClick={() => openDrawer('statement')} size="sm" variant="secondary">
+              Estado de cuenta
+            </Button>
+            <Button onClick={() => openDrawer('batch')} size="sm" variant="secondary">
+              Crear lote
+            </Button>
+            <Button onClick={() => openDrawer('manual')} size="sm">
+              Nueva cuota
+            </Button>
+          </>
+        }
+        description={`${condominiumName} · cartera separada por moneda y trazabilidad completa.`}
+        eyebrow="Control financiero"
+        title="Cuotas y cuentas por cobrar"
+      />
 
       {error ? (
         <div className="receivables-inline-alert" role="status">

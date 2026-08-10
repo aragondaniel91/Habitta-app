@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, PeopleIcon, SettingsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import {
   ADMINISTRATIVE_ROLE_OPTIONS,
   administrativeRoleLabel,
@@ -243,21 +244,21 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
 
   return (
     <div className="team-access-page">
-      <header className="team-access-overview">
-        <div>
-          <span className="settings-kicker">Seguridad y colaboración</span>
-          <h2>Equipo y accesos</h2>
-          <p>{condominiumName} · invita administradores sin compartir contraseñas.</p>
-        </div>
-        <div className="team-access-metrics">
-          <span>
-            <strong>{data.members.length}</strong> miembros
-          </span>
-          <span>
-            <strong>{pendingInvitations}</strong> pendientes
-          </span>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <div className="team-access-metrics">
+            <span>
+              <strong>{data.members.length}</strong> miembros
+            </span>
+            <span>
+              <strong>{pendingInvitations}</strong> pendientes
+            </span>
+          </div>
+        }
+        description={`${condominiumName} · invita administradores sin compartir contraseñas.`}
+        eyebrow="Seguridad y colaboración"
+        title="Equipo y accesos"
+      />
 
       {error ? <div className="settings-inline-alert">{error}</div> : null}
       {deliveryWarning ? (

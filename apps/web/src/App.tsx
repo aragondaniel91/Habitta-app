@@ -15,7 +15,6 @@ import { CommunityPage } from './pages/CommunityPage';
 import { ExpensesPage } from './pages/ExpensesPage';
 import { GovernancePage } from './pages/GovernancePage';
 import { MaintenancePage } from './pages/MaintenancePage';
-import { ModulePlaceholderPage } from './pages/ModulePage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ReceivablesPage } from './pages/ReceivablesPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -225,7 +224,7 @@ export default function App() {
         organizations={organizations}
       />
     );
-  } else if (currentRoute.key === DEFAULT_ROUTE.key) {
+  } else if (currentRoute.key === 'dashboard') {
     page = (
       <AdministrativeDashboard
         condominiumId={selectedCondominiumId}
@@ -341,7 +340,10 @@ export default function App() {
       />
     );
   } else {
-    page = <ModulePlaceholderPage route={currentRoute} />;
+    // Exhaustive by construction: every AppRoute key above is handled, so TypeScript narrows
+    // currentRoute.key to never here and a new route cannot ship without its page.
+    const unreachable: never = currentRoute.key;
+    throw new Error(`Ruta sin página asignada: ${String(unreachable)}`);
   }
 
   return (

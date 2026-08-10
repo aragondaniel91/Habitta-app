@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, MaintenanceIcon, RequestsIcon, SettingsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import {
   assetStatusLabels,
@@ -1067,6 +1068,12 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
 
   return (
     <div className="maintenance-page">
+      <PageHeader
+        description={`${condominiumName} · activos, planes preventivos y órdenes de trabajo con historial técnico.`}
+        eyebrow="Operación técnica"
+        title="Activos y mantenimiento"
+      />
+
       {error ? (
         <div className="maintenance-page-alert" role="alert">
           <span>{error}</span>

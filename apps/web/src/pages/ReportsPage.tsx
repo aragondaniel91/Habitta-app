@@ -10,6 +10,7 @@ import {
   UnitsIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import {
   buildMonthlyFinancialSeries,
@@ -79,10 +80,7 @@ function MetricCard({
 function ReportsLoading() {
   return (
     <div aria-label="Cargando reportes" className="reports-page">
-      <div className="reports-overview">
-        <Skeleton className="skeleton--title" />
-        <Skeleton className="skeleton--badge" />
-      </div>
+      <PageHeader eyebrow="Inteligencia financiera" title="Reportes y análisis" />
       <div className="reports-metrics-grid">
         {Array.from({ length: 4 }, (_, index) => (
           <Skeleton className="skeleton--card" key={index} />
@@ -446,29 +444,27 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
 
   return (
     <div className="reports-page">
-      <header className="reports-overview">
-        <div>
-          <span className="reports-kicker">Inteligencia financiera</span>
-          <h2>Reportes y análisis</h2>
-          <p>
-            {condominiumName} · lectura ejecutiva de cobranza, cartera y comportamiento por unidad.
-          </p>
-        </div>
-        <div className="reports-overview__actions">
-          <Select
-            aria-label="Período del reporte"
-            onChange={(event) => setPeriod(Number(event.target.value) as ReportPeriod)}
-            value={period}
-          >
-            <option value={3}>Últimos 3 meses</option>
-            <option value={6}>Últimos 6 meses</option>
-            <option value={12}>Últimos 12 meses</option>
-          </Select>
-          <Button onClick={exportCsv} size="sm">
-            Exportar CSV
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        actions={
+          <>
+            <Select
+              aria-label="Período del reporte"
+              onChange={(event) => setPeriod(Number(event.target.value) as ReportPeriod)}
+              value={period}
+            >
+              <option value={3}>Últimos 3 meses</option>
+              <option value={6}>Últimos 6 meses</option>
+              <option value={12}>Últimos 12 meses</option>
+            </Select>
+            <Button onClick={exportCsv} size="sm">
+              Exportar CSV
+            </Button>
+          </>
+        }
+        description={`${condominiumName} · lectura ejecutiva de cobranza, cartera y comportamiento por unidad.`}
+        eyebrow="Inteligencia financiera"
+        title="Reportes y análisis"
+      />
 
       {error ? (
         <div className="reports-inline-alert" role="status">
