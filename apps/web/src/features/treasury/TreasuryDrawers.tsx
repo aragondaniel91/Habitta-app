@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Button, Field, Select } from '../../components/ui';
+import { Drawer } from '../../components/Drawer';
 import {
   accountTypeLabels,
   movementKindLabels,
@@ -25,26 +26,9 @@ function DrawerShell({
   children: ReactNode;
 }) {
   return (
-    <div className="treasury-drawer-layer" role="presentation">
-      <button
-        aria-label="Cerrar panel"
-        className="treasury-drawer-backdrop"
-        onClick={onClose}
-        type="button"
-      />
-      <aside aria-label={title} className="treasury-drawer">
-        <header className="treasury-drawer__header">
-          <div>
-            <span>{eyebrow}</span>
-            <h2>{title}</h2>
-          </div>
-          <Button aria-label="Cerrar" onClick={onClose} size="sm" variant="ghost">
-            ×
-          </Button>
-        </header>
-        <div className="treasury-drawer__body">{children}</div>
-      </aside>
-    </div>
+    <Drawer eyebrow={eyebrow} onClose={onClose} prefix="treasury" title={title}>
+      {children}
+    </Drawer>
   );
 }
 

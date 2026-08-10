@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { useDialogBehavior } from '../components/Drawer';
 import { CheckCircleIcon, PaymentsIcon, SettingsIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
 import { paymentApi, paymentProof } from '../features/payments/api';
@@ -53,13 +54,8 @@ function DrawerFrame({
   onClose: () => void;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  const panel = useRef<HTMLElement>(null);
+  useDialogBehavior(panel, onClose);
 
   return (
     <div className="payments-drawer-layer" role="presentation">
@@ -67,9 +63,17 @@ function DrawerFrame({
         aria-label="Cerrar panel"
         className="payments-drawer-backdrop"
         onClick={onClose}
+        tabIndex={-1}
         type="button"
       />
-      <aside aria-label={title} className="payments-drawer" role="dialog">
+      <aside
+        aria-label={title}
+        aria-modal="true"
+        className="payments-drawer"
+        ref={panel}
+        role="dialog"
+        tabIndex={-1}
+      >
         <header className="payments-drawer__header">
           <div className="payments-drawer__icon">{icon}</div>
           <div>

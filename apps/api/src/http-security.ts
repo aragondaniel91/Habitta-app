@@ -89,6 +89,22 @@ export const readPostgrestError = async (response: Response): Promise<PostgrestE
   }
 };
 
+/**
+ * Applies a Cloudflare rate limiter keyed by the caller. Returns true when the request may go on.
+ * A missing binding lets the request through: local runs and tests have no limiter, and failing
+ * closed there would break development without protecting anything.
+ */
+export const withinRateLimit = async (limiter: RateLimit | undefined, key: string) => {
+  if (!limiter) return true;
+  try {
+    const { success } = await limiter.limit({ key });
+    return success;
+  } catch {
+    // A limiter outage must not take the API down with it.
+    return true;
+  }
+};
+
 export const publicErrorForStatus = (status: number) => {
   if (status === 400) return 'Invalid request';
   if (status === 401) return 'Unauthorized';

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import applicationHandler, { app as applicationApp } from './index';
 import { isAllowedCorsOrigin, publicErrorForStatus, readPostgrestError } from './http-security';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
@@ -20,6 +21,9 @@ app.onError((error, c) => {
   return c.json({ error: 'Request failed', requestId }, 500);
 });
 
+// One place decides which origins are allowed. Deciding it here and again inside the application
+// invited the two answers to drift, and they had: the inner copy always trusted localhost, even in
+// production. The guard rejects outright and the middleware below writes the headers.
 app.use('*', async (c, next) => {
   const origin = c.req.header('Origin');
   if (!isAllowedCorsOrigin(origin, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV)) {
@@ -53,6 +57,22 @@ app.use('*', async (c, next) => {
     headers,
   });
 });
+
+app.use(
+  '*',
+  cors({
+    origin: (origin, c) =>
+      isAllowedCorsOrigin(origin, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV) ? origin : undefined,
+    allowHeaders: [
+      'Authorization',
+      'Content-Type',
+      'X-Filename',
+      'X-Document-Type',
+      'X-Visibility',
+      'X-Comment-Id',
+    ],
+  }),
+);
 
 app.route('/', applicationApp);
 

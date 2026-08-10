@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, MaintenanceIcon, RequestsIcon, SettingsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import {
@@ -84,26 +85,9 @@ function DrawerShell({
   wide?: boolean;
 }) {
   return (
-    <div className="maintenance-drawer-layer" role="presentation">
-      <button
-        aria-label="Cerrar panel"
-        className="maintenance-drawer-backdrop"
-        onClick={onClose}
-        type="button"
-      />
-      <aside aria-label={title} className="maintenance-drawer" data-wide={wide || undefined}>
-        <header className="maintenance-drawer__header">
-          <div>
-            <span>{eyebrow}</span>
-            <h2>{title}</h2>
-          </div>
-          <Button aria-label="Cerrar" onClick={onClose} size="sm" variant="ghost">
-            ×
-          </Button>
-        </header>
-        <div className="maintenance-drawer__body">{children}</div>
-      </aside>
-    </div>
+    <Drawer eyebrow={eyebrow} onClose={onClose} prefix="maintenance" title={title} wide={wide}>
+      {children}
+    </Drawer>
   );
 }
 

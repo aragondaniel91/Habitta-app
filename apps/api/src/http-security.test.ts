@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  withinRateLimit,
   allowedCorsOrigins,
   isAllowedCorsOrigin,
   publicErrorForStatus,
@@ -76,5 +77,45 @@ describe('HTTP security helpers', () => {
     expect(publicErrorForStatus(403)).toBe('Forbidden');
     expect(publicErrorForStatus(409)).toBe('Request conflict');
     expect(publicErrorForStatus(500)).toBe('Request failed');
+  });
+});
+
+describe('rate limiting', () => {
+  it('allows the request when the limiter says so', async () => {
+    const limiter = { limit: async () => ({ success: true }) } as unknown as RateLimit;
+    await expect(withinRateLimit(limiter, 'user-1')).resolves.toBe(true);
+  });
+
+  it('blocks the request once the limiter refuses', async () => {
+    const limiter = { limit: async () => ({ success: false }) } as unknown as RateLimit;
+    await expect(withinRateLimit(limiter, 'user-1')).resolves.toBe(false);
+  });
+
+  it('keys the limiter by the caller so one user cannot exhaust another', async () => {
+    const seen: string[] = [];
+    const limiter = {
+      limit: async ({ key }: { key: string }) => {
+        seen.push(key);
+        return { success: true };
+      },
+    } as unknown as RateLimit;
+
+    await withinRateLimit(limiter, 'user-a');
+    await withinRateLimit(limiter, 'user-b');
+    expect(seen).toEqual(['user-a', 'user-b']);
+  });
+
+  it('stays open when no limiter is bound, so local runs and tests are unaffected', async () => {
+    await expect(withinRateLimit(undefined, 'user-1')).resolves.toBe(true);
+  });
+
+  it('stays open if the limiter itself fails rather than taking the API down', async () => {
+    const limiter = {
+      limit: async () => {
+        throw new Error('limiter unavailable');
+      },
+    } as unknown as RateLimit;
+
+    await expect(withinRateLimit(limiter, 'user-1')).resolves.toBe(true);
   });
 });

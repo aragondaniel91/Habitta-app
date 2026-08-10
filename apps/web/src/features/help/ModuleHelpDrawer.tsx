@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { useDialogBehavior } from '../../components/Drawer';
 import { Button } from '../../components/ui';
 import type { AppRoute } from '../../navigation';
 import { CsvImportWizard } from '../imports/CsvImportWizard';
@@ -25,6 +26,8 @@ export function ModuleHelpDrawer({
 }: Props) {
   const content = MODULE_HELP[route.key];
   const importKinds = content.importKinds ?? [];
+  const panel = useRef<HTMLElement>(null);
+  useDialogBehavior(panel, onClose);
   const [view, setView] = useState<'guide' | 'import'>(initialView);
   const [selectedKind, setSelectedKind] = useState<ImportKind | null>(importKinds[0] ?? null);
 
@@ -43,9 +46,17 @@ export function ModuleHelpDrawer({
         aria-label="Cerrar ayuda"
         className="module-help-backdrop"
         onClick={onClose}
+        tabIndex={-1}
         type="button"
       />
-      <aside aria-label={`Ayuda de ${route.label}`} className="module-help-drawer">
+      <aside
+        aria-label={`Ayuda de ${route.label}`}
+        aria-modal="true"
+        className="module-help-drawer"
+        ref={panel}
+        role="dialog"
+        tabIndex={-1}
+      >
         <header className="module-help-header">
           <div>
             <span>Centro de ayuda</span>

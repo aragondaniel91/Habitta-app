@@ -9,8 +9,13 @@ describe('private operational document routes', () => {
     const source = await readFile(apiUrl, 'utf8');
     expect(source).toContain("app.use('/v1/*'");
     expect(source).toContain("app.route('/v1/condominiums', privateDocumentRoutes)");
+  });
+
+  it('allows the upload headers through the single CORS definition', async () => {
+    const source = await readFile(new URL('./security-entry.ts', import.meta.url), 'utf8');
     expect(source).toContain("'X-Document-Type'");
     expect(source).toContain("'X-Visibility'");
+    expect(source).toContain("'X-Filename'");
   });
 
   it('uses private R2 storage, authenticated RPC metadata and rollback on failure', async () => {

@@ -9,6 +9,7 @@ import {
   UnitsIcon,
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { canManage, useCondominiumRoles } from '../lib/roles';
@@ -204,26 +205,9 @@ function DrawerShell({
   wide?: boolean;
 }) {
   return (
-    <div className="requests-drawer-layer" role="presentation">
-      <button
-        aria-label="Cerrar panel"
-        className="requests-drawer-backdrop"
-        onClick={onClose}
-        type="button"
-      />
-      <aside aria-label={title} className="requests-drawer" data-wide={wide || undefined}>
-        <header className="requests-drawer__header">
-          <div>
-            <span>{eyebrow}</span>
-            <h2>{title}</h2>
-          </div>
-          <Button aria-label="Cerrar" onClick={onClose} size="sm" variant="ghost">
-            ×
-          </Button>
-        </header>
-        <div className="requests-drawer__body">{children}</div>
-      </aside>
-    </div>
+    <Drawer eyebrow={eyebrow} onClose={onClose} prefix="requests" title={title} wide={wide}>
+      {children}
+    </Drawer>
   );
 }
 

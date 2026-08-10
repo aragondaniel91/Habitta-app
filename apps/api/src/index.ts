@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { cors } from 'hono/cors';
 import { z } from 'zod';
 import {
   buildingInputSchema,
@@ -42,45 +41,18 @@ import { operationsRoutes } from './operations-routes';
 import { importRoutes } from './import-routes';
 import { privateDocumentRoutes } from './private-document-routes';
 import { treasuryRoutes } from './treasury-routes';
+import { withinRateLimit } from './http-security';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
 type Bindings = NotificationBindings;
 type Variables = { token: string; userId: string };
 export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
-export const allowedCorsOrigins = (raw?: string) =>
-  new Set(
-    ['http://localhost:5173', ...(raw ?? '').split(',')]
-      .map((origin) => origin.trim())
-      .filter(Boolean)
-      .flatMap((origin) => {
-        try {
-          return [new URL(origin).origin];
-        } catch {
-          return [];
-        }
-      }),
-  );
 app.onError((error, c) =>
   c.json(
     { error: error.name === 'ZodError' ? 'Invalid identifier' : 'Request failed' },
     error.name === 'ZodError' ? 400 : 500,
   ),
-);
-app.use(
-  '*',
-  cors({
-    origin: (origin, c) =>
-      allowedCorsOrigins(c.env?.CORS_ALLOWED_ORIGINS).has(origin) ? origin : undefined,
-    allowHeaders: [
-      'Authorization',
-      'Content-Type',
-      'X-Filename',
-      'X-Document-Type',
-      'X-Visibility',
-      'X-Comment-Id',
-    ],
-  }),
 );
 app.get('/health', (c) =>
   c.json({
@@ -376,6 +348,8 @@ app.patch('/v1/condominiums/:id/unit-occupancies/:assignmentId', (c) =>
   patchAssignment(c, 'unit_occupancies', false),
 );
 app.post('/v1/condominiums/:id/invitations', async (c) => {
+  if (!(await withinRateLimit(c.env.INVITATION_LIMIT, c.get('userId'))))
+    return c.json({ error: 'Too many requests' }, 429);
   const p = await body(c, invitationInputSchema);
   if (p instanceof Response) return p;
   const token = crypto.randomUUID().replaceAll('-', '');
@@ -908,6 +882,8 @@ app.get('/v1/condominiums/:id/requests', async (c) => {
   return c.json(await r.json(), r.ok ? 200 : 403);
 });
 app.post('/v1/condominiums/:id/requests', async (c) => {
+  if (!(await withinRateLimit(c.env.REQUEST_LIMIT, c.get('userId'))))
+    return c.json({ error: 'Too many requests' }, 429);
   const p = await body(c, serviceRequestCreateSchema);
   if (p instanceof Response) return p;
   const r = await rpc(c, 'create_service_request', {
@@ -1179,6 +1155,9 @@ app.get('/v1/condominiums/:id/payments/:paymentId/events', async (c) => {
 });
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'proof';
 app.put('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
+  // Checked before reading the body so a flood cannot make the Worker buffer 10 MB each time.
+  if (!(await withinRateLimit(c.env.PROOF_UPLOAD_LIMIT, c.get('userId'))))
+    return c.json({ error: 'Too many requests' }, 429);
   const type = c.req.header('Content-Type') ?? '';
   if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(type))
     return c.json({ error: 'Unsupported proof type' }, 415);

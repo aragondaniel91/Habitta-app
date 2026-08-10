@@ -14,6 +14,13 @@ export type NotificationBindings = {
   SUPABASE_SERVICE_ROLE_KEY: string;
   PAYMENT_PROOFS: R2Bucket;
   NOTIFICATION_QUEUE: Queue<NotificationQueueMessage>;
+  /**
+   * Cloudflare rate limiters. Distributed by the platform rather than counted in the isolate,
+   * which could never hold a shared total. Optional so tests and local runs work without them.
+   */
+  PROOF_UPLOAD_LIMIT?: RateLimit;
+  INVITATION_LIMIT?: RateLimit;
+  REQUEST_LIMIT?: RateLimit;
   RESEND_API_KEY?: string;
   ZEPTOMAIL_SEND_TOKEN?: string;
   NOTIFICATIONS_FROM_EMAIL: string;
