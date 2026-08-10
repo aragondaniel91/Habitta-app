@@ -749,3 +749,10 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.reports-panel-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+}

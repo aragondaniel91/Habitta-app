@@ -28,6 +28,7 @@ import './private-documents.css';
 import './brand-palette.css';
 import './brand-assets.css';
 import './page-header.css';
+import './print.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

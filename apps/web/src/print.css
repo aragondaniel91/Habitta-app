@@ -1,0 +1,81 @@
+/*
+ * Printing is how a statement or a receipt reaches an owner as a PDF: every browser's print
+ * dialog can save to one. That keeps a PDF library out of the Worker, but only pays off if the
+ * printed page is the document and not a screenshot of the application around it.
+ */
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  :root {
+    --shadow-sm: none;
+    --shadow-md: none;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* The shell is navigation, not content. */
+  .sidebar,
+  .mobile-drawer,
+  .mobile-backdrop,
+  .topbar,
+  .page-header__actions,
+  .notification-center,
+  .module-help-layer,
+  .receivables-statement-actions,
+  .reports-panel-actions button,
+  [class$='-drawer-backdrop'] {
+    display: none !important;
+  }
+
+  .app-shell,
+  .main-content {
+    display: block;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  /* A drawer is a panel on screen and the whole document on paper. */
+  [class$='-drawer-layer'] {
+    position: static;
+    display: block;
+  }
+
+  [class$='-drawer'] {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  [class$='-drawer__body'] {
+    overflow: visible;
+  }
+
+  .surface,
+  [class$='-panel'] {
+    border: 1px solid #ccc;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  /* Statement rows must not be split across two sheets. */
+  .receivables-statement-list article,
+  .treasury-table tr,
+  .reports-table tr {
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  a[href]::after {
+    content: '';
+  }
+}

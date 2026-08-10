@@ -4,7 +4,9 @@ import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, FeesIcon, ReportsIcon, UnitsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton } from '../components/ui';
 import { apiRequest } from '../lib/api';
+import { csvFileName, downloadCsv } from '../lib/csv-export';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
+import { createStatementCsv } from '../lib/reports';
 import {
   conceptCategoryLabels,
   getConceptName,
@@ -628,6 +630,7 @@ export function ReceivablesDrawerHost({
   }
 
   if (mode === 'statement') {
+    const statementUnitCode = units.find((unit) => unit.id === statementUnitId)?.code ?? 'unidad';
     return (
       <Drawer eyebrow="Consulta" onClose={onClose} title="Estado de cuenta por unidad">
         <Feedback message={message} />
@@ -651,6 +654,27 @@ export function ReceivablesDrawerHost({
             icon={<ReportsIcon size={26} />}
             title="Estado de cuenta vacío"
           />
+        ) : null}
+        {statement.length ? (
+          <div className="receivables-statement-actions">
+            <Button
+              onClick={() =>
+                downloadCsv(
+                  csvFileName('estado-de-cuenta', statementUnitCode),
+                  createStatementCsv(statement, statementUnitCode),
+                )
+              }
+              size="sm"
+              variant="secondary"
+            >
+              Descargar CSV
+            </Button>
+            {/* The browser's print dialog saves to PDF, so a statement reaches an owner without
+                pulling a PDF library into the Worker. */}
+            <Button onClick={() => window.print()} size="sm" variant="secondary">
+              Imprimir o guardar PDF
+            </Button>
+          </div>
         ) : null}
         {statement.length ? (
           <div className="receivables-statement-list">

@@ -6,6 +6,8 @@ import type {
   ReceivableSummary,
 } from './dashboard';
 import { getAgingBuckets } from './dashboard';
+import type { AgingBucket, MonthlyFinancialPoint } from './dashboard';
+import { toCsv } from './csv-export';
 
 export type ReportPeriod = 3 | 6 | 12;
 
@@ -216,24 +218,19 @@ export function buildPaymentStatusRows(
   );
 }
 
-const escapeCsv = (value: string | number) => {
-  const text = String(value);
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-};
-
 export function createUnitReportCsv(rows: UnitFinancialRow[], currencyCode: string) {
-  const header = [
-    'unit_code',
-    'currency_code',
-    'charges',
-    'collections',
-    'outstanding',
-    'overdue',
-    'payment_count',
-    'open_item_count',
-  ];
-  const body = rows.map((row) =>
+  return toCsv(
     [
+      'unit_code',
+      'currency_code',
+      'charges',
+      'collections',
+      'outstanding',
+      'overdue',
+      'payment_count',
+      'open_item_count',
+    ],
+    rows.map((row) => [
       row.unitCode,
       currencyCode,
       row.charges.toFixed(2),
@@ -242,9 +239,73 @@ export function createUnitReportCsv(rows: UnitFinancialRow[], currencyCode: stri
       row.overdue.toFixed(2),
       row.paymentCount,
       row.openItemCount,
-    ]
-      .map(escapeCsv)
-      .join(','),
+    ]),
   );
-  return [header.join(','), ...body].join('\n');
+}
+
+export function createMonthlyReportCsv(points: MonthlyFinancialPoint[], currencyCode: string) {
+  return toCsv(
+    ['month', 'currency_code', 'collections', 'charges'],
+    points.map((point) => [
+      point.key,
+      currencyCode,
+      point.collections.toFixed(2),
+      point.charges.toFixed(2),
+    ]),
+  );
+}
+
+export function createAgingReportCsv(buckets: AgingBucket[], currencyCode: string) {
+  return toCsv(
+    ['bucket', 'label', 'currency_code', 'amount'],
+    buckets.map((bucket) => [
+      bucket.key,
+      bucket.label,
+      currencyCode,
+      bucket.numericAmount.toFixed(2),
+    ]),
+  );
+}
+
+export type StatementCsvRow = {
+  effective_date: string;
+  description: string;
+  entry_type: string;
+  debit?: string | undefined;
+  credit?: string | undefined;
+  running_balance: string;
+  currency_code: string;
+};
+
+/** The statement a board hands to an owner: one row per movement, balance carried down. */
+export function createStatementCsv(rows: StatementCsvRow[], unitCode: string) {
+  return toCsv(
+    [
+      'unit_code',
+      'effective_date',
+      'entry_type',
+      'description',
+      'currency_code',
+      'debit',
+      'credit',
+      'running_balance',
+    ],
+    rows.map((row) => [
+      unitCode,
+      row.effective_date,
+      row.entry_type,
+      row.description,
+      row.currency_code,
+      row.debit ?? '',
+      row.credit ?? '',
+      row.running_balance,
+    ]),
+  );
+}
+
+export function createPaymentStatusCsv(rows: PaymentStatusRow[], currencyCode: string) {
+  return toCsv(
+    ['status', 'currency_code', 'payment_count', 'amount'],
+    rows.map((row) => [row.status, currencyCode, row.count, row.amount.toFixed(2)]),
+  );
 }

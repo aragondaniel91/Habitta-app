@@ -26,9 +26,13 @@ import type {
   ReceivableSummary,
 } from '../lib/dashboard';
 import { paymentStatusLabels } from '../lib/payments';
+import { csvFileName, downloadCsv } from '../lib/csv-export';
 import {
   buildPaymentStatusRows,
   buildUnitFinancialRows,
+  createAgingReportCsv,
+  createMonthlyReportCsv,
+  createPaymentStatusCsv,
   createUnitReportCsv,
   getPeriodFinancialTotals,
   getPortfolioTotals,
@@ -400,15 +404,14 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
     };
   }, [data, period, selectedCurrency]);
 
+  const download = (section: string, csv: string) => {
+    if (!selectedCurrency) return;
+    downloadCsv(csvFileName(condominiumName, section, selectedCurrency, `${period}m`), csv);
+  };
+
   const exportCsv = () => {
     if (!report || !selectedCurrency) return;
-    const csv = createUnitReportCsv(report.units, selectedCurrency);
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `habitta-${condominiumName.toLocaleLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}-${selectedCurrency.toLocaleLowerCase()}-${period}m.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    download('unidades', createUnitReportCsv(report.units, selectedCurrency));
   };
 
   if (loading && !data) return <ReportsLoading />;
@@ -523,7 +526,19 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
               <h2>Cargos vs cobros</h2>
               <p>Compara obligaciones emitidas con pagos aprobados durante el período.</p>
             </div>
-            <Badge tone="info">{selectedCurrency}</Badge>
+            <div className="reports-panel-actions">
+              <Badge tone="info">{selectedCurrency}</Badge>
+              <Button
+                disabled={!report.monthly.length}
+                onClick={() =>
+                  download('mensual', createMonthlyReportCsv(report.monthly, selectedCurrency))
+                }
+                size="sm"
+                variant="ghost"
+              >
+                CSV
+              </Button>
+            </div>
           </div>
           <div className="reports-chart-legend">
             <span data-kind="collections">Cobros aprobados</span>
@@ -546,6 +561,16 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
               <h2>Antigüedad de saldos</h2>
               <p>Distribución de lo pendiente según días de atraso.</p>
             </div>
+            <Button
+              disabled={!agingBuckets.length}
+              onClick={() =>
+                download('antiguedad', createAgingReportCsv(agingBuckets, selectedCurrency))
+              }
+              size="sm"
+              variant="ghost"
+            >
+              CSV
+            </Button>
           </div>
           {agingBuckets.length && agingTotal > 0 ? (
             <div className="reports-aging-list">
@@ -583,6 +608,16 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
               <h2>Estados del período</h2>
               <p>Volumen y monto por etapa de validación.</p>
             </div>
+            <Button
+              disabled={!report.statuses.length}
+              onClick={() =>
+                download('estados', createPaymentStatusCsv(report.statuses, selectedCurrency))
+              }
+              size="sm"
+              variant="ghost"
+            >
+              CSV
+            </Button>
           </div>
           <PaymentStatusChart currencyCode={selectedCurrency} rows={report.statuses} />
         </Surface>

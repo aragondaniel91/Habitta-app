@@ -424,3 +424,10 @@
 .receivables-opening-errors p:last-child {
   border-bottom: 0;
 }
+
+.receivables-statement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
