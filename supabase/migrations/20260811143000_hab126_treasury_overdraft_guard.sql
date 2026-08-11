@@ -50,7 +50,7 @@ create function public.authorize_treasury_overdraft(
   target_condominium uuid,
   target_account uuid,
   debit_amount numeric,
-  movement_request_key text,
+  request_key text,
   authorization_reason text
 )
 returns public.treasury_overdraft_authorizations
@@ -70,7 +70,7 @@ begin
     raise exception 'treasury management denied';
   end if;
   if debit_amount is null or debit_amount <= 0
-    or char_length(trim(movement_request_key)) not between 8 and 180
+    or char_length(trim(request_key)) not between 8 and 180
     or char_length(trim(authorization_reason)) not between 5 and 500 then
     raise exception 'invalid overdraft authorization';
   end if;
@@ -97,7 +97,7 @@ begin
   select * into existing
   from public.treasury_overdraft_authorizations a
   where a.condominium_id = target_condominium
-    and a.movement_request_key = trim(movement_request_key);
+    and a.movement_request_key = trim(request_key);
 
   if existing.id is not null then
     if existing.account_id <> target_account
@@ -120,7 +120,7 @@ begin
   ) values (
     target_condominium,
     target_account,
-    trim(movement_request_key),
+    trim(request_key),
     round(debit_amount, 2),
     current_balance,
     projected,
