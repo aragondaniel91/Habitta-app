@@ -16,6 +16,7 @@ const expense = (values: Partial<ExpenseRecord>): ExpenseRecord => ({
   status: 'draft',
   payment_method: null,
   payment_reference: null,
+  treasury_account_id: null,
   support_url: null,
   notes: null,
   approved_at: null,
