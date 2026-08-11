@@ -48,7 +48,10 @@ function residentError(error: { message: string }) {
   if (message.includes('active tenant assignment')) {
     return 'La persona ya no tiene una asignación activa como inquilino en esa unidad.';
   }
-  if (message.includes('requires an active person with email') || message.includes('profile with email')) {
+  if (
+    message.includes('requires an active person with email') ||
+    message.includes('profile with email')
+  ) {
     return 'La persona necesita un correo válido antes de poder recibir acceso.';
   }
   if (message.includes('already linked')) {
@@ -92,7 +95,9 @@ export async function listResidentInvitations(condominiumId: string, personId?: 
   const client = requireSupabase();
   let query = client
     .from('invitations')
-    .select('id,condominium_id,person_id,unit_id,email,intended_role,status,expires_at,accepted_at,revoked_at,created_at')
+    .select(
+      'id,condominium_id,person_id,unit_id,email,intended_role,status,expires_at,accepted_at,revoked_at,created_at',
+    )
     .eq('condominium_id', condominiumId)
     .order('created_at', { ascending: false });
   if (personId) query = query.eq('person_id', personId);
