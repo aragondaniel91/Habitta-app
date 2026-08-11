@@ -78,7 +78,6 @@
           "simple": { "limit": 30, "period": 60 },
         },
       ],
-      "triggers": { "crons": ["*/5 * * * *"] },
     },
     "prod": {
       "name": "habitta-api-prod",
@@ -124,6 +123,7 @@
           "simple": { "limit": 30, "period": 60 },
         },
       ],
+      "triggers": { "crons": ["*/5 * * * *"] },
     },
   },
 }
