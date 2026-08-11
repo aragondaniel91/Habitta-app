@@ -48,13 +48,16 @@ reset role;
 insert into public.people (id, condominium_id, auth_user_id, first_name, last_name, email, created_by) values
   ('22222222-0000-0000-0000-000000000002', '22000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-0000000000b1', 'Owen', 'Owner', 'owner@test.local', '00000000-0000-0000-0000-0000000000b1'),
   ('11111111-0000-0000-0000-000000000003', '11000000-0000-0000-0000-000000000001', null, 'Invite', 'Good', 'owner@test.local', '00000000-0000-0000-0000-0000000000a1');
-insert into public.invitations (condominium_id, person_id, email, intended_role, token_hash, expires_at, invited_by) values
-  ('11000000-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000003', 'different@test.local', 'owner', encode(digest('wrong-email','sha256'),'hex'), now() + interval '1 day', '00000000-0000-0000-0000-0000000000a1'),
-  ('11000000-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000003', 'owner@test.local', 'owner', encode(digest('correct','sha256'),'hex'), now() + interval '1 day', '00000000-0000-0000-0000-0000000000a1'),
-  ('11000000-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000003', 'owner@test.local', 'owner', encode(digest('expired','sha256'),'hex'), now() - interval '1 day', '00000000-0000-0000-0000-0000000000a1');
+insert into public.unit_owners (unit_id, person_id, created_by) values
+  ('11110000-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000003', '00000000-0000-0000-0000-0000000000a1');
+insert into public.invitations (condominium_id, person_id, unit_id, email, intended_role, token_hash, expires_at, invited_by) values
+  ('11000000-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000003', '11110000-0000-0000-0000-000000000001', 'owner@test.local', 'owner', encode(digest('wrong-email','sha256'),'hex'), now() + interval '1 day', '00000000-0000-0000-0000-0000000000a1'),
+  ('11000000-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000003', '11110000-0000-0000-0000-000000000001', 'owner@test.local', 'owner', encode(digest('correct','sha256'),'hex'), now() + interval '1 day', '00000000-0000-0000-0000-0000000000a1'),
+  ('11000000-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000003', '11110000-0000-0000-0000-000000000001', 'owner@test.local', 'owner', encode(digest('expired','sha256'),'hex'), now() - interval '1 day', '00000000-0000-0000-0000-0000000000a1');
 set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
+select throws_ok($$select public.accept_invitation('wrong-email')$$, null, 'invalid invitation', 'different authenticated email is rejected');
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', true);
-select throws_ok($$select public.accept_invitation('wrong-email')$$, null, 'invalid invitation', 'different invitation email is rejected');
 select lives_ok($$select public.accept_invitation('correct')$$, 'matching invitation is accepted');
 select throws_ok($$select public.accept_invitation('correct')$$, null, 'invalid invitation', 'accepted invitation cannot be reused');
 select throws_ok($$select public.accept_invitation('expired')$$, null, 'invalid invitation', 'expired invitation is rejected');
