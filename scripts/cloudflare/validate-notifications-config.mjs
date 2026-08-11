@@ -100,7 +100,8 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
     if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
       errors.push('missing_prod_notification_cron');
   } else {
-    if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *')) errors.push('missing_notification_cron');
+    if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
+      errors.push('missing_notification_cron');
     if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
       errors.push('missing_prod_notification_cron');
   }
