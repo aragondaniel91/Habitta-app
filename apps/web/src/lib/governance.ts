@@ -2,6 +2,7 @@ export type GovernanceStatus = 'draft' | 'open' | 'closed' | 'approved' | 'rejec
 export type GovernanceCategory =
   'budget' | 'maintenance' | 'improvement' | 'community' | 'policy' | 'other';
 export type GovernanceVotingBasis = 'one_per_owner' | 'one_per_unit';
+export type GovernanceDecisionValue = 'approve' | 'reject' | 'tie' | 'no_quorum';
 
 export type GovernanceProposal = {
   id: string;
@@ -69,6 +70,18 @@ export type GovernanceResults = {
   }>;
 };
 
+export type GovernanceDecision = {
+  proposal_id: string;
+  decision: GovernanceDecisionValue;
+  winning_option_id: string | null;
+  winning_option_label: string | null;
+  quorum_met: boolean;
+  eligible_count: number;
+  votes_cast: number;
+  participation_percentage: number | string;
+  quorum_percentage: number | string;
+};
+
 export const governanceStatusLabels: Record<GovernanceStatus, string> = {
   draft: 'Borrador',
   open: 'Votación abierta',
@@ -90,6 +103,13 @@ export const governanceCategoryLabels: Record<GovernanceCategory, string> = {
 export const votingBasisLabels: Record<GovernanceVotingBasis, string> = {
   one_per_owner: 'Un voto por propietario',
   one_per_unit: 'Un voto por unidad',
+};
+
+export const governanceDecisionLabels: Record<GovernanceDecisionValue, string> = {
+  approve: 'Resultado: aprobar',
+  reject: 'Resultado: rechazar',
+  tie: 'Resultado empatado',
+  no_quorum: 'Sin quórum',
 };
 
 export function formatGovernanceDate(value: string | null) {
@@ -124,7 +144,7 @@ export function filterGovernanceProposals(
 export function nextGovernanceActions(status: GovernanceStatus) {
   if (status === 'draft') return ['open', 'archive'] as const;
   if (status === 'open') return ['close'] as const;
-  if (status === 'closed') return ['approve', 'reject', 'archive'] as const;
+  if (status === 'closed') return ['archive'] as const;
   if (status === 'approved' || status === 'rejected') return ['archive'] as const;
   return [] as const;
 }
