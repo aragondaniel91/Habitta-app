@@ -13,10 +13,6 @@ on:
       confirm_project_ref:
         description: Must exactly match SUPABASE_PROJECT_REF
         required: true
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/production-release.yml
 
 permissions:
   contents: read
