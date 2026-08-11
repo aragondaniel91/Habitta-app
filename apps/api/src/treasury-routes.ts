@@ -57,6 +57,7 @@ const responseJson = async (c: AppContext, response: Response, successStatus: 20
 };
 
 const condominiumId = (c: AppContext) => uuidSchema.parse(c.req.param('id'));
+const financialAccountSelectionSchema = z.object({ accountId: uuidSchema });
 
 /**
  * List endpoints return arrays, so they cannot reuse responseJson. Collapsing every failure into
@@ -94,6 +95,30 @@ treasuryRoutes.post('/:id/treasury/accounts', async (c) => {
     account_notes: payload.notes ?? null,
   });
   return responseJson(c, response, 201);
+});
+
+// HAB-127: account selection is stored before the lifecycle transition. The later approval or
+// mark-paid transition and its Treasury movement still happen in one PostgreSQL transaction.
+treasuryRoutes.post('/:id/treasury/payments/:paymentId/account', async (c) => {
+  const payload = await body(c, financialAccountSelectionSchema);
+  if (payload instanceof Response) return payload;
+  const response = await rpc(c, 'select_payment_treasury_account', {
+    target_condominium: condominiumId(c),
+    target_payment: uuidSchema.parse(c.req.param('paymentId')),
+    target_account: payload.accountId,
+  });
+  return responseJson(c, response);
+});
+
+treasuryRoutes.post('/:id/treasury/expenses/:expenseId/account', async (c) => {
+  const payload = await body(c, financialAccountSelectionSchema);
+  if (payload instanceof Response) return payload;
+  const response = await rpc(c, 'select_expense_treasury_account', {
+    target_condominium: condominiumId(c),
+    target_expense: uuidSchema.parse(c.req.param('expenseId')),
+    target_account: payload.accountId,
+  });
+  return responseJson(c, response);
 });
 
 treasuryRoutes.get('/:id/treasury/movements', async (c) => {
