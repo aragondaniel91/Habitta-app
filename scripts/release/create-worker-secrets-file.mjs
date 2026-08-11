@@ -7,11 +7,13 @@ export const workerSecretsContent = (env) => {
   const emailMode = env.NOTIFICATIONS_EMAIL_MODE ?? 'disabled';
   const zeptoMailToken = env.ZEPTOMAIL_SEND_TOKEN;
   if (!anon || !service) throw new Error('worker_secrets_missing');
-  if (emailMode !== 'disabled' && !zeptoMailToken) throw new Error('worker_email_secret_missing');
+  if (emailMode === 'live' && !zeptoMailToken) throw new Error('worker_email_secret_missing');
   return JSON.stringify({
     SUPABASE_ANON_KEY: anon,
     SUPABASE_SERVICE_ROLE_KEY: service,
-    ...(emailMode !== 'disabled' ? { ZEPTOMAIL_SEND_TOKEN: zeptoMailToken } : {}),
+    ...(emailMode !== 'disabled' && zeptoMailToken
+      ? { ZEPTOMAIL_SEND_TOKEN: zeptoMailToken }
+      : {}),
   });
 };
 
