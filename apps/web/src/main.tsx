@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { ResidentInvitationExperience } from './components/ResidentInvitationExperience';
 import './styles.css';
 import './auth.css';
 import './password-auth.css';
@@ -12,8 +13,20 @@ import './brand-assets.css';
 import './page-header.css';
 import './print.css';
 
+function residentInvitationToken(pathname: string) {
+  const prefix = '/invite/';
+  if (!pathname.startsWith(prefix)) return '';
+  try {
+    return decodeURIComponent(pathname.slice(prefix.length).split('/')[0] ?? '');
+  } catch {
+    return '';
+  }
+}
+
+const invitationToken = residentInvitationToken(window.location.pathname);
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {invitationToken ? <ResidentInvitationExperience rawToken={invitationToken} /> : <App />}
   </StrictMode>,
 );
