@@ -160,6 +160,11 @@ const proposalCreateSchema = z
   });
 
 const proposalActionSchema = z.object({ expectedVersion: z.number().int().positive().optional() });
+const proposalOverrideSchema = z.object({
+  expectedVersion: z.number().int().positive().optional(),
+  decision: z.enum(['approve', 'reject']),
+  reason: z.string().trim().min(3).max(500),
+});
 const voteSchema = z.object({ optionId: uuid, unitId: uuid.optional() });
 
 const body = async <T>(c: AppContext, schema: z.ZodType<T>) => {
@@ -528,6 +533,14 @@ operationsRoutes.get('/:id/governance-proposals/:proposalId/results', async (c) 
   return responseJson(c, response);
 });
 
+operationsRoutes.get('/:id/governance-proposals/:proposalId/decision', async (c) => {
+  const response = await rpc(c, 'get_governance_decision', {
+    target_condominium: uuid.parse(c.req.param('id')),
+    target_proposal: uuid.parse(c.req.param('proposalId')),
+  });
+  return responseJson(c, response);
+});
+
 for (const action of ['open', 'close', 'approve', 'reject', 'archive'] as const) {
   operationsRoutes.post(`/:id/governance-proposals/:proposalId/${action}`, async (c) => {
     const parsed = await body(c, proposalActionSchema);
@@ -541,6 +554,19 @@ for (const action of ['open', 'close', 'approve', 'reject', 'archive'] as const)
     return responseJson(c, response);
   });
 }
+
+operationsRoutes.post('/:id/governance-proposals/:proposalId/override-decision', async (c) => {
+  const parsed = await body(c, proposalOverrideSchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'override_governance_proposal_decision', {
+    target_condominium: uuid.parse(c.req.param('id')),
+    target_proposal: uuid.parse(c.req.param('proposalId')),
+    decision_name: parsed.decision,
+    reason_value: parsed.reason,
+    expected_version: parsed.expectedVersion ?? null,
+  });
+  return responseJson(c, response);
+});
 
 operationsRoutes.post('/:id/governance-proposals/:proposalId/votes', async (c) => {
   const parsed = await body(c, voteSchema);
