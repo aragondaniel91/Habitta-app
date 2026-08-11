@@ -248,8 +248,12 @@ jobs:
             exit 1
           fi
           if [ "$CLOUDFLARE_PAGES_DEV_URL" != "$SMOKE_WEB_URL" ]; then
+            # Non-blocking: the exact deployment + Worker just passed the smoke check above, so the
+            # release itself is healthy. The custom domain (preview.mihabitta.com) is a separate
+            # Cloudflare Pages -> DNS binding (see domain-bindings.yml) that can lag or be
+            # misconfigured independently of any code change. Warn instead of failing the release so
+            # an unresolved custom domain doesn't roll back a good deploy or block CI on every push.
             if ! pnpm release:dev:smoke -- --api-url "$CLOUDFLARE_WORKER_DEV_URL" --web-url "$CLOUDFLARE_PAGES_DEV_URL" --expected-web-origin "$CLOUDFLARE_PAGES_DEV_URL" --expected-commit "$(git rev-parse HEAD)" --email-mode sandbox --attempts 18 --retry-delay-ms 5000; then
-              echo "::error::The exact Pages deployment and Worker are healthy, but $CLOUDFLARE_PAGES_DEV_URL did not converge in time."
-              exit 1
+              echo "::warning::The exact Pages deployment and Worker are healthy, but $CLOUDFLARE_PAGES_DEV_URL did not converge in time. This does not affect the deployed release - check the custom domain binding (workflow: Domain Bindings) and DNS for preview.mihabitta.com separately."
             fi
           fi
