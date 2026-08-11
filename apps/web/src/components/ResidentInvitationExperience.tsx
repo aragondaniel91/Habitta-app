@@ -264,7 +264,11 @@ export function ResidentInvitationExperience({ rawToken }: Props) {
                   </Button>
                 </div>
               ) : preview.status !== 'pending' ? (
-                <Button onClick={() => (window.location.href = '/')} type="button" variant="secondary">
+                <Button
+                  onClick={() => (window.location.href = '/')}
+                  type="button"
+                  variant="secondary"
+                >
                   Volver a Habitta
                 </Button>
               ) : session ? (
@@ -281,8 +285,8 @@ export function ResidentInvitationExperience({ rawToken }: Props) {
                 ) : (
                   <div className="admin-invite-email-mismatch">
                     <p>
-                      Esta invitación pertenece a <strong>{preview.email}</strong>, pero tu sesión usa{' '}
-                      <strong>{session.user.email}</strong>.
+                      Esta invitación pertenece a <strong>{preview.email}</strong>, pero tu sesión
+                      usa <strong>{session.user.email}</strong>.
                     </p>
                     <Button onClick={signOut} type="button" variant="secondary">
                       <LogOutIcon size={17} /> Cerrar sesión y continuar
@@ -360,9 +364,15 @@ export function ResidentInvitationExperience({ rawToken }: Props) {
                         />
                       </Field>
                       <div className="password-strength__requirements">
-                        <span data-complete={passwordAssessment.minimumLength || undefined}>10 caracteres</span>
-                        <span data-complete={passwordAssessment.uppercase || undefined}>Mayúscula</span>
-                        <span data-complete={passwordAssessment.lowercase || undefined}>Minúscula</span>
+                        <span data-complete={passwordAssessment.minimumLength || undefined}>
+                          10 caracteres
+                        </span>
+                        <span data-complete={passwordAssessment.uppercase || undefined}>
+                          Mayúscula
+                        </span>
+                        <span data-complete={passwordAssessment.lowercase || undefined}>
+                          Minúscula
+                        </span>
                         <span data-complete={passwordAssessment.number || undefined}>Número</span>
                       </div>
                       <Field label="Confirmar contraseña">
@@ -399,7 +409,11 @@ export function ResidentInvitationExperience({ rawToken }: Props) {
                   {message.text}
                 </p>
               ) : null}
-              <Button onClick={() => (window.location.href = '/')} type="button" variant="secondary">
+              <Button
+                onClick={() => (window.location.href = '/')}
+                type="button"
+                variant="secondary"
+              >
                 Volver a Habitta
               </Button>
             </div>
