@@ -66,8 +66,6 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
       if (!requiredSecrets.has(secret)) errors.push(`missing_required_secret:${secret}`);
     }
   }
-  if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
-    errors.push('missing_notification_cron');
 
   const prod = config.env?.prod;
   if (!prod || prod.name !== 'habitta-api-prod') errors.push('missing_prod_environment');
@@ -90,16 +88,23 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
       if (!requiredSecrets.has(secret)) errors.push(`missing_prod_required_secret:${secret}`);
     }
   }
-  // Only one scheduled Worker may claim notification deliveries. claim_due_notification_deliveries
-  // filters by status and due date alone, so while production points at the development Supabase
-  // project both crons would compete for the same rows and production would discard deliveries
-  // development still needs. The guard flips automatically once the projects differ.
-  const sharesDevelopmentDatabase =
+
+  // Habitta currently has one hosted Supabase project. Treat that project as production-owned.
+  // When preview and production share it, only production may run the notification scheduler so
+  // workers cannot compete for the same pending deliveries. Development keeps its queue bindings
+  // for explicit tests, but scheduled claims must remain disabled.
+  const sharesHostedDatabase =
     Boolean(dev?.vars?.SUPABASE_URL) && dev?.vars?.SUPABASE_URL === prod?.vars?.SUPABASE_URL;
-  if (sharesDevelopmentDatabase) {
-    if ((prod?.triggers?.crons ?? []).length) errors.push('unsafe_prod_cron_on_shared_database');
-  } else if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
-    errors.push('missing_prod_notification_cron');
+  if (sharesHostedDatabase) {
+    if ((dev?.triggers?.crons ?? []).length) errors.push('unsafe_dev_cron_on_shared_database');
+    if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
+      errors.push('missing_prod_notification_cron');
+  } else {
+    if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
+      errors.push('missing_notification_cron');
+    if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
+      errors.push('missing_prod_notification_cron');
+  }
 
   if (config.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
     errors.push('unsafe_default_email_mode');
