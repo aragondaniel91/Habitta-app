@@ -6,6 +6,7 @@ export type Payment = {
   payment_date: string;
   payer_name: string;
   unit_id: string;
+  treasury_account_id?: string | null;
   correction_reason?: string;
   rejection_reason?: string;
   reversal_reason?: string;
