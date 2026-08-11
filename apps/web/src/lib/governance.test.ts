@@ -46,10 +46,10 @@ describe('governance workspace helpers', () => {
     expect(isProposalOpen(row, Date.parse('2026-08-11T00:00:00Z'))).toBe(false);
   });
 
-  it('keeps proposal transitions explicit', () => {
+  it('keeps proposal transitions explicit and leaves closed decisions result driven', () => {
     expect(nextGovernanceActions('draft')).toEqual(['open', 'archive']);
     expect(nextGovernanceActions('open')).toEqual(['close']);
-    expect(nextGovernanceActions('closed')).toEqual(['approve', 'reject', 'archive']);
+    expect(nextGovernanceActions('closed')).toEqual(['archive']);
     expect(nextGovernanceActions('archived')).toEqual([]);
   });
 });
