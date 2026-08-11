@@ -90,44 +90,32 @@ describe('notification environment modes', () => {
   });
 });
 
-describe('production notification cron guard', () => {
+describe('shared hosted database notification ownership', () => {
   const productionCron = '*/5 * * * *';
-  const withProduction = (mutate: (prod: Record<string, unknown>) => void) => {
-    const config = JSON.parse(wranglerSource.replace(/,\s*([}\]])/g, '$1'));
-    mutate(config.env.prod);
-    return JSON.stringify(config);
-  };
+  const parsedConfig = () => JSON.parse(wranglerSource.replace(/,\s*([}\]])/g, '$1'));
 
-  it('keeps production without a cron while it shares the development database', () => {
-    const config = JSON.parse(wranglerSource.replace(/,\s*([}\]])/g, '$1'));
+  it('treats the current Habitta Supabase project as production-owned', () => {
+    const config = parsedConfig();
 
     expect(config.env.prod.vars.SUPABASE_URL).toBe(config.env.dev.vars.SUPABASE_URL);
-    expect(config.env.prod.triggers?.crons ?? []).toEqual([]);
-    expect(config.env.dev.triggers.crons).toContain(productionCron);
+    expect(config.env.dev.triggers?.crons ?? []).toEqual([]);
+    expect(config.env.prod.triggers.crons).toContain(productionCron);
   });
 
-  it('rejects a production cron while the database is shared', () => {
-    const source = withProduction((prod) => {
-      prod.triggers = { crons: [productionCron] };
-    });
+  it('rejects a development scheduler while the hosted database is shared', () => {
+    const config = parsedConfig();
+    config.env.dev.triggers = { crons: [productionCron] };
 
-    expect(validate(source)).toContain('unsafe_prod_cron_on_shared_database');
+    expect(validate(JSON.stringify(config))).toContain('unsafe_dev_cron_on_shared_database');
   });
 
-  it('requires the production cron again once production has its own database', () => {
-    const withoutCron = withProduction((prod) => {
-      (prod.vars as Record<string, string>).SUPABASE_URL = 'https://habitta-prod.supabase.co';
-    });
+  it('requires production to own the scheduler while the hosted database is shared', () => {
+    const config = parsedConfig();
+    config.env.prod.triggers = { crons: [] };
 
-    expect(validate(withoutCron)).toContain('missing_prod_notification_cron');
-
-    const withCron = withProduction((prod) => {
-      (prod.vars as Record<string, string>).SUPABASE_URL = 'https://habitta-prod.supabase.co';
-      prod.triggers = { crons: [productionCron] };
-    });
-
-    expect(validate(withCron)).not.toContain('missing_prod_notification_cron');
-    expect(validate(withCron)).not.toContain('unsafe_prod_cron_on_shared_database');
+    expect(validate(JSON.stringify(config))).toContain('missing_prod_notification_cron');
+    expect(validate(wranglerSource)).not.toContain('unsafe_dev_cron_on_shared_database');
+    expect(validate(wranglerSource)).not.toContain('missing_prod_notification_cron');
   });
 });
 
