@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import {
+  createResidentInvitation,
+  listResidentInvitations,
+  residentRoleLabel,
+  revokeResidentInvitation,
+  type ResidentInvitation,
+  type ResidentRole,
+} from '../../lib/residentAccess';
 import { peopleApi } from './api';
 import { PanelMessage } from './components/PanelMessage';
 import type { Assignment, Person, Preview, Unit } from './types';
@@ -11,15 +19,21 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
   const [selected, setSelected] = useState<Person | null>(null);
   const [owners, setOwners] = useState<Assignment[]>([]);
   const [occupancies, setOccupancies] = useState<Assignment[]>([]);
+  const [invitations, setInvitations] = useState<ResidentInvitation[]>([]);
   const [query, setQuery] = useState('');
   const [message, setMessage] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [inviteRole, setInviteRole] = useState<ResidentRole>('owner');
+  const [inviteUnitId, setInviteUnitId] = useState('');
+  const [latestInvitationUrl, setLatestInvitationUrl] = useState('');
+  const [inviting, setInviting] = useState(false);
 
   const loadPeople = async () => {
     if (!condominiumId) return;
     setPeople(await peopleApi<Person[]>(`/v1/condominiums/${condominiumId}/people`, session));
   };
+
   useEffect(() => {
     void loadPeople();
   }, [condominiumId, session.access_token]);
@@ -39,24 +53,32 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
       })),
     );
     setOwners(
-      entries.flatMap(({ unit, owners }) =>
-        owners
+      entries.flatMap(({ unit, owners: unitOwners }) =>
+        unitOwners
           .filter((item) => item.person_id === person.id)
-          .map((item) => ({ ...item, unitCode: unit.code })),
+          .map((item) => ({ ...item, unitId: unit.id, unitCode: unit.code })),
       ),
     );
     setOccupancies(
-      entries.flatMap(({ unit, occupancies }) =>
-        occupancies
+      entries.flatMap(({ unit, occupancies: unitOccupancies }) =>
+        unitOccupancies
           .filter((item) => item.person_id === person.id)
-          .map((item) => ({ ...item, unitCode: unit.code })),
+          .map((item) => ({ ...item, unitId: unit.id, unitCode: unit.code })),
       ),
     );
   };
+
+  const loadInvitations = async (person: Person) => {
+    setInvitations(await listResidentInvitations(condominiumId, person.id));
+  };
+
   const selectPerson = async (person: Person) => {
     setSelected(person);
-    await loadAssignments(person);
+    setMessage('');
+    setLatestInvitationUrl('');
+    await Promise.all([loadAssignments(person), loadInvitations(person)]);
   };
+
   const filtered = useMemo(
     () =>
       people.filter((person) =>
@@ -66,6 +88,20 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
       ),
     [people, query],
   );
+
+  const activeOwnerUnits = useMemo(() => owners.filter((item) => !item.ends_at && item.unitId), [owners]);
+  const activeTenantUnits = useMemo(
+    () => occupancies.filter((item) => !item.ends_at && item.unitId),
+    [occupancies],
+  );
+  const inviteUnits = inviteRole === 'owner' ? activeOwnerUnits : activeTenantUnits;
+
+  useEffect(() => {
+    setInviteUnitId((current) => {
+      if (current && inviteUnits.some((item) => item.unitId === current)) return current;
+      return inviteUnits[0]?.unitId ?? '';
+    });
+  }, [inviteRole, owners, occupancies]);
 
   const submitPerson = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -86,6 +122,7 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
     setMessage('Persona guardada.');
     await loadPeople();
   };
+
   const createAssignment = async (
     event: React.FormEvent<HTMLFormElement>,
     kind: 'owners' | 'occupancies',
@@ -110,6 +147,7 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
     setMessage('Asignación creada.');
     await loadAssignments(selected);
   };
+
   const closeAssignment = async (kind: 'unit-owners' | 'unit-occupancies', id: string) => {
     await peopleApi(`/v1/condominiums/${condominiumId}/${kind}/${id}`, session, {
       method: 'PATCH',
@@ -118,6 +156,52 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
     if (selected) await loadAssignments(selected);
     setMessage('Asignación cerrada; se conservó el historial.');
   };
+
+  const createInvitation = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selected || !inviteUnitId) return;
+    if (!selected.email) {
+      setMessage('Agrega un correo válido a la persona antes de invitarla.');
+      return;
+    }
+    setInviting(true);
+    setMessage('');
+    setLatestInvitationUrl('');
+    try {
+      const result = await createResidentInvitation({
+        condominiumId,
+        personId: selected.id,
+        unitId: inviteUnitId,
+        role: inviteRole,
+      });
+      setLatestInvitationUrl(result.invitationUrl);
+      setMessage('Invitación creada. Comparte el enlace con el residente.');
+      await loadInvitations(selected);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No se pudo crear la invitación.');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const revokeInvitation = async (invitationId: string) => {
+    if (!selected) return;
+    try {
+      await revokeResidentInvitation(invitationId);
+      setMessage('Invitación revocada.');
+      setLatestInvitationUrl('');
+      await loadInvitations(selected);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No se pudo revocar la invitación.');
+    }
+  };
+
+  const copyLatestInvitation = async () => {
+    if (!latestInvitationUrl) return;
+    await navigator.clipboard.writeText(latestInvitationUrl);
+    setMessage('Enlace de invitación copiado.');
+  };
+
   const previewCsv = async () => {
     if (file)
       setPreview(
@@ -127,6 +211,7 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
         }),
       );
   };
+
   const commit = async () => {
     if (!preview) return;
     const result = await peopleApi(
@@ -226,28 +311,63 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
               )}
             </p>
           ))}
-          <form
-            onSubmit={async (event) => {
-              event.preventDefault();
-              const values = Object.fromEntries(new FormData(event.currentTarget));
-              await peopleApi(`/v1/condominiums/${condominiumId}/invitations`, session, {
-                method: 'POST',
-                body: JSON.stringify({
-                  personId: selected.id,
-                  email: values.email,
-                  intendedRole: values.intendedRole,
-                }),
-              });
-              setMessage('Invitación creada.');
-            }}
-          >
-            <input name="email" required placeholder="Correo de invitación" />
-            <select name="intendedRole">
+
+          <h4>Acceso de residente</h4>
+          <p>
+            La invitación se liga al correo de la persona y a una relación activa con la unidad.
+          </p>
+          <form onSubmit={(event) => void createInvitation(event)}>
+            <select
+              aria-label="Rol del residente"
+              value={inviteRole}
+              onChange={(event) => setInviteRole(event.target.value as ResidentRole)}
+            >
               <option value="owner">Propietario</option>
               <option value="tenant">Inquilino</option>
             </select>
-            <button>Crear invitación</button>
+            <select
+              aria-label="Unidad del residente"
+              value={inviteUnitId}
+              onChange={(event) => setInviteUnitId(event.target.value)}
+              required
+            >
+              <option value="">Seleccionar unidad</option>
+              {inviteUnits.map((item) => (
+                <option key={item.unitId} value={item.unitId}>
+                  {item.unitCode}
+                </option>
+              ))}
+            </select>
+            <button disabled={inviting || !selected.email || !inviteUnitId}>
+              {inviting ? 'Creando…' : `Invitar como ${residentRoleLabel(inviteRole).toLowerCase()}`}
+            </button>
           </form>
+          {!selected.email ? <p>Agrega un correo a esta persona para habilitar invitaciones.</p> : null}
+          {inviteUnits.length === 0 ? (
+            <p>No hay una asignación activa compatible con el rol seleccionado.</p>
+          ) : null}
+          {latestInvitationUrl ? (
+            <div>
+              <input aria-label="Enlace de invitación" readOnly value={latestInvitationUrl} />
+              <button onClick={() => void copyLatestInvitation()} type="button">
+                Copiar enlace
+              </button>
+            </div>
+          ) : null}
+
+          <h4>Invitaciones</h4>
+          {invitations.length === 0 ? <p>No hay invitaciones para esta persona.</p> : null}
+          {invitations.map((invitation) => (
+            <p key={invitation.id}>
+              {residentRoleLabel(invitation.intended_role)} · {invitation.status} · vence{' '}
+              {new Date(invitation.expires_at).toLocaleDateString('es')}{' '}
+              {invitation.status === 'pending' ? (
+                <button onClick={() => void revokeInvitation(invitation.id)} type="button">
+                  Revocar
+                </button>
+              ) : null}
+            </p>
+          ))}
         </>
       )}
       <h3>Importar personas</h3>
