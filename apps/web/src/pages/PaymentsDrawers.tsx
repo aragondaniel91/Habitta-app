@@ -124,7 +124,10 @@ function PaymentForm({
     setSaving(true);
     setMessage('');
     try {
-      const values = Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>;
+      const values = Object.fromEntries(new FormData(event.currentTarget)) as Record<
+        string,
+        string
+      >;
       const path = payment
         ? `/v1/condominiums/${condominiumId}/payments/${payment.id}`
         : `/v1/condominiums/${condominiumId}/payments`;
@@ -147,7 +150,9 @@ function PaymentForm({
     <form className="payments-form" onSubmit={(event) => void submit(event)}>
       {message ? <div className="payments-form__message">{message}</div> : null}
       {!methods.length ? (
-        <div className="payments-form__notice">Crea un método de pago antes de registrar movimientos.</div>
+        <div className="payments-form__notice">
+          Crea un método de pago antes de registrar movimientos.
+        </div>
       ) : null}
       {!payment ? (
         <Field label="Unidad">
@@ -405,7 +410,8 @@ function ReviewPayment({
       .then((accounts) => {
         if (!active) return;
         const matching = accounts.filter(
-          (account) => account.is_active && account.currency_code === payment.original_currency_code,
+          (account) =>
+            account.is_active && account.currency_code === payment.original_currency_code,
         );
         setTreasuryAccounts(matching);
         setSelectedTreasuryAccountId((current) => {
@@ -430,7 +436,13 @@ function ReviewPayment({
     return () => {
       active = false;
     };
-  }, [condominiumId, payment.id, payment.original_currency_code, payment.treasury_account_id, session]);
+  }, [
+    condominiumId,
+    payment.id,
+    payment.original_currency_code,
+    payment.treasury_account_id,
+    session,
+  ]);
 
   const transition = async (action: string, nextMessage: string, includeReason = false) => {
     setMessage('');
@@ -470,7 +482,9 @@ function ReviewPayment({
         </div>
         <div>
           <span>Monto</span>
-          <strong>{formatDashboardAmount(payment.original_amount, payment.original_currency_code)}</strong>
+          <strong>
+            {formatDashboardAmount(payment.original_amount, payment.original_currency_code)}
+          </strong>
         </div>
         <div>
           <span>Fecha</span>
@@ -492,7 +506,10 @@ function ReviewPayment({
       {message ? <div className="payments-form__message">{message}</div> : null}
       <div className="payments-review__actions">
         {payment.status === 'submitted' ? (
-          <Button onClick={() => void transition('start-review', 'Revisión iniciada.')} variant="secondary">
+          <Button
+            onClick={() => void transition('start-review', 'Revisión iniciada.')}
+            variant="secondary"
+          >
             Iniciar revisión
           </Button>
         ) : null}
