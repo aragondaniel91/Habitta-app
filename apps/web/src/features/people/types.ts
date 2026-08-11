@@ -11,6 +11,7 @@ export type Assignment = {
   person_id: string;
   starts_at: string;
   ends_at?: string;
+  unitId?: string;
   unitCode?: string;
 };
 export type Preview = { valid: unknown[]; errors: { row: number; error: string }[] };
