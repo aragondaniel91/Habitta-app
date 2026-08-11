@@ -11,9 +11,7 @@ export const workerSecretsContent = (env) => {
   return JSON.stringify({
     SUPABASE_ANON_KEY: anon,
     SUPABASE_SERVICE_ROLE_KEY: service,
-    ...(emailMode !== 'disabled' && zeptoMailToken
-      ? { ZEPTOMAIL_SEND_TOKEN: zeptoMailToken }
-      : {}),
+    ...(emailMode !== 'disabled' && zeptoMailToken ? { ZEPTOMAIL_SEND_TOKEN: zeptoMailToken } : {}),
   });
 };
 
