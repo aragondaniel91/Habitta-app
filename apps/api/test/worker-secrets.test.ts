@@ -11,13 +11,19 @@ describe('worker secret file email gating', () => {
     expect(JSON.parse(workerSecretsContent(supabaseSecrets))).toEqual(supabaseSecrets);
   });
 
-  it.each(['sandbox', 'live'])('fails closed without ZeptoMail in %s mode', (mode) => {
+  it('keeps sandbox compatible when the token is already persisted remotely', () => {
+    expect(
+      JSON.parse(workerSecretsContent({ ...supabaseSecrets, NOTIFICATIONS_EMAIL_MODE: 'sandbox' })),
+    ).toEqual(supabaseSecrets);
+  });
+
+  it('fails closed without ZeptoMail in live mode', () => {
     expect(() =>
-      workerSecretsContent({ ...supabaseSecrets, NOTIFICATIONS_EMAIL_MODE: mode }),
+      workerSecretsContent({ ...supabaseSecrets, NOTIFICATIONS_EMAIL_MODE: 'live' }),
     ).toThrow('worker_email_secret_missing');
   });
 
-  it.each(['sandbox', 'live'])('includes ZeptoMail only for active %s mode', (mode) => {
+  it.each(['sandbox', 'live'])('includes ZeptoMail when supplied for %s mode', (mode) => {
     expect(
       JSON.parse(
         workerSecretsContent({
