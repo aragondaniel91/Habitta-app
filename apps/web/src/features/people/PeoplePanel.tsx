@@ -89,7 +89,10 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
     [people, query],
   );
 
-  const activeOwnerUnits = useMemo(() => owners.filter((item) => !item.ends_at && item.unitId), [owners]);
+  const activeOwnerUnits = useMemo(
+    () => owners.filter((item) => !item.ends_at && item.unitId),
+    [owners],
+  );
   const activeTenantUnits = useMemo(
     () => occupancies.filter((item) => !item.ends_at && item.unitId),
     [occupancies],
@@ -339,10 +342,14 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
               ))}
             </select>
             <button disabled={inviting || !selected.email || !inviteUnitId}>
-              {inviting ? 'Creando…' : `Invitar como ${residentRoleLabel(inviteRole).toLowerCase()}`}
+              {inviting
+                ? 'Creando…'
+                : `Invitar como ${residentRoleLabel(inviteRole).toLowerCase()}`}
             </button>
           </form>
-          {!selected.email ? <p>Agrega un correo a esta persona para habilitar invitaciones.</p> : null}
+          {!selected.email ? (
+            <p>Agrega un correo a esta persona para habilitar invitaciones.</p>
+          ) : null}
           {inviteUnits.length === 0 ? (
             <p>No hay una asignación activa compatible con el rol seleccionado.</p>
           ) : null}
