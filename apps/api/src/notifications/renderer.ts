@@ -1,5 +1,6 @@
 import { notificationTemplates, type NotificationTemplateKey } from './templates';
 import type { RenderedEmail } from './types';
+import { HABITTA_EMAIL_LOGO_BASE64 } from './email-assets';
 
 const escapeHtml = (value: string) =>
   value
@@ -43,6 +44,6 @@ export const renderNotificationEmail = (
   const escapedAction = escapeHtml(action);
   const subject = `${template.subject} | Habitta`;
   const text = `${template.intro}${textDetails ? `\n${textDetails}` : ''}\nVer en Habitta: ${action}`;
-  const html = `<main style="font-family:Poppins,Arial,sans-serif;color:#333D4B"><h1 style="color:#0D1B2A">${escapeHtml(template.subject)}</h1><p>${escapeHtml(template.intro)}</p>${escapedDetails ? `<p>${escapedDetails}</p>` : ''}<p><a href="${escapedAction}" style="background:#1B4F72;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px">Ver en Habitta</a></p></main>`;
+  const html = `<main style="font-family:Poppins,Arial,sans-serif;color:#333D4B"><p style="margin:0 0 20px"><img src="data:image/png;base64,${HABITTA_EMAIL_LOGO_BASE64}" width="110" alt="Habitta" style="display:block;width:110px;height:auto"/></p><h1 style="color:#0D1B2A">${escapeHtml(template.subject)}</h1><p>${escapeHtml(template.intro)}</p>${escapedDetails ? `<p>${escapedDetails}</p>` : ''}<p><a href="${escapedAction}" style="background:#1B4F72;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px">Ver en Habitta</a></p></main>`;
   return { subject, html, text };
 };

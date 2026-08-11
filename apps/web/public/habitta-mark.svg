@@ -1,9 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title description">
   <title id="title">Habitta</title>
-  <desc id="description">Edificio residencial estilizado de Habitta</desc>
+  <desc id="description">Marca de Habitta: edificios residenciales bajo un techo</desc>
   <rect width="96" height="96" rx="22" fill="#f5f7fa"/>
-  <path d="M18 78h60" fill="none" stroke="#0d1b2a" stroke-width="5" stroke-linecap="round"/>
-  <path d="M27 77V35l20-18v60M47 77V28l22 13v36" fill="none" stroke="#0d1b2a" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M36 44v8M36 60v8M56 43v8M56 59v8" fill="none" stroke="#1b4f72" stroke-width="5" stroke-linecap="round"/>
-  <path d="M68 77V61" fill="none" stroke="#28a745" stroke-width="5" stroke-linecap="round"/>
+  <g transform="translate(16,22.3) scale(0.07114)">
+    <path fill="#22a040" d="M0,722.36l156.23-12.19,300.7-161.77,310.27,162.88,132.51,11.08-433.81-271.15C269.72,583.09,105.87,682.15,0,722.36Z"/>
+    <g fill="#05203b">
+      <polygon points="113.13 341.53 264.02 249.98 264.02 555.41 113.13 651.9 113.13 341.53"/>
+      <polygon points="456.93 34.16 456.93 73.64 568.71 141.33 568.71 96.2 456.93 34.16"/>
+      <polygon points="456.93 107.54 456.93 150.8 568.71 218.48 568.71 173.36 456.93 107.54"/>
+      <polygon points="456.93 175.26 456.93 214.74 568.71 282.42 568.71 241.57 456.93 175.26"/>
+      <polygon points="456.93 241.57 456.93 281.05 568.71 340.78 568.71 305.24 456.93 241.57"/>
+      <polygon points="456.4 305.24 456.4 344.72 568.18 399.75 568.18 360.97 456.4 305.24"/>
+      <polygon points="456.4 367.38 456.4 399.75 568.18 457.69 568.18 422.03 456.4 367.38"/>
+      <path d="M285.26,99.09v442.42l54.93-35.11v-239.58l32.23,14.65-.73,204.96,57.87-37.07V.94l-144.29,98.15ZM370.35,147.57l-26.84,15.92v-32.3l26.84-17.29v33.67Z"/>
+      <path d="M596.26,360.97l-1.23,134.41,172.17,114.56v-243.62c-2.76-3.66-71.67-100.19-170.94-5.36ZM707.04,432.85l-45.95-12.74v-34.12l45.95,26.56v20.31Z"/>
+    </g>
+    <g fill="#05203b">
+      <rect x="420.84" y="621.71" width="33.63" height="33.63"/>
+      <rect x="467.29" y="621.71" width="33.63" height="33.63"/>
+      <rect x="420.84" y="670.82" width="33.63" height="33.63"/>
+      <rect x="467.29" y="670.82" width="33.63" height="33.63"/>
+    </g>
+  </g>
 </svg>

@@ -8,6 +8,7 @@
       content="Habitta simplifica la administración de condominios, pagos, comunicaciones y comunidad en un solo lugar."
     />
     <title>Habitta — Tu comunidad, mejor administrada</title>
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
     <style>
       :root {
         --navy: #0d1b2a;
@@ -60,10 +61,18 @@
       }
 
       .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
         color: var(--navy);
         font-size: 1.45rem;
         font-weight: 800;
         letter-spacing: -0.04em;
+      }
+
+      .brand img {
+        width: 30px;
+        height: 30px;
       }
 
       .nav-actions {
@@ -235,7 +244,10 @@
   <body>
     <header>
       <nav class="shell" aria-label="Navegación principal">
-        <a class="brand" href="https://mihabitta.com">Habitta</a>
+        <a class="brand" href="https://mihabitta.com">
+          <img alt="" height="30" src="/logo-mark.svg" width="30" />
+          Habitta
+        </a>
         <div class="nav-actions">
           <a class="button button-secondary" href="mailto:hola@mihabitta.com">Contacto</a>
           <a class="button button-primary" href="https://app.mihabitta.com">Entrar a Habitta</a>

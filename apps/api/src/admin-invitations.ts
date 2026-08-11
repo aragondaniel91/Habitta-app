@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { resolveNotificationsEnvironment } from './config/notifications-env';
 import { sendNotificationEmail } from './notifications/email-provider';
+import { HABITTA_EMAIL_LOGO_MONO_BASE64 } from './notifications/email-assets';
 import type { NotificationBindings } from './notifications/types';
 import { structureRoutes } from './structure-routes';
 
@@ -181,8 +182,8 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
       <div style="font-family:Inter,Arial,sans-serif;background:#f5f7fa;padding:32px;color:#333d4b">
         <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e4e7ec;border-radius:16px;overflow:hidden">
           <div style="background:#0d1b2a;padding:24px 28px;color:#ffffff">
-            <strong style="font-size:22px">Habitta</strong>
-            <div style="margin-top:4px;color:#b9c7d5;font-size:13px">Gestión de condominios</div>
+            <img src="data:image/png;base64,${HABITTA_EMAIL_LOGO_MONO_BASE64}" width="130" alt="Habitta" style="display:block;width:130px;height:auto"/>
+            <div style="margin-top:6px;color:#b9c7d5;font-size:13px">Gestión de condominios</div>
           </div>
           <div style="padding:28px">
             <p style="margin:0 0 8px;color:#1b4f72;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Invitación administrativa</p>
