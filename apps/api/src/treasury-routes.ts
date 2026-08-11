@@ -39,8 +39,6 @@ const rpc = (c: AppContext, name: string, payload: unknown) =>
 const responseJson = async (c: AppContext, response: Response, successStatus: 200 | 201 = 200) => {
   const value = (await response.json()) as { code?: string; message?: string };
   if (response.ok) return c.json(value, successStatus);
-  // The treasury functions refuse by raising, which PostgREST reports as a plain 400. Reporting
-  // that as a validation failure would be misleading, so denials are surfaced as 403.
   const denied =
     response.status === 401 ||
     response.status === 403 ||
@@ -58,11 +56,14 @@ const responseJson = async (c: AppContext, response: Response, successStatus: 20
 
 const condominiumId = (c: AppContext) => uuidSchema.parse(c.req.param('id'));
 const financialAccountSelectionSchema = z.object({ accountId: uuidSchema });
+const overdraftAuthorizationSchema = z.object({
+  accountId: uuidSchema,
+  amount: z.coerce.number().positive(),
+  requestKey: z.string().trim().min(8).max(160),
+  reason: z.string().trim().min(5).max(500),
+  operation: z.enum(['movement', 'transfer']),
+});
 
-/**
- * List endpoints return arrays, so they cannot reuse responseJson. Collapsing every failure into
- * 403 would hide schema mistakes behind a permissions error, so the status is mapped instead.
- */
 const listJson = async (c: AppContext, response: Response) => {
   const value = await response.json();
   if (response.ok) return c.json(value, 200);
@@ -73,8 +74,6 @@ const listJson = async (c: AppContext, response: Response) => {
 
 export const treasuryRoutes = new Hono<AppEnvironment>();
 
-// Balances are derived from immutable movements by get_treasury_accounts rather than stored, so
-// reading them never risks drifting from the ledger.
 treasuryRoutes.get('/:id/treasury/accounts', async (c) => {
   const response = await rpc(c, 'get_treasury_accounts', {
     target_condominium: condominiumId(c),
@@ -97,8 +96,6 @@ treasuryRoutes.post('/:id/treasury/accounts', async (c) => {
   return responseJson(c, response, 201);
 });
 
-// HAB-127: account selection is stored before the lifecycle transition. The later approval or
-// mark-paid transition and its Treasury movement still happen in one PostgreSQL transaction.
 treasuryRoutes.post('/:id/treasury/payments/:paymentId/account', async (c) => {
   const payload = await body(c, financialAccountSelectionSchema);
   if (payload instanceof Response) return payload;
@@ -119,6 +116,23 @@ treasuryRoutes.post('/:id/treasury/expenses/:expenseId/account', async (c) => {
     target_account: payload.accountId,
   });
   return responseJson(c, response);
+});
+
+// HAB-126: an intentional overdraft is authorized separately and tied to the exact immutable
+// movement request. Transfers create their outgoing movement with the ':out' suffix.
+treasuryRoutes.post('/:id/treasury/overdraft-authorizations', async (c) => {
+  const payload = await body(c, overdraftAuthorizationSchema);
+  if (payload instanceof Response) return payload;
+  const movementRequestKey =
+    payload.operation === 'transfer' ? `${payload.requestKey}:out` : payload.requestKey;
+  const response = await rpc(c, 'authorize_treasury_overdraft', {
+    target_condominium: condominiumId(c),
+    target_account: payload.accountId,
+    debit_amount: payload.amount,
+    movement_request_key: movementRequestKey,
+    authorization_reason: payload.reason,
+  });
+  return responseJson(c, response, 201);
 });
 
 treasuryRoutes.get('/:id/treasury/movements', async (c) => {
@@ -153,8 +167,6 @@ treasuryRoutes.post('/:id/treasury/movements', async (c) => {
     movement_date: payload.occurredOn,
     movement_description: payload.description,
     movement_reference: payload.reference ?? null,
-    // record_treasury_movement pairs the opening balance with its own source type and rejects any
-    // other combination, so the source follows the kind rather than being fixed to manual.
     movement_source: payload.movementKind === 'opening_balance' ? 'opening_balance' : 'manual',
     source_record: null,
     request_key: payload.idempotencyKey,

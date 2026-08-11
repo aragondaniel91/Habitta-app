@@ -4,6 +4,7 @@ import { Button, Field, Select } from '../../components/ui';
 import { Drawer } from '../../components/Drawer';
 import {
   accountTypeLabels,
+  formatTreasuryAmount,
   movementKindLabels,
   recordableKinds,
   type TreasuryAccount,
@@ -140,6 +141,7 @@ export function MovementDrawer({
     amount: string;
     occurredOn: string;
     description: string;
+    overdraftReason?: string;
   }) => Promise<void>;
 }) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
@@ -147,8 +149,24 @@ export function MovementDrawer({
   const [amount, setAmount] = useState('');
   const [occurredOn, setOccurredOn] = useState(today);
   const [description, setDescription] = useState('');
+  const [confirmOverdraft, setConfirmOverdraft] = useState(false);
+  const [overdraftReason, setOverdraftReason] = useState('');
+
+  const account = accounts.find((item) => item.id === accountId);
+  const numericAmount = Number(amount);
+  const isDebit = movementKind === 'withdrawal' || movementKind === 'fee';
+  const projectedBalance = Number(account?.balance ?? 0) - numericAmount;
+  const overdraft = isDebit && numericAmount > 0 && projectedBalance < 0;
+
   const { saving, error, submit } = useSubmit(() =>
-    onSubmit({ accountId, movementKind, amount, occurredOn, description }),
+    onSubmit({
+      accountId,
+      movementKind,
+      amount,
+      occurredOn,
+      description,
+      ...(overdraft ? { overdraftReason: overdraftReason.trim() } : {}),
+    }),
   );
 
   return (
@@ -156,10 +174,17 @@ export function MovementDrawer({
       <form className="treasury-form" onSubmit={(event) => void submit(event)}>
         {error ? <div className="treasury-inline-alert">{error}</div> : null}
         <Field label="Cuenta">
-          <Select onChange={(event) => setAccountId(event.target.value)} required value={accountId}>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} · {account.currency_code}
+          <Select
+            onChange={(event) => {
+              setAccountId(event.target.value);
+              setConfirmOverdraft(false);
+            }}
+            required
+            value={accountId}
+          >
+            {accounts.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name} · {item.currency_code}
               </option>
             ))}
           </Select>
@@ -174,7 +199,10 @@ export function MovementDrawer({
             label="Tipo"
           >
             <Select
-              onChange={(event) => setMovementKind(event.target.value as TreasuryMovementKind)}
+              onChange={(event) => {
+                setMovementKind(event.target.value as TreasuryMovementKind);
+                setConfirmOverdraft(false);
+              }}
               value={movementKind}
             >
               {recordableKinds.map((kind) => (
@@ -198,7 +226,10 @@ export function MovementDrawer({
           <input
             className="input"
             inputMode="decimal"
-            onChange={(event) => setAmount(event.target.value)}
+            onChange={(event) => {
+              setAmount(event.target.value);
+              setConfirmOverdraft(false);
+            }}
             placeholder="0.00"
             required
             value={amount}
@@ -213,8 +244,46 @@ export function MovementDrawer({
             value={description}
           />
         </Field>
-        <Button disabled={saving} type="submit">
-          {saving ? 'Registrando…' : 'Registrar movimiento'}
+
+        {overdraft && account ? (
+          <div className="treasury-overdraft-warning" role="alert">
+            <strong>Esta operación dejará la cuenta en negativo.</strong>
+            <p>
+              Saldo actual {formatTreasuryAmount(account.balance, account.currency_code)} · saldo
+              resultante {formatTreasuryAmount(projectedBalance, account.currency_code)}.
+            </p>
+            <Field
+              hint="Quedará guardado en la auditoría financiera."
+              label="Motivo de la excepción"
+            >
+              <textarea
+                className="textarea"
+                maxLength={500}
+                minLength={5}
+                onChange={(event) => setOverdraftReason(event.target.value)}
+                required
+                rows={3}
+                value={overdraftReason}
+              />
+            </Field>
+            <label className="treasury-overdraft-confirmation">
+              <input
+                checked={confirmOverdraft}
+                onChange={(event) => setConfirmOverdraft(event.target.checked)}
+                type="checkbox"
+              />
+              Confirmo que deseo registrar el movimiento aunque la cuenta quede negativa.
+            </label>
+          </div>
+        ) : null}
+
+        <Button
+          disabled={
+            saving || (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
+          }
+          type="submit"
+        >
+          {saving ? 'Registrando…' : overdraft ? 'Confirmar y registrar' : 'Registrar movimiento'}
         </Button>
       </form>
     </DrawerShell>
@@ -234,6 +303,7 @@ export function TransferDrawer({
     amount: string;
     occurredOn: string;
     description: string;
+    overdraftReason?: string;
   }) => Promise<void>;
 }) {
   const [fromAccountId, setFromAccountId] = useState(accounts[0]?.id ?? '');
@@ -241,14 +311,26 @@ export function TransferDrawer({
   const [amount, setAmount] = useState('');
   const [occurredOn, setOccurredOn] = useState(today);
   const [description, setDescription] = useState('');
-  const { saving, error, submit } = useSubmit(() =>
-    onSubmit({ fromAccountId, toAccountId, amount, occurredOn, description }),
-  );
+  const [confirmOverdraft, setConfirmOverdraft] = useState(false);
+  const [overdraftReason, setOverdraftReason] = useState('');
 
   const origin = accounts.find((account) => account.id === fromAccountId);
-  // A transfer moves money between accounts, so both sides must hold the same currency.
   const destinations = accounts.filter(
     (account) => account.id !== fromAccountId && account.currency_code === origin?.currency_code,
+  );
+  const numericAmount = Number(amount);
+  const projectedBalance = Number(origin?.balance ?? 0) - numericAmount;
+  const overdraft = numericAmount > 0 && projectedBalance < 0;
+
+  const { saving, error, submit } = useSubmit(() =>
+    onSubmit({
+      fromAccountId,
+      toAccountId,
+      amount,
+      occurredOn,
+      description,
+      ...(overdraft ? { overdraftReason: overdraftReason.trim() } : {}),
+    }),
   );
 
   return (
@@ -260,6 +342,7 @@ export function TransferDrawer({
             onChange={(event) => {
               setFromAccountId(event.target.value);
               setToAccountId('');
+              setConfirmOverdraft(false);
             }}
             required
             value={fromAccountId}
@@ -293,7 +376,10 @@ export function TransferDrawer({
             <input
               className="input"
               inputMode="decimal"
-              onChange={(event) => setAmount(event.target.value)}
+              onChange={(event) => {
+                setAmount(event.target.value);
+                setConfirmOverdraft(false);
+              }}
               placeholder="0.00"
               required
               value={amount}
@@ -318,8 +404,52 @@ export function TransferDrawer({
             value={description}
           />
         </Field>
-        <Button disabled={saving || !toAccountId} type="submit">
-          {saving ? 'Transfiriendo…' : 'Registrar transferencia'}
+
+        {overdraft && origin ? (
+          <div className="treasury-overdraft-warning" role="alert">
+            <strong>La cuenta origen quedará en negativo.</strong>
+            <p>
+              Saldo actual {formatTreasuryAmount(origin.balance, origin.currency_code)} · saldo
+              resultante {formatTreasuryAmount(projectedBalance, origin.currency_code)}.
+            </p>
+            <Field
+              hint="Quedará guardado en la auditoría financiera."
+              label="Motivo de la excepción"
+            >
+              <textarea
+                className="textarea"
+                maxLength={500}
+                minLength={5}
+                onChange={(event) => setOverdraftReason(event.target.value)}
+                required
+                rows={3}
+                value={overdraftReason}
+              />
+            </Field>
+            <label className="treasury-overdraft-confirmation">
+              <input
+                checked={confirmOverdraft}
+                onChange={(event) => setConfirmOverdraft(event.target.checked)}
+                type="checkbox"
+              />
+              Confirmo que deseo transferir aunque la cuenta origen quede negativa.
+            </label>
+          </div>
+        ) : null}
+
+        <Button
+          disabled={
+            saving ||
+            !toAccountId ||
+            (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
+          }
+          type="submit"
+        >
+          {saving
+            ? 'Transfiriendo…'
+            : overdraft
+              ? 'Confirmar transferencia'
+              : 'Registrar transferencia'}
         </Button>
       </form>
     </DrawerShell>
