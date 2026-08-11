@@ -145,7 +145,10 @@ begin
       raise exception 'proposal result requires %', automatic_decision;
     end if;
 
-    next_status := action_name::public.governance_proposal_status;
+    next_status := case
+      when action_name = 'approve' then 'approved'::public.governance_proposal_status
+      else 'rejected'::public.governance_proposal_status
+    end;
     event_name := case when action_name = 'approve' then 'approved' else 'rejected' end;
   elsif action_name = 'archive' then
     if proposal.status = 'open' then
@@ -245,7 +248,10 @@ begin
   end if;
 
   decision_snapshot := public.get_governance_decision(target_condominium, target_proposal);
-  next_status := decision_name::public.governance_proposal_status;
+  next_status := case
+    when decision_name = 'approve' then 'approved'::public.governance_proposal_status
+    else 'rejected'::public.governance_proposal_status
+  end;
   event_name := case when decision_name = 'approve' then 'approved' else 'rejected' end;
 
   update public.governance_proposals
