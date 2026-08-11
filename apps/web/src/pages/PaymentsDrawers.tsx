@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useDialogBehavior } from '../components/Drawer';
@@ -15,6 +15,7 @@ import type {
   PaymentReceipt,
   Receivable,
 } from '../features/payments/types';
+import type { TreasuryAccount } from '../features/treasury/types';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import { paymentStatusLabels, paymentStatusTone } from '../lib/payments';
 
@@ -395,7 +396,54 @@ function ReviewPayment({
 }) {
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
+  const [treasuryAccounts, setTreasuryAccounts] = useState<TreasuryAccount[]>([]);
+  const [treasuryLoading, setTreasuryLoading] = useState(true);
+  const [selectedTreasuryAccountId, setSelectedTreasuryAccountId] = useState(
+    payment.treasury_account_id ?? '',
+  );
   const endpoint = `/v1/condominiums/${condominiumId}/payments/${payment.id}`;
+
+  useEffect(() => {
+    let active = true;
+    setTreasuryLoading(true);
+    paymentApi<TreasuryAccount[]>(`/v1/condominiums/${condominiumId}/treasury/accounts`, session)
+      .then((accounts) => {
+        if (!active) return;
+        const matching = accounts.filter(
+          (account) =>
+            account.is_active && account.currency_code === payment.original_currency_code,
+        );
+        setTreasuryAccounts(matching);
+        setSelectedTreasuryAccountId((current) => {
+          if (current && matching.some((account) => account.id === current)) return current;
+          if (
+            payment.treasury_account_id &&
+            matching.some((account) => account.id === payment.treasury_account_id)
+          ) {
+            return payment.treasury_account_id;
+          }
+          return matching.length === 1 ? matching[0]!.id : '';
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setTreasuryAccounts([]);
+        setMessage('No se pudieron cargar las cuentas de tesorería.');
+      })
+      .finally(() => {
+        if (active) setTreasuryLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [
+    condominiumId,
+    payment.id,
+    payment.original_currency_code,
+    payment.treasury_account_id,
+    session,
+  ]);
+
   const transition = async (action: string, nextMessage: string, includeReason = false) => {
     setMessage('');
     try {
@@ -407,6 +455,22 @@ function ReviewPayment({
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo actualizar el pago.');
     }
+  };
+
+  const selectTreasuryAccountBeforeApproval = async () => {
+    if (treasuryLoading) throw new Error('Espera a que carguen las cuentas de tesorería.');
+    if (treasuryAccounts.length > 0 && !selectedTreasuryAccountId) {
+      throw new Error('Selecciona la cuenta de tesorería que recibirá este pago.');
+    }
+    if (!selectedTreasuryAccountId) return;
+    await paymentApi(
+      `/v1/condominiums/${condominiumId}/treasury/payments/${payment.id}/account`,
+      session,
+      {
+        method: 'POST',
+        body: JSON.stringify({ accountId: selectedTreasuryAccountId }),
+      },
+    );
   };
 
   return (
@@ -496,13 +560,50 @@ function ReviewPayment({
             explícita.
           </span>
         </div>
+        <Field
+          label="Cuenta de tesorería"
+          hint={
+            treasuryAccounts.length === 0 && !treasuryLoading
+              ? `No hay cuentas activas en ${payment.original_currency_code}; Habitta creará una cuenta transitoria claramente identificada.`
+              : 'El pago aprobado ingresará a esta cuenta.'
+          }
+        >
+          <Select
+            disabled={treasuryLoading || treasuryAccounts.length === 0}
+            onChange={(event) => setSelectedTreasuryAccountId(event.target.value)}
+            required={treasuryAccounts.length > 1}
+            value={selectedTreasuryAccountId}
+          >
+            <option value="">
+              {treasuryLoading
+                ? 'Cargando cuentas…'
+                : treasuryAccounts.length === 0
+                  ? 'Cuenta transitoria automática'
+                  : 'Seleccionar cuenta'}
+            </option>
+            {treasuryAccounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} · {account.currency_code}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <PaymentAllocationEditor
           onApprove={async (allocations: AllocationInput[]) => {
-            await paymentApi(`${endpoint}/approve`, session, {
-              method: 'POST',
-              body: JSON.stringify({ allocations }),
-            });
-            await onChanged('Pago aprobado y aplicado.');
+            setMessage('');
+            try {
+              await selectTreasuryAccountBeforeApproval();
+              await paymentApi(`${endpoint}/approve`, session, {
+                method: 'POST',
+                body: JSON.stringify({ allocations }),
+              });
+              await onChanged('Pago aprobado, aplicado y registrado en tesorería.');
+            } catch (error) {
+              const nextMessage =
+                error instanceof Error ? error.message : 'No se pudo aprobar el pago.';
+              setMessage(nextMessage);
+              throw error;
+            }
           }}
           onPreview={(allocations) =>
             paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
@@ -636,7 +737,7 @@ export function PaymentsDrawerHost({
   if (drawer.type === 'review') {
     return (
       <DrawerFrame
-        description="Valida referencia, comprobante y aplicación antes de aprobar."
+        description="Valida referencia, comprobante, tesorería y aplicación antes de aprobar."
         eyebrow="Control financiero"
         icon={<PaymentsIcon size={22} />}
         onClose={onClose}

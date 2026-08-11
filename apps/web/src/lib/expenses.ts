@@ -34,6 +34,7 @@ export type ExpenseRecord = {
   status: ExpenseStatus;
   payment_method: string | null;
   payment_reference: string | null;
+  treasury_account_id: string | null;
   support_url: string | null;
   notes: string | null;
   approved_at: string | null;
