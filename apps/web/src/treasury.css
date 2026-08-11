@@ -184,6 +184,40 @@
   color: var(--green, #28a745);
 }
 
+.treasury-overdraft-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid var(--red, #c94d58);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--red, #c94d58) 7%, transparent);
+}
+
+.treasury-overdraft-warning > strong {
+  color: var(--red, #c94d58);
+}
+
+.treasury-overdraft-warning > p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.treasury-overdraft-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.treasury-overdraft-confirmation input {
+  margin-top: 0.15rem;
+}
+
 .treasury-table-skeleton {
   display: block;
   height: 15rem;
