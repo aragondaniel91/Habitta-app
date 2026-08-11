@@ -141,7 +141,7 @@ set row_security = off
 as $$
 declare
   current_balance numeric(18, 2);
-  authorization public.treasury_overdraft_authorizations;
+  overdraft_authorization public.treasury_overdraft_authorizations;
 begin
   -- Only explicit Treasury operations are guarded. Financial lifecycle movements must continue
   -- to represent reality even when the actual account is already negative.
@@ -165,7 +165,7 @@ begin
     return new;
   end if;
 
-  select * into authorization
+  select * into overdraft_authorization
   from public.treasury_overdraft_authorizations a
   where a.condominium_id = new.condominium_id
     and a.account_id = new.account_id
@@ -173,7 +173,7 @@ begin
     and a.amount = new.amount
     and a.authorized_by = new.created_by;
 
-  if authorization.id is null then
+  if overdraft_authorization.id is null then
     raise exception 'treasury overdraft confirmation required';
   end if;
 
