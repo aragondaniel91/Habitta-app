@@ -41,7 +41,23 @@ export const createTreasuryAccount = (
     body: JSON.stringify(input),
   });
 
-export const recordTreasuryMovement = (
+const authorizeTreasuryOverdraft = (
+  condominiumId: string,
+  session: Session,
+  input: {
+    accountId: string;
+    amount: string;
+    requestKey: string;
+    reason: string;
+    operation: 'movement' | 'transfer';
+  },
+) =>
+  apiRequest(`${base(condominiumId)}/overdraft-authorizations`, session, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+
+export const recordTreasuryMovement = async (
   condominiumId: string,
   session: Session,
   input: {
@@ -51,18 +67,36 @@ export const recordTreasuryMovement = (
     occurredOn: string;
     description: string;
     reference?: string;
+    overdraftReason?: string;
   },
-) =>
-  apiRequest<TreasuryMovement>(`${base(condominiumId)}/movements`, session, {
+) => {
+  const requestKey = treasuryRequestKey('movement');
+  if (input.overdraftReason) {
+    await authorizeTreasuryOverdraft(condominiumId, session, {
+      accountId: input.accountId,
+      amount: input.amount,
+      requestKey,
+      reason: input.overdraftReason,
+      operation: 'movement',
+    });
+  }
+
+  return apiRequest<TreasuryMovement>(`${base(condominiumId)}/movements`, session, {
     method: 'POST',
     body: JSON.stringify({
-      ...input,
+      accountId: input.accountId,
+      movementKind: input.movementKind,
+      amount: input.amount,
+      occurredOn: input.occurredOn,
+      description: input.description,
+      ...(input.reference ? { reference: input.reference } : {}),
       direction: directionForKind(input.movementKind),
-      idempotencyKey: treasuryRequestKey('movement'),
+      idempotencyKey: requestKey,
     }),
   });
+};
 
-export const createTreasuryTransfer = (
+export const createTreasuryTransfer = async (
   condominiumId: string,
   session: Session,
   input: {
@@ -72,12 +106,33 @@ export const createTreasuryTransfer = (
     occurredOn: string;
     description: string;
     reference?: string;
+    overdraftReason?: string;
   },
-) =>
-  apiRequest<TreasuryTransfer>(`${base(condominiumId)}/transfers`, session, {
+) => {
+  const requestKey = treasuryRequestKey('transfer');
+  if (input.overdraftReason) {
+    await authorizeTreasuryOverdraft(condominiumId, session, {
+      accountId: input.fromAccountId,
+      amount: input.amount,
+      requestKey,
+      reason: input.overdraftReason,
+      operation: 'transfer',
+    });
+  }
+
+  return apiRequest<TreasuryTransfer>(`${base(condominiumId)}/transfers`, session, {
     method: 'POST',
-    body: JSON.stringify({ ...input, idempotencyKey: treasuryRequestKey('transfer') }),
+    body: JSON.stringify({
+      fromAccountId: input.fromAccountId,
+      toAccountId: input.toAccountId,
+      amount: input.amount,
+      occurredOn: input.occurredOn,
+      description: input.description,
+      ...(input.reference ? { reference: input.reference } : {}),
+      idempotencyKey: requestKey,
+    }),
   });
+};
 
 export const reverseTreasuryMovement = (
   condominiumId: string,
