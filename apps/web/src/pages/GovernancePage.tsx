@@ -20,6 +20,7 @@ import {
   filterGovernanceProposals,
   formatGovernanceDate,
   governanceCategoryLabels,
+  governanceDecisionLabels,
   governanceStatusLabels,
   isProposalOpen,
   nextGovernanceActions,
@@ -28,6 +29,7 @@ import {
 import type {
   GovernanceAttachment,
   GovernanceCategory,
+  GovernanceDecision,
   GovernanceEligibility,
   GovernanceOption,
   GovernanceProposal,
@@ -48,6 +50,7 @@ type ProposalDetail = {
   attachments: GovernanceAttachment[];
   eligibility: GovernanceEligibility | null;
   results: GovernanceResults | null;
+  decision: GovernanceDecision | null;
 };
 
 type Drawer = 'create' | 'detail' | null;
@@ -364,6 +367,7 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
   const [acting, setActing] = useState(false);
   const [selectedOptionId, setSelectedOptionId] = useState('');
   const [selectedUnitId, setSelectedUnitId] = useState('');
+  const [overrideReason, setOverrideReason] = useState('');
   const [filters, setFilters] = useState({ query: '', status: '', category: '' });
 
   const load = useCallback(async () => {
@@ -395,6 +399,7 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
     setDrawer(null);
     setSelectedProposalId('');
     setDetail(null);
+    setOverrideReason('');
     setFilters({ query: '', status: '', category: '' });
   }, [condominiumId]);
 
@@ -426,8 +431,9 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
       setDetailLoading(true);
       setSelectedOptionId('');
       setSelectedUnitId('');
+      setOverrideReason('');
       try {
-        const [options, attachments, eligibility, results] = await Promise.all([
+        const [options, attachments, eligibility, results, decision] = await Promise.all([
           apiRequest<GovernanceOption[]>(
             `/v1/condominiums/${condominiumId}/governance-proposals/${proposal.id}/options`,
             session,
@@ -444,8 +450,12 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
             `/v1/condominiums/${condominiumId}/governance-proposals/${proposal.id}/results`,
             session,
           ).catch(() => null),
+          apiRequest<GovernanceDecision>(
+            `/v1/condominiums/${condominiumId}/governance-proposals/${proposal.id}/decision`,
+            session,
+          ).catch(() => null),
         ]);
-        setDetail({ options, attachments, eligibility, results });
+        setDetail({ options, attachments, eligibility, results, decision });
         if (eligibility?.units.length === 1) setSelectedUnitId(eligibility.units[0]?.id ?? '');
       } catch (requestError) {
         setError(
@@ -479,6 +489,40 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo cambiar el estado.',
+      );
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const overrideDecision = async (decision: 'approve' | 'reject') => {
+    if (!selectedProposal || overrideReason.trim().length < 3) return;
+    setActing(true);
+    setError('');
+    setMessage('');
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/governance-proposals/${selectedProposal.id}/override-decision`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            decision,
+            reason: overrideReason.trim(),
+            expectedVersion: selectedProposal.version,
+          }),
+        },
+      );
+      await load();
+      setDrawer(null);
+      setSelectedProposalId('');
+      setOverrideReason('');
+      setMessage('Decisión excepcional registrada con justificación y trazabilidad.');
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo registrar la decisión excepcional.',
       );
     } finally {
       setActing(false);
@@ -809,6 +853,81 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
                 ))}
               </section>
 
+              {selectedProposal.status === 'closed' && detail.decision ? (
+                <section className="governance-vote-panel">
+                  <div className="governance-section-heading">
+                    <div>
+                      <h3>Decisión de la votación</h3>
+                      <p>
+                        {detail.decision.decision === 'approve' || detail.decision.decision === 'reject'
+                          ? `El resultado válido determina ${detail.decision.decision === 'approve' ? 'la aprobación' : 'el rechazo'} de la propuesta${detail.decision.winning_option_label ? `: ganó “${detail.decision.winning_option_label}”` : ''}.`
+                          : detail.decision.decision === 'no_quorum'
+                            ? 'La participación no alcanzó el quórum requerido. La propuesta no puede decidirse automáticamente.'
+                            : 'Las opciones con más votos quedaron empatadas. La propuesta no puede decidirse automáticamente.'}
+                      </p>
+                    </div>
+                    <Badge
+                      tone={
+                        detail.decision.decision === 'approve'
+                          ? 'success'
+                          : detail.decision.decision === 'reject'
+                            ? 'neutral'
+                            : 'warning'
+                      }
+                    >
+                      {governanceDecisionLabels[detail.decision.decision]}
+                    </Badge>
+                  </div>
+
+                  {manage &&
+                  (detail.decision.decision === 'approve' || detail.decision.decision === 'reject') ? (
+                    <Button
+                      disabled={acting}
+                      onClick={() => void transition(detail.decision!.decision)}
+                    >
+                      {detail.decision.decision === 'approve'
+                        ? 'Confirmar aprobación según resultado'
+                        : 'Confirmar rechazo según resultado'}
+                    </Button>
+                  ) : null}
+
+                  {manage &&
+                  (detail.decision.decision === 'no_quorum' || detail.decision.decision === 'tie') ? (
+                    <div className="governance-form">
+                      <Field
+                        label="Justificación de decisión excepcional"
+                        hint="Obligatoria. Quedará registrada en el historial de auditoría."
+                      >
+                        <textarea
+                          className="textarea"
+                          onChange={(event) => setOverrideReason(event.target.value)}
+                          placeholder="Describe el acta, decisión de junta o fundamento de la excepción."
+                          rows={4}
+                          value={overrideReason}
+                        />
+                      </Field>
+                      <div className="governance-detail__actions">
+                        <Button
+                          disabled={acting || overrideReason.trim().length < 3}
+                          onClick={() => void overrideDecision('approve')}
+                          size="sm"
+                        >
+                          Aprobar excepcionalmente
+                        </Button>
+                        <Button
+                          disabled={acting || overrideReason.trim().length < 3}
+                          onClick={() => void overrideDecision('reject')}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Rechazar excepcionalmente
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
               {isProposalOpen(selectedProposal) ? (
                 <section className="governance-vote-panel">
                   <div className="governance-section-heading">
@@ -897,17 +1016,13 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
                     key={action}
                     onClick={() => void transition(action)}
                     size="sm"
-                    variant={action === 'reject' || action === 'archive' ? 'secondary' : 'primary'}
+                    variant={action === 'archive' ? 'secondary' : 'primary'}
                   >
                     {action === 'open'
                       ? 'Abrir votación'
                       : action === 'close'
                         ? 'Cerrar votación'
-                        : action === 'approve'
-                          ? 'Aprobar propuesta'
-                          : action === 'reject'
-                            ? 'Rechazar propuesta'
-                            : 'Archivar'}
+                        : 'Archivar'}
                   </Button>
                 ))}
               </div>
