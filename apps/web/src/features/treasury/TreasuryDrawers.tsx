@@ -252,7 +252,10 @@ export function MovementDrawer({
               Saldo actual {formatTreasuryAmount(account.balance, account.currency_code)} · saldo
               resultante {formatTreasuryAmount(projectedBalance, account.currency_code)}.
             </p>
-            <Field hint="Quedará guardado en la auditoría financiera." label="Motivo de la excepción">
+            <Field
+              hint="Quedará guardado en la auditoría financiera."
+              label="Motivo de la excepción"
+            >
               <textarea
                 className="textarea"
                 maxLength={500}
@@ -409,7 +412,10 @@ export function TransferDrawer({
               Saldo actual {formatTreasuryAmount(origin.balance, origin.currency_code)} · saldo
               resultante {formatTreasuryAmount(projectedBalance, origin.currency_code)}.
             </p>
-            <Field hint="Quedará guardado en la auditoría financiera." label="Motivo de la excepción">
+            <Field
+              hint="Quedará guardado en la auditoría financiera."
+              label="Motivo de la excepción"
+            >
               <textarea
                 className="textarea"
                 maxLength={500}
@@ -439,7 +445,11 @@ export function TransferDrawer({
           }
           type="submit"
         >
-          {saving ? 'Transfiriendo…' : overdraft ? 'Confirmar transferencia' : 'Registrar transferencia'}
+          {saving
+            ? 'Transfiriendo…'
+            : overdraft
+              ? 'Confirmar transferencia'
+              : 'Registrar transferencia'}
         </Button>
       </form>
     </DrawerShell>
