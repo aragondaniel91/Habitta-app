@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Button, Select } from '../../components/ui';
 import { PRIVATE_DOCUMENT_ACCEPT, privateDocumentError, uploadPrivateDocument } from './api';
@@ -41,6 +41,10 @@ export function PrivateDocumentUploader({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setDocumentType(defaultDocumentType ?? documentTypes?.[0]?.value ?? '');
+  }, [defaultDocumentType, quoteId]);
 
   const upload = async () => {
     if (!file) return;
