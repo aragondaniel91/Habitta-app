@@ -15,6 +15,7 @@ type Props = {
   defaultDocumentType?: string;
   visibility?: 'public' | 'internal';
   commentId?: string;
+  quoteId?: string;
   disabled?: boolean;
   onUploaded: () => void | Promise<void>;
 };
@@ -28,6 +29,7 @@ export function PrivateDocumentUploader({
   defaultDocumentType,
   visibility,
   commentId,
+  quoteId,
   disabled = false,
   onUploaded,
 }: Props) {
@@ -55,10 +57,12 @@ export function PrivateDocumentUploader({
         documentType?: string;
         visibility?: 'public' | 'internal';
         commentId?: string;
+        quoteId?: string;
       } = {};
       if (documentType) metadata.documentType = documentType;
       if (visibility) metadata.visibility = visibility;
       if (commentId) metadata.commentId = commentId;
+      if (quoteId) metadata.quoteId = quoteId;
       await uploadPrivateDocument(path, session, file, metadata);
       setFile(undefined);
       const input = document.getElementById(inputId) as HTMLInputElement | null;
