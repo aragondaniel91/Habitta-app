@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { resolveNotificationsEnvironment } from './config/notifications-env';
+import { withinRateLimit } from './http-security';
 import { sendNotificationEmail } from './notifications/email-provider';
 import { HABITTA_EMAIL_LOGO_MONO_BASE64 } from './notifications/email-assets';
 import type { NotificationBindings } from './notifications/types';
@@ -84,6 +85,12 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
   const condominiumIdResult = z.string().uuid().safeParse(c.req.param('condominiumId'));
   if (!condominiumIdResult.success) return c.json({ error: 'Invalid condominium identifier' }, 400);
 
+  // Transport-level distributed limiter: reject abuse before parsing JSON, hitting Supabase,
+  // generating a token or attempting email. The database trigger remains the fail-safe boundary.
+  if (!(await withinRateLimit(c.env.INVITATION_LIMIT, c.get('userId')))) {
+    return c.json({ error: 'Too many requests' }, 429);
+  }
+
   const parsed = invitationInputSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
@@ -105,6 +112,10 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
 
   const rpcData = (await rpcResponse.json()) as RpcResult | { message?: string; error?: string };
   if (!rpcResponse.ok || !('invitation' in rpcData) || !('raw_token' in rpcData)) {
+    const message = 'message' in rpcData ? rpcData.message ?? '' : '';
+    if (message.toLowerCase().includes('admin invitation rate limit exceeded')) {
+      return c.json({ error: 'Too many requests' }, 429);
+    }
     return c.json(rpcData, 400);
   }
 
