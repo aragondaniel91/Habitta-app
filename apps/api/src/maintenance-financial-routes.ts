@@ -16,7 +16,10 @@ const currency = z
 const money = z
   .union([
     z.number().positive(),
-    z.string().trim().regex(/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/),
+    z
+      .string()
+      .trim()
+      .regex(/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/),
   ])
   .refine((value) => Number(value) > 0, 'Amount must be greater than zero');
 const optionalText = (maximum: number) => z.string().trim().max(maximum).nullable().optional();
@@ -70,11 +73,7 @@ const rest = (c: AppContext, path: string, init: RequestInit = {}) =>
 const rpc = (c: AppContext, name: string, payload: unknown) =>
   rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) });
 
-const responseJson = async (
-  c: AppContext,
-  response: Response,
-  successStatus: 200 | 201 = 200,
-) => {
+const responseJson = async (c: AppContext, response: Response, successStatus: 200 | 201 = 200) => {
   const value = (await response.json()) as { code?: string; message?: string };
   if (response.ok) return c.json(value, successStatus);
   const status: 400 | 403 | 404 | 409 =
@@ -112,24 +111,21 @@ maintenanceFinancialRoutes.get('/:id/maintenance/work-orders/:workOrderId/quotes
   return responseJson(c, response);
 });
 
-maintenanceFinancialRoutes.post(
-  '/:id/maintenance/work-orders/:workOrderId/quotes',
-  async (c) => {
-    const parsed = await body(c, quoteCreateSchema);
-    if (parsed instanceof Response) return parsed;
-    const response = await rpc(c, 'create_maintenance_quote', {
-      target_condominium: uuid.parse(c.req.param('id')),
-      target_work_order: uuid.parse(c.req.param('workOrderId')),
-      target_vendor: parsed.vendorId,
-      quote_amount: parsed.amount,
-      quote_currency: parsed.currencyCode,
-      reference_value: parsed.reference ?? null,
-      valid_until_value: parsed.validUntil ?? null,
-      notes_value: parsed.notes ?? null,
-    });
-    return responseJson(c, response, 201);
-  },
-);
+maintenanceFinancialRoutes.post('/:id/maintenance/work-orders/:workOrderId/quotes', async (c) => {
+  const parsed = await body(c, quoteCreateSchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'create_maintenance_quote', {
+    target_condominium: uuid.parse(c.req.param('id')),
+    target_work_order: uuid.parse(c.req.param('workOrderId')),
+    target_vendor: parsed.vendorId,
+    quote_amount: parsed.amount,
+    quote_currency: parsed.currencyCode,
+    reference_value: parsed.reference ?? null,
+    valid_until_value: parsed.validUntil ?? null,
+    notes_value: parsed.notes ?? null,
+  });
+  return responseJson(c, response, 201);
+});
 
 maintenanceFinancialRoutes.post(
   '/:id/maintenance/work-orders/:workOrderId/quotes/:quoteId/decision',
@@ -147,30 +143,24 @@ maintenanceFinancialRoutes.post(
   },
 );
 
-maintenanceFinancialRoutes.get(
-  '/:id/maintenance/work-orders/:workOrderId/expenses',
-  async (c) => {
-    const condominiumId = uuid.parse(c.req.param('id'));
-    const workOrderId = uuid.parse(c.req.param('workOrderId'));
-    const response = await rest(
-      c,
-      `maintenance_work_order_expenses?condominium_id=eq.${condominiumId}&work_order_id=eq.${workOrderId}&select=*&order=created_at.desc,id.desc`,
-    );
-    return responseJson(c, response);
-  },
-);
+maintenanceFinancialRoutes.get('/:id/maintenance/work-orders/:workOrderId/expenses', async (c) => {
+  const condominiumId = uuid.parse(c.req.param('id'));
+  const workOrderId = uuid.parse(c.req.param('workOrderId'));
+  const response = await rest(
+    c,
+    `maintenance_work_order_expenses?condominium_id=eq.${condominiumId}&work_order_id=eq.${workOrderId}&select=*&order=created_at.desc,id.desc`,
+  );
+  return responseJson(c, response);
+});
 
-maintenanceFinancialRoutes.post(
-  '/:id/maintenance/work-orders/:workOrderId/expenses',
-  async (c) => {
-    const parsed = await body(c, expenseLinkSchema);
-    if (parsed instanceof Response) return parsed;
-    const response = await rpc(c, 'link_maintenance_expense', {
-      target_condominium: uuid.parse(c.req.param('id')),
-      target_work_order: uuid.parse(c.req.param('workOrderId')),
-      target_expense: parsed.expenseId,
-      target_quote: parsed.quoteId ?? null,
-    });
-    return responseJson(c, response, 201);
-  },
-);
+maintenanceFinancialRoutes.post('/:id/maintenance/work-orders/:workOrderId/expenses', async (c) => {
+  const parsed = await body(c, expenseLinkSchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'link_maintenance_expense', {
+    target_condominium: uuid.parse(c.req.param('id')),
+    target_work_order: uuid.parse(c.req.param('workOrderId')),
+    target_expense: parsed.expenseId,
+    target_quote: parsed.quoteId ?? null,
+  });
+  return responseJson(c, response, 201);
+});
