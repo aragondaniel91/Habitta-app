@@ -9,11 +9,12 @@ const expense = '00000000-0000-0000-0000-000000000405';
 const token = { Authorization: 'Bearer test' };
 const auth = () => Response.json({ id: '00000000-0000-0000-0000-000000000406' });
 
-const bucket = () => ({
-  put: vi.fn(async () => undefined),
-  get: vi.fn(async () => null),
-  delete: vi.fn(async () => undefined),
-}) as unknown as R2Bucket;
+const bucket = () =>
+  ({
+    put: vi.fn(async () => undefined),
+    get: vi.fn(async () => null),
+    delete: vi.fn(async () => undefined),
+  }) as unknown as R2Bucket;
 const env = (paymentProofs = bucket()) => ({
   SUPABASE_URL: 'https://supabase.test',
   SUPABASE_ANON_KEY: 'anon',
@@ -181,7 +182,10 @@ describe('HAB-133 private maintenance evidence', () => {
       'fetch',
       vi.fn(async (input: string | URL | Request) => {
         if (String(input).includes('/auth/v1/user')) return auth();
-        return Response.json({ message: 'maintenance attachment upload denied' }, { status: 403 });
+        return Response.json(
+          { message: 'maintenance attachment upload denied' },
+          { status: 403 },
+        );
       }),
     );
 
