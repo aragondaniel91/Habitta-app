@@ -45,19 +45,21 @@ const report = (payload: {
 
 export const installClientObservability = () => {
   window.addEventListener('error', (event) => {
+    const stack = event.error instanceof Error ? event.error.stack : undefined;
     report({
       kind: 'error',
       message: event.message || event.error?.name || 'Unhandled browser error',
-      stack: event.error instanceof Error ? event.error.stack : undefined,
+      ...(stack ? { stack } : {}),
     });
   });
 
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
+    const stack = reason instanceof Error ? reason.stack : undefined;
     report({
       kind: 'unhandledrejection',
       message: reason instanceof Error ? reason.message : String(reason ?? 'Unhandled rejection'),
-      stack: reason instanceof Error ? reason.stack : undefined,
+      ...(stack ? { stack } : {}),
     });
   });
 };
