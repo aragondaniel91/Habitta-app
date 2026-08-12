@@ -39,21 +39,36 @@ app.use('*', async (c, next) => {
 
   await next();
 
-  const upstreamError = await readPostgrestError(c.res);
-  if (!upstreamError) return;
-
   const requestId = c.get('requestId');
-  console.error({
-    event: 'postgrest_error',
-    requestId,
-    environment: c.env?.APP_ENV ?? 'development',
-    commit: c.env?.BUILD_COMMIT ?? 'unknown',
-    version: c.env?.APP_VERSION ?? 'unknown',
-    method: c.req.method,
-    path: c.req.path,
-    status: c.res.status,
-    code: upstreamError.code,
-  });
+  const upstreamError = await readPostgrestError(c.res);
+  if (upstreamError) {
+    console.error({
+      event: 'postgrest_error',
+      requestId,
+      environment: c.env?.APP_ENV ?? 'development',
+      commit: c.env?.BUILD_COMMIT ?? 'unknown',
+      version: c.env?.APP_VERSION ?? 'unknown',
+      method: c.req.method,
+      path: c.req.path,
+      status: c.res.status,
+      code: upstreamError.code,
+    });
+  } else if (c.res.status >= 500) {
+    // The inner application intentionally turns thrown exceptions into generic 500 responses.
+    // Log the resulting failure here so those exceptions remain visible without exposing payloads.
+    console.error({
+      event: 'application_5xx',
+      requestId,
+      environment: c.env?.APP_ENV ?? 'development',
+      commit: c.env?.BUILD_COMMIT ?? 'unknown',
+      version: c.env?.APP_VERSION ?? 'unknown',
+      method: c.req.method,
+      path: c.req.path,
+      status: c.res.status,
+    });
+  } else {
+    return;
+  }
 
   const headers = new Headers(c.res.headers);
   headers.set('Cache-Control', 'no-store');
