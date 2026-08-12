@@ -84,13 +84,11 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
     if (prod.vars?.APP_BASE_URL !== 'https://habitta-web-prod.pages.dev')
       errors.push('invalid_prod_app_base_url');
     const requiredSecrets = new Set(prod.secrets?.required ?? []);
-    for (const secret of [
-      'SUPABASE_ANON_KEY',
-      'SUPABASE_SERVICE_ROLE_KEY',
-      'ZEPTOMAIL_SEND_TOKEN',
-    ]) {
+    for (const secret of ['SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']) {
       if (!requiredSecrets.has(secret)) errors.push(`missing_prod_required_secret:${secret}`);
     }
+    if (requiredSecrets.has('ZEPTOMAIL_SEND_TOKEN'))
+      errors.push('prod_zeptomail_secret_must_be_mode_gated');
   }
 
   // Habitta currently has one hosted Supabase project. Treat that project as production-owned.
