@@ -1,0 +1,16 @@
+name: HAB-133 Notification Grep
+
+on:
+  push:
+    branches:
+      - agent/hab-133-maintenance-notifications
+
+jobs:
+  grep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate helper and callers
+        run: |
+          set -euo pipefail
+          grep -RIn -C 8 "notification_type_from_event\|create or replace function public.expand_notification_event\|create function public.expand_notification_event" supabase || true
