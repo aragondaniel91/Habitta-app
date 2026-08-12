@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Button, Select } from '../../components/ui';
 import { PRIVATE_DOCUMENT_ACCEPT, privateDocumentError, uploadPrivateDocument } from './api';
@@ -15,6 +15,7 @@ type Props = {
   defaultDocumentType?: string;
   visibility?: 'public' | 'internal';
   commentId?: string;
+  quoteId?: string;
   disabled?: boolean;
   onUploaded: () => void | Promise<void>;
 };
@@ -28,17 +29,21 @@ export function PrivateDocumentUploader({
   defaultDocumentType,
   visibility,
   commentId,
+  quoteId,
   disabled = false,
   onUploaded,
 }: Props) {
   const inputId = useId();
+  const firstDocumentType = documentTypes?.[0]?.value ?? '';
   const [file, setFile] = useState<File>();
-  const [documentType, setDocumentType] = useState(
-    defaultDocumentType ?? documentTypes?.[0]?.value ?? '',
-  );
+  const [documentType, setDocumentType] = useState(defaultDocumentType ?? firstDocumentType);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setDocumentType(defaultDocumentType ?? firstDocumentType);
+  }, [defaultDocumentType, firstDocumentType, quoteId]);
 
   const upload = async () => {
     if (!file) return;
@@ -55,10 +60,12 @@ export function PrivateDocumentUploader({
         documentType?: string;
         visibility?: 'public' | 'internal';
         commentId?: string;
+        quoteId?: string;
       } = {};
       if (documentType) metadata.documentType = documentType;
       if (visibility) metadata.visibility = visibility;
       if (commentId) metadata.commentId = commentId;
+      if (quoteId) metadata.quoteId = quoteId;
       await uploadPrivateDocument(path, session, file, metadata);
       setFile(undefined);
       const input = document.getElementById(inputId) as HTMLInputElement | null;

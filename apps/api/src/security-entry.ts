@@ -70,6 +70,7 @@ app.use(
       'X-Document-Type',
       'X-Visibility',
       'X-Comment-Id',
+      'X-Quote-Id',
     ],
   }),
 );
