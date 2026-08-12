@@ -1,0 +1,39 @@
+name: HAB-133 Format Branch
+
+on:
+  push:
+    branches:
+      - agent/hab-133-maintenance-financial-workspace
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/hab-133-maintenance-financial-workspace
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format
+      - name: Commit formatter output
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No formatter changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/features/maintenance/MaintenanceFinancialWorkspace.tsx apps/web/src/maintenance-workspace.test.ts apps/web/src/features/documents/PrivateDocumentUploader.tsx
+          git commit -m "HAB-133 apply CI formatter output"
+          git push origin HEAD:agent/hab-133-maintenance-financial-workspace
