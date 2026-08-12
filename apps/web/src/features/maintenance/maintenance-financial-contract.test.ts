@@ -15,8 +15,8 @@ describe('HAB-133 maintenance financial browser contract', () => {
   it('creates and decides quotes through the dedicated work-order endpoints', () => {
     expect(workspaceSource).toContain('/quotes`');
     expect(workspaceSource).toContain('/decision`');
-    expect(workspaceSource).toContain("decision: 'approve'");
-    expect(workspaceSource).toContain("decision: 'reject'");
+    expect(workspaceSource).toContain("decideQuote(quote.id, 'approve')");
+    expect(workspaceSource).toContain("decideQuote(quote.id, 'reject')");
   });
 
   it('links an existing expense by identifiers only', () => {
