@@ -336,6 +336,7 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
 
       {!selectedWorkOrder ? (
         <EmptyState
+          icon={<span aria-hidden="true">🛠</span>}
           description="Crea una orden de trabajo en Operaciones para empezar a registrar cotizaciones y evidencias."
           title="No hay una orden seleccionada"
         />
@@ -550,7 +551,7 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
               }
               onUploaded={loadDetail}
               path={`/v1/condominiums/${condominiumId}/maintenance/work-orders/${selectedWorkOrderId}/attachments`}
-              quoteId={attachmentQuoteId || undefined}
+              {...(attachmentQuoteId ? { quoteId: attachmentQuoteId } : {})}
               session={session}
               title="Cargar evidencia"
             />
