@@ -49,16 +49,11 @@ describe('observability sanitization', () => {
       headers: { Authorization: 'Bearer secret' },
       body: JSON.stringify({ amount: 999 }),
     });
-    const server = workerErrorLog(
-      new Error('Failed for owner@example.com'),
-      request,
-      'req-1',
-      {
-        APP_ENV: 'production',
-        BUILD_COMMIT: 'abc123',
-        APP_VERSION: '1.2.3',
-      },
-    );
+    const server = workerErrorLog(new Error('Failed for owner@example.com'), request, 'req-1', {
+      APP_ENV: 'production',
+      BUILD_COMMIT: 'abc123',
+      APP_VERSION: '1.2.3',
+    });
     const client = clientErrorLog(
       { kind: 'error', message: 'Boom', path: '/app' },
       'req-2',
