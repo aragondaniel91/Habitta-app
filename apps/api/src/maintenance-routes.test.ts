@@ -7,6 +7,10 @@ const source = readFileSync(
   'utf8',
 );
 const operationsSource = readFileSync(
+  fileURLToPath(new URL('./operations-routes-base.ts', import.meta.url)),
+  'utf8',
+);
+const operationsWrapperSource = readFileSync(
   fileURLToPath(new URL('./operations-routes.ts', import.meta.url)),
   'utf8',
 );
@@ -15,6 +19,12 @@ describe('maintenance routes contract', () => {
   it('mounts maintenance under the authenticated condominium operations router', () => {
     expect(operationsSource).toContain("import { maintenanceRoutes } from './maintenance-routes'");
     expect(operationsSource).toContain("operationsRoutes.route('/', maintenanceRoutes)");
+    expect(operationsWrapperSource).toContain(
+      "import { operationsRoutes as baseOperationsRoutes } from './operations-routes-base'",
+    );
+    expect(operationsWrapperSource).toContain(
+      "baseOperationsRoutes.route('/', maintenanceFinancialRoutes)",
+    );
   });
 
   it('keeps maintenance resources condominium-scoped', () => {
