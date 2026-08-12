@@ -79,6 +79,26 @@ export const notificationTemplates = {
     subject: 'Solicitud cancelada',
     intro: 'La solicitud de servicio fue cancelada.',
   },
+  governance_opened: {
+    version: 1,
+    subject: 'Nueva votación disponible',
+    intro: 'Ya puedes revisar y votar una nueva propuesta comunitaria.',
+  },
+  governance_due_soon: {
+    version: 1,
+    subject: 'Votación próxima a cerrar',
+    intro: 'Una votación comunitaria cerrará dentro de las próximas 24 horas.',
+  },
+  governance_result_available: {
+    version: 1,
+    subject: 'Resultado de votación disponible',
+    intro: 'La votación fue cerrada y su resultado ya puede revisarse.',
+  },
+  governance_decision_final: {
+    version: 1,
+    subject: 'Decisión comunitaria final',
+    intro: 'Una propuesta comunitaria tiene una decisión final.',
+  },
 } as const;
 
 export type NotificationTemplateKey = keyof typeof notificationTemplates;
