@@ -103,25 +103,32 @@ maintenanceDocumentRoutes.put(
     const parsedDocumentType = documentType.safeParse(
       (c.req.header('X-Document-Type') ?? 'support').trim().toLowerCase(),
     );
-    if (!parsedDocumentType.success) return c.json({ error: 'Invalid maintenance document type' }, 400);
+    if (!parsedDocumentType.success) {
+      return c.json({ error: 'Invalid maintenance document type' }, 400);
+    }
     const quoteHeader = c.req.header('X-Quote-Id');
     const parsedQuote = quoteHeader ? uuid.safeParse(quoteHeader) : null;
-    if (parsedQuote && !parsedQuote.success)
+    if (parsedQuote && !parsedQuote.success) {
       return c.json({ error: 'Invalid maintenance quote identifier' }, 400);
+    }
     const quoteId = parsedQuote?.data ?? null;
-    if (parsedDocumentType.data === 'quote' && !quoteId)
+    if (parsedDocumentType.data === 'quote' && !quoteId) {
       return c.json({ error: 'Quote documents require X-Quote-Id' }, 400);
+    }
 
     const contentType = normalizeContentType(c.req.header('Content-Type'), filename);
-    if (!ALLOWED_CONTENT_TYPES.has(contentType))
+    if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
       return c.json({ error: 'Unsupported document type' }, 415);
+    }
     const declaredLength = Number(c.req.header('Content-Length') ?? '0');
-    if (declaredLength > MAX_DOCUMENT_BYTES)
+    if (declaredLength > MAX_DOCUMENT_BYTES) {
       return c.json({ error: 'Document exceeds the 20 MB limit' }, 413);
+    }
     const bytes = await c.req.arrayBuffer();
     if (bytes.byteLength < 1) return c.json({ error: 'Document is empty' }, 400);
-    if (bytes.byteLength > MAX_DOCUMENT_BYTES)
+    if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
       return c.json({ error: 'Document exceeds the 20 MB limit' }, 413);
+    }
 
     const attachmentId = crypto.randomUUID();
     const storageKey = `maintenance/${attachmentId}`;
@@ -136,22 +143,25 @@ maintenanceDocumentRoutes.put(
       },
     });
 
-    const recorded = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/record_maintenance_attachment`, {
-      method: 'POST',
-      headers: supabaseHeaders(c),
-      body: JSON.stringify({
-        target_condominium: condominiumId,
-        target_work_order: workOrderId,
-        target_quote: quoteId,
-        target_attachment: attachmentId,
-        document_kind: parsedDocumentType.data,
-        key_value: storageKey,
-        filename,
-        mime: contentType,
-        bytes: bytes.byteLength,
-        hash,
-      }),
-    });
+    const recorded = await fetch(
+      `${c.env.SUPABASE_URL}/rest/v1/rpc/record_maintenance_attachment`,
+      {
+        method: 'POST',
+        headers: supabaseHeaders(c),
+        body: JSON.stringify({
+          target_condominium: condominiumId,
+          target_work_order: workOrderId,
+          target_quote: quoteId,
+          target_attachment: attachmentId,
+          document_kind: parsedDocumentType.data,
+          key_value: storageKey,
+          filename,
+          mime: contentType,
+          bytes: bytes.byteLength,
+          hash,
+        }),
+      },
+    );
     if (!recorded.ok) {
       await c.env.PAYMENT_PROOFS.delete(storageKey);
       const status = recorded.status === 401 || recorded.status === 403 ? 403 : 400;
@@ -177,9 +187,14 @@ maintenanceDocumentRoutes.get(
       content_type?: string | null;
     }>;
     if (!response.ok || !rows[0]) return c.json({ error: 'Document not found' }, 404);
-    const { storage_key: storageKey, original_filename: filename, content_type: contentType } = rows[0];
-    if (!storageKey || !filename || !contentType)
+    const {
+      storage_key: storageKey,
+      original_filename: filename,
+      content_type: contentType,
+    } = rows[0];
+    if (!storageKey || !filename || !contentType) {
       return c.json({ error: 'Document metadata is incomplete' }, 409);
+    }
     const object = await c.env.PAYMENT_PROOFS.get(storageKey);
     if (!object) return c.json({ error: 'Document file is unavailable' }, 404);
     return new Response(object.body, {
