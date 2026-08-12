@@ -56,8 +56,7 @@ export const installClientObservability = () => {
     const reason = event.reason;
     report({
       kind: 'unhandledrejection',
-      message:
-        reason instanceof Error ? reason.message : String(reason ?? 'Unhandled rejection'),
+      message: reason instanceof Error ? reason.message : String(reason ?? 'Unhandled rejection'),
       stack: reason instanceof Error ? reason.stack : undefined,
     });
   });
