@@ -43,7 +43,7 @@ export function PrivateDocumentUploader({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setDocumentType(defaultDocumentType ?? documentTypes?.[0]?.value ?? '');
+    if (quoteId !== undefined) setDocumentType(defaultDocumentType ?? 'support');
   }, [defaultDocumentType, quoteId]);
 
   const upload = async () => {
