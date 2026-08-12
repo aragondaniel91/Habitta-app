@@ -171,11 +171,17 @@ select is(
   1::bigint,
   'formal approval emits one final-decision event'
 );
-select is(
-  (select count(*) from public.notifications
-   where aggregate_id is null),
-  0::bigint,
-  'notification rows do not rely on unscoped governance aggregate metadata'
+select ok(
+  not exists (
+    select 1
+    from public.notifications n
+    join public.notification_events e on e.id = n.event_id
+    where n.notification_type in (
+      'governance_opened','governance_due_soon','governance_result_available','governance_decision_final'
+    )
+      and e.aggregate_type <> 'governance'
+  ),
+  'governance notification rows are linked only to governance aggregate events'
 );
 select ok(
   not exists (
