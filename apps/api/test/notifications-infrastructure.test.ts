@@ -102,6 +102,18 @@ describe('shared hosted database notification ownership', () => {
     expect(config.env.prod.triggers.crons).toContain(productionCron);
   });
 
+  it('keeps the production ZeptoMail secret mode-gated instead of statically required', () => {
+    const config = parsedConfig();
+
+    expect(config.env.prod.secrets.required).toEqual([
+      'SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
+    ]);
+
+    config.env.prod.secrets.required.push('ZEPTOMAIL_SEND_TOKEN');
+    expect(validate(JSON.stringify(config))).toContain('prod_zeptomail_secret_must_be_mode_gated');
+  });
+
   it('rejects a development scheduler while the hosted database is shared', () => {
     const config = parsedConfig();
     config.env.dev.triggers = { crons: [productionCron] };
