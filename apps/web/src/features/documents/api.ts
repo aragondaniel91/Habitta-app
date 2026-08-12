@@ -60,6 +60,7 @@ export async function uploadPrivateDocument(
     documentType?: string;
     visibility?: 'public' | 'internal';
     commentId?: string;
+    quoteId?: string;
   } = {},
 ) {
   const validationError = privateDocumentError(file);
@@ -73,6 +74,7 @@ export async function uploadPrivateDocument(
   if (metadata.documentType) headers.set('X-Document-Type', metadata.documentType);
   if (metadata.visibility) headers.set('X-Visibility', metadata.visibility);
   if (metadata.commentId) headers.set('X-Comment-Id', metadata.commentId);
+  if (metadata.quoteId) headers.set('X-Quote-Id', metadata.quoteId);
 
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method: 'PUT',
