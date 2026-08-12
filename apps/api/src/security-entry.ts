@@ -1,7 +1,12 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import applicationHandler, { app as applicationApp } from './index';
-import { isAllowedCorsOrigin, publicErrorForStatus, readPostgrestError, withinRateLimit } from './http-security';
+import {
+  isAllowedCorsOrigin,
+  publicErrorForStatus,
+  readPostgrestError,
+  withinRateLimit,
+} from './http-security';
 import { clientErrorLog, parseClientErrorEvent, workerErrorLog } from './observability';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
