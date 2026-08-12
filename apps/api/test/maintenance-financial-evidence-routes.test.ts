@@ -182,10 +182,7 @@ describe('HAB-133 private maintenance evidence', () => {
       'fetch',
       vi.fn(async (input: string | URL | Request) => {
         if (String(input).includes('/auth/v1/user')) return auth();
-        return Response.json(
-          { message: 'maintenance attachment upload denied' },
-          { status: 403 },
-        );
+        return Response.json({ message: 'maintenance attachment upload denied' }, { status: 403 });
       }),
     );
 
