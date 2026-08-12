@@ -16,7 +16,9 @@ const operationsSource = readFileSync(
   'utf8',
 );
 const financialSource = readFileSync(
-  fileURLToPath(new URL('./features/maintenance/MaintenanceFinancialWorkspace.tsx', import.meta.url)),
+  fileURLToPath(
+    new URL('./features/maintenance/MaintenanceFinancialWorkspace.tsx', import.meta.url),
+  ),
   'utf8',
 );
 const documentApiSource = readFileSync(
@@ -40,7 +42,9 @@ describe('maintenance administrator workspace integration', () => {
   });
 
   it('preserves the four operational views and real maintenance API actions', () => {
-    expect(operationsSource).toContain("type Tab = 'overview' | 'assets' | 'plans' | 'work-orders'");
+    expect(operationsSource).toContain(
+      "type Tab = 'overview' | 'assets' | 'plans' | 'work-orders'",
+    );
     expect(operationsSource).toContain('/maintenance/assets');
     expect(operationsSource).toContain('/maintenance/plans');
     expect(operationsSource).toContain('/maintenance/work-orders');
@@ -52,7 +56,9 @@ describe('maintenance administrator workspace integration', () => {
     expect(financialSource).toContain('/decision`');
     expect(financialSource).toContain('/attachments`');
     expect(financialSource).toContain('/expenses`');
-    expect(financialSource).toContain('JSON.stringify({ expenseId, quoteId: expenseQuoteId || undefined })');
+    expect(financialSource).toContain(
+      'JSON.stringify({ expenseId, quoteId: expenseQuoteId || undefined })',
+    );
     expect(financialSource).not.toContain('target_amount');
     expect(financialSource).not.toContain('treasuryAccountId');
   });

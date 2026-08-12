@@ -41,7 +41,8 @@ type MaintenanceAttachment = {
   condominium_id: string;
   work_order_id: string;
   quote_id: string | null;
-  document_type: 'quote' | 'completion_photo' | 'completion_document' | 'invoice' | 'support' | 'other';
+  document_type:
+    'quote' | 'completion_photo' | 'completion_document' | 'invoice' | 'support' | 'other';
   original_filename: string;
   content_type: string;
   size_bytes: number;
@@ -225,7 +226,9 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
       setNotes('');
       await loadDetail();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la cotización.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear la cotización.',
+      );
     } finally {
       setQuoteSaving(false);
     }
@@ -270,7 +273,9 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
       setExpenseQuoteId('');
       await loadDetail();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo vincular el gasto.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo vincular el gasto.',
+      );
     } finally {
       setExpenseSaving(false);
     }
@@ -281,7 +286,9 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
     [expenseLinks],
   );
   const availableExpenses = expenses.filter((expense) => !linkedExpenseIds.has(expense.id));
-  const selectableQuotes = quotes.filter((quote) => quote.status === 'submitted' || quote.status === 'approved');
+  const selectableQuotes = quotes.filter(
+    (quote) => quote.status === 'submitted' || quote.status === 'approved',
+  );
   const selectedAttachmentQuote = quotes.find((quote) => quote.id === attachmentQuoteId);
 
   if (loading) {
@@ -346,10 +353,17 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
             </div>
 
             {!['completed', 'cancelled'].includes(selectedWorkOrder.status) ? (
-              <form className="maintenance-financial-form" onSubmit={(event) => void createQuote(event)}>
+              <form
+                className="maintenance-financial-form"
+                onSubmit={(event) => void createQuote(event)}
+              >
                 <div className="maintenance-financial-form__grid">
                   <Field label="Proveedor">
-                    <Select onChange={(event) => setVendorId(event.target.value)} required value={vendorId}>
+                    <Select
+                      onChange={(event) => setVendorId(event.target.value)}
+                      required
+                      value={vendorId}
+                    >
                       <option value="">Selecciona</option>
                       {vendors
                         .filter((vendor) => vendor.is_active)
@@ -372,7 +386,10 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
                     />
                   </Field>
                   <Field label="Moneda">
-                    <Select onChange={(event) => setCurrencyCode(event.target.value)} value={currencyCode}>
+                    <Select
+                      onChange={(event) => setCurrencyCode(event.target.value)}
+                      value={currencyCode}
+                    >
                       <option value="USD">USD</option>
                       <option value="VES">VES</option>
                       <option value="EUR">EUR</option>
@@ -389,10 +406,19 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
                   </Field>
                 </div>
                 <Field label="Referencia" hint="Opcional">
-                  <input className="input" onChange={(event) => setReference(event.target.value)} value={reference} />
+                  <input
+                    className="input"
+                    onChange={(event) => setReference(event.target.value)}
+                    value={reference}
+                  />
                 </Field>
                 <Field label="Notas" hint="Opcional">
-                  <textarea className="textarea" onChange={(event) => setNotes(event.target.value)} rows={3} value={notes} />
+                  <textarea
+                    className="textarea"
+                    onChange={(event) => setNotes(event.target.value)}
+                    rows={3}
+                    value={notes}
+                  />
                 </Field>
                 <Button disabled={quoteSaving || !vendorId || !amount} type="submit">
                   {quoteSaving ? 'Guardando…' : 'Agregar cotización'}
@@ -402,31 +428,47 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
 
             <div className="maintenance-financial-list">
               {quotes.length === 0 ? (
-                <p className="maintenance-financial-muted">Todavía no hay cotizaciones para esta orden.</p>
+                <p className="maintenance-financial-muted">
+                  Todavía no hay cotizaciones para esta orden.
+                </p>
               ) : (
                 quotes.map((quote) => (
                   <article className="maintenance-quote" key={quote.id}>
                     <div className="maintenance-quote__top">
                       <div>
-                        <strong>{vendors.find((vendor) => vendor.id === quote.vendor_id)?.name ?? 'Proveedor'}</strong>
+                        <strong>
+                          {vendors.find((vendor) => vendor.id === quote.vendor_id)?.name ??
+                            'Proveedor'}
+                        </strong>
                         <span>{formatMoney(quote.amount, quote.currency_code)}</span>
                       </div>
-                      <Badge tone={quoteTone(quote.status)}>{quoteStatusLabels[quote.status]}</Badge>
+                      <Badge tone={quoteTone(quote.status)}>
+                        {quoteStatusLabels[quote.status]}
+                      </Badge>
                     </div>
                     <div className="maintenance-quote__meta">
                       <span>{quote.reference || 'Sin referencia'}</span>
-                      <span>{quote.valid_until ? `Vence ${formatMaintenanceDate(quote.valid_until)}` : 'Sin vencimiento'}</span>
+                      <span>
+                        {quote.valid_until
+                          ? `Vence ${formatMaintenanceDate(quote.valid_until)}`
+                          : 'Sin vencimiento'}
+                      </span>
                       <span>Creada {formatMaintenanceDate(quote.created_at, true)}</span>
                     </div>
                     {quote.notes ? <p>{quote.notes}</p> : null}
-                    {quote.decision_note ? <p className="maintenance-quote__decision">Decisión: {quote.decision_note}</p> : null}
+                    {quote.decision_note ? (
+                      <p className="maintenance-quote__decision">Decisión: {quote.decision_note}</p>
+                    ) : null}
                     {quote.status === 'submitted' ? (
                       <div className="maintenance-quote__decision-controls">
                         <textarea
                           aria-label={`Nota de decisión para ${quote.reference || quote.id}`}
                           className="textarea"
                           onChange={(event) =>
-                            setDecisionNotes((current) => ({ ...current, [quote.id]: event.target.value }))
+                            setDecisionNotes((current) => ({
+                              ...current,
+                              [quote.id]: event.target.value,
+                            }))
                           }
                           placeholder="Nota opcional al aprobar; obligatoria al rechazar"
                           rows={2}
@@ -469,12 +511,19 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
               </div>
               <Badge tone="info">{attachments.length}</Badge>
             </div>
-            <Field label="Cotización relacionada" hint="Selecciona una para permitir archivos tipo Cotización">
-              <Select onChange={(event) => setAttachmentQuoteId(event.target.value)} value={attachmentQuoteId}>
+            <Field
+              label="Cotización relacionada"
+              hint="Selecciona una para permitir archivos tipo Cotización"
+            >
+              <Select
+                onChange={(event) => setAttachmentQuoteId(event.target.value)}
+                value={attachmentQuoteId}
+              >
                 <option value="">Sin cotización</option>
                 {quotes.map((quote) => (
                   <option key={quote.id} value={quote.id}>
-                    {vendors.find((vendor) => vendor.id === quote.vendor_id)?.name ?? 'Proveedor'} · {formatMoney(quote.amount, quote.currency_code)}
+                    {vendors.find((vendor) => vendor.id === quote.vendor_id)?.name ?? 'Proveedor'} ·{' '}
+                    {formatMoney(quote.amount, quote.currency_code)}
                   </option>
                 ))}
               </Select>
@@ -510,7 +559,10 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
                 <article className="maintenance-attachment" key={attachment.id}>
                   <div>
                     <strong>{attachment.original_filename}</strong>
-                    <span>{documentLabels[attachment.document_type]} · {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB</span>
+                    <span>
+                      {documentLabels[attachment.document_type]} ·{' '}
+                      {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB
+                    </span>
                   </div>
                   <Button
                     disabled={downloadingId === attachment.id}
@@ -551,16 +603,24 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
               </Select>
             </Field>
             <Field label="Cotización relacionada" hint="Opcional">
-              <Select onChange={(event) => setExpenseQuoteId(event.target.value)} value={expenseQuoteId}>
+              <Select
+                onChange={(event) => setExpenseQuoteId(event.target.value)}
+                value={expenseQuoteId}
+              >
                 <option value="">Sin cotización</option>
                 {selectableQuotes.map((quote) => (
                   <option key={quote.id} value={quote.id}>
-                    {quoteStatusLabels[quote.status]} · {formatMoney(quote.amount, quote.currency_code)}
+                    {quoteStatusLabels[quote.status]} ·{' '}
+                    {formatMoney(quote.amount, quote.currency_code)}
                   </option>
                 ))}
               </Select>
             </Field>
-            <Button disabled={expenseSaving || !expenseId} onClick={() => void linkExpense()} type="button">
+            <Button
+              disabled={expenseSaving || !expenseId}
+              onClick={() => void linkExpense()}
+              type="button"
+            >
               {expenseSaving ? 'Vinculando…' : 'Vincular gasto'}
             </Button>
             <p className="maintenance-financial-muted">
