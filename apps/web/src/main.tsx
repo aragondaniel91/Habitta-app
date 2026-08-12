@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ResidentInvitationExperience } from './components/ResidentInvitationExperience';
+import { installClientObservability } from './lib/client-observability';
 import './styles.css';
 import './auth.css';
 import './password-auth.css';
@@ -22,6 +23,8 @@ function residentInvitationToken(pathname: string) {
     return '';
   }
 }
+
+installClientObservability();
 
 const invitationToken = residentInvitationToken(window.location.pathname);
 
