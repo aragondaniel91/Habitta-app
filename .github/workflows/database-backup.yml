@@ -1,0 +1,111 @@
+name: Production Database Backup
+
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-database-backup
+  cancel-in-progress: false
+
+env:
+  SUPABASE_PROJECT_REF: kgsfaahixbcwcmykmhat
+  BACKUP_BUCKET: habitta-database-backups-prod
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.84.2
+          github-token: ${{ github.token }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify backup prerequisites
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD BACKUP_ENCRYPTION_PASSPHRASE CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            test -n "${!name:-}" || { echo "Missing required production secret: $name" >&2; exit 1; }
+          done
+
+      - name: Create production logical backup
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p .backup/plain .backup/out
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db dump --linked --role-only -f .backup/plain/roles.sql
+          supabase db dump --linked -f .backup/plain/schema.sql
+          supabase db dump --linked --data-only --use-copy \
+            -x 'storage.buckets_vectors' \
+            -x 'storage.vector_indexes' \
+            -f .backup/plain/data.sql
+          printf '%s\n' "$GITHUB_SHA" > .backup/plain/source-commit.txt
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > .backup/plain/created-at.txt
+          (cd .backup/plain && sha256sum roles.sql schema.sql data.sql source-commit.txt created-at.txt > manifest.sha256)
+          tar -C .backup/plain -czf .backup/database-backup.tar.gz .
+
+      - name: Encrypt backup before upload
+        env:
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          BACKUP_ID="$(date -u +'%Y%m%dT%H%M%SZ')-${GITHUB_SHA::12}"
+          echo "BACKUP_ID=$BACKUP_ID" >> "$GITHUB_ENV"
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 \
+            -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
+            -in .backup/database-backup.tar.gz \
+            -out ".backup/out/${BACKUP_ID}.tar.gz.enc"
+          sha256sum ".backup/out/${BACKUP_ID}.tar.gz.enc" > ".backup/out/${BACKUP_ID}.sha256"
+          rm -rf .backup/plain .backup/database-backup.tar.gz
+
+      - name: Upload encrypted backup to private R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          OBJECT_PREFIX="daily/$(date -u +'%Y/%m/%d')"
+          pnpm --filter @habitta/api exec wrangler r2 object put \
+            "$BACKUP_BUCKET/$OBJECT_PREFIX/${BACKUP_ID}.tar.gz.enc" \
+            --file ".backup/out/${BACKUP_ID}.tar.gz.enc" --remote
+          pnpm --filter @habitta/api exec wrangler r2 object put \
+            "$BACKUP_BUCKET/$OBJECT_PREFIX/${BACKUP_ID}.sha256" \
+            --file ".backup/out/${BACKUP_ID}.sha256" --remote
+          echo "Encrypted backup stored as $OBJECT_PREFIX/${BACKUP_ID}.tar.gz.enc"
+
+      - name: Remove local backup material
+        if: always()
+        run: rm -rf .backup
