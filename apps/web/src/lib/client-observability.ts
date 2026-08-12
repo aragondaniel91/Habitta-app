@@ -20,7 +20,11 @@ const sanitize = (value: unknown, maxLength: number) => {
 
 const pathname = () => `${window.location.pathname}`.slice(0, 300);
 
-const report = (payload: { kind: 'error' | 'unhandledrejection'; message: string; stack?: string }) => {
+const report = (payload: {
+  kind: 'error' | 'unhandledrejection';
+  message: string;
+  stack?: string;
+}) => {
   const message = sanitize(payload.message, MAX_MESSAGE_LENGTH);
   if (!message) return;
 
@@ -52,7 +56,8 @@ export const installClientObservability = () => {
     const reason = event.reason;
     report({
       kind: 'unhandledrejection',
-      message: reason instanceof Error ? reason.message : String(reason ?? 'Unhandled rejection'),
+      message:
+        reason instanceof Error ? reason.message : String(reason ?? 'Unhandled rejection'),
       stack: reason instanceof Error ? reason.stack : undefined,
     });
   });
