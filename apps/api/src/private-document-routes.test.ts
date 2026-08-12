@@ -24,6 +24,7 @@ describe('private operational document routes', () => {
     expect(source).toContain("'X-Document-Type'");
     expect(source).toContain("'X-Visibility'");
     expect(source).toContain("'X-Filename'");
+    expect(source).toContain("'X-Quote-Id'");
   });
 
   it('uses private R2 storage, authenticated RPC metadata and rollback on failure', async () => {
