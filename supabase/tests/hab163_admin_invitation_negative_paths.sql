@@ -68,6 +68,7 @@ select throws_ok(
   'revoked administrator invitation cannot be accepted'
 );
 
+select set_config('request.jwt.claim.sub', 'a1631000-0000-0000-0000-000000000001', true);
 reset role;
 create temporary table hab163_expired_invite as
 select public.create_admin_invitation(
