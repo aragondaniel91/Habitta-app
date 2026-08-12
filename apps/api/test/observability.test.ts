@@ -71,6 +71,10 @@ describe('observability sanitization', () => {
     expect(JSON.stringify(server)).not.toContain('999');
     expect(JSON.stringify(server)).not.toContain('Bearer secret');
     expect(JSON.stringify(server)).not.toContain('owner@example.com');
-    expect(client).toMatchObject({ event: 'client_error', requestId: 'req-2', path: '/app' });
+    expect(client).toMatchObject({
+      event: 'client_error',
+      requestId: 'req-2',
+      path: '/app',
+    });
   });
 });
