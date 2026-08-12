@@ -14,9 +14,22 @@ describe('private operational document routes', () => {
     expect(wrapperSource).toContain(
       "import { privateDocumentRoutes as basePrivateDocumentRoutes } from './private-document-routes-base'",
     );
-    expect(wrapperSource).toContain(
-      "basePrivateDocumentRoutes.route('/', maintenanceDocumentRoutes)",
-    );
+    expect(wrapperSource).toContain("privateDocumentRoutes.route('/', basePrivateDocumentRoutes)");
+    expect(wrapperSource).toContain("privateDocumentRoutes.route('/', maintenanceDocumentRoutes)");
+  });
+
+  it('rate-limits every private document PUT before the upload routes run', async () => {
+    const source = await readFile(wrapperUrl, 'utf8');
+    const limiter = source.indexOf("privateDocumentRoutes.use('*'");
+    const baseRoutes = source.indexOf("privateDocumentRoutes.route('/', basePrivateDocumentRoutes)");
+    const maintenanceRoutes = source.indexOf("privateDocumentRoutes.route('/', maintenanceDocumentRoutes)");
+
+    expect(source).toContain('withinRateLimit(c.env.PROOF_UPLOAD_LIMIT');
+    expect(source).toContain("c.req.method === 'PUT'");
+    expect(source).toContain("return c.json({ error: 'Too many requests' }, 429)");
+    expect(limiter).toBeGreaterThanOrEqual(0);
+    expect(baseRoutes).toBeGreaterThan(limiter);
+    expect(maintenanceRoutes).toBeGreaterThan(limiter);
   });
 
   it('allows the upload headers through the single CORS definition', async () => {
