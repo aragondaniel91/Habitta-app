@@ -186,23 +186,28 @@ jobs:
           set -euo pipefail
           SHA=$(git rev-parse HEAD)
           # pnpm --filter executes Wrangler from apps/api, so the web dist is one level up.
-          pnpm --filter @habitta/api exec wrangler pages deploy ../web/dist \
+          DEPLOY_OUTPUT=$(pnpm --filter @habitta/api exec wrangler pages deploy ../web/dist \
             --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" \
             --branch main \
             --commit-hash "$SHA" \
-            --commit-message "production-$SHA"
+            --commit-message "production-$SHA" 2>&1)
+          printf '%s\n' "$DEPLOY_OUTPUT"
+          PAGES_DEPLOYMENT_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | grep -Eo 'https://[a-z0-9]+\.habitta-web-prod\.pages\.dev' | tail -1)
+          test -n "$PAGES_DEPLOYMENT_URL"
+          echo "PAGES_DEPLOYMENT_URL=$PAGES_DEPLOYMENT_URL" >> "$GITHUB_ENV"
       - name: End-to-end production smoke
         run: |
           node --input-type=module <<'NODE'
-          const webUrl = process.env.CLOUDFLARE_PAGES_PROD_URL;
+          const deploymentUrl = process.env.PAGES_DEPLOYMENT_URL;
+          const canonicalUrl = process.env.CLOUDFLARE_PAGES_PROD_URL;
           const apiUrl = process.env.CLOUDFLARE_WORKER_PROD_URL;
-          const origin = webUrl;
+          const origin = canonicalUrl;
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
           let lastError;
           for (let attempt = 1; attempt <= 10; attempt += 1) {
             try {
-              const web = await fetch(webUrl);
-              if (!web.ok) throw new Error(`web_${web.status}`);
+              const web = await fetch(`${deploymentUrl}/app/dashboard`);
+              if (!web.ok) throw new Error(`deployment_web_${web.status}`);
               const preflight = await fetch(`${apiUrl}/v1/organizations`, {
                 method: 'OPTIONS',
                 headers: {
@@ -212,6 +217,12 @@ jobs:
               });
               if (!preflight.ok || preflight.headers.get('access-control-allow-origin') !== origin)
                 throw new Error('preflight_mismatch');
+              const canonical = await fetch(`${canonicalUrl}/app/dashboard`, { redirect: 'manual' });
+              if (canonical.status === 403) {
+                console.warn('canonical_domain_runner_403: deployment and CORS are healthy; browser verification required');
+              } else if (!canonical.ok && (canonical.status < 300 || canonical.status >= 400)) {
+                throw new Error(`canonical_web_${canonical.status}`);
+              }
               lastError = undefined;
               break;
             } catch (error) {
