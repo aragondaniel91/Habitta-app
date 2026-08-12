@@ -34,17 +34,16 @@ export function PrivateDocumentUploader({
   onUploaded,
 }: Props) {
   const inputId = useId();
+  const firstDocumentType = documentTypes?.[0]?.value ?? '';
   const [file, setFile] = useState<File>();
-  const [documentType, setDocumentType] = useState(
-    defaultDocumentType ?? documentTypes?.[0]?.value ?? '',
-  );
+  const [documentType, setDocumentType] = useState(defaultDocumentType ?? firstDocumentType);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (quoteId !== undefined) setDocumentType(defaultDocumentType ?? 'support');
-  }, [defaultDocumentType, quoteId]);
+    setDocumentType(defaultDocumentType ?? firstDocumentType);
+  }, [defaultDocumentType, firstDocumentType, quoteId]);
 
   const upload = async () => {
     if (!file) return;
