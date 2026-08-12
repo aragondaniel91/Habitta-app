@@ -15,7 +15,7 @@ describe('HAB-133 maintenance operational notifications', () => {
     expect(source).toContain('maintenance_quote_rejected');
     expect(source).toContain('maintenance_evidence_added');
     expect(source).toContain('maintenance_expense_linked');
-    expect(source).toContain("on conflict(deduplication_key) do nothing");
+    expect(source).toContain('on conflict(deduplication_key) do nothing');
   });
 
   it('creates in-app notifications and email deliveries behind HAB-130', async () => {
