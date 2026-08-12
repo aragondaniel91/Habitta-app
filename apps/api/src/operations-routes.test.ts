@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const routeUrl = new URL('./operations-routes.ts', import.meta.url);
+const routeUrl = new URL('./operations-routes-base.ts', import.meta.url);
 const apiUrl = new URL('./index.ts', import.meta.url);
 
 describe('expenses and governance API routes', () => {
