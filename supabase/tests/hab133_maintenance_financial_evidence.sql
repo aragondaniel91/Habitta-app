@@ -145,7 +145,11 @@ select is(
   'administrator approves the selected quote'
 );
 select is(
-  (select (quote).status from hab133_quote_two),
+  (
+    select q.status
+    from public.maintenance_quotes q
+    where q.id = (select (quote).id from hab133_quote_two)
+  ),
   'superseded'::text,
   'other submitted quotes are superseded after approval'
 );
@@ -201,6 +205,8 @@ select ok(
   ),
   'work order reports that completion evidence exists'
 );
+
+reset role;
 select throws_like(
   format(
     'update public.maintenance_attachments set original_filename = %L where id = %L::uuid',
@@ -210,6 +216,8 @@ select throws_like(
   '%maintenance_attachments records are immutable%',
   'maintenance evidence metadata is append-only'
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000003a1', true);
 
 create temporary table hab133_expense as
 select public.create_expense(
@@ -263,6 +271,8 @@ select is(
   1::bigint,
   'repeated maintenance expense link is idempotent'
 );
+
+reset role;
 select throws_like(
   format(
     'delete from public.maintenance_work_order_expenses where id = %L::uuid',
@@ -271,7 +281,7 @@ select throws_like(
   '%maintenance_work_order_expenses records are immutable%',
   'maintenance financial links are append-only'
 );
-
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000003a3', true);
 
 select is(
