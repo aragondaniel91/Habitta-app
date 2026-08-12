@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_ENV: production
-      NOTIFICATIONS_EMAIL_MODE: live
+      NOTIFICATIONS_EMAIL_MODE: disabled
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$APP_ENV" = production
-          test "$NOTIFICATIONS_EMAIL_MODE" = live
+          test "$NOTIFICATIONS_EMAIL_MODE" = disabled
           test -n "$SUPABASE_PROJECT_REF"
           test -n "$SUPABASE_URL"
           test -n "$CLOUDFLARE_API_TOKEN"
@@ -72,7 +72,6 @@ jobs:
           test -n "$SUPABASE_DB_PASSWORD"
           test -n "$SUPABASE_ANON_KEY"
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
-          test -n "$ZEPTOMAIL_SEND_TOKEN"
           test "$VITE_API_BASE_URL" = "$CLOUDFLARE_WORKER_PROD_URL"
           test "$CORS_ALLOWED_ORIGINS" = "$CLOUDFLARE_PAGES_PROD_URL"
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
@@ -146,7 +145,7 @@ jobs:
             --var "APP_VERSION:$APP_VERSION" \
             --var "APP_ENV:production" \
             --var "SUPABASE_URL:$SUPABASE_URL" \
-            --var "NOTIFICATIONS_EMAIL_MODE:live" \
+            --var "NOTIFICATIONS_EMAIL_MODE:disabled" \
             --var "CORS_ALLOWED_ORIGINS:$CORS_ALLOWED_ORIGINS" \
             --var "APP_BASE_URL:$CLOUDFLARE_PAGES_PROD_URL"
       - name: Smoke production Worker
@@ -164,7 +163,7 @@ jobs:
               const metadata = await health.json();
               if (metadata.environment !== 'production') throw new Error('environment_mismatch');
               if (metadata.commit !== expectedCommit) throw new Error('commit_mismatch');
-              if (metadata.notificationsEmailMode !== 'live') throw new Error('email_mode_mismatch');
+              if (metadata.notificationsEmailMode !== 'disabled') throw new Error('email_mode_mismatch');
               if (health.headers.get('access-control-allow-origin') !== origin)
                 throw new Error('cors_mismatch');
               const missing = await fetch(`${apiUrl}/not-a-route`, { headers: { Origin: origin } });
