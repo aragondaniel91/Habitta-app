@@ -22,9 +22,11 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ZONE_NAME: mihabitta.com
       CLOUDFLARE_PAGES_PROJECT_NAME: habitta-web-dev
       CLOUDFLARE_PAGES_PRODUCTION_BRANCH: development
       CLOUDFLARE_PAGES_PREVIEW_DOMAIN: preview.mihabitta.com
+      CLOUDFLARE_PAGES_DNS_TARGET: habitta-web-dev.pages.dev
     steps:
       - name: Validate credentials
         run: |
@@ -36,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          api() {
+          account_api() {
             local method="$1"
             local path="$2"
             local body="${3:-}"
@@ -53,12 +55,12 @@ jobs:
           }
 
           PROJECT_PATH="pages/projects/$CLOUDFLARE_PAGES_PROJECT_NAME"
-          PROJECT_JSON=$(api GET "$PROJECT_PATH")
+          PROJECT_JSON=$(account_api GET "$PROJECT_PATH")
           printf '%s' "$PROJECT_JSON" | jq -e '.success == true' >/dev/null
 
           CURRENT_BRANCH=$(printf '%s' "$PROJECT_JSON" | jq -r '.result.production_branch // empty')
           if [ "$CURRENT_BRANCH" != "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" ]; then
-            UPDATED_JSON=$(api PATCH "$PROJECT_PATH" "$(jq -cn --arg branch "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" '{production_branch:$branch}')")
+            UPDATED_JSON=$(account_api PATCH "$PROJECT_PATH" "$(jq -cn --arg branch "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" '{production_branch:$branch}')")
             printf '%s' "$UPDATED_JSON" | jq -e --arg branch "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" '.success == true and .result.production_branch == $branch' >/dev/null
             echo "Updated Pages production branch to $CLOUDFLARE_PAGES_PRODUCTION_BRANCH"
           else
@@ -66,15 +68,74 @@ jobs:
           fi
 
           DOMAINS_PATH="$PROJECT_PATH/domains"
-          DOMAINS_JSON=$(api GET "$DOMAINS_PATH")
+          DOMAINS_JSON=$(account_api GET "$DOMAINS_PATH")
           printf '%s' "$DOMAINS_JSON" | jq -e '.success == true' >/dev/null
 
           if printf '%s' "$DOMAINS_JSON" | jq -e --arg domain "$CLOUDFLARE_PAGES_PREVIEW_DOMAIN" '.result[]? | select(.name == $domain)' >/dev/null; then
             echo "Preview domain is already attached: $CLOUDFLARE_PAGES_PREVIEW_DOMAIN"
           else
-            CREATE_JSON=$(api POST "$DOMAINS_PATH" "$(jq -cn --arg name "$CLOUDFLARE_PAGES_PREVIEW_DOMAIN" '{name:$name}')")
+            CREATE_JSON=$(account_api POST "$DOMAINS_PATH" "$(jq -cn --arg name "$CLOUDFLARE_PAGES_PREVIEW_DOMAIN" '{name:$name}')")
             printf '%s' "$CREATE_JSON" | jq -e '.success == true' >/dev/null
             echo "Attached preview domain: $CLOUDFLARE_PAGES_PREVIEW_DOMAIN"
+          fi
+
+      - name: Ensure preview DNS CNAME points to Pages
+        run: |
+          set -euo pipefail
+
+          cf_api() {
+            local method="$1"
+            local path="$2"
+            local body="${3:-}"
+            local args=(
+              -fsS
+              -X "$method"
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+              -H 'Content-Type: application/json'
+            )
+            if [ -n "$body" ]; then
+              args+=(--data "$body")
+            fi
+            curl "${args[@]}" "https://api.cloudflare.com/client/v4/$path"
+          }
+
+          ZONES_JSON=$(cf_api GET "zones?name=$CLOUDFLARE_ZONE_NAME&account.id=$CLOUDFLARE_ACCOUNT_ID")
+          printf '%s' "$ZONES_JSON" | jq -e '.success == true' >/dev/null
+          ZONE_ID=$(printf '%s' "$ZONES_JSON" | jq -r --arg zone "$CLOUDFLARE_ZONE_NAME" '[.result[]? | select(.name == $zone)] | if length == 1 then .[0].id else empty end')
+          test -n "$ZONE_ID"
+
+          RECORDS_JSON=$(cf_api GET "zones/$ZONE_ID/dns_records?name=$CLOUDFLARE_PAGES_PREVIEW_DOMAIN")
+          printf '%s' "$RECORDS_JSON" | jq -e '.success == true' >/dev/null
+          RECORD_COUNT=$(printf '%s' "$RECORDS_JSON" | jq '.result | length')
+
+          if [ "$RECORD_COUNT" -eq 0 ]; then
+            CREATE_JSON=$(cf_api POST "zones/$ZONE_ID/dns_records" "$(jq -cn \
+              --arg type CNAME \
+              --arg name "$CLOUDFLARE_PAGES_PREVIEW_DOMAIN" \
+              --arg content "$CLOUDFLARE_PAGES_DNS_TARGET" \
+              '{type:$type,name:$name,content:$content,ttl:1,proxied:true}')")
+            printf '%s' "$CREATE_JSON" | jq -e '.success == true' >/dev/null
+            echo "Created DNS CNAME: $CLOUDFLARE_PAGES_PREVIEW_DOMAIN -> $CLOUDFLARE_PAGES_DNS_TARGET"
+          elif [ "$RECORD_COUNT" -eq 1 ]; then
+            RECORD_ID=$(printf '%s' "$RECORDS_JSON" | jq -r '.result[0].id')
+            RECORD_TYPE=$(printf '%s' "$RECORDS_JSON" | jq -r '.result[0].type')
+            RECORD_CONTENT=$(printf '%s' "$RECORDS_JSON" | jq -r '.result[0].content')
+            RECORD_PROXIED=$(printf '%s' "$RECORDS_JSON" | jq -r '.result[0].proxied // false')
+
+            if [ "$RECORD_TYPE" = CNAME ] && [ "$RECORD_CONTENT" = "$CLOUDFLARE_PAGES_DNS_TARGET" ] && [ "$RECORD_PROXIED" = true ]; then
+              echo "DNS CNAME already correct: $CLOUDFLARE_PAGES_PREVIEW_DOMAIN -> $CLOUDFLARE_PAGES_DNS_TARGET"
+            else
+              UPDATE_JSON=$(cf_api PUT "zones/$ZONE_ID/dns_records/$RECORD_ID" "$(jq -cn \
+                --arg type CNAME \
+                --arg name "$CLOUDFLARE_PAGES_PREVIEW_DOMAIN" \
+                --arg content "$CLOUDFLARE_PAGES_DNS_TARGET" \
+                '{type:$type,name:$name,content:$content,ttl:1,proxied:true}')")
+              printf '%s' "$UPDATE_JSON" | jq -e '.success == true' >/dev/null
+              echo "Corrected DNS CNAME: $CLOUDFLARE_PAGES_PREVIEW_DOMAIN -> $CLOUDFLARE_PAGES_DNS_TARGET"
+            fi
+          else
+            echo "::error::Multiple DNS records exist for $CLOUDFLARE_PAGES_PREVIEW_DOMAIN; refusing to modify an ambiguous DNS state."
+            exit 1
           fi
 
       - name: Wait for preview domain to become active
@@ -122,5 +183,5 @@ jobs:
             sleep 10
           done
 
-          echo "::error::Cloudflare Pages reports $CLOUDFLARE_PAGES_PREVIEW_DOMAIN active, but $PREVIEW_URL did not serve a successful HTTPS response within 5 minutes. Check the DNS record, Pages custom-domain state, and certificate status."
+          echo "::error::Pages is attached and DNS is canonical, but $PREVIEW_URL did not serve a successful HTTPS response within 5 minutes. Check the Pages certificate/custom-domain status."
           exit 1
