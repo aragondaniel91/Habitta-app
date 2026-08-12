@@ -127,13 +127,13 @@ declare
   old_user uuid;
 begin
   if old.occupancy_type <> 'tenant'::public.occupancy_type then
-    return coalesce(new, old);
+    return null;
   end if;
 
   -- Only a closed/removed tenant occupancy can reduce delegated access.
   if tg_op = 'UPDATE' and new.occupancy_type = 'tenant'::public.occupancy_type
      and new.ends_at is null and new.person_id = old.person_id and new.unit_id = old.unit_id then
-    return new;
+    return null;
   end if;
 
   select p.condominium_id, p.auth_user_id
@@ -142,7 +142,7 @@ begin
   where p.id = old.person_id;
 
   if old_user is null then
-    return coalesce(new, old);
+    return null;
   end if;
 
   if not exists (
@@ -164,7 +164,7 @@ begin
       and cm.role = 'tenant'::public.condominium_role;
   end if;
 
-  return coalesce(new, old);
+  return null;
 end;
 $$;
 
