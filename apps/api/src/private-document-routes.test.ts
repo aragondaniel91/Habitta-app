@@ -1,14 +1,22 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const routeUrl = new URL('./private-document-routes.ts', import.meta.url);
+const routeUrl = new URL('./private-document-routes-base.ts', import.meta.url);
+const wrapperUrl = new URL('./private-document-routes.ts', import.meta.url);
 const apiUrl = new URL('./index.ts', import.meta.url);
 
 describe('private operational document routes', () => {
   it('mounts private documents behind the authenticated condominium API', async () => {
     const source = await readFile(apiUrl, 'utf8');
+    const wrapperSource = await readFile(wrapperUrl, 'utf8');
     expect(source).toContain("app.use('/v1/*'");
     expect(source).toContain("app.route('/v1/condominiums', privateDocumentRoutes)");
+    expect(wrapperSource).toContain(
+      "import { privateDocumentRoutes as basePrivateDocumentRoutes } from './private-document-routes-base'",
+    );
+    expect(wrapperSource).toContain(
+      "basePrivateDocumentRoutes.route('/', maintenanceDocumentRoutes)",
+    );
   });
 
   it('allows the upload headers through the single CORS definition', async () => {
