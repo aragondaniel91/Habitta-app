@@ -108,25 +108,34 @@ jobs:
           set -euo pipefail
           supabase db start
 
-      - name: Restore schema and data into isolated database
+      - name: Restore schema and data into isolated Supabase database
         run: |
           set -euo pipefail
-          ADMIN_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-          RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/habitta_restore_drill'
-          psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c 'DROP DATABASE IF EXISTS habitta_restore_drill;'
-          psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE habitta_restore_drill;'
-          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/.restore/plain/extracted/schema.sql"
-          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/.restore/plain/extracted/data.sql"
+          RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+          EXTRACTED="$GITHUB_WORKSPACE/.restore/plain/extracted"
+
+          # The Supabase bootstrap database already contains platform schemas such as
+          # extensions/auth/storage. A Supabase logical dump expects that bootstrap and
+          # must not be restored into a completely empty PostgreSQL database.
+          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/roles.sql"
+          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/schema.sql"
+
+          # Production has circular foreign-key relationships in several financial
+          # tables. Disable trigger-based constraint checks only for the isolated data
+          # load, then immediately restore normal behavior in the same psql session.
+          {
+            printf '%s\n' 'SET session_replication_role = replica;'
+            cat "$EXTRACTED/data.sql"
+            printf '%s\n' 'SET session_replication_role = origin;'
+          } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
 
       - name: Verify restored database
         run: |
           set -euo pipefail
-          RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/habitta_restore_drill'
+          RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
           TABLE_COUNT="$(psql "$RESTORE_URL" -Atqc "select count(*) from pg_tables where schemaname = 'public';")"
-          MIGRATION_TABLE_PRESENT="$(psql "$RESTORE_URL" -Atqc "select count(*) from information_schema.tables where table_schema = 'supabase_migrations' and table_name = 'schema_migrations';")"
           test "$TABLE_COUNT" -gt 0
           printf 'Restored public tables: %s\n' "$TABLE_COUNT"
-          printf 'Migration metadata tables present: %s\n' "$MIGRATION_TABLE_PRESENT"
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -c 'select current_database(), now();'
 
       - name: Remove restored plaintext and local database
