@@ -21,27 +21,22 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v2
         with:
           version: 2.84.2
           github-token: ${{ github.token }}
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.12.1
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Verify restore prerequisites
         env:
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
@@ -52,7 +47,6 @@ jobs:
           for name in BACKUP_ENCRYPTION_PASSPHRASE CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
             test -n "${!name:-}" || { echo "Missing required production secret: $name" >&2; exit 1; }
           done
-
       - name: Download encrypted backup and checksum
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -70,12 +64,8 @@ jobs:
           CHECKSUM_KEY="${BACKUP_OBJECT_KEY%.tar.gz.enc}.sha256"
           ENCRYPTED_FILE="$GITHUB_WORKSPACE/.restore/encrypted/$BASENAME"
           CHECKSUM_FILE="$GITHUB_WORKSPACE/.restore/encrypted/${BASENAME%.tar.gz.enc}.sha256"
-          pnpm --filter @habitta/api exec wrangler r2 object get \
-            "$BACKUP_BUCKET/$BACKUP_OBJECT_KEY" \
-            --file "$ENCRYPTED_FILE" --remote
-          pnpm --filter @habitta/api exec wrangler r2 object get \
-            "$BACKUP_BUCKET/$CHECKSUM_KEY" \
-            --file "$CHECKSUM_FILE" --remote
+          pnpm --filter @habitta/api exec wrangler r2 object get "$BACKUP_BUCKET/$BACKUP_OBJECT_KEY" --file "$ENCRYPTED_FILE" --remote
+          pnpm --filter @habitta/api exec wrangler r2 object get "$BACKUP_BUCKET/$CHECKSUM_KEY" --file "$CHECKSUM_FILE" --remote
           test -s "$ENCRYPTED_FILE"
           test -s "$CHECKSUM_FILE"
           EXPECTED_SHA256="$(awk 'NR == 1 { print $1 }' "$CHECKSUM_FILE")"
@@ -83,7 +73,6 @@ jobs:
           test -n "$EXPECTED_SHA256"
           test "$EXPECTED_SHA256" = "$ACTUAL_SHA256"
           printf 'Encrypted backup checksum verified: %s\n' "$ACTUAL_SHA256"
-
       - name: Decrypt and validate internal manifest
         env:
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
@@ -91,10 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           BASENAME="$(basename "$BACKUP_OBJECT_KEY")"
-          openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 \
-            -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
-            -in "$GITHUB_WORKSPACE/.restore/encrypted/$BASENAME" \
-            -out "$GITHUB_WORKSPACE/.restore/plain/database-backup.tar.gz"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 -pass env:BACKUP_ENCRYPTION_PASSPHRASE -in "$GITHUB_WORKSPACE/.restore/encrypted/$BASENAME" -out "$GITHUB_WORKSPACE/.restore/plain/database-backup.tar.gz"
           mkdir -p "$GITHUB_WORKSPACE/.restore/plain/extracted"
           tar -C "$GITHUB_WORKSPACE/.restore/plain/extracted" -xzf "$GITHUB_WORKSPACE/.restore/plain/database-backup.tar.gz"
           cd "$GITHUB_WORKSPACE/.restore/plain/extracted"
@@ -102,33 +88,23 @@ jobs:
           test -s schema.sql
           test -s data.sql
           test -s roles.sql
-
       - name: Start isolated local Supabase database
         run: |
           set -euo pipefail
           supabase db start
-
       - name: Restore schema and data into isolated Supabase database
         run: |
           set -euo pipefail
           RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
           EXTRACTED="$GITHUB_WORKSPACE/.restore/plain/extracted"
-
-          # The Supabase bootstrap database already contains platform schemas such as
-          # extensions/auth/storage. A Supabase logical dump expects that bootstrap and
-          # must not be restored into a completely empty PostgreSQL database.
-          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/roles.sql"
+          # roles.sql is retained and checksum-validated as backup evidence, but the
+          # local Supabase bootstrap already owns platform roles and cluster settings.
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/schema.sql"
-
-          # Production has circular foreign-key relationships in several financial
-          # tables. Disable trigger-based constraint checks only for the isolated data
-          # load, then immediately restore normal behavior in the same psql session.
           {
             printf '%s\n' 'SET session_replication_role = replica;'
             cat "$EXTRACTED/data.sql"
             printf '%s\n' 'SET session_replication_role = origin;'
           } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
-
       - name: Verify restored database
         run: |
           set -euo pipefail
@@ -137,7 +113,6 @@ jobs:
           test "$TABLE_COUNT" -gt 0
           printf 'Restored public tables: %s\n' "$TABLE_COUNT"
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -c 'select current_database(), now();'
-
       - name: Remove restored plaintext and local database
         if: always()
         run: |
