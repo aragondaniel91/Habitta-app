@@ -98,6 +98,7 @@ select public.update_service_request(
   null, false, null, 2
 );
 
+reset role;
 select is(
   (select count(*) from public.notifications
    where notification_type = 'service_request_assigned'
@@ -106,6 +107,8 @@ select is(
   'new assignee receives the assignment notification'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a5000000-0000-0000-0000-000000000001', true);
 select public.add_service_request_comment(
   'a5110000-0000-0000-0000-000000000001',
   (select (request_row).id from hab165_request),
@@ -113,6 +116,7 @@ select public.add_service_request_comment(
   'internal'
 );
 
+reset role;
 select is(
   (select count(*) from public.notification_events
    where event_type = 'service_request_resident_attention'),
@@ -120,6 +124,8 @@ select is(
   'internal comment never creates a resident notification event'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a5000000-0000-0000-0000-000000000001', true);
 select public.add_service_request_comment(
   'a5110000-0000-0000-0000-000000000001',
   (select (request_row).id from hab165_request),
@@ -127,6 +133,7 @@ select public.add_service_request_comment(
   'public'
 );
 
+reset role;
 select is(
   (select count(*) from public.notifications
    where notification_type = 'service_request_resident_attention'
@@ -143,12 +150,15 @@ select ok(
   'internal comment text never enters notification payloads'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a5000000-0000-0000-0000-000000000001', true);
 select public.update_service_request(
   'a5110000-0000-0000-0000-000000000001',
   (select (request_row).id from hab165_request),
   'waiting_resident'
 );
 
+reset role;
 select is(
   (select count(*) from public.notifications
    where notification_type = 'service_request_resident_attention'
@@ -157,6 +167,8 @@ select is(
   'waiting_resident transition creates a second actionable resident notification'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a5000000-0000-0000-0000-000000000001', true);
 select public.update_service_request(
   'a5110000-0000-0000-0000-000000000001',
   (select (request_row).id from hab165_request),
@@ -169,6 +181,7 @@ select public.update_service_request(
   'La fuga fue reparada y se verificó el cierre de la válvula.'
 );
 
+reset role;
 select is(
   (select count(*) from public.notification_events where event_type = 'service_request_resolved'),
   1::bigint,
@@ -181,8 +194,6 @@ select is(
   1::bigint,
   'resident receives the resolved notification'
 );
-
-reset role;
 
 select is(
   (select count(*) from public.notification_events
