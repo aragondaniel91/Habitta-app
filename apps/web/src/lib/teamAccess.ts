@@ -3,14 +3,21 @@ import { apiRequest } from './api';
 import { supabase } from '../supabase';
 
 export type AdministrativeRole =
-  'condominium_admin' | 'accountant' | 'assistant' | 'payment_reviewer';
+  | 'condominium_admin'
+  | 'accountant'
+  | 'assistant'
+  | 'payment_reviewer';
+
+export type TeamMemberStatus = 'active' | 'suspended';
 
 export type TeamMember = {
   user_id: string;
   email: string;
   full_name: string | null;
   role: AdministrativeRole;
+  status: TeamMemberStatus;
   joined_at: string;
+  changed_at: string;
 };
 
 export type AdminInvitation = {
@@ -48,6 +55,14 @@ export type CreatedAdminInvitation = {
   invitation: AdminInvitation;
   invitationUrl: string;
   emailDelivery: AdminInvitationDelivery;
+};
+
+export type TeamMemberLifecycleResult = {
+  user_id: string;
+  role: AdministrativeRole;
+  status: 'active' | 'suspended' | 'removed';
+  changed_at: string;
+  changed: boolean;
 };
 
 export const ADMINISTRATIVE_ROLE_OPTIONS: Array<{
@@ -91,6 +106,27 @@ function translateTeamError(error: { message: string }) {
   if (message.includes('administrator required')) {
     return 'No tienes permisos para administrar el equipo de este condominio.';
   }
+  if (message.includes('last condominium administrator required')) {
+    return 'Debe permanecer al menos un administrador activo del condominio.';
+  }
+  if (message.includes('active team member required')) {
+    return 'Este miembro ya no tiene un acceso administrativo activo.';
+  }
+  if (message.includes('suspended team member required')) {
+    return 'Solo puedes reactivar miembros que estén suspendidos.';
+  }
+  if (message.includes('team member already active')) {
+    return 'Este miembro ya tiene acceso activo.';
+  }
+  if (message.includes('team member not found')) {
+    return 'No encontramos ese miembro en el equipo del condominio.';
+  }
+  if (message.includes('invalid administrative role')) {
+    return 'Selecciona un rol administrativo válido.';
+  }
+  if (message.includes('invalid team action')) {
+    return 'La acción de equipo solicitada no es válida.';
+  }
   if (message.includes('invalid email')) return 'Introduce un correo electrónico válido.';
   if (message.includes('invalid expiration')) {
     return 'La expiración debe estar entre una hora y 90 días.';
@@ -105,7 +141,7 @@ function translateTeamError(error: { message: string }) {
 export async function loadTeamAccess(condominiumId: string) {
   const client = requireSupabase();
   const [teamResult, invitationResult] = await Promise.all([
-    client.rpc('list_condominium_team', { target_condominium_id: condominiumId }),
+    client.rpc('list_condominium_team_access', { target_condominium_id: condominiumId }),
     client
       .from('admin_invitations')
       .select(
@@ -122,6 +158,28 @@ export async function loadTeamAccess(condominiumId: string) {
     members: (teamResult.data ?? []) as TeamMember[],
     invitations: (invitationResult.data ?? []) as AdminInvitation[],
   };
+}
+
+export async function manageTeamMember({
+  condominiumId,
+  userId,
+  action,
+  role,
+}: {
+  condominiumId: string;
+  userId: string;
+  action: 'change_role' | 'suspend' | 'reactivate' | 'remove';
+  role?: AdministrativeRole;
+}) {
+  const client = requireSupabase();
+  const result = await client.rpc('manage_condominium_team_member', {
+    target_condominium_id: condominiumId,
+    target_user_id: userId,
+    target_action: action,
+    target_role: role ?? null,
+  });
+  if (result.error) throw new Error(translateTeamError(result.error));
+  return result.data as TeamMemberLifecycleResult;
 }
 
 export async function createAdminInvitation({
