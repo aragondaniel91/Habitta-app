@@ -22,7 +22,7 @@ const env = (send = vi.fn()) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe('notification queue scheduling', () => {
-  it('publishes due announcements before expanding notification events', async () => {
+  it('publishes due announcements and scheduled reminders before expanding notification events', async () => {
     const calls: string[] = [];
     vi.stubGlobal(
       'fetch',
@@ -31,15 +31,25 @@ describe('notification queue scheduling', () => {
         calls.push(url);
         if (url.includes('publish_due_announcements')) return Response.json(1);
         if (url.includes('generate_due_notification_events')) return Response.json(0);
+        if (url.includes('generate_governance_due_notification_events')) return Response.json(0);
         if (url.includes('claim_notification_events')) return Response.json([]);
         if (url.includes('claim_due_notification_deliveries')) return Response.json([]);
         throw new Error(url);
       }),
     );
     await runScheduled(env(), new Date('2026-08-01T12:00:00Z'));
-    expect(calls.findIndex((url) => url.includes('publish_due_announcements'))).toBeLessThan(
-      calls.findIndex((url) => url.includes('generate_due_notification_events')),
+
+    const publishIndex = calls.findIndex((url) => url.includes('publish_due_announcements'));
+    const dueIndex = calls.findIndex((url) => url.includes('generate_due_notification_events'));
+    const governanceDueIndex = calls.findIndex((url) =>
+      url.includes('generate_governance_due_notification_events'),
     );
+    const claimEventsIndex = calls.findIndex((url) => url.includes('claim_notification_events'));
+
+    expect(publishIndex).toBeGreaterThanOrEqual(0);
+    expect(dueIndex).toBeGreaterThan(publishIndex);
+    expect(governanceDueIndex).toBeGreaterThan(dueIndex);
+    expect(claimEventsIndex).toBeGreaterThan(governanceDueIndex);
   });
   it('queues each claimed delivery once with only deliveryId', async () => {
     const send = vi.fn();
