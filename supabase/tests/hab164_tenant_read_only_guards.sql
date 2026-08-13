@@ -168,7 +168,7 @@ select throws_ok(
 
 select throws_ok(
   format(
-    'select public.create_payment_draft(%L::uuid,%L::uuid,%L::uuid,current_date,25,%L,%L,null,null,%L)',
+    'select public.create_payment_draft(%L::uuid,%L::uuid,%L::uuid,null,current_date,25,%L,%L,null,null,%L)',
     (select payload #>> '{condominium,id}' from hab164_ro_workspace),
     'a4011000-0000-0000-0000-000000000001',
     'a4014000-0000-0000-0000-000000000001',
@@ -177,7 +177,7 @@ select throws_ok(
     'hab164-tenant-payment-attempt'
   ),
   'P0001',
-  'invalid payment',
+  'tenant access is read only',
   'tenant cannot create a payment draft'
 );
 
