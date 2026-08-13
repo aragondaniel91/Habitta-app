@@ -68,14 +68,16 @@ jobs:
           mkdir -p .restore/encrypted .restore/plain
           BASENAME="$(basename "$BACKUP_OBJECT_KEY")"
           CHECKSUM_KEY="${BACKUP_OBJECT_KEY%.tar.gz.enc}.sha256"
+          ENCRYPTED_FILE="$GITHUB_WORKSPACE/.restore/encrypted/$BASENAME"
+          CHECKSUM_FILE="$GITHUB_WORKSPACE/.restore/encrypted/${BASENAME%.tar.gz.enc}.sha256"
           pnpm --filter @habitta/api exec wrangler r2 object get \
             "$BACKUP_BUCKET/$BACKUP_OBJECT_KEY" \
-            --file ".restore/encrypted/$BASENAME" --remote
+            --file "$ENCRYPTED_FILE" --remote
           pnpm --filter @habitta/api exec wrangler r2 object get \
             "$BACKUP_BUCKET/$CHECKSUM_KEY" \
-            --file ".restore/encrypted/${BASENAME%.tar.gz.enc}.sha256" --remote
-          cd .restore/encrypted
-          sha256sum --check "${BASENAME%.tar.gz.enc}.sha256"
+            --file "$CHECKSUM_FILE" --remote
+          cd "$GITHUB_WORKSPACE/.restore/encrypted"
+          sha256sum --check "$(basename "$CHECKSUM_FILE")"
 
       - name: Decrypt and validate internal manifest
         env:
@@ -86,11 +88,11 @@ jobs:
           BASENAME="$(basename "$BACKUP_OBJECT_KEY")"
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 \
             -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
-            -in ".restore/encrypted/$BASENAME" \
-            -out .restore/plain/database-backup.tar.gz
-          mkdir -p .restore/plain/extracted
-          tar -C .restore/plain/extracted -xzf .restore/plain/database-backup.tar.gz
-          cd .restore/plain/extracted
+            -in "$GITHUB_WORKSPACE/.restore/encrypted/$BASENAME" \
+            -out "$GITHUB_WORKSPACE/.restore/plain/database-backup.tar.gz"
+          mkdir -p "$GITHUB_WORKSPACE/.restore/plain/extracted"
+          tar -C "$GITHUB_WORKSPACE/.restore/plain/extracted" -xzf "$GITHUB_WORKSPACE/.restore/plain/database-backup.tar.gz"
+          cd "$GITHUB_WORKSPACE/.restore/plain/extracted"
           sha256sum --check manifest.sha256
           test -s schema.sql
           test -s data.sql
@@ -108,8 +110,8 @@ jobs:
           RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/habitta_restore_drill'
           psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c 'DROP DATABASE IF EXISTS habitta_restore_drill;'
           psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE habitta_restore_drill;'
-          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f .restore/plain/extracted/schema.sql
-          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f .restore/plain/extracted/data.sql
+          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/.restore/plain/extracted/schema.sql"
+          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/.restore/plain/extracted/data.sql"
 
       - name: Verify restored database
         run: |
