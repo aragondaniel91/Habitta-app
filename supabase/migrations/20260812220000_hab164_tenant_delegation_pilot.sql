@@ -74,8 +74,9 @@ as $$
 $$;
 
 -- Replace the earlier owner/tenant unit helper without widening owner access. Staff still see
--- the whole condominium, owners only their owned units, and pilot tenants only active tenant
--- occupancies. Active relationship/status checks prevent stale historical links from granting access.
+-- the whole condominium, owners only units linked through the existing unit_owners model, and
+-- pilot tenants only active tenant occupancies. The ownership table intentionally has no end-date
+-- column in the current schema, so preserve main's established ownership semantics exactly.
 create or replace function public.can_read_unit(target_unit uuid)
 returns boolean
 language sql
@@ -107,8 +108,6 @@ as $$
           where owner_link.unit_id = u.id
             and p.condominium_id = u.condominium_id
             and p.auth_user_id = auth.uid()
-            and p.status = 'active'
-            and owner_link.ends_at is null
         )
         or public.is_active_tenant_for_unit(u.condominium_id, u.id)
       )
