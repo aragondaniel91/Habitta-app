@@ -39,7 +39,9 @@ describe('administrator invitation email route', () => {
   it('maps the database fail-safe invitation limit to HTTP 429', async () => {
     const source = await readFile(routeSourceUrl, 'utf8');
 
-    expect(source).toContain("message.toLowerCase().includes('admin invitation rate limit exceeded')");
+    expect(source).toContain(
+      "message.toLowerCase().includes('admin invitation rate limit exceeded')",
+    );
     expect(source).toContain("return c.json({ error: 'Too many requests' }, 429)");
   });
 
