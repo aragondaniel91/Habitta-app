@@ -114,10 +114,9 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
       const nextData = await loadTeamAccess(condominiumId);
       setData(nextData);
       setMemberRoles(
-        Object.fromEntries(nextData.members.map((member) => [member.user_id, member.role])) as Record<
-          string,
-          AdministrativeRole
-        >,
+        Object.fromEntries(
+          nextData.members.map((member) => [member.user_id, member.role]),
+        ) as Record<string, AdministrativeRole>,
       );
     } catch (requestError) {
       setError(
