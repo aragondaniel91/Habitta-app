@@ -3,10 +3,7 @@ import { apiRequest } from './api';
 import { supabase } from '../supabase';
 
 export type AdministrativeRole =
-  | 'condominium_admin'
-  | 'accountant'
-  | 'assistant'
-  | 'payment_reviewer';
+  'condominium_admin' | 'accountant' | 'assistant' | 'payment_reviewer';
 
 export type TeamMemberStatus = 'active' | 'suspended';
 
