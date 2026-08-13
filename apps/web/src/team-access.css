@@ -117,6 +117,10 @@
   grid-template-columns: 42px minmax(0, 1fr) auto;
 }
 
+.team-member-list article.team-member--suspended {
+  background: var(--surface-subtle, var(--surface));
+}
+
 .team-member-list article > span:first-child {
   display: grid;
   width: 40px;
@@ -145,6 +149,25 @@
 .team-invitation-list small {
   color: var(--muted);
   font-size: 0.7rem;
+}
+
+.team-member-controls {
+  grid-column: 2 / -1;
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem !important;
+  padding-top: 0.3rem;
+}
+
+.team-member-role-select {
+  width: min(100%, 240px);
+  min-width: 190px;
+}
+
+.team-member--suspended .team-member-identity,
+.team-member--suspended > span:first-child {
+  opacity: 0.72;
 }
 
 .team-invitation-list article {
@@ -177,6 +200,18 @@
   .team-member-list article .badge {
     grid-column: 2;
     width: max-content;
+  }
+
+  .team-member-controls {
+    grid-column: 1 / -1;
+  }
+
+  .team-member-role-select {
+    width: 100%;
+  }
+
+  .team-member-controls .button {
+    flex: 1 1 130px;
   }
 
   .team-invitation-list article {
