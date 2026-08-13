@@ -73,7 +73,10 @@ as $$
     );
 $$;
 
-create function public.can_read_unit(target_unit uuid)
+-- Replace the earlier owner/tenant unit helper without widening owner access. Staff still see
+-- the whole condominium, owners only their owned units, and pilot tenants only active tenant
+-- occupancies. Active relationship/status checks prevent stale historical links from granting access.
+create or replace function public.can_read_unit(target_unit uuid)
 returns boolean
 language sql
 stable
@@ -85,6 +88,7 @@ as $$
     select 1
     from public.units u
     where u.id = target_unit
+      and u.status = 'active'
       and (
         public.is_organization_owner_for_condominium(u.condominium_id)
         or exists (
@@ -92,7 +96,19 @@ as $$
           from public.condominium_memberships cm
           where cm.condominium_id = u.condominium_id
             and cm.user_id = auth.uid()
-            and cm.role <> 'tenant'::public.condominium_role
+            and cm.role in (
+              'condominium_admin', 'accountant', 'assistant', 'payment_reviewer', 'board_member'
+            )
+        )
+        or exists (
+          select 1
+          from public.unit_owners owner_link
+          join public.people p on p.id = owner_link.person_id
+          where owner_link.unit_id = u.id
+            and p.condominium_id = u.condominium_id
+            and p.auth_user_id = auth.uid()
+            and p.status = 'active'
+            and owner_link.ends_at is null
         )
         or public.is_active_tenant_for_unit(u.condominium_id, u.id)
       )
@@ -110,8 +126,11 @@ grant execute on function public.can_read_unit(uuid) to authenticated, service_r
 revoke execute on function public.can_read_condominium(uuid) from public;
 grant execute on function public.can_read_condominium(uuid) to authenticated, service_role;
 
+-- Main already contains unit_read_v2. Drop every historical version so PostgreSQL's permissive
+-- policy OR semantics cannot accidentally preserve the older, broader resident scope.
 drop policy if exists unit_read on public.units;
-create policy unit_read on public.units
+drop policy if exists unit_read_v2 on public.units;
+create policy unit_read_v3 on public.units
 for select
 using (public.can_read_unit(units.id));
 
