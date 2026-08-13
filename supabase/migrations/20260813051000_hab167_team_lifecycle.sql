@@ -9,7 +9,7 @@ create table public.condominium_team_access_states (
     check (status in ('active', 'suspended', 'removed')),
   first_joined_at timestamptz not null default now(),
   changed_at timestamptz not null default now(),
-  changed_by uuid references auth.users(id),
+  changed_by uuid references auth.users(id) on delete set null,
   suspended_at timestamptz,
   removed_at timestamptz,
   primary key (condominium_id, user_id),
@@ -24,7 +24,7 @@ create table public.condominium_team_access_events (
     check (event_type in ('role_changed', 'suspended', 'reactivated', 'removed')),
   from_role public.condominium_role,
   to_role public.condominium_role,
-  actor_user_id uuid references auth.users(id),
+  actor_user_id uuid references auth.users(id) on delete set null,
   occurred_at timestamptz not null default now(),
   metadata jsonb not null default '{}'::jsonb
 );
@@ -45,6 +45,7 @@ on public.condominium_team_access_events
 for select
 using (public.can_manage_condominium_structure(condominium_id));
 
+-- Lifecycle tables are read-only to application roles. Security-definer RPCs own writes.
 revoke insert, update, delete on public.condominium_team_access_states from anon, authenticated;
 revoke insert, update, delete on public.condominium_team_access_events from anon, authenticated;
 grant select on public.condominium_team_access_states to authenticated;
@@ -118,6 +119,23 @@ begin
     return new;
   end if;
 
+  -- If some future privileged workflow changes an administrative membership to
+  -- a resident/board role directly, do not leave stale administrative state active.
+  if tg_op = 'UPDATE'
+    and old.role in ('condominium_admin', 'accountant', 'assistant', 'payment_reviewer')
+    and new.role not in ('condominium_admin', 'accountant', 'assistant', 'payment_reviewer')
+  then
+    update public.condominium_team_access_states
+    set status = 'removed',
+        changed_at = now(),
+        changed_by = coalesce(auth.uid(), changed_by),
+        removed_at = coalesce(removed_at, now())
+    where condominium_id = old.condominium_id
+      and user_id = old.user_id;
+
+    return new;
+  end if;
+
   if tg_op = 'DELETE'
     and old.role in ('condominium_admin', 'accountant', 'assistant', 'payment_reviewer')
   then
@@ -135,7 +153,10 @@ begin
     return old;
   end if;
 
-  return coalesce(new, old);
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
 end;
 $$;
 
@@ -150,20 +171,6 @@ create trigger sync_condominium_team_state_after_role_update
 create trigger sync_condominium_team_state_after_delete
   after delete on public.condominium_memberships
   for each row execute function public.sync_condominium_team_state_from_membership();
-
-create or replace function public.prevent_condominium_team_event_mutation()
-returns trigger
-language plpgsql
-set search_path = public
-as $$
-begin
-  raise exception 'team access events are immutable';
-end;
-$$;
-
-create trigger condominium_team_access_events_immutable
-  before update or delete on public.condominium_team_access_events
-  for each row execute function public.prevent_condominium_team_event_mutation();
 
 create or replace function public.list_condominium_team_access(target_condominium_id uuid)
 returns table (
