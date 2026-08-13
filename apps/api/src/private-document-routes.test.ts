@@ -21,8 +21,12 @@ describe('private operational document routes', () => {
   it('rate-limits every private document PUT before the upload routes run', async () => {
     const source = await readFile(wrapperUrl, 'utf8');
     const limiter = source.indexOf("privateDocumentRoutes.use('*'");
-    const baseRoutes = source.indexOf("privateDocumentRoutes.route('/', basePrivateDocumentRoutes)");
-    const maintenanceRoutes = source.indexOf("privateDocumentRoutes.route('/', maintenanceDocumentRoutes)");
+    const baseRoutes = source.indexOf(
+      "privateDocumentRoutes.route('/', basePrivateDocumentRoutes)",
+    );
+    const maintenanceRoutes = source.indexOf(
+      "privateDocumentRoutes.route('/', maintenanceDocumentRoutes)",
+    );
 
     expect(source).toContain('withinRateLimit(c.env.PROOF_UPLOAD_LIMIT');
     expect(source).toContain("c.req.method === 'PUT'");
