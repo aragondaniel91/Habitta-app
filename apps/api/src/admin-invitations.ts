@@ -112,7 +112,7 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
 
   const rpcData = (await rpcResponse.json()) as RpcResult | { message?: string; error?: string };
   if (!rpcResponse.ok || !('invitation' in rpcData) || !('raw_token' in rpcData)) {
-    const message = 'message' in rpcData ? rpcData.message ?? '' : '';
+    const message = 'message' in rpcData ? (rpcData.message ?? '') : '';
     if (message.toLowerCase().includes('admin invitation rate limit exceeded')) {
       return c.json({ error: 'Too many requests' }, 429);
     }
