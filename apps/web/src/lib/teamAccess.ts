@@ -166,7 +166,7 @@ export async function manageTeamMember({
   condominiumId: string;
   userId: string;
   action: 'change_role' | 'suspend' | 'reactivate' | 'remove';
-  role?: AdministrativeRole;
+  role?: AdministrativeRole | undefined;
 }) {
   const client = requireSupabase();
   const result = await client.rpc('manage_condominium_team_member', {
