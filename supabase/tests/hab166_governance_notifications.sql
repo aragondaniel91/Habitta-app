@@ -75,7 +75,7 @@ select public.create_governance_proposal(
   50,
   5000,
   'USD',
-  'VES',
+  null,
   now() + interval '12 hours',
   '[{"label":"Aprobar"},{"label":"Rechazar"}]'::jsonb,
   '[]'::jsonb
