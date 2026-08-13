@@ -54,6 +54,31 @@ export const notificationTemplates = {
     subject: 'Gasto vinculado a mantenimiento',
     intro: 'Se vinculó un gasto existente a una orden de trabajo.',
   },
+  service_request_submitted: {
+    version: 1,
+    subject: 'Nueva solicitud de servicio',
+    intro: 'Se registró una nueva solicitud que requiere seguimiento.',
+  },
+  service_request_assigned: {
+    version: 1,
+    subject: 'Solicitud asignada',
+    intro: 'Se te asignó una solicitud de servicio.',
+  },
+  service_request_resident_attention: {
+    version: 1,
+    subject: 'Tu solicitud requiere atención',
+    intro: 'Hay una actualización en tu solicitud de servicio.',
+  },
+  service_request_resolved: {
+    version: 1,
+    subject: 'Solicitud resuelta',
+    intro: 'Tu solicitud de servicio fue marcada como resuelta.',
+  },
+  service_request_cancelled: {
+    version: 1,
+    subject: 'Solicitud cancelada',
+    intro: 'La solicitud de servicio fue cancelada.',
+  },
 } as const;
 
 export type NotificationTemplateKey = keyof typeof notificationTemplates;
