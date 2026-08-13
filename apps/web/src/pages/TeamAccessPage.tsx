@@ -9,6 +9,7 @@ import {
   administrativeRoleLabel,
   createAdminInvitation,
   loadTeamAccess,
+  manageTeamMember,
   revokeAdminInvitation,
   type AdminInvitation,
   type AdminInvitationDelivery,
@@ -98,6 +99,8 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
   const [expirationDate, setExpirationDate] = useState(() => dateInputValue(7));
   const [creating, setCreating] = useState(false);
   const [revokingId, setRevokingId] = useState('');
+  const [memberBusyId, setMemberBusyId] = useState('');
+  const [memberRoles, setMemberRoles] = useState<Record<string, AdministrativeRole>>({});
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [deliveryWarning, setDeliveryWarning] = useState('');
@@ -108,7 +111,14 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
     setLoading(true);
     setError('');
     try {
-      setData(await loadTeamAccess(condominiumId));
+      const nextData = await loadTeamAccess(condominiumId);
+      setData(nextData);
+      setMemberRoles(
+        Object.fromEntries(nextData.members.map((member) => [member.user_id, member.role])) as Record<
+          string,
+          AdministrativeRole
+        >,
+      );
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -134,6 +144,14 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
   const pendingInvitations = useMemo(
     () => data?.invitations.filter((invitation) => invitation.status === 'pending').length ?? 0,
     [data?.invitations],
+  );
+  const activeMembers = useMemo(
+    () => data?.members.filter((member) => member.status === 'active').length ?? 0,
+    [data?.members],
+  );
+  const suspendedMembers = useMemo(
+    () => data?.members.filter((member) => member.status === 'suspended').length ?? 0,
+    [data?.members],
   );
 
   const createInvitation = async (event: FormEvent<HTMLFormElement>) => {
@@ -220,6 +238,59 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
     }
   };
 
+  const runMemberAction = async (
+    member: TeamMember,
+    action: 'change_role' | 'suspend' | 'reactivate' | 'remove',
+  ) => {
+    if (
+      action === 'suspend' &&
+      !window.confirm(
+        `¿Suspender temporalmente el acceso de ${member.full_name ?? member.email}? Podrás reactivarlo después.`,
+      )
+    ) {
+      return;
+    }
+    if (
+      action === 'remove' &&
+      !window.confirm(
+        `¿Quitar a ${member.full_name ?? member.email} del equipo de ${condominiumName}? Su cuenta e historial se conservarán.`,
+      )
+    ) {
+      return;
+    }
+
+    setMemberBusyId(member.user_id);
+    setError('');
+    setMessage('');
+    setDeliveryWarning('');
+    try {
+      const selectedRole = memberRoles[member.user_id] ?? member.role;
+      await manageTeamMember({
+        condominiumId,
+        userId: member.user_id,
+        action,
+        role: action === 'change_role' || action === 'reactivate' ? selectedRole : undefined,
+      });
+
+      const successMessages = {
+        change_role: 'Rol actualizado correctamente.',
+        suspend: 'Acceso suspendido. El usuario ya no puede operar este condominio.',
+        reactivate: 'Acceso reactivado correctamente.',
+        remove: 'Acceso retirado. La cuenta global y el historial se conservaron.',
+      };
+      setMessage(successMessages[action]);
+      await load();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo actualizar el acceso de este miembro.',
+      );
+    } finally {
+      setMemberBusyId('');
+    }
+  };
+
   if (loading && !data) {
     return (
       <div className="team-access-page" aria-label="Cargando equipo y accesos">
@@ -249,14 +320,19 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
         actions={
           <div className="team-access-metrics">
             <span>
-              <strong>{data.members.length}</strong> miembros
+              <strong>{activeMembers}</strong> activos
             </span>
+            {suspendedMembers ? (
+              <span>
+                <strong>{suspendedMembers}</strong> suspendidos
+              </span>
+            ) : null}
             <span>
               <strong>{pendingInvitations}</strong> pendientes
             </span>
           </div>
         }
-        description={`${condominiumName} · invita administradores sin compartir contraseñas.`}
+        description={`${condominiumName} · invita, asigna roles y controla el acceso administrativo.`}
         eyebrow="Seguridad y colaboración"
         title="Equipo y accesos"
       />
@@ -363,23 +439,101 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
             <div>
               <span className="settings-kicker">Acceso actual</span>
               <h2>Miembros del equipo</h2>
-              <p>Usuarios que ya aceptaron acceso administrativo.</p>
+              <p>Cambia roles, suspende temporalmente o retira accesos sin borrar cuentas.</p>
             </div>
-            <Badge tone="success">{data.members.length} activos</Badge>
+            <Badge tone="success">{activeMembers} activos</Badge>
           </div>
 
           {data.members.length ? (
             <div className="team-member-list">
-              {data.members.map((member) => (
-                <article key={`${member.user_id}-${member.role}`}>
-                  <span>{(member.full_name ?? member.email).slice(0, 2).toUpperCase()}</span>
-                  <div>
-                    <strong>{member.full_name ?? member.email}</strong>
-                    <small>{member.email}</small>
-                  </div>
-                  <Badge tone="info">{administrativeRoleLabel(member.role)}</Badge>
-                </article>
-              ))}
+              {data.members.map((member) => {
+                const selectedRole = memberRoles[member.user_id] ?? member.role;
+                const busy = memberBusyId === member.user_id;
+                const isCurrentUser = member.user_id === session.user.id;
+                return (
+                  <article
+                    className={member.status === 'suspended' ? 'team-member--suspended' : undefined}
+                    key={member.user_id}
+                  >
+                    <span>{(member.full_name ?? member.email).slice(0, 2).toUpperCase()}</span>
+                    <div className="team-member-identity">
+                      <strong>
+                        {member.full_name ?? member.email}
+                        {isCurrentUser ? ' · Tú' : ''}
+                      </strong>
+                      <small>{member.email}</small>
+                      <small>Desde {formatDate(member.joined_at)}</small>
+                    </div>
+                    <Badge tone={member.status === 'active' ? 'success' : 'warning'}>
+                      {member.status === 'active' ? 'Activo' : 'Suspendido'}
+                    </Badge>
+
+                    <div className="team-member-controls">
+                      <select
+                        aria-label={`Rol de ${member.full_name ?? member.email}`}
+                        className="select team-member-role-select"
+                        disabled={busy}
+                        onChange={(event) =>
+                          setMemberRoles((current) => ({
+                            ...current,
+                            [member.user_id]: event.target.value as AdministrativeRole,
+                          }))
+                        }
+                        value={selectedRole}
+                      >
+                        {ADMINISTRATIVE_ROLE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      {member.status === 'active' ? (
+                        <>
+                          <Button
+                            disabled={busy || selectedRole === member.role}
+                            onClick={() => void runMemberAction(member, 'change_role')}
+                            size="sm"
+                            type="button"
+                            variant="secondary"
+                          >
+                            Guardar rol
+                          </Button>
+                          <Button
+                            disabled={busy}
+                            onClick={() => void runMemberAction(member, 'suspend')}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                          >
+                            Suspender
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          disabled={busy}
+                          onClick={() => void runMemberAction(member, 'reactivate')}
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
+                          Reactivar
+                        </Button>
+                      )}
+
+                      <Button
+                        disabled={busy}
+                        onClick={() => void runMemberAction(member, 'remove')}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Quitar acceso
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : (
             <EmptyState
