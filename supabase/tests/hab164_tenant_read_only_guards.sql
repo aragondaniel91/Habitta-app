@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(10);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, created_at, updated_at
@@ -152,6 +152,22 @@ select throws_ok(
 
 select throws_ok(
   format(
+    'select public.record_service_request_attachment(%L::uuid,%L::uuid,null,%L::uuid,%L,%L,%L,1024,repeat(''a'',64),%L::public.service_request_visibility)',
+    (select payload #>> '{condominium,id}' from hab164_ro_workspace),
+    (select (request_row).id::text from hab164_admin_request),
+    'a4015000-0000-0000-0000-000000000001',
+    'requests/a4015000-0000-0000-0000-000000000001',
+    'tenant-attempt.pdf',
+    'application/pdf',
+    'public'
+  ),
+  'P0001',
+  'tenant access is read only',
+  'tenant cannot attach a file to a service request'
+);
+
+select throws_ok(
+  format(
     'select public.create_payment_draft(%L::uuid,%L::uuid,%L::uuid,current_date,25,%L,%L,null,null,%L)',
     (select payload #>> '{condominium,id}' from hab164_ro_workspace),
     'a4011000-0000-0000-0000-000000000001',
@@ -166,6 +182,13 @@ select throws_ok(
 );
 
 reset role;
+
+select is(
+  (select count(*) from public.service_request_attachments
+   where uploaded_by = 'a4010000-0000-0000-0000-000000000002'),
+  0::bigint,
+  'blocked tenant attachment attempt leaves no metadata row behind'
+);
 
 select is(
   (select count(*) from public.payments
