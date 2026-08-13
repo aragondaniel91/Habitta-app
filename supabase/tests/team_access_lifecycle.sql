@@ -123,11 +123,14 @@ select is(
   'removed access remains represented in lifecycle history'
 );
 
+reset role;
 select is(
   (select count(*) from auth.users where id = '00000000-0000-0000-0000-00000000e103'),
   1::bigint,
   'removing condominium access does not delete the global Auth account'
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000e101', true);
 
 select lives_ok(
   format(
