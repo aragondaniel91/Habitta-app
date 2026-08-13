@@ -39,7 +39,7 @@ describe('administrator invitation email route', () => {
   it('uses a public HTTPS-compatible app asset for the email logo', async () => {
     const source = await readFile(routeSourceUrl, 'utf8');
 
-    expect(source).toContain("const emailLogoUrl = `${appBaseUrl}/icon-192.png`");
+    expect(source).toContain('const emailLogoUrl = `${appBaseUrl}/icon-192.png`');
     expect(source).toContain('src="${escapeHtml(emailLogoUrl)}"');
     expect(source).not.toContain('data:image/');
     expect(source).not.toContain('HABITTA_EMAIL_LOGO_MONO_BASE64');
