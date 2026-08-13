@@ -68,8 +68,10 @@ select throws_ok(
   'revoked administrator invitation cannot be accepted'
 );
 
+-- Create the invitation as the real condominium administrator so the temp fixture remains
+-- readable after returning to authenticated. Elevate only for the impossible-in-production
+-- clock manipulation needed to exercise the expired path deterministically.
 select set_config('request.jwt.claim.sub', 'a1631000-0000-0000-0000-000000000001', true);
-reset role;
 create temporary table hab163_expired_invite as
 select public.create_admin_invitation(
   (select (payload #>> '{condominium,id}')::uuid from hab163_negative_workspace),
@@ -78,6 +80,7 @@ select public.create_admin_invitation(
   now() + interval '7 days'
 ) as payload;
 
+reset role;
 update public.admin_invitations
 set expires_at = now() - interval '1 minute'
 where id = (select (payload #>> '{invitation,id}')::uuid from hab163_expired_invite);
