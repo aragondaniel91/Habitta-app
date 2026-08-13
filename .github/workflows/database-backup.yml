@@ -98,12 +98,16 @@ jobs:
         run: |
           set -euo pipefail
           OBJECT_PREFIX="daily/$(date -u +'%Y/%m/%d')"
+          BACKUP_FILE="$GITHUB_WORKSPACE/.backup/out/${BACKUP_ID}.tar.gz.enc"
+          CHECKSUM_FILE="$GITHUB_WORKSPACE/.backup/out/${BACKUP_ID}.sha256"
+          test -s "$BACKUP_FILE"
+          test -s "$CHECKSUM_FILE"
           pnpm --filter @habitta/api exec wrangler r2 object put \
             "$BACKUP_BUCKET/$OBJECT_PREFIX/${BACKUP_ID}.tar.gz.enc" \
-            --file ".backup/out/${BACKUP_ID}.tar.gz.enc" --remote
+            --file "$BACKUP_FILE" --remote
           pnpm --filter @habitta/api exec wrangler r2 object put \
             "$BACKUP_BUCKET/$OBJECT_PREFIX/${BACKUP_ID}.sha256" \
-            --file ".backup/out/${BACKUP_ID}.sha256" --remote
+            --file "$CHECKSUM_FILE" --remote
           echo "Encrypted backup stored as $OBJECT_PREFIX/${BACKUP_ID}.tar.gz.enc"
 
       - name: Remove local backup material
