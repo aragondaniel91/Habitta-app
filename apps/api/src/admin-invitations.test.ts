@@ -36,6 +36,15 @@ describe('administrator invitation email route', () => {
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
   });
 
+  it('uses a public HTTPS-compatible app asset for the email logo', async () => {
+    const source = await readFile(routeSourceUrl, 'utf8');
+
+    expect(source).toContain("const emailLogoUrl = `${appBaseUrl}/icon-192.png`");
+    expect(source).toContain('src="${escapeHtml(emailLogoUrl)}"');
+    expect(source).not.toContain('data:image/');
+    expect(source).not.toContain('HABITTA_EMAIL_LOGO_MONO_BASE64');
+  });
+
   it('maps the database fail-safe invitation limit to HTTP 429', async () => {
     const source = await readFile(routeSourceUrl, 'utf8');
 
