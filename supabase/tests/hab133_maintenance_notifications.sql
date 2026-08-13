@@ -161,6 +161,10 @@ select public.link_maintenance_expense(
   (select (quote).id from hab133_notify_quote_one)
 );
 
+-- The user-facing mutations above must execute as authenticated. Internal outbox/delivery
+-- assertions inspect protected implementation tables as the test owner, not as an app user.
+reset role;
+
 select is(
   (select count(*) from public.notification_events where event_type = 'maintenance_quote_submitted'),
   3::bigint,
