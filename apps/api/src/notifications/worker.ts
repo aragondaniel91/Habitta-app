@@ -37,6 +37,9 @@ export const runScheduled = async (env: NotificationBindings, runAt = new Date()
   await serviceRpc<number>(env, 'generate_due_notification_events', {
     run_at: runAt.toISOString(),
   });
+  await serviceRpc<number>(env, 'generate_governance_due_notification_events', {
+    run_at: runAt.toISOString(),
+  });
   await enqueuePendingNotifications(env);
 };
 
