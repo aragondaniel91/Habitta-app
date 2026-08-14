@@ -88,46 +88,134 @@ jobs:
           test -s schema.sql
           test -s data.sql
           test -s roles.sql
+          test -s auth-data.sql
+          test -s source-metrics.tsv
+          for metric in auth_users payments payment_allocations payment_receipts receivable_items receivable_ledger_entries; do
+            VALUE="$(awk -F '\t' -v metric="$metric" '$1 == metric { print $2 }' source-metrics.tsv)"
+            [[ "$VALUE" =~ ^[0-9]+$ ]] || { echo "Invalid aggregate metric: $metric" >&2; exit 1; }
+          done
       - name: Start isolated local Supabase database
         run: |
           set -euo pipefail
           supabase db start
-      - name: Prepare clean application restore target
+      - name: Prepare clean restore target
         run: |
           set -euo pipefail
           RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-          # Keep Supabase-managed platform schemas/roles (auth, storage, etc.) but
-          # remove the application schema created by local migrations. The logical
-          # production backup must rebuild public from its own schema.sql.
+          # Preserve Supabase-managed Auth DDL and schema_migrations, but remove all Auth data.
+          # The target is a disposable local database used only by this drill.
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            tables text;
+          begin
+            select string_agg(format('%I.%I', schemaname, tablename), ', ' order by tablename)
+              into tables
+              from pg_tables
+             where schemaname = 'auth'
+               and tablename <> 'schema_migrations';
+            if tables is not null then
+              execute 'truncate table ' || tables || ' cascade';
+            end if;
+          end
+          $$;
+
           drop schema if exists public cascade;
           create schema public authorization postgres;
           grant usage on schema public to postgres, anon, authenticated, service_role;
           SQL
           EXISTING_APP_TABLES="$(psql "$RESTORE_URL" -Atqc "select count(*) from pg_tables where schemaname = 'public';")"
+          EXISTING_AUTH_USERS="$(psql "$RESTORE_URL" -Atqc 'select count(*) from auth.users;')"
           test "$EXISTING_APP_TABLES" -eq 0
-          printf 'Clean restore target prepared; public tables before restore: %s\n' "$EXISTING_APP_TABLES"
-      - name: Restore schema and data into isolated Supabase database
+          test "$EXISTING_AUTH_USERS" -eq 0
+          printf 'Clean isolated restore target prepared.\n'
+      - name: Restore Auth, schema and application data
         run: |
           set -euo pipefail
           RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
           EXTRACTED="$GITHUB_WORKSPACE/.restore/plain/extracted"
-          # roles.sql is retained and checksum-validated as backup evidence. The
-          # local Supabase bootstrap owns platform roles and cluster settings.
+          # roles.sql is checksum-validated backup evidence. Local Supabase owns platform roles.
+          # Disabling replication triggers only for the import keeps dump ordering portable; the
+          # next step performs explicit post-restore referential and financial invariant checks.
+          {
+            printf '%s\n' 'SET session_replication_role = replica;'
+            cat "$EXTRACTED/auth-data.sql"
+            printf '%s\n' 'SET session_replication_role = origin;'
+          } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/schema.sql"
           {
             printf '%s\n' 'SET session_replication_role = replica;'
             cat "$EXTRACTED/data.sql"
             printf '%s\n' 'SET session_replication_role = origin;'
           } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
-      - name: Verify restored database
+      - name: Verify restored Auth and financial invariants
         run: |
           set -euo pipefail
           RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+          SOURCE="$GITHUB_WORKSPACE/.restore/plain/extracted/source-metrics.tsv"
+          RESTORED="$GITHUB_WORKSPACE/.restore/plain/restored-metrics.tsv"
+
+          psql "$RESTORE_URL" -X -qAt -v ON_ERROR_STOP=1 <<'SQL' > "$RESTORED"
+          select 'auth_users' || E'\t' || count(*) from auth.users;
+          select 'payments' || E'\t' || count(*) from public.payments;
+          select 'payment_allocations' || E'\t' || count(*) from public.payment_allocations;
+          select 'payment_receipts' || E'\t' || count(*) from public.payment_receipts;
+          select 'receivable_items' || E'\t' || count(*) from public.receivable_items;
+          select 'receivable_ledger_entries' || E'\t' || count(*) from public.receivable_ledger_entries;
+          SQL
+
+          for metric in auth_users payments payment_allocations payment_receipts receivable_items receivable_ledger_entries; do
+            EXPECTED="$(awk -F '\t' -v metric="$metric" '$1 == metric { print $2 }' "$SOURCE")"
+            ACTUAL="$(awk -F '\t' -v metric="$metric" '$1 == metric { print $2 }' "$RESTORED")"
+            [[ "$EXPECTED" =~ ^[0-9]+$ ]]
+            [[ "$ACTUAL" =~ ^[0-9]+$ ]]
+            test "$EXPECTED" = "$ACTUAL" || {
+              printf 'Restore count mismatch for %s: expected %s, got %s\n' "$metric" "$EXPECTED" "$ACTUAL" >&2
+              exit 1
+            }
+          done
+
+          # These checks do not expose IDs or amounts. Each query must return zero or the drill
+          # fails closed. They prove the restored financial graph is internally coherent even
+          # though replication triggers were disabled while loading the logical dump.
+          psql "$RESTORE_URL" -X -qAt -v ON_ERROR_STOP=1 <<'SQL' > "$GITHUB_WORKSPACE/.restore/plain/invariants.tsv"
+          select 'payments_missing_submitter' || E'\t' || count(*)
+            from public.payments p left join auth.users u on u.id = p.submitted_by_user_id
+           where u.id is null;
+          select 'allocations_missing_payment' || E'\t' || count(*)
+            from public.payment_allocations a left join public.payments p on p.id = a.payment_id and p.condominium_id = a.condominium_id
+           where p.id is null;
+          select 'allocations_missing_receivable' || E'\t' || count(*)
+            from public.payment_allocations a left join public.receivable_items r on r.id = a.receivable_item_id and r.condominium_id = a.condominium_id
+           where r.id is null;
+          select 'receipts_missing_payment' || E'\t' || count(*)
+            from public.payment_receipts r left join public.payments p on p.id = r.payment_id and p.condominium_id = r.condominium_id
+           where p.id is null;
+          select 'ledger_missing_payment' || E'\t' || count(*)
+            from public.receivable_ledger_entries l left join public.payments p on p.id = l.payment_id and p.condominium_id = l.condominium_id
+           where l.payment_id is not null and p.id is null;
+          select 'ledger_missing_allocation' || E'\t' || count(*)
+            from public.receivable_ledger_entries l left join public.payment_allocations a on a.id = l.payment_allocation_id and a.condominium_id = l.condominium_id
+           where l.payment_allocation_id is not null and a.id is null;
+          select 'approved_without_receipt' || E'\t' || count(*)
+            from public.payments p left join public.payment_receipts r on r.payment_id = p.id
+           where p.status = 'approved' and r.id is null;
+          select 'allocation_without_credit_ledger' || E'\t' || count(*)
+            from public.payment_allocations a left join public.receivable_ledger_entries l on l.payment_allocation_id = a.id
+           where l.id is null;
+          SQL
+
+          while IFS=$'\t' read -r invariant failures; do
+            [[ "$failures" =~ ^[0-9]+$ ]]
+            test "$failures" -eq 0 || {
+              printf 'Restore invariant failed: %s (%s violations)\n' "$invariant" "$failures" >&2
+              exit 1
+            }
+          done < "$GITHUB_WORKSPACE/.restore/plain/invariants.tsv"
+
           TABLE_COUNT="$(psql "$RESTORE_URL" -Atqc "select count(*) from pg_tables where schemaname = 'public';")"
           test "$TABLE_COUNT" -gt 0
-          printf 'Restored public tables: %s\n' "$TABLE_COUNT"
-          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -c 'select current_database(), now();'
+          printf 'Restore verified: %s public tables; Auth and financial aggregate counts match source.\n' "$TABLE_COUNT"
       - name: Remove restored plaintext and local database
         if: always()
         run: |
