@@ -36,6 +36,27 @@ describe('administrator invitation email route', () => {
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
   });
 
+  it('keeps transactional invitations separate from notification fan-out gating', async () => {
+    const source = await readFile(routeSourceUrl, 'utf8');
+
+    expect(source).toContain('Intentional transactional exception');
+    expect(source).toContain('record_admin_invitation_delivery');
+    expect(source).not.toContain('live_email_enabled');
+    expect(source).not.toContain('notification_deliveries');
+    expect(source).not.toContain('notification_events');
+  });
+
+  it('audits every terminal delivery outcome without sending service-role credentials', async () => {
+    const source = await readFile(routeSourceUrl, 'utf8');
+
+    expect(source).toContain('recordInvitationDeliveryAudit');
+    expect(source).toContain('target_status: delivery.status');
+    expect(source).toContain('target_provider: delivery.provider');
+    expect(source).toContain('target_mode: delivery.mode');
+    expect(source).toContain('admin_invitation_delivery_audit_failed');
+    expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+  });
+
   it('uses a public HTTPS-compatible app asset for the email logo', async () => {
     const source = await readFile(routeSourceUrl, 'utf8');
 
