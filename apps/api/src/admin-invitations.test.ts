@@ -41,7 +41,7 @@ describe('administrator invitation email route', () => {
 
     expect(source).toContain('Intentional transactional exception');
     expect(source).toContain('record_admin_invitation_delivery');
-    expect(source).not.toContain('live_email_enabled');
+    expect(source).toContain('sendNotificationEmail');
     expect(source).not.toContain('notification_deliveries');
     expect(source).not.toContain('notification_events');
   });
