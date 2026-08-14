@@ -262,11 +262,14 @@ assembliesRoutes.post('/:id/assemblies/:assemblyId/resolutions', async (c) => {
   return responseJson(c, response, 201);
 });
 
-assembliesRoutes.post('/:id/assemblies/:assemblyId/resolutions/:resolutionId/publish', async (c) => {
-  const response = await rpc(c, 'publish_assembly_resolution', {
-    target_condominium_id: uuid.parse(c.req.param('id')),
-    target_assembly_id: uuid.parse(c.req.param('assemblyId')),
-    target_resolution_id: uuid.parse(c.req.param('resolutionId')),
-  });
-  return responseJson(c, response);
-});
+assembliesRoutes.post(
+  '/:id/assemblies/:assemblyId/resolutions/:resolutionId/publish',
+  async (c) => {
+    const response = await rpc(c, 'publish_assembly_resolution', {
+      target_condominium_id: uuid.parse(c.req.param('id')),
+      target_assembly_id: uuid.parse(c.req.param('assemblyId')),
+      target_resolution_id: uuid.parse(c.req.param('resolutionId')),
+    });
+    return responseJson(c, response);
+  },
+);
