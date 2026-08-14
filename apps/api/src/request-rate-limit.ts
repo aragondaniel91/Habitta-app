@@ -12,8 +12,7 @@ const FINANCIAL_ROUTE_FAMILIES = new Set([
 ]);
 
 export type RequestRateLimitScope =
-  | { kind: 'organization-signup'; key: string }
-  | { kind: 'financial-write'; key: string };
+  { kind: 'organization-signup'; key: string } | { kind: 'financial-write'; key: string };
 
 const sha256Hex = async (value: string) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
