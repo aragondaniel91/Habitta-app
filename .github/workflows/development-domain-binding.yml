@@ -22,6 +22,8 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
+      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
       CLOUDFLARE_ZONE_NAME: mihabitta.com
       CLOUDFLARE_PAGES_PROJECT_NAME: habitta-web-dev
       CLOUDFLARE_PAGES_PRODUCTION_BRANCH: development
@@ -33,6 +35,12 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+          if { [ -n "$CLOUDFLARE_ACCESS_CLIENT_ID" ] && [ -z "$CLOUDFLARE_ACCESS_CLIENT_SECRET" ]; } || \
+             { [ -z "$CLOUDFLARE_ACCESS_CLIENT_ID" ] && [ -n "$CLOUDFLARE_ACCESS_CLIENT_SECRET" ]; }; then
+            echo "::error::Cloudflare Access service-token credentials are incomplete. Configure both CLOUDFLARE_ACCESS_CLIENT_ID and CLOUDFLARE_ACCESS_CLIENT_SECRET, or neither."
+            exit 1
+          fi
 
       - name: Ensure Pages project and preview domain
         run: |
@@ -164,7 +172,19 @@ jobs:
         run: |
           set -euo pipefail
           PREVIEW_URL="https://$CLOUDFLARE_PAGES_PREVIEW_DOMAIN"
+          ACCESS_HEADERS=()
 
+          if [ -n "$CLOUDFLARE_ACCESS_CLIENT_ID" ] && [ -n "$CLOUDFLARE_ACCESS_CLIENT_SECRET" ]; then
+            ACCESS_HEADERS+=(
+              -H "CF-Access-Client-Id: $CLOUDFLARE_ACCESS_CLIENT_ID"
+              -H "CF-Access-Client-Secret: $CLOUDFLARE_ACCESS_CLIENT_SECRET"
+            )
+            echo "Preview health check will authenticate with a Cloudflare Access service token."
+          else
+            echo "No Cloudflare Access service token is configured for the preview health check."
+          fi
+
+          LAST_STATUS=""
           for attempt in $(seq 1 30); do
             STATUS=$(curl \
               --silent \
@@ -174,7 +194,9 @@ jobs:
               --max-time 15 \
               --output /dev/null \
               --write-out '%{http_code}' \
+              "${ACCESS_HEADERS[@]}" \
               "$PREVIEW_URL" || true)
+            LAST_STATUS="$STATUS"
 
             echo "Preview HTTPS attempt $attempt/30: ${STATUS:-unreachable}"
             case "$STATUS" in
@@ -183,5 +205,13 @@ jobs:
             sleep 10
           done
 
-          echo "::error::Pages is attached and DNS is canonical, but $PREVIEW_URL did not serve a successful HTTPS response within 5 minutes. Check the Pages certificate/custom-domain status."
+          if [ "$LAST_STATUS" = "403" ]; then
+            if [ -z "$CLOUDFLARE_ACCESS_CLIENT_ID" ]; then
+              echo "::error::$PREVIEW_URL is reachable but returned HTTP 403 for all attempts. If the preview domain is intentionally protected by Cloudflare Access, create a service token for this application and store its credentials as CLOUDFLARE_ACCESS_CLIENT_ID and CLOUDFLARE_ACCESS_CLIENT_SECRET GitHub secrets. If Access is not intentional, inspect Access/WAF/security rules for the custom domain."
+            else
+              echo "::error::$PREVIEW_URL returned HTTP 403 even with the configured Cloudflare Access service token. Verify the token is allowed by the Access application/policy for this exact custom domain and inspect WAF/security rules."
+            fi
+          else
+            echo "::error::Pages is attached and DNS is canonical, but $PREVIEW_URL did not serve a successful HTTPS response within 5 minutes. Last HTTP status: ${LAST_STATUS:-unreachable}."
+          fi
           exit 1
