@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../../components/Drawer';
 import { Button, Field, Select } from '../../../components/ui';
+import '../../../financial-capture.css';
 import { paymentApi } from '../api';
 import type { Payment, PaymentMethod } from '../types';
 import { PaymentProofUploader } from './PaymentProofUploader';
