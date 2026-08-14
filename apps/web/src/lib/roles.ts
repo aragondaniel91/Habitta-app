@@ -46,9 +46,14 @@ export function canManage(roles: CondominiumRole[]) {
   return roles.some((role) => role === 'condominium_admin' || role === 'accountant');
 }
 
-/** Residents act on their own unit: report a payment, open a request, read their statement. */
+/** Residents act on their own authorized data; the database still decides which rows are visible. */
 export function isResident(roles: CondominiumRole[]) {
   return roles.some((role) => RESIDENT_ROLES.includes(role));
+}
+
+/** Mirrors the pilot database guard: tenant-only memberships are operationally read-only. */
+export function isTenantOnly(roles: CondominiumRole[]) {
+  return roles.length > 0 && roles.every((role) => role === 'tenant');
 }
 
 /** Governance is run by the board as well as the administration. */
