@@ -47,10 +47,7 @@ applicationApp.onError((error, c) => {
     logFinancial5xx(c.req.raw, requestId, c.env, status, error);
   }
 
-  return c.json(
-    { error: status === 400 ? 'Invalid identifier' : 'Request failed' },
-    status,
-  );
+  return c.json({ error: status === 400 ? 'Invalid identifier' : 'Request failed' }, status);
 });
 
 export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
