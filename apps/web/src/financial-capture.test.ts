@@ -30,5 +30,19 @@ describe('financial capture orchestration', () => {
     expect(capture).toContain('setCreatedExpense(expense)');
     expect(capture).toContain('/expenses/${createdExpense.id}/attachments');
     expect(capture).toContain('setProofSaved(true)');
+    expect(capture).toContain('JPEG, PNG, WebP o PDF');
+  });
+
+  it('never submits, approves or posts to treasury from capture', async () => {
+    const paymentCapture = await source(
+      './features/payments/components/PaymentCaptureDrawer.tsx',
+    );
+    const expenseCapture = await source('./features/expenses/ExpenseCaptureDrawer.tsx');
+
+    for (const capture of [paymentCapture, expenseCapture]) {
+      expect(capture).not.toContain('/approve');
+      expect(capture).not.toContain('/submit');
+      expect(capture).not.toContain('/treasury/');
+    }
   });
 });
