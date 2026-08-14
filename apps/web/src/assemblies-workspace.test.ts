@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 const appSource = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
-const wrapperSource = readFileSync(new URL('./pages/GovernanceWorkspacePage.tsx', import.meta.url), 'utf8');
+const wrapperSource = readFileSync(
+  new URL('./pages/GovernanceWorkspacePage.tsx', import.meta.url),
+  'utf8',
+);
 const workspaceSource = readFileSync(
   new URL('./features/governance/AssembliesWorkspace.tsx', import.meta.url),
   'utf8',
@@ -36,7 +39,7 @@ describe('HAB-171 assemblies workspace contract', () => {
   it('preserves governance manager gating and published-record immutability in the UI', () => {
     expect(workspaceSource).toContain('canManageGovernance');
     expect(workspaceSource).toContain('minutes_published_at');
-    expect(workspaceSource).toContain("resolution.published_at");
+    expect(workspaceSource).toContain('resolution.published_at');
     expect(workspaceSource).toContain('Iniciar y congelar elegibilidad');
     expect(workspaceSource).toContain('Quórum alcanzado');
   });
