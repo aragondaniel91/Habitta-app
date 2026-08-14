@@ -10,7 +10,11 @@ const suggestion = <T extends z.ZodTypeAny>(value: T) =>
 
 const optionalText = z.string().trim().max(500);
 const shortText = z.string().trim().max(120);
-const currencyCode = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/);
+const currencyCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{3}$/);
 const dateValue = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const moneyValue = z.string().regex(/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/);
 
