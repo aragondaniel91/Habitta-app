@@ -17,15 +17,15 @@ import {
   formatDashboardDate,
   sortReceivableSummaries,
 } from '../lib/dashboard';
-import type {
-  DashboardPayment,
-  DashboardReceivable,
-  ReceivableSummary,
-} from '../lib/dashboard';
+import type { DashboardPayment, DashboardReceivable, ReceivableSummary } from '../lib/dashboard';
 import type { AnnouncementRecord } from '../lib/announcements';
 import { formatAnnouncementDate, priorityLabels } from '../lib/announcements';
 import type { ServiceRequestRecord } from '../lib/service-requests';
-import { formatRequestDate, isOpenRequest, statusLabels as requestStatusLabels } from '../lib/service-requests';
+import {
+  formatRequestDate,
+  isOpenRequest,
+  statusLabels as requestStatusLabels,
+} from '../lib/service-requests';
 import type { GovernanceProposal } from '../lib/governance';
 import { formatGovernanceDate } from '../lib/governance';
 import { APP_ROUTES } from '../navigation';
@@ -132,7 +132,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       proposals: proposals.status === 'fulfilled' ? proposals.value : [],
     });
     if (failed.length) {
-      setWarning(`No se pudieron actualizar: ${failed.join(', ')}. Los demás datos siguen disponibles.`);
+      setWarning(
+        `No se pudieron actualizar: ${failed.join(', ')}. Los demás datos siguen disponibles.`,
+      );
     }
     setLoading(false);
   }, [condominiumId, session]);
@@ -175,7 +177,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           const rank = { urgent: 0, important: 1, normal: 2 } as const;
           return (
             rank[left.priority] - rank[right.priority] ||
-            (right.published_at ?? right.updated_at).localeCompare(left.published_at ?? left.updated_at)
+            (right.published_at ?? right.updated_at).localeCompare(
+              left.published_at ?? left.updated_at,
+            )
           );
         })
         .slice(0, 3),
@@ -246,9 +250,14 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
               <strong>Sin saldos pendientes</strong>
             </div>
           )}
-          <p>Habitta mantiene cada moneda separada; nunca mezcla saldos USD, VES u otras monedas.</p>
+          <p>
+            Habitta mantiene cada moneda separada; nunca mezcla saldos USD, VES u otras monedas.
+          </p>
           {paymentsRoute ? (
-            <Button className="resident-dashboard__primary-action" onClick={() => onNavigate(paymentsRoute)}>
+            <Button
+              className="resident-dashboard__primary-action"
+              onClick={() => onNavigate(paymentsRoute)}
+            >
               <PaymentsIcon size={18} />
               Pagar / Registrar pago
             </Button>
@@ -263,7 +272,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
                 <div>
                   <strong>{nextDue.description}</strong>
                   <span>
-                    {nextDue.due_date ? `Vence ${formatDashboardDate(nextDue.due_date)}` : 'Sin fecha de vencimiento'}
+                    {nextDue.due_date
+                      ? `Vence ${formatDashboardDate(nextDue.due_date)}`
+                      : 'Sin fecha de vencimiento'}
                   </span>
                 </div>
                 <strong>
@@ -308,7 +319,10 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
                   </span>
                   <div>
                     <strong>
-                      {formatDashboardAmount(payment.original_amount, payment.original_currency_code)}
+                      {formatDashboardAmount(
+                        payment.original_amount,
+                        payment.original_currency_code,
+                      )}
                     </strong>
                     <small>{formatDashboardDate(payment.payment_date)}</small>
                   </div>
