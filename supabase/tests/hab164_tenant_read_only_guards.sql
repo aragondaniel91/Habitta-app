@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(11);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, created_at, updated_at
@@ -107,6 +107,13 @@ select is(
   ),
   true,
   'tenant with no additional role is classified as tenant-only'
+);
+select is(
+  public.can_read_condominium(
+    (select (payload #>> '{condominium,id}')::uuid from hab164_ro_workspace)
+  ),
+  true,
+  'active tenant occupancy preserves the minimum condominium context required by the resident app'
 );
 select is(
   public.can_read_unit('a4011000-0000-0000-0000-000000000001'),
