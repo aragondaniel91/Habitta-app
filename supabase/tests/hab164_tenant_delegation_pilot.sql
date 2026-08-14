@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(15);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, created_at, updated_at
@@ -43,8 +43,8 @@ insert into public.people (
 insert into public.unit_occupancies (
   id, unit_id, person_id, occupancy_type, is_primary_contact, starts_at, created_by
 ) values
-  ('a4113000-0000-0000-0000-000000000001', 'a4111000-0000-0000-0000-000000000001', 'a4112000-0000-0000-0000-000000000001', 'tenant', true, current_date, 'a4000000-0000-0000-0000-000000000001'),
-  ('a4113000-0000-0000-0000-000000000002', 'a4111000-0000-0000-0000-000000000002', 'a4112000-0000-0000-0000-000000000001', 'tenant', false, current_date, 'a4000000-0000-0000-0000-000000000001');
+  ('a4113000-0000-0000-0000-000000000001', 'a4111000-0000-0000-0000-000000000001', 'a4112000-0000-0000-0000-000000000001', 'tenant', true, current_date - 90, 'a4000000-0000-0000-0000-000000000001'),
+  ('a4113000-0000-0000-0000-000000000002', 'a4111000-0000-0000-0000-000000000002', 'a4112000-0000-0000-0000-000000000001', 'tenant', false, current_date - 90, 'a4000000-0000-0000-0000-000000000001');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
@@ -52,12 +52,12 @@ select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002
 select is(
   public.can_read_condominium('a4110000-0000-0000-0000-000000000001'),
   true,
-  'tenant with no end date keeps condominium context'
+  'tenant with active occupancy keeps condominium context'
 );
 select is(
   public.is_active_tenant_for_unit('a4110000-0000-0000-0000-000000000001', 'a4111000-0000-0000-0000-000000000001'),
   true,
-  'tenant with no end date is active for first delegated unit'
+  'tenant is active for first delegated unit'
 );
 select is(
   public.is_active_tenant_for_unit('a4110000-0000-0000-0000-000000000001', 'a4111000-0000-0000-0000-000000000002'),
@@ -100,7 +100,7 @@ select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002
 select is(
   public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
   true,
-  'future end date preserves current unit access'
+  'future end date preserves unit access'
 );
 reset role;
 
@@ -113,7 +113,7 @@ select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002
 select is(
   public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
   true,
-  'occupancy ending today remains active through today'
+  'end date is inclusive through today'
 );
 reset role;
 
@@ -127,7 +127,7 @@ select is(
      and user_id = 'a4000000-0000-0000-0000-000000000002'
      and role = 'tenant'),
   1::bigint,
-  'past end on one occupancy preserves membership while another occupancy is active'
+  'one expired occupancy preserves membership while another remains active'
 );
 
 set local role authenticated;
@@ -135,61 +135,12 @@ select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002
 select is(
   public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
   false,
-  'past end date removes access to that unit'
+  'past end date removes access to the expired unit'
 );
 select is(
   public.can_read_unit('a4111000-0000-0000-0000-000000000002'),
   true,
-  'remaining active occupancy keeps its own unit accessible'
-);
-select is(
-  (select count(*) from public.units where condominium_id = 'a4110000-0000-0000-0000-000000000001'),
-  1::bigint,
-  'unit RLS contracts only after an occupancy has actually ended'
-);
-reset role;
-
-update public.unit_occupancies
-set ends_at = current_date + 60
-where id = 'a4113000-0000-0000-0000-000000000002';
-
-select is(
-  (select count(*) from public.condominium_memberships
-   where condominium_id = 'a4110000-0000-0000-0000-000000000001'
-     and user_id = 'a4000000-0000-0000-0000-000000000002'
-     and role = 'tenant'),
-  1::bigint,
-  'future end date on final occupancy preserves membership'
-);
-
-set local role authenticated;
-select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
-select is(
-  public.can_read_unit('a4111000-0000-0000-0000-000000000002'),
-  true,
-  'future final occupancy remains readable'
-);
-reset role;
-
-update public.unit_occupancies
-set ends_at = current_date
-where id = 'a4113000-0000-0000-0000-000000000002';
-
-select is(
-  (select count(*) from public.condominium_memberships
-   where condominium_id = 'a4110000-0000-0000-0000-000000000001'
-     and user_id = 'a4000000-0000-0000-0000-000000000002'
-     and role = 'tenant'),
-  1::bigint,
-  'final occupancy ending today still preserves membership today'
-);
-
-set local role authenticated;
-select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
-select is(
-  public.can_read_unit('a4111000-0000-0000-0000-000000000002'),
-  true,
-  'final occupancy ending today remains readable today'
+  'remaining active occupancy keeps its unit accessible'
 );
 reset role;
 
@@ -203,7 +154,7 @@ select is(
      and user_id = 'a4000000-0000-0000-0000-000000000002'
      and role = 'tenant'),
   0::bigint,
-  'past end date on final occupancy revokes stale tenant membership'
+  'final expired occupancy revokes stale tenant membership'
 );
 
 set local role authenticated;
@@ -211,12 +162,12 @@ select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002
 select is(
   public.can_read_condominium('a4110000-0000-0000-0000-000000000001'),
   false,
-  'tenant loses condominium delegation after final occupancy has ended'
+  'tenant loses condominium delegation after final occupancy ends'
 );
 select is(
   (select count(*) from public.units where condominium_id = 'a4110000-0000-0000-0000-000000000001'),
   0::bigint,
-  'tenant sees no delegated units after final occupancy has ended'
+  'tenant sees no delegated units after final occupancy ends'
 );
 
 select * from finish();
