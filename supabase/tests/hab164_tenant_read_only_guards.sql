@@ -177,7 +177,7 @@ select throws_ok(
     'hab164-tenant-payment-attempt'
   ),
   'P0001',
-  'invalid payment',
+  'tenant access is read only',
   'tenant cannot create a payment draft'
 );
 
