@@ -66,15 +66,42 @@ jobs:
           umask 077
           mkdir -p .backup/plain .backup/out
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+          # The standard Supabase dump intentionally excludes managed schemas such as auth.
+          # Keep the portable public/application backup and add an explicit auth data dump so
+          # recovery evidence includes users and their related Auth rows without copying auth DDL.
           supabase db dump --linked --role-only -f .backup/plain/roles.sql
           supabase db dump --linked -f .backup/plain/schema.sql
           supabase db dump --linked --data-only --use-copy \
             -x 'storage.buckets_vectors' \
             -x 'storage.vector_indexes' \
             -f .backup/plain/data.sql
+          supabase db dump --linked --schema auth --data-only --use-copy \
+            -x 'auth.schema_migrations' \
+            -f .backup/plain/auth-data.sql
+
+          # Link writes a pooler URL with a password placeholder. Use PGPASSWORD so the database
+          # password never appears in a command line, artifact or log. The metrics contain counts
+          # only; no user IDs, emails, names, tokens, amounts or document contents are persisted.
+          test -s supabase/.temp/pooler-url
+          POOLER_URL="$(sed 's/:\[YOUR-PASSWORD\]@/@/' supabase/.temp/pooler-url)"
+          PGPASSWORD="$SUPABASE_DB_PASSWORD" psql "$POOLER_URL" -X -qAt -v ON_ERROR_STOP=1 <<'SQL' > .backup/plain/source-metrics.tsv
+          select 'auth_users' || E'\t' || count(*) from auth.users;
+          select 'payments' || E'\t' || count(*) from public.payments;
+          select 'payment_allocations' || E'\t' || count(*) from public.payment_allocations;
+          select 'payment_receipts' || E'\t' || count(*) from public.payment_receipts;
+          select 'receivable_items' || E'\t' || count(*) from public.receivable_items;
+          select 'receivable_ledger_entries' || E'\t' || count(*) from public.receivable_ledger_entries;
+          SQL
+
+          test -s .backup/plain/auth-data.sql
+          test -s .backup/plain/source-metrics.tsv
+          AUTH_USERS_COUNT="$(awk -F '\t' '$1 == "auth_users" { print $2 }' .backup/plain/source-metrics.tsv)"
+          [[ "$AUTH_USERS_COUNT" =~ ^[0-9]+$ ]]
+
           printf '%s\n' "$GITHUB_SHA" > .backup/plain/source-commit.txt
           date -u +'%Y-%m-%dT%H:%M:%SZ' > .backup/plain/created-at.txt
-          (cd .backup/plain && sha256sum roles.sql schema.sql data.sql source-commit.txt created-at.txt > manifest.sha256)
+          (cd .backup/plain && sha256sum roles.sql schema.sql data.sql auth-data.sql source-metrics.tsv source-commit.txt created-at.txt > manifest.sha256)
           tar -C .backup/plain -czf .backup/database-backup.tar.gz .
 
       - name: Encrypt backup before upload
