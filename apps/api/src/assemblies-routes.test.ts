@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const source = readFileSync(fileURLToPath(new URL('./assemblies-routes.ts', import.meta.url)), 'utf8');
-const wrapper = readFileSync(fileURLToPath(new URL('./operations-routes.ts', import.meta.url)), 'utf8');
+const source = readFileSync(
+  fileURLToPath(new URL('./assemblies-routes.ts', import.meta.url)),
+  'utf8',
+);
+const wrapper = readFileSync(
+  fileURLToPath(new URL('./operations-routes.ts', import.meta.url)),
+  'utf8',
+);
 
 describe('assemblies routes contract', () => {
   it('mounts assemblies under authenticated condominium operations', () => {
@@ -32,7 +38,9 @@ describe('assemblies routes contract', () => {
   });
 
   it('requires optimistic versions for lifecycle and minutes mutations', () => {
-    expect(source.match(/expectedVersion: z\.number\(\)\.int\(\)\.positive\(\)/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+    expect(
+      source.match(/expectedVersion: z\.number\(\)\.int\(\)\.positive\(\)/g)?.length ?? 0,
+    ).toBeGreaterThanOrEqual(3);
     expect(source).toContain('expected_version: parsed.expectedVersion');
   });
 
