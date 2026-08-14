@@ -11,6 +11,7 @@ import {
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { paymentApi } from '../features/payments/api';
+import { PaymentCaptureDrawer } from '../features/payments/components/PaymentCaptureDrawer';
 import type {
   Payment,
   PaymentMethod,
@@ -579,9 +580,21 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
         )}
       </Surface>
 
+      {drawer?.type === 'create' ? (
+        <PaymentCaptureDrawer
+          condominiumId={condominiumId}
+          methods={data.methods}
+          onClose={() => setDrawer(null)}
+          onComplete={onChanged}
+          onDraftCreated={() => load(true)}
+          session={session}
+          units={data.units}
+        />
+      ) : null}
+
       <PaymentsDrawerHost
         condominiumId={condominiumId}
-        drawer={drawer}
+        drawer={drawer?.type === 'create' ? null : drawer}
         methods={data.methods}
         onChanged={onChanged}
         onClose={() => setDrawer(null)}
