@@ -92,13 +92,28 @@ jobs:
         run: |
           set -euo pipefail
           supabase db start
+      - name: Prepare clean application restore target
+        run: |
+          set -euo pipefail
+          RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+          # Keep Supabase-managed platform schemas/roles (auth, storage, etc.) but
+          # remove the application schema created by local migrations. The logical
+          # production backup must rebuild public from its own schema.sql.
+          psql "$RESTORE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          drop schema if exists public cascade;
+          create schema public authorization postgres;
+          grant usage on schema public to postgres, anon, authenticated, service_role;
+          SQL
+          EXISTING_APP_TABLES="$(psql "$RESTORE_URL" -Atqc "select count(*) from pg_tables where schemaname = 'public';")"
+          test "$EXISTING_APP_TABLES" -eq 0
+          printf 'Clean restore target prepared; public tables before restore: %s\n' "$EXISTING_APP_TABLES"
       - name: Restore schema and data into isolated Supabase database
         run: |
           set -euo pipefail
           RESTORE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
           EXTRACTED="$GITHUB_WORKSPACE/.restore/plain/extracted"
-          # roles.sql is retained and checksum-validated as backup evidence, but the
-          # local Supabase bootstrap already owns platform roles and cluster settings.
+          # roles.sql is retained and checksum-validated as backup evidence. The
+          # local Supabase bootstrap owns platform roles and cluster settings.
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/schema.sql"
           {
             printf '%s\n' 'SET session_replication_role = replica;'
