@@ -1,5 +1,5 @@
 begin;
-select plan(13);
+select plan(15);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, created_at, updated_at
@@ -43,8 +43,8 @@ insert into public.people (
 insert into public.unit_occupancies (
   id, unit_id, person_id, occupancy_type, is_primary_contact, starts_at, created_by
 ) values
-  ('a4113000-0000-0000-0000-000000000001', 'a4111000-0000-0000-0000-000000000001', 'a4112000-0000-0000-0000-000000000001', 'tenant', true, current_date, 'a4000000-0000-0000-0000-000000000001'),
-  ('a4113000-0000-0000-0000-000000000002', 'a4111000-0000-0000-0000-000000000002', 'a4112000-0000-0000-0000-000000000001', 'tenant', false, current_date, 'a4000000-0000-0000-0000-000000000001');
+  ('a4113000-0000-0000-0000-000000000001', 'a4111000-0000-0000-0000-000000000001', 'a4112000-0000-0000-0000-000000000001', 'tenant', true, current_date - 90, 'a4000000-0000-0000-0000-000000000001'),
+  ('a4113000-0000-0000-0000-000000000002', 'a4111000-0000-0000-0000-000000000002', 'a4112000-0000-0000-0000-000000000001', 'tenant', false, current_date - 90, 'a4000000-0000-0000-0000-000000000001');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
@@ -83,7 +83,7 @@ select is(
 reset role;
 
 update public.unit_occupancies
-set ends_at = current_date
+set ends_at = current_date + 30
 where id = 'a4113000-0000-0000-0000-000000000001';
 
 select is(
@@ -92,32 +92,60 @@ select is(
      and user_id = 'a4000000-0000-0000-0000-000000000002'
      and role = 'tenant'),
   1::bigint,
-  'closing one of multiple active occupancies preserves tenant membership'
+  'future end date does not revoke tenant membership'
 );
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
-
 select is(
   public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
-  false,
-  'closed occupancy immediately removes access to that unit'
-);
-select is(
-  public.can_read_unit('a4111000-0000-0000-0000-000000000002'),
   true,
-  'remaining active occupancy keeps its own unit accessible'
+  'future end date preserves unit access'
 );
-select is(
-  (select count(*) from public.units where condominium_id = 'a4110000-0000-0000-0000-000000000001'),
-  1::bigint,
-  'unit RLS contracts as tenant delegations end'
-);
-
 reset role;
 
 update public.unit_occupancies
 set ends_at = current_date
+where id = 'a4113000-0000-0000-0000-000000000001';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
+select is(
+  public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
+  true,
+  'end date is inclusive through today'
+);
+reset role;
+
+update public.unit_occupancies
+set ends_at = current_date - 1
+where id = 'a4113000-0000-0000-0000-000000000001';
+
+select is(
+  (select count(*) from public.condominium_memberships
+   where condominium_id = 'a4110000-0000-0000-0000-000000000001'
+     and user_id = 'a4000000-0000-0000-0000-000000000002'
+     and role = 'tenant'),
+  1::bigint,
+  'one expired occupancy preserves membership while another remains active'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
+select is(
+  public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
+  false,
+  'past end date removes access to the expired unit'
+);
+select is(
+  public.can_read_unit('a4111000-0000-0000-0000-000000000002'),
+  true,
+  'remaining active occupancy keeps its unit accessible'
+);
+reset role;
+
+update public.unit_occupancies
+set ends_at = current_date - 1
 where id = 'a4113000-0000-0000-0000-000000000002';
 
 select is(
@@ -126,12 +154,11 @@ select is(
      and user_id = 'a4000000-0000-0000-0000-000000000002'
      and role = 'tenant'),
   0::bigint,
-  'closing the final active occupancy revokes stale tenant membership'
+  'final expired occupancy revokes stale tenant membership'
 );
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
-
 select is(
   public.can_read_condominium('a4110000-0000-0000-0000-000000000001'),
   false,
