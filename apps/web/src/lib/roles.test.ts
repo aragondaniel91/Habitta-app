@@ -5,6 +5,7 @@ import {
   canAccessRoute,
   canManage,
   canManageGovernance,
+  isTenantOnly,
   rolesForCondominium,
   type CondominiumRole,
 } from './roles';
@@ -91,5 +92,13 @@ describe('role aware navigation', () => {
     expect(canManage(['owner'])).toBe(false);
     expect(canManage(['tenant'])).toBe(false);
     expect(canManage(['payment_reviewer'])).toBe(false);
+  });
+
+  it('matches the database tenant-only read-only boundary', () => {
+    expect(isTenantOnly(['tenant'])).toBe(true);
+    expect(isTenantOnly([])).toBe(false);
+    expect(isTenantOnly(['owner'])).toBe(false);
+    expect(isTenantOnly(['owner', 'tenant'])).toBe(false);
+    expect(isTenantOnly(['tenant', 'board_member'])).toBe(false);
   });
 });
