@@ -29,7 +29,7 @@ insert into public.unit_occupancies (
   id, unit_id, person_id, occupancy_type, is_primary_contact, starts_at, created_by
 ) values (
   'b1113000-0000-0000-0000-000000000001', 'b1111000-0000-0000-0000-000000000001',
-  'b1112000-0000-0000-0000-000000000001', 'tenant', true, current_date,
+  'b1112000-0000-0000-0000-000000000001', 'tenant', true, current_date - 90,
   'b1000000-0000-0000-0000-000000000001'
 );
 
