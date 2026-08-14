@@ -34,6 +34,9 @@ export function rolesForCondominium(
 
 export function canAccessRoute(route: AppRoute, roles: CondominiumRole[]) {
   if (!roles.length) return false;
+  // The pilot database intentionally denies tenant-only users access to payment rows/writes.
+  // Keep the presentation boundary aligned so a deep link cannot land on a guaranteed 403.
+  if (route.key === 'payments' && isTenantOnly(roles)) return false;
   return roles.some((role) => route.roles.includes(role));
 }
 
