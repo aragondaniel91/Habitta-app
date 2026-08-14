@@ -8,15 +8,15 @@ Esta guía describe la experiencia de propietarios e inquilinos dentro de la mis
 
 Al entrar a `/app/dashboard`, un usuario que solo tenga roles de residente (`owner` y/o `tenant`) verá el dashboard de residente en lugar del dashboard administrativo.
 
-El inicio reúne:
+El inicio reúne, según los permisos reales del usuario:
 
 - saldo pendiente separado por moneda;
 - próxima obligación pendiente;
-- pagos recientes y su estado de revisión;
+- pagos recientes y su estado de revisión para propietarios/autorizados con acceso a pagos;
 - anuncios importantes o urgentes dirigidos al usuario;
 - solicitudes abiertas visibles para el usuario;
 - votaciones actualmente abiertas;
-- accesos rápidos a estado de cuenta, pagos/recibos, solicitudes y votaciones.
+- accesos rápidos únicamente a módulos que el rol puede abrir.
 
 Habitta no mezcla USD, VES, EUR u otras monedas en un único total.
 
@@ -39,9 +39,10 @@ Flujo recomendado:
 
 Durante el piloto, un usuario cuyo único rol sea `tenant` es **operacionalmente de solo lectura**. Esta restricción está implementada en la base de datos y no se elimina desde el portal residente.
 
-El inquilino puede consultar la información que corresponda a su ocupación activa, pero el dashboard no presenta acciones de escritura que el backend bloquearía. En particular:
+El inquilino puede consultar la información que corresponda a su ocupación activa, pero el dashboard no presenta rutas o acciones que el backend bloquearía. En particular:
 
-- la acción financiera se presenta como **Ver pagos y recibos**, no como registrar un pago;
+- conserva acceso al estado de cuenta que RLS permita consultar para su ocupación activa;
+- **Pagos y comprobantes no se ofrece a un tenant-only** mientras la política de pagos del piloto no le delegue ese acceso;
 - el acceso a solicitudes se presenta como consulta;
 - las futuras delegaciones granulares del propietario se implementarán en una fase posterior.
 
@@ -69,6 +70,7 @@ Principios:
 - no se muestran datos simulados;
 - las monedas permanecen separadas;
 - las acciones administrativas no se exponen a residentes;
+- las rutas que el backend negaría a `tenant-only` tampoco se presentan como accesibles en la interfaz;
 - los usuarios con un rol administrativo adicional conservan la experiencia administrativa;
 - un fallo parcial de un módulo no debe ocultar el resto del inicio residente.
 
