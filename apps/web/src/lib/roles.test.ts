@@ -15,7 +15,7 @@ const keysFor = (roles: CondominiumRole[]) =>
   allowedRoutes(APP_ROUTES, roles).map((route) => route.key);
 
 describe('role aware navigation', () => {
-  it('keeps a resident inside the modules they act in', () => {
+  it('keeps an owner inside the resident modules they act in', () => {
     const keys = keysFor(['owner']);
 
     expect(keys).toEqual([
@@ -28,6 +28,23 @@ describe('role aware navigation', () => {
       'announcements',
       'settings',
     ]);
+  });
+
+  it('keeps tenant-only navigation aligned with the pilot read-only RLS boundary', () => {
+    const keys = keysFor(['tenant']);
+    const payments = APP_ROUTES.find((route) => route.key === 'payments');
+
+    expect(keys).toEqual([
+      'dashboard',
+      'fees',
+      'community',
+      'governance',
+      'requests',
+      'announcements',
+      'settings',
+    ]);
+    expect(canAccessRoute(payments!, ['tenant'])).toBe(false);
+    expect(canAccessRoute(payments!, ['owner', 'tenant'])).toBe(true);
   });
 
   it('never offers a resident an administrative module', () => {
