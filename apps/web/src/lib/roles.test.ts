@@ -47,6 +47,20 @@ describe('role aware navigation', () => {
     expect(canAccessRoute(payments!, ['owner', 'tenant'])).toBe(true);
   });
 
+  it('keeps tenant pilot access readable while blocking write-oriented payment navigation', () => {
+    const dashboard = APP_ROUTES.find((route) => route.key === 'dashboard');
+    const fees = APP_ROUTES.find((route) => route.key === 'fees');
+    const governance = APP_ROUTES.find((route) => route.key === 'governance');
+    const payments = APP_ROUTES.find((route) => route.key === 'payments');
+
+    expect(canAccessRoute(dashboard!, ['tenant'])).toBe(true);
+    expect(canAccessRoute(fees!, ['tenant'])).toBe(true);
+    expect(canAccessRoute(governance!, ['tenant'])).toBe(true);
+    expect(canAccessRoute(payments!, ['tenant'])).toBe(false);
+    expect(usesResidentDashboard(['tenant'])).toBe(true);
+    expect(isTenantOnly(['tenant'])).toBe(true);
+  });
+
   it('never offers a resident an administrative module', () => {
     for (const role of ['owner', 'tenant'] as CondominiumRole[]) {
       const keys = keysFor([role]);
