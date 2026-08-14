@@ -21,21 +21,94 @@ values (
   'c1000000-0000-0000-0000-000000000001'
 );
 
-create temporary table hab150_condos(id uuid primary key);
-insert into hab150_condos(id)
-select gen_random_uuid() from generate_series(1, 6);
+create temporary table hab150_entities(
+  condo_id uuid primary key,
+  unit_id uuid not null,
+  method_id uuid not null,
+  payment_id uuid not null,
+  concept_id uuid not null,
+  receivable_id uuid not null
+);
+insert into hab150_entities
+select gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid()
+from generate_series(1, 6);
 
 insert into public.condominiums(id, organization_id, name, created_by)
-select id,
+select condo_id,
        'c1100000-0000-0000-0000-000000000001',
        'HAB-150 Condo ' || row_number() over (),
        'c1000000-0000-0000-0000-000000000001'
-from hab150_condos;
+from hab150_entities;
+
+insert into public.units(id, condominium_id, code, type, created_by)
+select unit_id,
+       condo_id,
+       'HAB150-' || row_number() over (),
+       'apartment',
+       'c1000000-0000-0000-0000-000000000001'
+from hab150_entities;
+
+insert into public.condominium_payment_methods(
+  id, condominium_id, method_type, display_name, currency_code,
+  requires_reference, requires_proof, is_active, created_by
+)
+select method_id,
+       condo_id,
+       'cash',
+       'HAB-150 Cash ' || row_number() over (),
+       'USD',
+       false,
+       false,
+       true,
+       'c1000000-0000-0000-0000-000000000001'
+from hab150_entities;
+
+insert into public.payments(
+  id, condominium_id, unit_id, submitted_by_user_id, payment_method_id,
+  payment_date, original_amount, original_currency_code, payer_name, idempotency_key
+)
+select payment_id,
+       condo_id,
+       unit_id,
+       'c1000000-0000-0000-0000-000000000001',
+       method_id,
+       current_date,
+       1.00,
+       'USD',
+       'HAB-150 payer',
+       'hab150-payment-' || payment_id::text
+from hab150_entities;
+
+insert into public.charge_concepts(id, condominium_id, code, name, category, created_by)
+select concept_id,
+       condo_id,
+       'H150-' || row_number() over (),
+       'HAB-150 fee ' || row_number() over (),
+       'regular_dues',
+       'c1000000-0000-0000-0000-000000000001'
+from hab150_entities;
+
+insert into public.receivable_items(
+  id, condominium_id, unit_id, concept_id, item_type, description, issue_date,
+  due_date, currency_code, original_amount, created_by
+)
+select receivable_id,
+       condo_id,
+       unit_id,
+       concept_id,
+       'charge',
+       'HAB-150 due item',
+       current_date,
+       current_date + 7,
+       'USD',
+       10.00,
+       'c1000000-0000-0000-0000-000000000001'
+from hab150_entities;
 
 update public.condominium_notification_settings
 set email_enabled = true,
     live_email_enabled = true
-where condominium_id in (select id from hab150_condos);
+where condominium_id in (select condo_id from hab150_entities);
 
 select is(
   public.notification_email_uses_volume_window('receivable_overdue'),
@@ -57,21 +130,22 @@ select is(
 -- A scheduler claim must select no more than five from one condominium and no more than 25 total.
 do $$
 declare
-  condo uuid;
+  fixture record;
   event_id uuid;
   delivery_number integer;
 begin
-  for condo in select id from hab150_condos loop
+  for fixture in select condo_id, unit_id, payment_id from hab150_entities loop
     event_id := gen_random_uuid();
     insert into public.notification_events(
-      id, condominium_id, event_type, aggregate_type, aggregate_id, payload, deduplication_key
+      id, condominium_id, event_type, aggregate_type, aggregate_id, unit_id, payload, deduplication_key
     ) values (
       event_id,
-      condo,
+      fixture.condo_id,
       'payment_approved',
       'payment',
-      gen_random_uuid(),
-      jsonb_build_object('condominium_id', condo),
+      fixture.payment_id,
+      fixture.unit_id,
+      jsonb_build_object('condominium_id', fixture.condo_id),
       'hab150:event:' || event_id::text
     );
 
@@ -87,7 +161,7 @@ begin
         deduplication_key,
         next_attempt_at
       ) values (
-        condo,
+        fixture.condo_id,
         event_id,
         'c1000000-0000-0000-0000-000000000001',
         'hab150@test.local',
@@ -111,7 +185,7 @@ select ok(
   not exists (
     select 1
     from public.notification_deliveries d
-    where d.condominium_id in (select id from hab150_condos)
+    where d.condominium_id in (select condo_id from hab150_entities)
       and d.status = 'queued'
     group by d.condominium_id
     having count(*) > 5
@@ -135,19 +209,25 @@ select ok(
 -- next 15-minute boundary. In-app notification creation is independent of this delivery field.
 do $$
 declare
-  condo uuid;
+  fixture record;
   event_id uuid := gen_random_uuid();
 begin
-  select id into condo from hab150_condos order by id limit 1;
+  select condo_id, unit_id, receivable_id
+    into fixture
+    from hab150_entities
+    order by condo_id
+    limit 1;
+
   insert into public.notification_events(
-    id, condominium_id, event_type, aggregate_type, aggregate_id, payload, deduplication_key
+    id, condominium_id, event_type, aggregate_type, aggregate_id, unit_id, payload, deduplication_key
   ) values (
     event_id,
-    condo,
+    fixture.condo_id,
     'receivable_overdue',
     'receivable',
-    gen_random_uuid(),
-    jsonb_build_object('condominium_id', condo),
+    fixture.receivable_id,
+    fixture.unit_id,
+    jsonb_build_object('condominium_id', fixture.condo_id),
     'hab150:window:event:' || event_id::text
   );
   insert into public.notification_deliveries(
@@ -161,7 +241,7 @@ begin
     deduplication_key,
     next_attempt_at
   ) values (
-    condo,
+    fixture.condo_id,
     event_id,
     'c1000000-0000-0000-0000-000000000001',
     'hab150@test.local',
