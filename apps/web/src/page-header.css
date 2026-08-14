@@ -58,7 +58,27 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.625rem;
+  gap: 0.75rem;
+}
+
+/*
+ * Module actions share one visual rhythm. Text length can change the width, but never the height,
+ * padding, or tap target. Primary actions keep their emphasis while secondary/help actions remain
+ * visually quieter.
+ */
+.page-header__actions > .button {
+  min-height: 44px;
+  padding-inline: 1rem;
+  white-space: nowrap;
+}
+
+.page-header__actions > .button[data-variant='primary'] {
+  min-width: 9.25rem;
+}
+
+.page-header__actions > .button[data-variant='secondary'],
+.page-header__actions > .button[data-variant='ghost'] {
+  min-width: 7.5rem;
 }
 
 @media (max-width: 960px) {
@@ -81,8 +101,25 @@
   }
 
   .page-header__actions {
+    display: grid;
     width: 100%;
-    justify-content: flex-start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .page-header__actions > .button {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .page-header__actions > .button:only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 440px) {
+  .page-header__actions {
+    grid-template-columns: 1fr;
   }
 }
 
