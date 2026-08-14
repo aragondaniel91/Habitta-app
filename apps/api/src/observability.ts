@@ -6,8 +6,7 @@ const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const BEARER_PATTERN = /\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi;
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
 const URL_QUERY_PATTERN = /(https?:\/\/[^\s?#]+)(?:\?[^\s#]*)?(?:#[^\s]*)?/gi;
-const CRITICAL_FINANCIAL_PATH =
-  /^\/v1\/condominiums\/[^/]+\/(payments|treasury|expenses)(?:\/|$)/i;
+const CRITICAL_FINANCIAL_PATH = /^\/v1\/condominiums\/[^/]+\/(payments|treasury|expenses)(?:\/|$)/i;
 
 const truncate = (value: string, maxLength: number) =>
   value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
