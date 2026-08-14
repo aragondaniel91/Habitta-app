@@ -28,6 +28,7 @@ import {
 } from '../lib/service-requests';
 import type { GovernanceProposal } from '../lib/governance';
 import { formatGovernanceDate } from '../lib/governance';
+import { isTenantOnly, useCondominiumRoles } from '../lib/roles';
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
 import '../resident-dashboard.css';
@@ -97,6 +98,8 @@ function ResidentDashboardLoading() {
 }
 
 export function ResidentDashboard({ condominiumId, condominiumName, session, onNavigate }: Props) {
+  const roles = useCondominiumRoles();
+  const tenantOnly = isTenantOnly(roles);
   const [data, setData] = useState<ResidentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState('');
@@ -254,13 +257,20 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
             Habitta mantiene cada moneda separada; nunca mezcla saldos USD, VES u otras monedas.
           </p>
           {paymentsRoute ? (
-            <Button
-              className="resident-dashboard__primary-action"
-              onClick={() => onNavigate(paymentsRoute)}
-            >
-              <PaymentsIcon size={18} />
-              Pagar / Registrar pago
-            </Button>
+            tenantOnly ? (
+              <Button onClick={() => onNavigate(paymentsRoute)} variant="secondary">
+                <PaymentsIcon size={18} />
+                Ver pagos y recibos
+              </Button>
+            ) : (
+              <Button
+                className="resident-dashboard__primary-action"
+                onClick={() => onNavigate(paymentsRoute)}
+              >
+                <PaymentsIcon size={18} />
+                Pagar / Registrar pago
+              </Button>
+            )
           ) : null}
         </Surface>
 
@@ -420,7 +430,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
             </div>
           ) : (
             <EmptyState
-              description="Puedes crear y seguir solicitudes desde el módulo de atención."
+              description="Tus solicitudes visibles aparecerán aquí."
               icon={<RequestsIcon size={26} />}
               title="No tienes solicitudes abiertas"
             />
@@ -489,7 +499,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           {requestsRoute ? (
             <button onClick={() => onNavigate(requestsRoute)} type="button">
               <RequestsIcon size={20} />
-              <span>Nueva solicitud</span>
+              <span>Solicitudes</span>
             </button>
           ) : null}
           {governanceRoute ? (
