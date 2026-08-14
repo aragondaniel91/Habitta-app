@@ -5,12 +5,7 @@ import { paymentProof } from '../api';
 import './payment-proof-uploader.css';
 
 const MAX_PROOF_BYTES = 10 * 1024 * 1024;
-const ACCEPTED_PROOF_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/pdf',
-]);
+const ACCEPTED_PROOF_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
 const proofError = (file: File) => {
   if (!ACCEPTED_PROOF_TYPES.has(file.type)) return 'Usa JPEG, PNG, WebP o PDF.';
