@@ -6,6 +6,7 @@ const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const BEARER_PATTERN = /\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi;
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
 const URL_QUERY_PATTERN = /(https?:\/\/[^\s?#]+)(?:\?[^\s#]*)?(?:#[^\s]*)?/gi;
+const CRITICAL_FINANCIAL_PATH = /^\/v1\/condominiums\/[^/]+\/(payments|treasury|expenses)(?:\/|$)/i;
 
 const truncate = (value: string, maxLength: number) =>
   value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
@@ -26,6 +27,12 @@ export const sanitizePathname = (value: unknown) => {
   if (typeof value !== 'string' || !value.startsWith('/')) return '/';
   const withoutQuery = value.split(/[?#]/, 1)[0] ?? '/';
   return truncate(withoutQuery, MAX_PATH_LENGTH);
+};
+
+export const criticalFinancialRoute = (value: unknown) => {
+  const path = sanitizePathname(value);
+  const match = CRITICAL_FINANCIAL_PATH.exec(path);
+  return match?.[1]?.toLowerCase() ?? null;
 };
 
 export type ClientErrorEvent = {
@@ -52,30 +59,61 @@ export const parseClientErrorEvent = (value: unknown): ClientErrorEvent | null =
   };
 };
 
+type ObservabilityEnv = { APP_ENV?: string; BUILD_COMMIT?: string; APP_VERSION?: string };
+
+const errorDiagnostics = (error: unknown) => {
+  const resolved = error instanceof Error ? error : new Error('Unknown error');
+  const stack = sanitizeDiagnosticText(resolved.stack, MAX_STACK_LENGTH);
+  return {
+    name: sanitizeDiagnosticText(resolved.name, 120) || 'Error',
+    message: sanitizeDiagnosticText(resolved.message),
+    ...(stack ? { stack } : {}),
+  };
+};
+
 export const workerErrorLog = (
   error: unknown,
   request: Request,
   requestId: string,
-  env: { APP_ENV?: string; BUILD_COMMIT?: string; APP_VERSION?: string },
+  env: ObservabilityEnv,
+) => ({
+  event: 'worker_error',
+  requestId,
+  environment: env.APP_ENV ?? 'development',
+  commit: env.BUILD_COMMIT ?? 'unknown',
+  version: env.APP_VERSION ?? 'unknown',
+  method: request.method,
+  path: sanitizePathname(new URL(request.url).pathname),
+  ...errorDiagnostics(error),
+});
+
+export const financial5xxLog = (
+  request: Request,
+  requestId: string,
+  env: ObservabilityEnv,
+  status: number,
+  error?: unknown,
 ) => {
-  const resolved = error instanceof Error ? error : new Error('Unknown error');
+  const route = criticalFinancialRoute(new URL(request.url).pathname);
+  if (!route || status < 500 || status > 599) return null;
+
   return {
-    event: 'worker_error',
+    event: 'critical_financial_5xx',
     requestId,
     environment: env.APP_ENV ?? 'development',
     commit: env.BUILD_COMMIT ?? 'unknown',
     version: env.APP_VERSION ?? 'unknown',
     method: request.method,
-    path: new URL(request.url).pathname,
-    name: resolved.name,
-    message: sanitizeDiagnosticText(resolved.message),
+    route,
+    status,
+    ...(error === undefined ? {} : errorDiagnostics(error)),
   };
 };
 
 export const clientErrorLog = (
   event: ClientErrorEvent,
   requestId: string,
-  env: { APP_ENV?: string; BUILD_COMMIT?: string; APP_VERSION?: string },
+  env: ObservabilityEnv,
 ) => ({
   event: 'client_error',
   requestId,
