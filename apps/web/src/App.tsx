@@ -267,8 +267,7 @@ export default function App() {
   const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
   const condominiumName = selectedCondominium?.name ?? 'Condominio';
   const roles = rolesForCondominium(memberships, selectedCondominiumId);
-  const residentOnly =
-    roles.length > 0 && roles.every((role) => RESIDENT_ROLES.includes(role));
+  const residentOnly = roles.length > 0 && roles.every((role) => RESIDENT_ROLES.includes(role));
   const visibleRoutes = allowedRoutes(APP_ROUTES, roles);
   // A deep link to a module this role cannot open lands on the first one it can, so the interface
   // never renders a module the API is going to refuse.
