@@ -7,18 +7,58 @@ import {
   readPostgrestError,
   withinRateLimit,
 } from './http-security';
-import { clientErrorLog, parseClientErrorEvent, workerErrorLog } from './observability';
+import {
+  clientErrorLog,
+  financial5xxLog,
+  parseClientErrorEvent,
+  workerErrorLog,
+} from './observability';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 import { requestRateLimitScope } from './request-rate-limit';
 
 type Bindings = NotificationBindings;
 type Variables = { token: string; userId: string; requestId: string };
 
+const requestIds = new WeakMap<Request, string>();
+const capturedApplicationErrors = new WeakSet<Request>();
+
+const logFinancial5xx = (
+  request: Request,
+  requestId: string,
+  env: Bindings,
+  status: number,
+  error?: unknown,
+) => {
+  const event = financial5xxLog(request, requestId, env, status, error);
+  if (event) console.error(event);
+};
+
+// The application app historically had its own generic onError handler. Override it at the
+// composition boundary so thrown errors are captured before they are converted into safe JSON.
+// The outer request-id middleware registers the same Request object in a WeakMap, which lets the
+// inner handler preserve correlation without trusting a caller-provided header.
+applicationApp.onError((error, c) => {
+  const requestId = requestIds.get(c.req.raw) ?? crypto.randomUUID();
+  const status = error.name === 'ZodError' ? 400 : 500;
+
+  if (status >= 500) {
+    capturedApplicationErrors.add(c.req.raw);
+    console.error(workerErrorLog(error, c.req.raw, requestId, c.env));
+    logFinancial5xx(c.req.raw, requestId, c.env, status, error);
+  }
+
+  return c.json(
+    { error: status === 400 ? 'Invalid identifier' : 'Request failed' },
+    status,
+  );
+});
+
 export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 app.onError((error, c) => {
   const requestId = c.get('requestId') || crypto.randomUUID();
   console.error(workerErrorLog(error, c.req.raw, requestId, c.env));
+  logFinancial5xx(c.req.raw, requestId, c.env, 500, error);
   c.header('Cache-Control', 'no-store');
   c.header('X-Request-Id', requestId);
   return c.json({ error: 'Request failed', requestId }, 500);
@@ -29,6 +69,7 @@ app.onError((error, c) => {
 app.use('*', async (c, next) => {
   const requestId = crypto.randomUUID();
   c.set('requestId', requestId);
+  requestIds.set(c.req.raw, requestId);
   c.header('X-Request-Id', requestId);
   await next();
   c.header('X-Request-Id', requestId);
@@ -59,9 +100,8 @@ app.use('*', async (c, next) => {
       status: c.res.status,
       code: upstreamError.code,
     });
+    if (c.res.status >= 500) logFinancial5xx(c.req.raw, requestId, c.env, c.res.status);
   } else if (c.res.status >= 500) {
-    // The inner application intentionally turns thrown exceptions into generic 500 responses.
-    // Log the resulting failure here so those exceptions remain visible without exposing payloads.
     console.error({
       event: 'application_5xx',
       requestId,
@@ -72,6 +112,9 @@ app.use('*', async (c, next) => {
       path: c.req.path,
       status: c.res.status,
     });
+    if (!capturedApplicationErrors.has(c.req.raw)) {
+      logFinancial5xx(c.req.raw, requestId, c.env, c.res.status);
+    }
   } else {
     return;
   }
