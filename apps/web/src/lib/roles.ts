@@ -51,6 +51,11 @@ export function isResident(roles: CondominiumRole[]) {
   return roles.some((role) => RESIDENT_ROLES.includes(role));
 }
 
+/** Use the simpler resident home only when every role in this condominium is residential. */
+export function usesResidentDashboard(roles: CondominiumRole[]) {
+  return roles.length > 0 && roles.every((role) => RESIDENT_ROLES.includes(role));
+}
+
 /** Mirrors the pilot database guard: tenant-only memberships are operationally read-only. */
 export function isTenantOnly(roles: CondominiumRole[]) {
   return roles.length > 0 && roles.every((role) => role === 'tenant');
