@@ -298,6 +298,7 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
           <EmptyState
             actionLabel={manage ? 'Crear asamblea' : undefined}
             description="Las reuniones formales aparecerán aquí con su agenda, estado y publicación final."
+            icon={null}
             onAction={manage ? () => setDrawer('create') : undefined}
             title="Aún no hay asambleas"
           />
