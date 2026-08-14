@@ -1,3 +1,5 @@
+@import './financial-capture.css';
+
 /*
  * Single presentation contract for every module header, replacing the per-module `*-overview`
  * blocks and the override sheet that had to list each of their class names by hand. Nothing here
