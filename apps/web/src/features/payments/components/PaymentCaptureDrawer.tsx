@@ -132,7 +132,9 @@ export function PaymentCaptureDrawer({
             <input className="input" name="payerName" placeholder="Nombre y apellido" required />
           </Field>
           <Field
-            hint={selectedMethod?.requires_reference ? 'Obligatoria para este método.' : 'Opcional.'}
+            hint={
+              selectedMethod?.requires_reference ? 'Obligatoria para este método.' : 'Opcional.'
+            }
             label="Referencia"
           >
             <input
