@@ -72,7 +72,7 @@ select throws_ok($$select public.create_payment_draft('81100000-0000-0000-0000-0
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000010',true);
 select throws_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,1,'USD','Expired',null,null,'expired')$$,null,null,'expired relation cannot create payment');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000005',true);
-select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,1,'USD','Tenant',null,null,'tenant')$$,'active tenant creates payment');
+select throws_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,1,'USD','Tenant',null,null,'tenant')$$,'P0001','tenant access is read only','tenant-only user cannot create payment');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000008',true);
 select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,1,'USD','Occupant',null,null,'occupant')$$,'authorized occupant creates payment');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000009',true);
