@@ -231,7 +231,7 @@ export function ExpenseCaptureDrawer({
           </div>
           <PrivateDocumentUploader
             defaultDocumentType="invoice"
-            description="Factura, recibo o soporte del gasto. El archivo queda privado."
+            description="JPEG, PNG, WebP o PDF. También admite otros documentos privados. Máximo 20 MB."
             documentTypes={[
               { value: 'invoice', label: 'Factura' },
               { value: 'receipt', label: 'Recibo' },
