@@ -1,0 +1,56 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const source = readFileSync(
+  fileURLToPath(new URL('./assemblies-routes.ts', import.meta.url)),
+  'utf8',
+);
+const wrapper = readFileSync(
+  fileURLToPath(new URL('./operations-routes.ts', import.meta.url)),
+  'utf8',
+);
+
+describe('assemblies routes contract', () => {
+  it('mounts assemblies under authenticated condominium operations', () => {
+    expect(wrapper).toContain("import { assembliesRoutes } from './assemblies-routes'");
+    expect(wrapper).toContain("baseOperationsRoutes.route('/', assembliesRoutes)");
+  });
+
+  it('keeps all assembly reads condominium-scoped', () => {
+    expect(source).toContain("assembliesRoutes.get('/:id/assemblies'");
+    expect(source).toContain('condominium_id=eq.${condominiumId}');
+    expect(source).toContain('assembly_id=eq.${assemblyId}');
+  });
+
+  it('uses lifecycle RPCs for every sensitive write', () => {
+    expect(source).toContain("rpc(c, 'create_assembly'");
+    expect(source).toContain("rpc(c, 'add_assembly_agenda_item'");
+    expect(source).toContain("rpc(c, 'transition_assembly'");
+    expect(source).toContain("rpc(c, 'record_assembly_attendance'");
+    expect(source).toContain("rpc(c, 'save_assembly_minutes'");
+    expect(source).toContain("rpc(c, 'publish_assembly_minutes'");
+    expect(source).toContain("rpc(c, 'create_assembly_resolution'");
+    expect(source).toContain("rpc(c, 'publish_assembly_resolution'");
+    expect(source).not.toMatch(
+      /rest\(c,\s*'(assemblies|assembly_agenda_items|assembly_attendance|assembly_resolutions)'\s*,\s*\{\s*method:\s*'(POST|PUT|PATCH|DELETE)'/s,
+    );
+  });
+
+  it('requires optimistic versions for lifecycle and minutes mutations', () => {
+    expect(
+      source.match(/expectedVersion: z\.number\(\)\.int\(\)\.positive\(\)/g)?.length ?? 0,
+    ).toBeGreaterThanOrEqual(3);
+    expect(source).toContain('expected_version: parsed.expectedVersion');
+  });
+
+  it('does not expose the internal eligibility-capture RPC', () => {
+    expect(source).not.toContain("rpc(c, 'capture_assembly_eligibility'");
+  });
+
+  it('maps authorization and version conflicts consistently', () => {
+    expect(source).toContain("value.code === '42501'");
+    expect(source).toContain("value.message?.includes('version conflict')");
+    expect(source).toContain("value.message?.includes('not found')");
+  });
+});
