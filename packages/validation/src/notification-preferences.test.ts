@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  notificationPreferencesSchema,
-  notificationTypeSchema,
-  notificationTypes,
-} from './public';
+import { notificationPreferencesSchema, notificationTypeSchema, notificationTypes } from './public';
 
 const expectedNotificationTypes = [
   'receivable_created',
