@@ -56,12 +56,31 @@ Cloudflare Queue remains the transport after the database claim. Existing queue 
 
 The HAB-130 condominium live-email gate still applies before queueing and again at delivery time. Disabling live email fails active deliveries closed. User email preferences are checked again immediately before provider delivery.
 
+### Explicit exception: administrator invitations
+
+Administrator invitations are not notification fan-out. They are intentional transactional messages initiated by an authenticated condominium administrator from **Equipo y accesos**. For that reason they do **not** consult the condominium `live_email_enabled` opt-in that controls automatic/bulk notification delivery.
+
+This exception is intentionally narrow:
+
+- the caller must authenticate through the normal `/v1/*` API boundary;
+- `create_admin_invitation` verifies the caller can administer the target condominium;
+- Cloudflare `INVITATION_LIMIT` rejects abuse before token generation or email delivery;
+- the database trigger independently caps administrator invitations at 20 per actor in 15 minutes;
+- production live mode sends only to the email stored on that invitation; sandbox mode redirects to the configured sandbox recipient;
+- the result is written to `admin_invitation_events` as `email_sent`, `email_failed` or `email_disabled`;
+- delivery audit metadata records provider/mode/result metadata but does not duplicate the recipient address;
+- the invitation keeps its secure backup link even if provider delivery fails.
+
+The invitation route must never be reused as a generic email endpoint, and notification expansion/queue code must never call it to bypass HAB-130. Normal notification events continue through `notification_deliveries` and remain subject to the live-email gate and recipient preference checks.
+
 ## Operational checks
 
 When investigating delayed email:
 
-1. Confirm the condominium has `live_email_enabled` and `email_enabled` enabled.
-2. Inspect `notification_deliveries.status`, `next_attempt_at`, `attempts` and `last_error_code`.
-3. For a volume-window event, confirm `next_attempt_at` has reached the next 15-minute boundary.
-4. If a backlog exists, remember that only five deliveries from that condominium can enter the queue on each five-minute scheduler cycle.
-5. Do not manually set deliveries to `sent`. Preserve the normal claim/queue/provider completion path so deduplication and retries remain valid.
+1. Confirm whether the message is normal notification fan-out or an explicit administrator invitation.
+2. For normal fan-out, confirm the condominium has `live_email_enabled` and `email_enabled` enabled.
+3. Inspect `notification_deliveries.status`, `next_attempt_at`, `attempts` and `last_error_code`.
+4. For a volume-window event, confirm `next_attempt_at` has reached the next 15-minute boundary.
+5. If a backlog exists, remember that only five deliveries from that condominium can enter the queue on each five-minute scheduler cycle.
+6. For an administrator invitation, inspect the invitation lifecycle and `admin_invitation_events` delivery event instead of `notification_deliveries`.
+7. Do not manually set deliveries to `sent`. Preserve the normal claim/queue/provider completion path so deduplication and retries remain valid.
