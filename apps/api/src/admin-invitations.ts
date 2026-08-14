@@ -58,6 +58,63 @@ const safeConfigurationError = (error: unknown) =>
     ? error.message
     : 'notifications_configuration_error';
 
+const recordInvitationDeliveryAudit = async ({
+  env,
+  token,
+  invitationId,
+  delivery,
+}: {
+  env: NotificationBindings;
+  token: string;
+  invitationId: string;
+  delivery: InvitationDelivery;
+}) => {
+  try {
+    const response = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/rpc/record_admin_invitation_delivery`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          target_invitation_id: invitationId,
+          target_status: delivery.status,
+          target_provider: delivery.provider || 'unknown',
+          target_mode: delivery.mode || 'disabled',
+          target_error_code: delivery.errorCode ?? null,
+          target_provider_id: delivery.providerId ?? null,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      console.error(
+        JSON.stringify({
+          event: 'admin_invitation_delivery_audit_failed',
+          invitationId,
+          status: delivery.status,
+          provider: delivery.provider,
+          mode: delivery.mode,
+          httpStatus: response.status,
+        }),
+      );
+    }
+  } catch {
+    console.error(
+      JSON.stringify({
+        event: 'admin_invitation_delivery_audit_exception',
+        invitationId,
+        status: delivery.status,
+        provider: delivery.provider,
+        mode: delivery.mode,
+      }),
+    );
+  }
+};
+
 export const adminInvitationRoutes = new Hono<AppEnvironment>();
 adminInvitationRoutes.route('/', structureRoutes);
 
@@ -140,26 +197,33 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
     notificationEnvironment = resolveNotificationsEnvironment(c.env);
   } catch (error) {
     const errorCode = safeConfigurationError(error);
+    const delivery = {
+      status: 'failed',
+      recipient: null,
+      provider: c.env.NOTIFICATIONS_EMAIL_PROVIDER ?? 'unknown',
+      mode: c.env.NOTIFICATIONS_EMAIL_MODE ?? 'disabled',
+      errorCode,
+    } satisfies InvitationDelivery;
     console.error(
       JSON.stringify({
         event: 'admin_invitation_email_configuration_failed',
         invitationId: rpcData.invitation.id,
-        provider: c.env.NOTIFICATIONS_EMAIL_PROVIDER ?? 'unknown',
-        mode: c.env.NOTIFICATIONS_EMAIL_MODE ?? 'disabled',
+        provider: delivery.provider,
+        mode: delivery.mode,
         errorCode,
       }),
     );
+    await recordInvitationDeliveryAudit({
+      env: c.env,
+      token: c.get('token'),
+      invitationId: rpcData.invitation.id,
+      delivery,
+    });
     return c.json(
       {
         invitation: rpcData.invitation,
         invitationUrl,
-        emailDelivery: {
-          status: 'failed',
-          recipient: null,
-          provider: c.env.NOTIFICATIONS_EMAIL_PROVIDER ?? 'unknown',
-          mode: c.env.NOTIFICATIONS_EMAIL_MODE ?? 'disabled',
-          errorCode,
-        } satisfies InvitationDelivery,
+        emailDelivery: delivery,
       },
       201,
     );
@@ -172,6 +236,9 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
     mode: notificationEnvironment.emailMode,
   };
 
+  // Intentional transactional exception: an authorized administrator explicitly initiates this
+  // message. Unlike notification fan-out, it does not consult condominium live_email_enabled.
+  // The route has its own distributed + database rate limits and every outcome is audited below.
   if (notificationEnvironment.emailMode !== 'disabled') {
     const recipient =
       notificationEnvironment.emailMode === 'sandbox'
@@ -277,6 +344,13 @@ adminInvitationRoutes.post('/:condominiumId/admin-invitations', async (c) => {
       }
     }
   }
+
+  await recordInvitationDeliveryAudit({
+    env: c.env,
+    token: c.get('token'),
+    invitationId: rpcData.invitation.id,
+    delivery,
+  });
 
   return c.json(
     {
