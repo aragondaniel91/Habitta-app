@@ -18,7 +18,9 @@ describe('requestRateLimitScope', () => {
 
   it('does not rate-limit read-only financial requests', async () => {
     await expect(
-      requestRateLimitScope(request('GET', '/v1/condominiums/11111111-1111-1111-1111-111111111111/payments')),
+      requestRateLimitScope(
+        request('GET', '/v1/condominiums/11111111-1111-1111-1111-111111111111/payments'),
+      ),
     ).resolves.toBeNull();
   });
 
