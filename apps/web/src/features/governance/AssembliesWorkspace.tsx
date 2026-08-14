@@ -84,7 +84,9 @@ const statusTone = (status: AssemblyStatus) => {
 };
 
 const formatDate = (value: string) =>
-  new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(
+    new Date(value),
+  );
 
 const localDateTime = (date: Date) => {
   const offset = date.getTimezoneOffset() * 60_000;
@@ -117,7 +119,11 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
         await apiRequest<Assembly[]>(`/v1/condominiums/${condominiumId}/assemblies`, session),
       );
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudieron cargar las asambleas.');
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudieron cargar las asambleas.',
+      );
     } finally {
       setLoading(false);
     }
@@ -144,7 +150,9 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
         await Promise.allSettled([
           apiRequest<AgendaItem[]>(`${base}/agenda`, session),
           apiRequest<Resolution[]>(`${base}/resolutions`, session),
-          manage ? apiRequest<EligibilitySnapshot[]>(`${base}/eligibility`, session) : Promise.resolve([]),
+          manage
+            ? apiRequest<EligibilitySnapshot[]>(`${base}/eligibility`, session)
+            : Promise.resolve([]),
           manage ? apiRequest<Attendance[]>(`${base}/attendance`, session) : Promise.resolve([]),
           manage && assembly.status === 'in_progress'
             ? apiRequest<Quorum>(`${base}/quorum`, session)
@@ -183,7 +191,9 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
       setMessage(`Asamblea actualizada: ${statusLabel[updated.status]}.`);
       await refreshSelected(updated.id);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo cambiar el estado.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo cambiar el estado.',
+      );
     } finally {
       setActing(false);
     }
@@ -205,7 +215,9 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
       setMessage('Borrador del acta guardado.');
       await refreshSelected(updated.id);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar el acta.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo guardar el acta.',
+      );
     } finally {
       setActing(false);
     }
@@ -224,7 +236,9 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
       setMessage('Acta publicada. Ya no puede modificarse.');
       await refreshSelected(updated.id);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo publicar el acta.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo publicar el acta.',
+      );
     } finally {
       setActing(false);
     }
@@ -238,7 +252,9 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
   return (
     <div className="assemblies-page">
       <PageHeader
-        actions={manage ? <Button onClick={() => setDrawer('create')}>Nueva asamblea</Button> : null}
+        actions={
+          manage ? <Button onClick={() => setDrawer('create')}>Nueva asamblea</Button> : null
+        }
         description={`${condominiumName} · agenda, asistencia, quórum, actas y resoluciones con historial protegido.`}
         eyebrow="Gobernanza formal"
         title="Asambleas y actas"
@@ -256,10 +272,17 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
       ) : assemblies.length ? (
         <div className="assemblies-grid" aria-label="Asambleas">
           {assemblies.map((assembly) => (
-            <button className="assembly-card" key={assembly.id} onClick={() => void openDetail(assembly)} type="button">
+            <button
+              className="assembly-card"
+              key={assembly.id}
+              onClick={() => void openDetail(assembly)}
+              type="button"
+            >
               <div className="assembly-card__top">
                 <Badge tone={statusTone(assembly.status)}>{statusLabel[assembly.status]}</Badge>
-                <span>{assembly.voting_basis === 'one_per_unit' ? 'Por unidad' : 'Por propietario'}</span>
+                <span>
+                  {assembly.voting_basis === 'one_per_unit' ? 'Por unidad' : 'Por propietario'}
+                </span>
               </div>
               <strong>{assembly.title}</strong>
               <p>{assembly.description || 'Reunión formal del condominio.'}</p>
@@ -296,7 +319,13 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
       ) : null}
 
       {drawer === 'detail' && selected ? (
-        <Drawer eyebrow="Asamblea" onClose={() => setDrawer(null)} prefix="governance" title={selected.title} wide>
+        <Drawer
+          eyebrow="Asamblea"
+          onClose={() => setDrawer(null)}
+          prefix="governance"
+          title={selected.title}
+          wide
+        >
           {detailLoading ? (
             <div className="assemblies-detail-loading">
               <Skeleton className="skeleton--card" />
@@ -305,25 +334,58 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
           ) : (
             <div className="assemblies-detail">
               <Surface className="assemblies-detail__summary">
-                <div><Badge tone={statusTone(selected.status)}>{statusLabel[selected.status]}</Badge></div>
+                <div>
+                  <Badge tone={statusTone(selected.status)}>{statusLabel[selected.status]}</Badge>
+                </div>
                 <dl>
-                  <div><dt>Fecha</dt><dd>{formatDate(selected.scheduled_at)}</dd></div>
-                  <div><dt>Lugar</dt><dd>{selected.location || 'Por definir'}</dd></div>
-                  <div><dt>Base</dt><dd>{selected.voting_basis === 'one_per_unit' ? 'Un voto por unidad' : 'Un voto por propietario'}</dd></div>
-                  <div><dt>Quórum</dt><dd>{Number(selected.quorum_percentage).toFixed(0)}%</dd></div>
+                  <div>
+                    <dt>Fecha</dt>
+                    <dd>{formatDate(selected.scheduled_at)}</dd>
+                  </div>
+                  <div>
+                    <dt>Lugar</dt>
+                    <dd>{selected.location || 'Por definir'}</dd>
+                  </div>
+                  <div>
+                    <dt>Base</dt>
+                    <dd>
+                      {selected.voting_basis === 'one_per_unit'
+                        ? 'Un voto por unidad'
+                        : 'Un voto por propietario'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Quórum</dt>
+                    <dd>{Number(selected.quorum_percentage).toFixed(0)}%</dd>
+                  </div>
                 </dl>
-                {manage ? <LifecycleActions acting={acting} assembly={selected} onTransition={transition} /> : null}
+                {manage ? (
+                  <LifecycleActions acting={acting} assembly={selected} onTransition={transition} />
+                ) : null}
               </Surface>
 
               <Surface>
                 <h3>Agenda</h3>
                 {agenda.length ? (
                   <ol className="assemblies-list">
-                    {agenda.map((item) => <li key={item.id}><strong>{item.title}</strong>{item.description ? <p>{item.description}</p> : null}</li>)}
+                    {agenda.map((item) => (
+                      <li key={item.id}>
+                        <strong>{item.title}</strong>
+                        {item.description ? <p>{item.description}</p> : null}
+                      </li>
+                    ))}
                   </ol>
-                ) : <p>Sin puntos de agenda.</p>}
+                ) : (
+                  <p>Sin puntos de agenda.</p>
+                )}
                 {manage && ['draft', 'scheduled'].includes(selected.status) ? (
-                  <AgendaForm assembly={selected} condominiumId={condominiumId} nextOrder={agenda.length} onCreated={() => void refreshSelected()} session={session} />
+                  <AgendaForm
+                    assembly={selected}
+                    condominiumId={condominiumId}
+                    nextOrder={agenda.length}
+                    onCreated={() => void refreshSelected()}
+                    session={session}
+                  />
                 ) : null}
               </Surface>
 
@@ -332,26 +394,58 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
                   <h3>Asistencia y quórum</h3>
                   {quorum ? (
                     <div className="assembly-quorum" data-met={quorum.quorumMet || undefined}>
-                      <strong>{quorum.present} / {quorum.eligible}</strong>
-                      <span>{Number(quorum.percentage).toFixed(0)}% presentes · requiere {Number(quorum.requiredPercentage).toFixed(0)}%</span>
-                      <Badge tone={quorum.quorumMet ? 'success' : 'warning'}>{quorum.quorumMet ? 'Quórum alcanzado' : 'Quórum pendiente'}</Badge>
+                      <strong>
+                        {quorum.present} / {quorum.eligible}
+                      </strong>
+                      <span>
+                        {Number(quorum.percentage).toFixed(0)}% presentes · requiere{' '}
+                        {Number(quorum.requiredPercentage).toFixed(0)}%
+                      </span>
+                      <Badge tone={quorum.quorumMet ? 'success' : 'warning'}>
+                        {quorum.quorumMet ? 'Quórum alcanzado' : 'Quórum pendiente'}
+                      </Badge>
                     </div>
                   ) : null}
                   <div className="assemblies-attendance">
                     {eligibility.map((snapshot) => (
                       <div key={snapshot.id}>
                         <span>{snapshot.label}</span>
-                        {presentIds.has(snapshot.id) ? <strong>Presente</strong> : (
-                          <Button disabled={acting} onClick={async () => {
-                            setActing(true);
-                            setError('');
-                            try {
-                              await apiRequest(`/v1/condominiums/${condominiumId}/assemblies/${selected.id}/attendance`, session, { method: 'POST', body: JSON.stringify({ snapshotId: snapshot.id, mode: 'in_person' }) });
-                              await refreshSelected();
-                            } catch (requestError) {
-                              setError(requestError instanceof Error ? requestError.message : 'No se pudo registrar asistencia.');
-                            } finally { setActing(false); }
-                          }} size="sm" variant="secondary">Marcar presente</Button>
+                        {presentIds.has(snapshot.id) ? (
+                          <strong>Presente</strong>
+                        ) : (
+                          <Button
+                            disabled={acting}
+                            onClick={async () => {
+                              setActing(true);
+                              setError('');
+                              try {
+                                await apiRequest(
+                                  `/v1/condominiums/${condominiumId}/assemblies/${selected.id}/attendance`,
+                                  session,
+                                  {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                      snapshotId: snapshot.id,
+                                      mode: 'in_person',
+                                    }),
+                                  },
+                                );
+                                await refreshSelected();
+                              } catch (requestError) {
+                                setError(
+                                  requestError instanceof Error
+                                    ? requestError.message
+                                    : 'No se pudo registrar asistencia.',
+                                );
+                              } finally {
+                                setActing(false);
+                              }
+                            }}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            Marcar presente
+                          </Button>
                         )}
                       </div>
                     ))}
@@ -362,10 +456,35 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
               {manage && ['in_progress', 'completed'].includes(selected.status) ? (
                 <Surface>
                   <h3>Acta</h3>
-                  <textarea className="textarea assemblies-minutes" disabled={Boolean(selected.minutes_published_at)} onChange={(event) => setMinutes(event.target.value)} rows={10} value={minutes} />
+                  <textarea
+                    className="textarea assemblies-minutes"
+                    disabled={Boolean(selected.minutes_published_at)}
+                    onChange={(event) => setMinutes(event.target.value)}
+                    rows={10}
+                    value={minutes}
+                  />
                   <div className="assemblies-actions">
-                    {selected.minutes_published_at ? <Badge tone="success">Acta publicada</Badge> : <Button disabled={acting || minutes.trim().length < 2} onClick={() => void saveMinutes()}>Guardar borrador</Button>}
-                    {selected.status === 'completed' && !selected.minutes_published_at && Boolean(selected.minutes_body) ? <Button disabled={acting} onClick={() => void publishMinutes()} variant="secondary">Publicar acta</Button> : null}
+                    {selected.minutes_published_at ? (
+                      <Badge tone="success">Acta publicada</Badge>
+                    ) : (
+                      <Button
+                        disabled={acting || minutes.trim().length < 2}
+                        onClick={() => void saveMinutes()}
+                      >
+                        Guardar borrador
+                      </Button>
+                    )}
+                    {selected.status === 'completed' &&
+                    !selected.minutes_published_at &&
+                    Boolean(selected.minutes_body) ? (
+                      <Button
+                        disabled={acting}
+                        onClick={() => void publishMinutes()}
+                        variant="secondary"
+                      >
+                        Publicar acta
+                      </Button>
+                    ) : null}
                   </div>
                 </Surface>
               ) : null}
@@ -376,23 +495,56 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
                   <div className="assemblies-resolutions">
                     {resolutions.map((resolution) => (
                       <article key={resolution.id}>
-                        <div><strong>{resolution.title}</strong><Badge tone={resolution.published_at ? 'success' : 'info'}>{resolution.published_at ? 'Publicada' : 'Borrador'}</Badge></div>
+                        <div>
+                          <strong>{resolution.title}</strong>
+                          <Badge tone={resolution.published_at ? 'success' : 'info'}>
+                            {resolution.published_at ? 'Publicada' : 'Borrador'}
+                          </Badge>
+                        </div>
                         <p>{resolution.resolution_text}</p>
-                        {manage && !resolution.published_at ? <Button disabled={acting} onClick={async () => {
-                          setActing(true);
-                          setError('');
-                          try {
-                            await apiRequest(`/v1/condominiums/${condominiumId}/assemblies/${selected.id}/resolutions/${resolution.id}/publish`, session, { method: 'POST' });
-                            await refreshSelected();
-                          } catch (requestError) {
-                            setError(requestError instanceof Error ? requestError.message : 'No se pudo publicar la resolución.');
-                          } finally { setActing(false); }
-                        }} size="sm" variant="secondary">Publicar resolución</Button> : null}
+                        {manage && !resolution.published_at ? (
+                          <Button
+                            disabled={acting}
+                            onClick={async () => {
+                              setActing(true);
+                              setError('');
+                              try {
+                                await apiRequest(
+                                  `/v1/condominiums/${condominiumId}/assemblies/${selected.id}/resolutions/${resolution.id}/publish`,
+                                  session,
+                                  { method: 'POST' },
+                                );
+                                await refreshSelected();
+                              } catch (requestError) {
+                                setError(
+                                  requestError instanceof Error
+                                    ? requestError.message
+                                    : 'No se pudo publicar la resolución.',
+                                );
+                              } finally {
+                                setActing(false);
+                              }
+                            }}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            Publicar resolución
+                          </Button>
+                        ) : null}
                       </article>
                     ))}
                   </div>
-                ) : <p>Sin resoluciones registradas.</p>}
-                {manage && ['in_progress', 'completed'].includes(selected.status) ? <ResolutionForm assembly={selected} condominiumId={condominiumId} onCreated={() => void refreshSelected()} session={session} /> : null}
+                ) : (
+                  <p>Sin resoluciones registradas.</p>
+                )}
+                {manage && ['in_progress', 'completed'].includes(selected.status) ? (
+                  <ResolutionForm
+                    assembly={selected}
+                    condominiumId={condominiumId}
+                    onCreated={() => void refreshSelected()}
+                    session={session}
+                  />
+                ) : null}
               </Surface>
             </div>
           )}
@@ -402,48 +554,275 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
   );
 }
 
-function LifecycleActions({ acting, assembly, onTransition }: { acting: boolean; assembly: Assembly; onTransition: (action: 'schedule' | 'start' | 'complete' | 'cancel') => Promise<void> }) {
-  return <div className="assemblies-actions">
-    {assembly.status === 'draft' ? <><Button disabled={acting} onClick={() => void onTransition('schedule')}>Programar</Button><Button disabled={acting} onClick={() => void onTransition('cancel')} variant="secondary">Cancelar</Button></> : null}
-    {assembly.status === 'scheduled' ? <><Button disabled={acting} onClick={() => void onTransition('start')}>Iniciar y congelar elegibilidad</Button><Button disabled={acting} onClick={() => void onTransition('cancel')} variant="secondary">Cancelar</Button></> : null}
-    {assembly.status === 'in_progress' ? <Button disabled={acting} onClick={() => void onTransition('complete')}>Completar asamblea</Button> : null}
-  </div>;
+function LifecycleActions({
+  acting,
+  assembly,
+  onTransition,
+}: {
+  acting: boolean;
+  assembly: Assembly;
+  onTransition: (action: 'schedule' | 'start' | 'complete' | 'cancel') => Promise<void>;
+}) {
+  return (
+    <div className="assemblies-actions">
+      {assembly.status === 'draft' ? (
+        <>
+          <Button disabled={acting} onClick={() => void onTransition('schedule')}>
+            Programar
+          </Button>
+          <Button disabled={acting} onClick={() => void onTransition('cancel')} variant="secondary">
+            Cancelar
+          </Button>
+        </>
+      ) : null}
+      {assembly.status === 'scheduled' ? (
+        <>
+          <Button disabled={acting} onClick={() => void onTransition('start')}>
+            Iniciar y congelar elegibilidad
+          </Button>
+          <Button disabled={acting} onClick={() => void onTransition('cancel')} variant="secondary">
+            Cancelar
+          </Button>
+        </>
+      ) : null}
+      {assembly.status === 'in_progress' ? (
+        <Button disabled={acting} onClick={() => void onTransition('complete')}>
+          Completar asamblea
+        </Button>
+      ) : null}
+    </div>
+  );
 }
 
-function CreateAssemblyDrawer({ condominiumId, session, onClose, onCreated }: { condominiumId: string; session: Session; onClose: () => void; onCreated: (assembly: Assembly) => Promise<void> }) {
+function CreateAssemblyDrawer({
+  condominiumId,
+  session,
+  onClose,
+  onCreated,
+}: {
+  condominiumId: string;
+  session: Session;
+  onClose: () => void;
+  onCreated: (assembly: Assembly) => Promise<void>;
+}) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [scheduledAt, setScheduledAt] = useState(localDateTime(new Date(Date.now() + 7 * 86_400_000)));
+  const [scheduledAt, setScheduledAt] = useState(
+    localDateTime(new Date(Date.now() + 7 * 86_400_000)),
+  );
   const [location, setLocation] = useState('');
   const [basis, setBasis] = useState<VotingBasis>('one_per_unit');
   const [quorum, setQuorum] = useState('50');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); setSaving(true); setError('');
+    event.preventDefault();
+    setSaving(true);
+    setError('');
     try {
-      const assembly = await apiRequest<Assembly>(`/v1/condominiums/${condominiumId}/assemblies`, session, { method: 'POST', body: JSON.stringify({ title, description: description || null, scheduledAt: new Date(scheduledAt).toISOString(), location: location || null, votingBasis: basis, quorumPercentage: Number(quorum) }) });
+      const assembly = await apiRequest<Assembly>(
+        `/v1/condominiums/${condominiumId}/assemblies`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            title,
+            description: description || null,
+            scheduledAt: new Date(scheduledAt).toISOString(),
+            location: location || null,
+            votingBasis: basis,
+            quorumPercentage: Number(quorum),
+          }),
+        },
+      );
       await onCreated(assembly);
-    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la asamblea.'); } finally { setSaving(false); }
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear la asamblea.',
+      );
+    } finally {
+      setSaving(false);
+    }
   };
-  return <Drawer eyebrow="Gobernanza formal" onClose={onClose} prefix="governance" title="Nueva asamblea" wide><form className="assemblies-form" onSubmit={submit}>
-    {error ? <div className="governance-inline-alert">{error}</div> : null}
-    <Field label="Título"><input className="input" onChange={(event) => setTitle(event.target.value)} required value={title} /></Field>
-    <Field label="Descripción"><textarea className="textarea" onChange={(event) => setDescription(event.target.value)} rows={4} value={description} /></Field>
-    <div className="assemblies-form__grid"><Field label="Fecha y hora"><input className="input" onChange={(event) => setScheduledAt(event.target.value)} required type="datetime-local" value={scheduledAt} /></Field><Field label="Lugar"><input className="input" onChange={(event) => setLocation(event.target.value)} value={location} /></Field></div>
-    <div className="assemblies-form__grid"><Field label="Base de votación"><Select onChange={(event) => setBasis(event.target.value as VotingBasis)} value={basis}><option value="one_per_unit">Un voto por unidad</option><option value="one_per_owner">Un voto por propietario</option></Select></Field><Field label="Quórum requerido (%)"><input className="input" max="100" min="0" onChange={(event) => setQuorum(event.target.value)} type="number" value={quorum} /></Field></div>
-    <Button disabled={saving || title.trim().length < 2} type="submit">{saving ? 'Creando…' : 'Crear borrador'}</Button>
-  </form></Drawer>;
+  return (
+    <Drawer
+      eyebrow="Gobernanza formal"
+      onClose={onClose}
+      prefix="governance"
+      title="Nueva asamblea"
+      wide
+    >
+      <form className="assemblies-form" onSubmit={submit}>
+        {error ? <div className="governance-inline-alert">{error}</div> : null}
+        <Field label="Título">
+          <input
+            className="input"
+            onChange={(event) => setTitle(event.target.value)}
+            required
+            value={title}
+          />
+        </Field>
+        <Field label="Descripción">
+          <textarea
+            className="textarea"
+            onChange={(event) => setDescription(event.target.value)}
+            rows={4}
+            value={description}
+          />
+        </Field>
+        <div className="assemblies-form__grid">
+          <Field label="Fecha y hora">
+            <input
+              className="input"
+              onChange={(event) => setScheduledAt(event.target.value)}
+              required
+              type="datetime-local"
+              value={scheduledAt}
+            />
+          </Field>
+          <Field label="Lugar">
+            <input
+              className="input"
+              onChange={(event) => setLocation(event.target.value)}
+              value={location}
+            />
+          </Field>
+        </div>
+        <div className="assemblies-form__grid">
+          <Field label="Base de votación">
+            <Select onChange={(event) => setBasis(event.target.value as VotingBasis)} value={basis}>
+              <option value="one_per_unit">Un voto por unidad</option>
+              <option value="one_per_owner">Un voto por propietario</option>
+            </Select>
+          </Field>
+          <Field label="Quórum requerido (%)">
+            <input
+              className="input"
+              max="100"
+              min="0"
+              onChange={(event) => setQuorum(event.target.value)}
+              type="number"
+              value={quorum}
+            />
+          </Field>
+        </div>
+        <Button disabled={saving || title.trim().length < 2} type="submit">
+          {saving ? 'Creando…' : 'Crear borrador'}
+        </Button>
+      </form>
+    </Drawer>
+  );
 }
 
-function AgendaForm({ assembly, condominiumId, nextOrder, session, onCreated }: { assembly: Assembly; condominiumId: string; nextOrder: number; session: Session; onCreated: () => void }) {
-  const [title, setTitle] = useState(''); const [description, setDescription] = useState(''); const [saving, setSaving] = useState(false);
-  const submit = async (event: FormEvent) => { event.preventDefault(); setSaving(true); try { await apiRequest(`/v1/condominiums/${condominiumId}/assemblies/${assembly.id}/agenda`, session, { method: 'POST', body: JSON.stringify({ title, description: description || null, sortOrder: nextOrder }) }); setTitle(''); setDescription(''); onCreated(); } finally { setSaving(false); } };
-  return <form className="assemblies-inline-form" onSubmit={submit}><Field label="Nuevo punto"><input className="input" onChange={(event) => setTitle(event.target.value)} placeholder="Tema de agenda" value={title} /></Field><Field label="Detalle"><input className="input" onChange={(event) => setDescription(event.target.value)} value={description} /></Field><Button disabled={saving || title.trim().length < 2} size="sm" type="submit">Agregar</Button></form>;
+function AgendaForm({
+  assembly,
+  condominiumId,
+  nextOrder,
+  session,
+  onCreated,
+}: {
+  assembly: Assembly;
+  condominiumId: string;
+  nextOrder: number;
+  session: Session;
+  onCreated: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/assemblies/${assembly.id}/agenda`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({ title, description: description || null, sortOrder: nextOrder }),
+        },
+      );
+      setTitle('');
+      setDescription('');
+      onCreated();
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <form className="assemblies-inline-form" onSubmit={submit}>
+      <Field label="Nuevo punto">
+        <input
+          className="input"
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="Tema de agenda"
+          value={title}
+        />
+      </Field>
+      <Field label="Detalle">
+        <input
+          className="input"
+          onChange={(event) => setDescription(event.target.value)}
+          value={description}
+        />
+      </Field>
+      <Button disabled={saving || title.trim().length < 2} size="sm" type="submit">
+        Agregar
+      </Button>
+    </form>
+  );
 }
 
-function ResolutionForm({ assembly, condominiumId, session, onCreated }: { assembly: Assembly; condominiumId: string; session: Session; onCreated: () => void }) {
-  const [title, setTitle] = useState(''); const [body, setBody] = useState(''); const [saving, setSaving] = useState(false);
-  const submit = async (event: FormEvent) => { event.preventDefault(); setSaving(true); try { await apiRequest(`/v1/condominiums/${condominiumId}/assemblies/${assembly.id}/resolutions`, session, { method: 'POST', body: JSON.stringify({ title, body }) }); setTitle(''); setBody(''); onCreated(); } finally { setSaving(false); } };
-  return <form className="assemblies-resolution-form" onSubmit={submit}><Field label="Título"><input className="input" onChange={(event) => setTitle(event.target.value)} value={title} /></Field><Field label="Resolución"><textarea className="textarea" onChange={(event) => setBody(event.target.value)} rows={4} value={body} /></Field><Button disabled={saving || title.trim().length < 2 || body.trim().length < 2} size="sm" type="submit">Registrar resolución</Button></form>;
+function ResolutionForm({
+  assembly,
+  condominiumId,
+  session,
+  onCreated,
+}: {
+  assembly: Assembly;
+  condominiumId: string;
+  session: Session;
+  onCreated: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [saving, setSaving] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/assemblies/${assembly.id}/resolutions`,
+        session,
+        { method: 'POST', body: JSON.stringify({ title, body }) },
+      );
+      setTitle('');
+      setBody('');
+      onCreated();
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <form className="assemblies-resolution-form" onSubmit={submit}>
+      <Field label="Título">
+        <input className="input" onChange={(event) => setTitle(event.target.value)} value={title} />
+      </Field>
+      <Field label="Resolución">
+        <textarea
+          className="textarea"
+          onChange={(event) => setBody(event.target.value)}
+          rows={4}
+          value={body}
+        />
+      </Field>
+      <Button
+        disabled={saving || title.trim().length < 2 || body.trim().length < 2}
+        size="sm"
+        type="submit"
+      >
+        Registrar resolución
+      </Button>
+    </form>
+  );
 }
