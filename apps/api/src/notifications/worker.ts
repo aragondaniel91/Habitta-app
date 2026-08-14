@@ -24,7 +24,7 @@ export const enqueuePendingNotifications = async (env: NotificationBindings) => 
   for (const event of events)
     await serviceRpc<boolean>(env, 'process_notification_event', { target: event.id });
   const deliveries = await serviceRpc<{ id: string }[]>(env, 'claim_due_notification_deliveries', {
-    limit_count: 100,
+    limit_count: 25,
   });
   for (const delivery of deliveries) await env.NOTIFICATION_QUEUE.send({ deliveryId: delivery.id });
 };
