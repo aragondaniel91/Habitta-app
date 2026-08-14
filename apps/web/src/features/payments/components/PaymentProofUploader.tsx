@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Button } from '../../../components/ui';
 import { paymentProof } from '../api';
+import './payment-proof-uploader.css';
 
 const MAX_PROOF_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_PROOF_TYPES = new Set([
