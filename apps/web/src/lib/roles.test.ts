@@ -7,6 +7,7 @@ import {
   canManageGovernance,
   isTenantOnly,
   rolesForCondominium,
+  usesResidentDashboard,
   type CondominiumRole,
 } from './roles';
 
@@ -92,6 +93,16 @@ describe('role aware navigation', () => {
     expect(canManage(['owner'])).toBe(false);
     expect(canManage(['tenant'])).toBe(false);
     expect(canManage(['payment_reviewer'])).toBe(false);
+  });
+
+  it('routes owner and tenant memberships to the resident dashboard without downgrading staff', () => {
+    expect(usesResidentDashboard(['owner'])).toBe(true);
+    expect(usesResidentDashboard(['tenant'])).toBe(true);
+    expect(usesResidentDashboard(['owner', 'tenant'])).toBe(true);
+    expect(usesResidentDashboard(['condominium_admin'])).toBe(false);
+    expect(usesResidentDashboard(['condominium_admin', 'owner'])).toBe(false);
+    expect(usesResidentDashboard(['board_member', 'tenant'])).toBe(false);
+    expect(usesResidentDashboard([])).toBe(false);
   });
 
   it('matches the database tenant-only read-only boundary', () => {
