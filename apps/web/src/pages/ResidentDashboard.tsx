@@ -108,10 +108,13 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     setLoading(true);
     setWarning('');
     const base = `/v1/condominiums/${condominiumId}`;
+    const paymentsRequest = tenantOnly
+      ? Promise.resolve([] as DashboardPayment[])
+      : apiRequest<DashboardPayment[]>(`${base}/payments`, session);
     const results = await Promise.allSettled([
       apiRequest<ReceivableSummary[]>(`${base}/receivables/summary`, session),
       apiRequest<DashboardReceivable[]>(`${base}/receivables`, session),
-      apiRequest<DashboardPayment[]>(`${base}/payments`, session),
+      paymentsRequest,
       apiRequest<AnnouncementRecord[]>(`${base}/announcements`, session),
       apiRequest<ServiceRequestRecord[]>(`${base}/requests`, session),
       apiRequest<GovernanceProposal[]>(`${base}/governance-proposals`, session),
@@ -140,7 +143,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       );
     }
     setLoading(false);
-  }, [condominiumId, session]);
+  }, [condominiumId, session, tenantOnly]);
 
   useEffect(() => {
     void load();
@@ -208,7 +211,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
   if (loading && !data) return <ResidentDashboardLoading />;
   if (!data) return null;
 
-  const paymentsRoute = routeByKey('payments');
+  const paymentsRoute = tenantOnly ? undefined : routeByKey('payments');
   const feesRoute = routeByKey('fees');
   const requestsRoute = routeByKey('requests');
   const announcementsRoute = routeByKey('announcements');
@@ -257,20 +260,15 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
             Habitta mantiene cada moneda separada; nunca mezcla saldos USD, VES u otras monedas.
           </p>
           {paymentsRoute ? (
-            tenantOnly ? (
-              <Button onClick={() => onNavigate(paymentsRoute)} variant="secondary">
-                <PaymentsIcon size={18} />
-                Ver pagos y recibos
-              </Button>
-            ) : (
-              <Button
-                className="resident-dashboard__primary-action"
-                onClick={() => onNavigate(paymentsRoute)}
-              >
-                <PaymentsIcon size={18} />
-                Pagar / Registrar pago
-              </Button>
-            )
+            <Button
+              className="resident-dashboard__primary-action"
+              onClick={() => onNavigate(paymentsRoute)}
+            >
+              <PaymentsIcon size={18} />
+              Pagar / Registrar pago
+            </Button>
+          ) : tenantOnly ? (
+            <small>Los pagos no están delegados al inquilino en el modo piloto.</small>
           ) : null}
         </Surface>
 
@@ -307,50 +305,54 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         </Surface>
       </section>
 
-      <section className="resident-dashboard__content-grid">
-        <Surface className="resident-dashboard__panel">
-          <div className="resident-dashboard__section-heading">
-            <div>
-              <span>Pagos</span>
-              <h2>Movimientos recientes</h2>
+      {!tenantOnly ? (
+        <section aria-label="Pagos recientes" className="resident-dashboard__payments-row">
+          <Surface className="resident-dashboard__panel">
+            <div className="resident-dashboard__section-heading">
+              <div>
+                <span>Pagos</span>
+                <h2>Movimientos recientes</h2>
+              </div>
+              {paymentsRoute ? (
+                <Button onClick={() => onNavigate(paymentsRoute)} size="sm" variant="ghost">
+                  Ver todos
+                </Button>
+              ) : null}
             </div>
-            {paymentsRoute ? (
-              <Button onClick={() => onNavigate(paymentsRoute)} size="sm" variant="ghost">
-                Ver todos
-              </Button>
-            ) : null}
-          </div>
-          {recentPayments.length ? (
-            <div className="resident-dashboard__list">
-              {recentPayments.map((payment) => (
-                <article key={payment.id}>
-                  <span className="resident-dashboard__list-icon">
-                    <PaymentsIcon size={18} />
-                  </span>
-                  <div>
-                    <strong>
-                      {formatDashboardAmount(
-                        payment.original_amount,
-                        payment.original_currency_code,
-                      )}
-                    </strong>
-                    <small>{formatDashboardDate(payment.payment_date)}</small>
-                  </div>
-                  <Badge tone={paymentTone(payment.status)}>
-                    {paymentStatusLabels[payment.status] ?? payment.status}
-                  </Badge>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              description="Tus pagos enviados y aprobados aparecerán aquí."
-              icon={<PaymentsIcon size={26} />}
-              title="Sin pagos recientes"
-            />
-          )}
-        </Surface>
+            {recentPayments.length ? (
+              <div className="resident-dashboard__list">
+                {recentPayments.map((payment) => (
+                  <article key={payment.id}>
+                    <span className="resident-dashboard__list-icon">
+                      <PaymentsIcon size={18} />
+                    </span>
+                    <div>
+                      <strong>
+                        {formatDashboardAmount(
+                          payment.original_amount,
+                          payment.original_currency_code,
+                        )}
+                      </strong>
+                      <small>{formatDashboardDate(payment.payment_date)}</small>
+                    </div>
+                    <Badge tone={paymentTone(payment.status)}>
+                      {paymentStatusLabels[payment.status] ?? payment.status}
+                    </Badge>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                description="Tus pagos enviados y aprobados aparecerán aquí."
+                icon={<PaymentsIcon size={26} />}
+                title="Sin pagos recientes"
+              />
+            )}
+          </Surface>
+        </section>
+      ) : null}
 
+      <section className="resident-dashboard__content-grid">
         <Surface className="resident-dashboard__panel">
           <div className="resident-dashboard__section-heading">
             <div>
