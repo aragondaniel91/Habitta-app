@@ -22,6 +22,8 @@ export type NotificationBindings = {
   INVITATION_LIMIT?: RateLimit;
   REQUEST_LIMIT?: RateLimit;
   TELEMETRY_LIMIT?: RateLimit;
+  ORGANIZATION_SIGNUP_LIMIT?: RateLimit;
+  FINANCIAL_WRITE_LIMIT?: RateLimit;
   RESEND_API_KEY?: string;
   ZEPTOMAIL_SEND_TOKEN?: string;
   NOTIFICATIONS_FROM_EMAIL: string;
