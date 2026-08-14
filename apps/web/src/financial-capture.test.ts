@@ -7,7 +7,7 @@ describe('financial capture orchestration', () => {
   it('routes new payments through the guided capture drawer only', async () => {
     const page = await source('./pages/PaymentsPage.tsx');
 
-    expect(page).toContain("import { PaymentCaptureDrawer }");
+    expect(page).toContain('import { PaymentCaptureDrawer }');
     expect(page).toContain("drawer?.type === 'create'");
     expect(page).toContain("drawer={drawer?.type === 'create' ? null : drawer}");
   });
@@ -19,7 +19,7 @@ describe('financial capture orchestration', () => {
     expect(capture).toContain('idempotencyKey: idempotencyKey.current');
     expect(capture).toContain('setCreatedPayment(payment)');
     expect(capture).toContain('paymentId={createdPayment.id}');
-    expect(capture).toContain("requiresProof && !proofSaved");
+    expect(capture).toContain('requiresProof && !proofSaved');
   });
 
   it('keeps expense proof upload on the expense draft returned by creation', async () => {
@@ -34,9 +34,7 @@ describe('financial capture orchestration', () => {
   });
 
   it('never submits, approves or posts to treasury from capture', async () => {
-    const paymentCapture = await source(
-      './features/payments/components/PaymentCaptureDrawer.tsx',
-    );
+    const paymentCapture = await source('./features/payments/components/PaymentCaptureDrawer.tsx');
     const expenseCapture = await source('./features/expenses/ExpenseCaptureDrawer.tsx');
 
     for (const capture of [paymentCapture, expenseCapture]) {
