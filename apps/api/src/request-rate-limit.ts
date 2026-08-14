@@ -40,12 +40,14 @@ export const requestRateLimitScope = async (
   }
 
   const match = /^\/v1\/condominiums\/([0-9a-f-]{36})\/([^/]+)(?:\/|$)/i.exec(path);
-  if (!match || !FINANCIAL_ROUTE_FAMILIES.has(match[2].toLowerCase())) return null;
+  const condominiumId = match?.[1];
+  const routeFamily = match?.[2]?.toLowerCase();
+  if (!condominiumId || !routeFamily || !FINANCIAL_ROUTE_FAMILIES.has(routeFamily)) return null;
 
   const bearer = bearerCredential(request);
   const actorKey = bearer ? await sha256Hex(bearer) : `ip:${callerIp}`;
   return {
     kind: 'financial-write',
-    key: `financial-write:${match[1].toLowerCase()}:${actorKey}`,
+    key: `financial-write:${condominiumId.toLowerCase()}:${actorKey}`,
   };
 };
