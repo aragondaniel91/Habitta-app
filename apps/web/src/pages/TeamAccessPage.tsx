@@ -427,6 +427,12 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
               />
             </Field>
 
+            <p className="team-role-description">
+              En producción, al enviar esta invitación Habitta enviará un correo transaccional real
+              a la dirección indicada. Este envío es independiente de los correos automáticos del
+              condominio.
+            </p>
+
             <Button disabled={creating} type="submit">
               {creating ? 'Creando invitación…' : 'Crear y enviar invitación'}
             </Button>
