@@ -1,0 +1,99 @@
+.payments-proof-uploader {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.payments-proof-uploader__file {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem;
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.payments-proof-uploader__file:hover {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.payments-proof-uploader__file:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--blue) 22%, transparent);
+  outline-offset: 2px;
+}
+
+.payments-proof-uploader__file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.payments-proof-uploader__file > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.payments-proof-uploader__file strong {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payments-proof-uploader__file small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.payments-proof-uploader__file::after {
+  content: 'Elegir archivo';
+  flex: 0 0 auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.75rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.payments-proof-uploader__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+}
+
+@media (max-width: 560px) {
+  .payments-proof-uploader__file {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .payments-proof-uploader__file::after {
+    text-align: center;
+  }
+
+  .payments-proof-uploader__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payments-proof-uploader__actions .button:only-child {
+    grid-column: 1 / -1;
+  }
+}

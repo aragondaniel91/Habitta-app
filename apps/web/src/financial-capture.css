@@ -1,0 +1,98 @@
+.expenses-form__actions,
+.payments-form__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin: 0 -22px -22px;
+  padding: 1rem 22px 22px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.expenses-form__actions > .button,
+.payments-form__footer > .button {
+  min-width: 10rem;
+  min-height: 44px;
+}
+
+.financial-capture-progress {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.financial-capture-progress > span,
+.financial-capture-progress > strong {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: calc(var(--radius-md) - 0.2rem);
+  font-size: 0.82rem;
+}
+
+.financial-capture-progress > span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.financial-capture-progress > strong {
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.financial-capture-summary {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.financial-capture-summary span,
+.financial-capture-summary small {
+  color: var(--muted);
+}
+
+.financial-capture-summary strong {
+  color: var(--text-strong);
+  font-size: 1.05rem;
+}
+
+.financial-capture-proof-step {
+  min-height: 100%;
+}
+
+.financial-capture-footer {
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 560px) {
+  .expenses-form__actions,
+  .payments-form__footer {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .expenses-form__actions > .button,
+  .payments-form__footer > .button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .financial-capture-progress {
+    grid-template-columns: 1fr;
+  }
+}

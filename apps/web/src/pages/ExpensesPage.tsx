@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
   CheckCircleIcon,
@@ -8,12 +8,13 @@ import {
   PaymentsIcon,
   PeopleIcon,
 } from '../components/icons';
-import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
-import { apiRequest } from '../lib/api';
+import { ExpenseCaptureDrawer } from '../features/expenses/ExpenseCaptureDrawer';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
+import { apiRequest } from '../lib/api';
 import {
   expenseEventLabels,
   expenseStatusLabels,
@@ -118,192 +119,6 @@ function ExpensesLoading() {
       </div>
       <Skeleton className="expenses-table-skeleton" />
     </div>
-  );
-}
-
-function CreateExpenseForm({
-  condominiumId,
-  session,
-  categories,
-  vendors,
-  onCreated,
-}: {
-  condominiumId: string;
-  session: Session;
-  categories: ExpenseCategory[];
-  vendors: ExpenseVendor[];
-  onCreated: (expense: ExpenseRecord) => void;
-}) {
-  const [categoryId, setCategoryId] = useState(categories.find((item) => item.is_active)?.id ?? '');
-  const [vendorId, setVendorId] = useState('');
-  const [description, setDescription] = useState('');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
-  const [dueDate, setDueDate] = useState('');
-  const [amount, setAmount] = useState('');
-  const [currencyCode, setCurrencyCode] = useState('USD');
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [paymentReference, setPaymentReference] = useState('');
-  const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    try {
-      const expense = await apiRequest<ExpenseRecord>(
-        `/v1/condominiums/${condominiumId}/expenses`,
-        session,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            categoryId,
-            vendorId: vendorId || undefined,
-            description,
-            invoiceNumber: invoiceNumber || undefined,
-            expenseDate,
-            dueDate: dueDate || undefined,
-            amount,
-            currencyCode,
-            paymentMethod: paymentMethod || undefined,
-            paymentReference: paymentReference || undefined,
-            notes: notes || undefined,
-          }),
-        },
-      );
-      onCreated(expense);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo registrar el gasto.',
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <form className="expenses-form" onSubmit={(event) => void submit(event)}>
-      {error ? <div className="expenses-inline-alert">{error}</div> : null}
-      <Field label="Descripción">
-        <input
-          className="input"
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="Ej. Reparación de bomba de agua"
-          required
-          value={description}
-        />
-      </Field>
-      <div className="expenses-form-grid">
-        <Field label="Categoría">
-          <Select
-            onChange={(event) => setCategoryId(event.target.value)}
-            required
-            value={categoryId}
-          >
-            <option value="">Selecciona una categoría</option>
-            {categories
-              .filter((item) => item.is_active)
-              .map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-          </Select>
-        </Field>
-        <Field label="Proveedor" hint="Opcional">
-          <Select onChange={(event) => setVendorId(event.target.value)} value={vendorId}>
-            <option value="">Sin proveedor</option>
-            {vendors
-              .filter((item) => item.is_active)
-              .map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-          </Select>
-        </Field>
-      </div>
-      <div className="expenses-form-grid expenses-form-grid--three">
-        <Field label="Fecha del gasto">
-          <input
-            className="input"
-            onChange={(event) => setExpenseDate(event.target.value)}
-            required
-            type="date"
-            value={expenseDate}
-          />
-        </Field>
-        <Field label="Fecha de vencimiento" hint="Opcional">
-          <input
-            className="input"
-            min={expenseDate}
-            onChange={(event) => setDueDate(event.target.value)}
-            type="date"
-            value={dueDate}
-          />
-        </Field>
-        <Field label="N.º de factura" hint="Opcional">
-          <input
-            className="input"
-            onChange={(event) => setInvoiceNumber(event.target.value)}
-            value={invoiceNumber}
-          />
-        </Field>
-      </div>
-      <div className="expenses-form-grid">
-        <Field label="Monto">
-          <input
-            className="input"
-            inputMode="decimal"
-            min="0.01"
-            onChange={(event) => setAmount(event.target.value)}
-            required
-            step="0.01"
-            type="number"
-            value={amount}
-          />
-        </Field>
-        <Field label="Moneda">
-          <Select onChange={(event) => setCurrencyCode(event.target.value)} value={currencyCode}>
-            <option value="USD">USD</option>
-            <option value="VES">VES</option>
-            <option value="EUR">EUR</option>
-          </Select>
-        </Field>
-      </div>
-      <div className="expenses-form-grid">
-        <Field label="Método de pago" hint="Puede completarse luego">
-          <input
-            className="input"
-            onChange={(event) => setPaymentMethod(event.target.value)}
-            placeholder="Transferencia, efectivo…"
-            value={paymentMethod}
-          />
-        </Field>
-        <Field label="Referencia" hint="Opcional">
-          <input
-            className="input"
-            onChange={(event) => setPaymentReference(event.target.value)}
-            value={paymentReference}
-          />
-        </Field>
-      </div>
-      <Field label="Notas" hint="Opcional">
-        <textarea
-          className="textarea"
-          onChange={(event) => setNotes(event.target.value)}
-          rows={4}
-          value={notes}
-        />
-      </Field>
-      <div className="expenses-form__actions">
-        <Button disabled={saving || !categoryId || !description || !amount} type="submit">
-          {saving ? 'Guardando…' : 'Crear borrador'}
-        </Button>
-      </div>
-    </form>
   );
 }
 
@@ -732,23 +547,18 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
       </Surface>
 
       {drawer === 'create' ? (
-        <DrawerShell
-          eyebrow="Nuevo movimiento"
+        <ExpenseCaptureDrawer
+          categories={data.categories}
+          condominiumId={condominiumId}
           onClose={() => setDrawer(null)}
-          title="Registrar gasto"
-          wide
-        >
-          <CreateExpenseForm
-            categories={data.categories}
-            condominiumId={condominiumId}
-            onCreated={async () => {
-              await load();
-              setDrawer(null);
-            }}
-            session={session}
-            vendors={data.vendors}
-          />
-        </DrawerShell>
+          onComplete={async () => {
+            await load();
+            setDrawer(null);
+          }}
+          onDraftCreated={load}
+          session={session}
+          vendors={data.vendors}
+        />
       ) : null}
 
       {drawer === 'catalogs' ? (
