@@ -9,6 +9,7 @@ import {
 } from './http-security';
 import { clientErrorLog, parseClientErrorEvent, workerErrorLog } from './observability';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
+import { requestRateLimitScope } from './request-rate-limit';
 
 type Bindings = NotificationBindings;
 type Variables = { token: string; userId: string; requestId: string };
@@ -104,6 +105,24 @@ app.use(
     ],
   }),
 );
+
+// High-risk writes are limited at the outer Worker boundary so every current and future handler
+// under these route families gets the same protection. Keys never include a raw bearer token.
+app.use('/v1/*', async (c, next) => {
+  const scope = await requestRateLimitScope(c.req.raw);
+  if (!scope) return next();
+
+  const limiter =
+    scope.kind === 'organization-signup'
+      ? c.env.ORGANIZATION_SIGNUP_LIMIT
+      : c.env.FINANCIAL_WRITE_LIMIT;
+
+  if (!(await withinRateLimit(limiter, scope.key))) {
+    return c.json({ error: 'Too many requests', requestId: c.get('requestId') }, 429);
+  }
+
+  return next();
+});
 
 // Public by design so errors on login/signup can still be seen. The origin guard above, strict
 // payload contract, body-size cap and Cloudflare limiter keep it from becoming a generic log sink.
