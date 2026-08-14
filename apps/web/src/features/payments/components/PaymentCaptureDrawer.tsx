@@ -29,8 +29,11 @@ export function PaymentCaptureDrawer({
   const [message, setMessage] = useState('');
   const [createdPayment, setCreatedPayment] = useState<Payment>();
   const [proofSaved, setProofSaved] = useState(false);
-  const [selectedMethodId, setSelectedMethodId] = useState(methods.find((item) => item.is_active)?.id ?? '');
+  const [selectedMethodId, setSelectedMethodId] = useState(
+    methods.find((item) => item.is_active)?.id ?? '',
+  );
   const selectedMethod = methods.find((item) => item.id === selectedMethodId);
+  const requiresProof = Boolean(selectedMethod?.requires_proof);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -38,11 +41,18 @@ export function PaymentCaptureDrawer({
     setSaving(true);
     setMessage('');
     try {
-      const values = Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>;
-      const payment = await paymentApi<Payment>(`/v1/condominiums/${condominiumId}/payments`, session, {
-        method: 'POST',
-        body: JSON.stringify({ ...values, idempotencyKey: idempotencyKey.current }),
-      });
+      const values = Object.fromEntries(new FormData(event.currentTarget)) as Record<
+        string,
+        string
+      >;
+      const payment = await paymentApi<Payment>(
+        `/v1/condominiums/${condominiumId}/payments`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({ ...values, idempotencyKey: idempotencyKey.current }),
+        },
+      );
       setCreatedPayment(payment);
       setMessage('Borrador creado. Ahora adjunta el comprobante antes de terminar.');
       await onDraftCreated();
@@ -53,17 +63,17 @@ export function PaymentCaptureDrawer({
     }
   };
 
-  const requiresProof = Boolean(selectedMethod?.requires_proof);
-
   return (
     <Drawer eyebrow="Captura guiada" onClose={onClose} prefix="payments" title="Registrar pago">
       {!createdPayment ? (
         <form className="payments-form" onSubmit={(event) => void submit(event)}>
           {message ? <div className="payments-form__message">{message}</div> : null}
           {!methods.some((item) => item.is_active) ? (
-            <div className="payments-form__notice">Crea un método de pago antes de registrar movimientos.</div>
+            <div className="payments-form__notice">
+              Crea un método de pago antes de registrar movimientos.
+            </div>
           ) : null}
-          <div className="financial-capture-progress" aria-label="Progreso de captura">
+          <div aria-label="Progreso de captura" className="financial-capture-progress">
             <strong>1. Datos</strong>
             <span>2. Comprobante</span>
           </div>
@@ -99,9 +109,12 @@ export function PaymentCaptureDrawer({
               <input className="input" name="paymentDate" required type="date" />
             </Field>
             <Field label="Moneda">
-              <Select name="originalCurrencyCode" value={selectedMethod?.currency_code ?? 'USD'} readOnly>
-                <option value={selectedMethod?.currency_code ?? 'USD'}>{selectedMethod?.currency_code ?? 'USD'}</option>
-              </Select>
+              <input
+                className="input"
+                name="originalCurrencyCode"
+                readOnly
+                value={selectedMethod?.currency_code ?? 'USD'}
+              />
             </Field>
           </div>
           <Field label="Monto">
@@ -115,16 +128,33 @@ export function PaymentCaptureDrawer({
             />
           </Field>
           <Field label="Nombre del pagador">
-            <input className="input" name="payerName" placeholder="Nombre y apellido" required />
+            <input
+              className="input"
+              name="payerName"
+              placeholder="Nombre y apellido"
+              required
+            />
           </Field>
           <Field
+            hint={
+              selectedMethod?.requires_reference
+                ? 'Obligatoria para este método.'
+                : 'Opcional.'
+            }
             label="Referencia"
-            hint={requiresProof || selectedMethod?.requires_reference ? 'Revisa los requisitos del método.' : 'Opcional.'}
           >
-            <input className="input" name="reference" required={selectedMethod?.requires_reference} />
+            <input
+              className="input"
+              name="reference"
+              required={selectedMethod?.requires_reference}
+            />
           </Field>
           <Field label="Notas internas">
-            <textarea className="payments-textarea" name="notes" placeholder="Contexto adicional para la revisión" />
+            <textarea
+              className="payments-textarea"
+              name="notes"
+              placeholder="Contexto adicional para la revisión"
+            />
           </Field>
           <footer className="payments-form__footer financial-capture-footer">
             <Button disabled={saving || !selectedMethodId} type="submit">
@@ -134,7 +164,7 @@ export function PaymentCaptureDrawer({
         </form>
       ) : (
         <div className="payments-form financial-capture-proof-step">
-          <div className="financial-capture-progress" aria-label="Progreso de captura">
+          <div aria-label="Progreso de captura" className="financial-capture-progress">
             <span>1. Datos</span>
             <strong>2. Comprobante</strong>
           </div>
@@ -164,7 +194,11 @@ export function PaymentCaptureDrawer({
           <footer className="payments-form__footer financial-capture-footer">
             <Button
               disabled={requiresProof && !proofSaved}
-              onClick={() => void onComplete(proofSaved ? 'Pago y comprobante guardados.' : 'Borrador de pago guardado.')}
+              onClick={() =>
+                void onComplete(
+                  proofSaved ? 'Pago y comprobante guardados.' : 'Borrador de pago guardado.',
+                )
+              }
               type="button"
             >
               Finalizar registro
