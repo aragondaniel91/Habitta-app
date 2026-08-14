@@ -25,9 +25,7 @@ export function ExpenseCaptureDrawer({
   onDraftCreated: () => Promise<void>;
   onComplete: (message: string) => Promise<void>;
 }) {
-  const [categoryId, setCategoryId] = useState(
-    categories.find((item) => item.is_active)?.id ?? '',
-  );
+  const [categoryId, setCategoryId] = useState(categories.find((item) => item.is_active)?.id ?? '');
   const [vendorId, setVendorId] = useState('');
   const [description, setDescription] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
