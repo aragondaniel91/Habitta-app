@@ -118,6 +118,12 @@ select condominium_id,id,'13000000-0000-0000-0000-000000000003','hab130-recipien
   'new_receivable','{}','pending','hab130-after-activation'
 from public.notification_events where aggregate_id='13500000-0000-0000-0000-000000000001' limit 1;
 
+-- HAB-130 tests the explicit live-email gate, not HAB-150's bulk-send timing policy.
+-- Make this fixture due now so the claim assertions remain focused on the gate boundary.
+update public.notification_deliveries
+set next_attempt_at = now() - interval '1 minute'
+where deduplication_key = 'hab130-after-activation';
+
 select is(
   (select status from public.notification_deliveries where deduplication_key='hab130-after-activation'),
   'pending'::public.notification_delivery_status,
