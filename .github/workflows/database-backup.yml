@@ -96,7 +96,8 @@ jobs:
 
           test -s .backup/plain/auth-data.sql
           test -s .backup/plain/source-metrics.tsv
-          test "$(awk -F '\t' '$1 == "auth_users" { print $2 }' .backup/plain/source-metrics.tsv)" =~ ^[0-9]+$
+          AUTH_USERS_COUNT="$(awk -F '\t' '$1 == "auth_users" { print $2 }' .backup/plain/source-metrics.tsv)"
+          [[ "$AUTH_USERS_COUNT" =~ ^[0-9]+$ ]]
 
           printf '%s\n' "$GITHUB_SHA" > .backup/plain/source-commit.txt
           date -u +'%Y-%m-%dT%H:%M:%SZ' > .backup/plain/created-at.txt
