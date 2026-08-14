@@ -10,6 +10,7 @@ import { apiRequest } from './lib/api';
 import {
   allowedRoutes,
   canAccessRoute,
+  RESIDENT_ROLES,
   rolesForCondominium,
   RolesProvider,
   type Membership,
@@ -25,6 +26,9 @@ const AdministrativeDashboard = lazy(() =>
   import('./pages/AdministrativeDashboard').then((module) => ({
     default: module.AdministrativeDashboard,
   })),
+);
+const ResidentDashboard = lazy(() =>
+  import('./pages/ResidentDashboard').then((module) => ({ default: module.ResidentDashboard })),
 );
 const AnnouncementsPage = lazy(() =>
   import('./pages/AnnouncementsPage').then((module) => ({ default: module.AnnouncementsPage })),
@@ -263,6 +267,7 @@ export default function App() {
   const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
   const condominiumName = selectedCondominium?.name ?? 'Condominio';
   const roles = rolesForCondominium(memberships, selectedCondominiumId);
+  const residentOnly = roles.length > 0 && roles.every((role) => RESIDENT_ROLES.includes(role));
   const visibleRoutes = allowedRoutes(APP_ROUTES, roles);
   // A deep link to a module this role cannot open lands on the first one it can, so the interface
   // never renders a module the API is going to refuse.
@@ -285,7 +290,14 @@ export default function App() {
       />
     );
   } else if (activeRoute.key === 'dashboard') {
-    page = (
+    page = residentOnly ? (
+      <ResidentDashboard
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        onNavigate={navigate}
+        session={session}
+      />
+    ) : (
       <AdministrativeDashboard
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}

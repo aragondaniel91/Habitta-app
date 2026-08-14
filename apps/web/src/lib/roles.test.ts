@@ -5,7 +5,9 @@ import {
   canAccessRoute,
   canManage,
   canManageGovernance,
+  isTenantOnly,
   rolesForCondominium,
+  usesResidentDashboard,
   type CondominiumRole,
 } from './roles';
 
@@ -13,7 +15,7 @@ const keysFor = (roles: CondominiumRole[]) =>
   allowedRoutes(APP_ROUTES, roles).map((route) => route.key);
 
 describe('role aware navigation', () => {
-  it('keeps a resident inside the modules they act in', () => {
+  it('keeps an owner inside the resident modules they act in', () => {
     const keys = keysFor(['owner']);
 
     expect(keys).toEqual([
@@ -26,6 +28,23 @@ describe('role aware navigation', () => {
       'announcements',
       'settings',
     ]);
+  });
+
+  it('keeps tenant-only navigation aligned with the pilot read-only RLS boundary', () => {
+    const keys = keysFor(['tenant']);
+    const payments = APP_ROUTES.find((route) => route.key === 'payments');
+
+    expect(keys).toEqual([
+      'dashboard',
+      'fees',
+      'community',
+      'governance',
+      'requests',
+      'announcements',
+      'settings',
+    ]);
+    expect(canAccessRoute(payments!, ['tenant'])).toBe(false);
+    expect(canAccessRoute(payments!, ['owner', 'tenant'])).toBe(true);
   });
 
   it('never offers a resident an administrative module', () => {
@@ -91,5 +110,23 @@ describe('role aware navigation', () => {
     expect(canManage(['owner'])).toBe(false);
     expect(canManage(['tenant'])).toBe(false);
     expect(canManage(['payment_reviewer'])).toBe(false);
+  });
+
+  it('routes owner and tenant memberships to the resident dashboard without downgrading staff', () => {
+    expect(usesResidentDashboard(['owner'])).toBe(true);
+    expect(usesResidentDashboard(['tenant'])).toBe(true);
+    expect(usesResidentDashboard(['owner', 'tenant'])).toBe(true);
+    expect(usesResidentDashboard(['condominium_admin'])).toBe(false);
+    expect(usesResidentDashboard(['condominium_admin', 'owner'])).toBe(false);
+    expect(usesResidentDashboard(['board_member', 'tenant'])).toBe(false);
+    expect(usesResidentDashboard([])).toBe(false);
+  });
+
+  it('matches the database tenant-only read-only boundary', () => {
+    expect(isTenantOnly(['tenant'])).toBe(true);
+    expect(isTenantOnly([])).toBe(false);
+    expect(isTenantOnly(['owner'])).toBe(false);
+    expect(isTenantOnly(['owner', 'tenant'])).toBe(false);
+    expect(isTenantOnly(['tenant', 'board_member'])).toBe(false);
   });
 });

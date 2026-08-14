@@ -34,6 +34,9 @@ export function rolesForCondominium(
 
 export function canAccessRoute(route: AppRoute, roles: CondominiumRole[]) {
   if (!roles.length) return false;
+  // The pilot database intentionally denies tenant-only users access to payment rows/writes.
+  // Keep the presentation boundary aligned so a deep link cannot land on a guaranteed 403.
+  if (route.key === 'payments' && isTenantOnly(roles)) return false;
   return roles.some((role) => route.roles.includes(role));
 }
 
@@ -46,9 +49,19 @@ export function canManage(roles: CondominiumRole[]) {
   return roles.some((role) => role === 'condominium_admin' || role === 'accountant');
 }
 
-/** Residents act on their own unit: report a payment, open a request, read their statement. */
+/** Residents act on their own authorized data; the database still decides which rows are visible. */
 export function isResident(roles: CondominiumRole[]) {
   return roles.some((role) => RESIDENT_ROLES.includes(role));
+}
+
+/** Use the simpler resident home only when every role in this condominium is residential. */
+export function usesResidentDashboard(roles: CondominiumRole[]) {
+  return roles.length > 0 && roles.every((role) => RESIDENT_ROLES.includes(role));
+}
+
+/** Mirrors the pilot database guard: tenant-only memberships are operationally read-only. */
+export function isTenantOnly(roles: CondominiumRole[]) {
+  return roles.length > 0 && roles.every((role) => role === 'tenant');
 }
 
 /** Governance is run by the board as well as the administration. */
