@@ -22,7 +22,7 @@ Este documento evita mezclar funcionalidades existentes con roadmap. “Disponib
 | Mantenimiento | Activos, planes recurrentes, órdenes de trabajo e historial técnico. |
 | Solicitudes | Casos/requerimientos, categorías, prioridades, estados, comentarios/eventos y adjuntos según visibilidad. |
 | Anuncios | Borrador/programación/publicación/archivo, audiencia, prioridad, confirmación y adjuntos. |
-| Gobernanza | Propuestas, opciones, documentos, elegibilidad, quórum, votos y resultados disponibles en el workspace actual. |
+| Gobernanza | Propuestas, opciones, documentos, elegibilidad, quórum, votos y resultados; además Asambleas/Actas con programación, agenda, snapshot de elegibilidad, asistencia, quórum en vivo, actas y resoluciones protegidas por lifecycle server-side. |
 | Comunidad | Vista/composición comunitaria y accesos relacionados disponibles actualmente. |
 | Reportes | Reportes financieros/comunitarios expuestos por la aplicación actual, manteniendo monedas separadas. |
 | Configuración | Preferencias y configuración visible del condominio/usuario según rol. |
@@ -30,6 +30,7 @@ Este documento evita mezclar funcionalidades existentes con roadmap. “Disponib
 | Documentos privados | Carga/descarga protegida reutilizada por varios módulos; no es todavía un gestor documental comunitario completo. |
 | Seguridad de datos | RBAC/RLS por condominio, controles tenant del piloto, rate limiting de escrituras sensibles y observabilidad de errores financieros implementada. |
 | Recuperación | Backup/restore endurecido para Auth y validación de invariantes financieras según la evidencia cerrada en HAB-153. |
+| Auditoría administrativa | Read model/API unificado para pagos, gastos, tesorería, mantenimiento, propuestas y asambleas con filtros, paginación, aislamiento por condominio y redacción de metadata sensible. La UI/export continúa pendiente. |
 
 ## Disponible con límites explícitos
 
@@ -41,9 +42,13 @@ Este documento evita mezclar funcionalidades existentes con roadmap. “Disponib
 
 Owner y tenant usan un inicio simplificado, pero cada tarjeta/fuente sigue dependiendo de las filas permitidas por RLS. Un módulo no disponible para el rol no debe inferirse como habilitado porque aparezca en este manual.
 
+### Asambleas
+
+El workspace actual cubre creación, agenda, transiciones de estado, snapshot de elegibilidad, asistencia, quórum, acta y resoluciones. No incluye todavía firma electrónica, videoconferencia integrada, proxy legal avanzado ni exportación regulatoria certificada.
+
 ### Preview de desarrollo
 
-El código para adjuntar `preview.mihabitta.com`, corregir su CNAME y validar HTTPS está integrado. Sin embargo, la última evidencia del workflow canónico llega al dominio y obtiene HTTP 403. Hasta identificar si proviene de Cloudflare Access/WAF o de una configuración no intencional, el dominio preview no debe declararse saludable para invitaciones piloto.
+El código para adjuntar `preview.mihabitta.com`, corregir su CNAME y validar HTTPS está integrado. La evidencia más reciente llega correctamente al dominio pero obtiene HTTP 403 porque el workflow no dispone todavía del service token necesario para atravesar Cloudflare Access. El dominio preview no debe declararse saludable para invitaciones piloto hasta configurar ese acceso automatizado sin debilitar la protección.
 
 ### Documentos
 
@@ -56,9 +61,8 @@ Existen adjuntos privados dentro de módulos. Todavía no equivale al gestor doc
 | Delegación granular de tenant | Permisos configurables por propietario/módulo/acción después del piloto. |
 | Payment Connector Hub | Adaptadores configurables por condominio para bancos/Pago Móvil y otros proveedores soportados; manual upload permanece como fallback. |
 | Captura financiera asistida por AI | Extracción segura desde comprobantes para sugerir campos, siempre con revisión humana y sin auto-aprobación. |
-| Asambleas | Programación, agenda, asistencia, snapshot de quórum, actas y resoluciones. |
 | Gestor documental comunitario | Carpetas/categorías/versionado/permisos/retención y enlaces transversales. |
-| Audit log visible al administrador | Vista de acciones administrativas con filtros, retención/export y protección de datos sensibles. |
+| Audit log visible al administrador | Workspace visual sobre el read model ya integrado, con filtros, retención/export y protección de datos sensibles. |
 | Integration/outbox foundation ampliada | Outbox, webhooks firmados, reintentos/DLQ y health de integraciones de terceros. |
 | Help Center dentro de la app | Navegación de ayuda basada en esta fuente canónica, evitando contenido duplicado. |
 | Capturas/recorridos anotados | Se incorporarán cerca del piloto/lanzamiento cuando la UI sea suficientemente estable. |
