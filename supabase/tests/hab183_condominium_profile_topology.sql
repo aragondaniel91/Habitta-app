@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(18);
 
 select has_type(
   'public',
