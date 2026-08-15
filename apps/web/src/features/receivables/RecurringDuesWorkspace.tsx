@@ -95,8 +95,7 @@ type PlanForm = {
 
 const currentMonthStart = () => {
   const today = new Date();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  return `${today.getFullYear()}-${month}-01`;
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
 };
 
 const initialScopeForm: ScopeForm = {
@@ -108,9 +107,11 @@ const initialScopeForm: ScopeForm = {
 };
 
 const initialPlanForm = (concepts: ChargeConcept[], scopes: FinancialScope[]): PlanForm => {
-  const concept = concepts.find((item) => item.is_active !== false && item.category === 'regular_dues') ??
+  const concept =
+    concepts.find((item) => item.is_active !== false && item.category === 'regular_dues') ??
     concepts.find((item) => item.is_active !== false);
-  const scope = scopes.find((item) => item.is_active && item.kind === 'condominium') ??
+  const scope =
+    scopes.find((item) => item.is_active && item.kind === 'condominium') ??
     scopes.find((item) => item.is_active);
   return {
     conceptId: concept?.id ?? '',
@@ -187,8 +188,14 @@ export function RecurringDuesWorkspace({
     try {
       const [nextScopes, nextPlans, nextRuns, nextBuildings, nextUnits] = await Promise.all([
         apiRequest<FinancialScope[]>(`/v1/condominiums/${condominiumId}/financial-scopes`, session),
-        apiRequest<RecurringPlan[]>(`/v1/condominiums/${condominiumId}/recurring-charge-plans`, session),
-        apiRequest<RecurringRun[]>(`/v1/condominiums/${condominiumId}/recurring-charge-runs`, session),
+        apiRequest<RecurringPlan[]>(
+          `/v1/condominiums/${condominiumId}/recurring-charge-plans`,
+          session,
+        ),
+        apiRequest<RecurringRun[]>(
+          `/v1/condominiums/${condominiumId}/recurring-charge-runs`,
+          session,
+        ),
         apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
         apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
       ]);
@@ -265,33 +272,21 @@ export function RecurringDuesWorkspace({
     setBusyId('plan');
     setError('');
     try {
-      const plan = await apiRequest<RecurringPlan>(
-        `/v1/condominiums/${condominiumId}/recurring-charge-plans`,
-        session,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            conceptId: planForm.conceptId,
-            financialScopeId: planForm.financialScopeId,
-            name: planForm.name,
-            distribution: planForm.distribution,
-            amount: planForm.amount,
-            currencyCode: planForm.currencyCode.toUpperCase(),
-            startsOn: planForm.startsOn,
-            ...(planForm.endsOn ? { endsOn: planForm.endsOn } : {}),
-            issueDay: Number(planForm.issueDay),
-            dueDay: Number(planForm.dueDay),
-          }),
-        },
-      );
-      await apiRequest(
-        `/v1/condominiums/${condominiumId}/recurring-charge-plans/${plan.id}/runs`,
-        session,
-        {
-          method: 'POST',
-          body: JSON.stringify({ period: startPeriod(plan.starts_on) }),
-        },
-      );
+      await apiRequest(`/v1/condominiums/${condominiumId}/recurring-charge-plans`, session, {
+        method: 'POST',
+        body: JSON.stringify({
+          conceptId: planForm.conceptId,
+          financialScopeId: planForm.financialScopeId,
+          name: planForm.name,
+          distribution: planForm.distribution,
+          amount: planForm.amount,
+          currencyCode: planForm.currencyCode.toUpperCase(),
+          startsOn: planForm.startsOn,
+          ...(planForm.endsOn ? { endsOn: planForm.endsOn } : {}),
+          issueDay: Number(planForm.issueDay),
+          dueDay: Number(planForm.dueDay),
+        }),
+      });
       setPlanDrawerOpen(false);
       await load();
     } catch (requestError) {
@@ -304,18 +299,26 @@ export function RecurringDuesWorkspace({
   };
 
   const scheduleNext = async (plan: RecurringPlan) => {
-    const periods = runs.filter((run) => run.plan_id === plan.id).map((run) => run.period).sort();
-    const nextPeriod = periods.length ? addMonth(periods[periods.length - 1]!) : startPeriod(plan.starts_on);
+    const periods = runs
+      .filter((run) => run.plan_id === plan.id)
+      .map((run) => run.period)
+      .sort();
+    const nextPeriod = periods.length
+      ? addMonth(periods[periods.length - 1]!)
+      : startPeriod(plan.starts_on);
     setBusyId(`schedule:${plan.id}`);
     setError('');
     try {
-      await apiRequest(`/v1/condominiums/${condominiumId}/recurring-charge-plans/${plan.id}/runs`, session, {
-        method: 'POST',
-        body: JSON.stringify({ period: nextPeriod }),
-      });
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/recurring-charge-plans/${plan.id}/runs`,
+        session,
+        { method: 'POST', body: JSON.stringify({ period: nextPeriod }) },
+      );
       await load();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo programar el período.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo programar el período.',
+      );
     } finally {
       setBusyId('');
     }
@@ -333,7 +336,9 @@ export function RecurringDuesWorkspace({
       setExpandedRunId(run.id);
       await load();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo preparar la cuota.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo preparar la cuota.',
+      );
     } finally {
       setBusyId('');
     }
@@ -344,8 +349,9 @@ export function RecurringDuesWorkspace({
       !window.confirm(
         `¿Publicar la cuota de ${run.period} en la cartera? Después de publicar, el período queda inmutable.`,
       )
-    )
+    ) {
       return;
+    }
     setBusyId(`post:${run.id}`);
     setError('');
     try {
@@ -354,22 +360,13 @@ export function RecurringDuesWorkspace({
         session,
         { method: 'POST' },
       );
-      const plan = planById.get(run.plan_id);
-      if (plan) {
-        const nextPeriod = addMonth(run.period);
-        const nextStart = `${nextPeriod}-01`;
-        if (!plan.ends_on || nextStart <= plan.ends_on) {
-          await apiRequest(
-            `/v1/condominiums/${condominiumId}/recurring-charge-plans/${plan.id}/runs`,
-            session,
-            { method: 'POST', body: JSON.stringify({ period: nextPeriod }) },
-          );
-        }
-      }
       setExpandedRunId('');
-      await Promise.all([load(), Promise.resolve(onLedgerChanged())]);
+      onLedgerChanged();
+      await load();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo publicar la cuota.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo publicar la cuota.',
+      );
     } finally {
       setBusyId('');
     }
@@ -398,7 +395,11 @@ export function RecurringDuesWorkspace({
         ) : null}
       </div>
 
-      {error ? <div className="recurring-dues-alert" role="status">{error}</div> : null}
+      {error ? (
+        <div className="recurring-dues-alert" role="status">
+          {error}
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="recurring-dues-loading">Cargando planes y períodos…</div>
@@ -413,16 +414,30 @@ export function RecurringDuesWorkspace({
       ) : (
         <>
           <div className="recurring-dues-metrics">
-            <div><strong>{activePlans.length}</strong><span>planes activos</span></div>
-            <div data-emphasis={pendingRuns.length > 0 || undefined}><strong>{pendingRuns.length}</strong><span>por aprobar</span></div>
-            <div><strong>{scheduledRuns.length}</strong><span>programadas</span></div>
+            <div>
+              <strong>{activePlans.length}</strong>
+              <span>planes activos</span>
+            </div>
+            <div data-emphasis={pendingRuns.length > 0 || undefined}>
+              <strong>{pendingRuns.length}</strong>
+              <span>por aprobar</span>
+            </div>
+            <div>
+              <strong>{scheduledRuns.length}</strong>
+              <span>programadas</span>
+            </div>
           </div>
 
           {pendingRuns.length ? (
             <section className="recurring-dues-section" aria-label="Cuotas pendientes de aprobación">
               <div className="recurring-dues-section__title">
-                <div><h3>Requieren revisión</h3><p>El reparto ya está congelado; todavía no existe deuda nueva.</p></div>
-                <Badge tone="warning">{pendingRuns.length} pendiente{pendingRuns.length === 1 ? '' : 's'}</Badge>
+                <div>
+                  <h3>Requieren revisión</h3>
+                  <p>El reparto ya está congelado; todavía no existe deuda nueva.</p>
+                </div>
+                <Badge tone="warning">
+                  {pendingRuns.length} pendiente{pendingRuns.length === 1 ? '' : 's'}
+                </Badge>
               </div>
               <div className="recurring-dues-run-list">
                 {pendingRuns.map((run) => {
@@ -433,7 +448,9 @@ export function RecurringDuesWorkspace({
                       <div className="recurring-dues-run__summary">
                         <div>
                           <strong>{plan?.name ?? 'Cuota ordinaria'}</strong>
-                          <span>{run.period} · vence {run.due_date}</span>
+                          <span>
+                            {run.period} · vence {run.due_date}
+                          </span>
                         </div>
                         <div className="recurring-dues-run__amount">
                           <b>{money(run.total_amount, run.currency_code)}</b>
@@ -441,11 +458,19 @@ export function RecurringDuesWorkspace({
                         </div>
                       </div>
                       <div className="recurring-dues-run__actions">
-                        <Button onClick={() => setExpandedRunId(expanded ? '' : run.id)} size="sm" variant="ghost">
+                        <Button
+                          onClick={() => setExpandedRunId(expanded ? '' : run.id)}
+                          size="sm"
+                          variant="ghost"
+                        >
                           {expanded ? 'Ocultar reparto' : 'Revisar reparto'}
                         </Button>
                         {canManage ? (
-                          <Button disabled={busyId === `post:${run.id}`} onClick={() => void postRun(run)} size="sm">
+                          <Button
+                            disabled={busyId === `post:${run.id}`}
+                            onClick={() => void postRun(run)}
+                            size="sm"
+                          >
                             {busyId === `post:${run.id}` ? 'Publicando…' : 'Aprobar y publicar'}
                           </Button>
                         ) : null}
@@ -455,7 +480,11 @@ export function RecurringDuesWorkspace({
                           {(run.distribution_snapshot ?? []).map((row) => (
                             <div key={row.unit_id}>
                               <span>{row.unit_code}</span>
-                              {row.participation_percentage ? <small>Alícuota {row.participation_percentage}%</small> : <small>Monto fijo</small>}
+                              {row.participation_percentage ? (
+                                <small>Alícuota {row.participation_percentage}%</small>
+                              ) : (
+                                <small>Monto fijo</small>
+                              )}
                               <strong>{money(row.amount, run.currency_code)}</strong>
                             </div>
                           ))}
@@ -471,18 +500,35 @@ export function RecurringDuesWorkspace({
           {scheduledRuns.length ? (
             <section className="recurring-dues-section" aria-label="Cuotas programadas">
               <div className="recurring-dues-section__title">
-                <div><h3>Próximas cuotas programadas</h3><p>Preparar congela las unidades y alícuotas del período para que puedan revisarse.</p></div>
+                <div>
+                  <h3>Próximas cuotas programadas</h3>
+                  <p>
+                    Preparar congela las unidades y alícuotas del período para que puedan revisarse.
+                  </p>
+                </div>
               </div>
               <div className="recurring-dues-compact-list">
                 {scheduledRuns.map((run) => {
                   const plan = planById.get(run.plan_id);
                   return (
                     <div key={run.id}>
-                      <div><strong>{plan?.name ?? 'Cuota ordinaria'}</strong><span>{run.period} · emisión {run.issue_date}</span></div>
+                      <div>
+                        <strong>{plan?.name ?? 'Cuota ordinaria'}</strong>
+                        <span>
+                          {run.period} · emisión {run.issue_date}
+                        </span>
+                      </div>
                       <Badge tone="info">Programada</Badge>
                       {canManage ? (
-                        <Button disabled={busyId === `prepare:${run.id}`} onClick={() => void prepareRun(run)} size="sm" variant="secondary">
-                          {busyId === `prepare:${run.id}` ? 'Preparando…' : 'Preparar para revisión'}
+                        <Button
+                          disabled={busyId === `prepare:${run.id}`}
+                          onClick={() => void prepareRun(run)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          {busyId === `prepare:${run.id}`
+                            ? 'Preparando…'
+                            : 'Preparar para revisión'}
                         </Button>
                       ) : null}
                     </div>
@@ -494,7 +540,13 @@ export function RecurringDuesWorkspace({
 
           <section className="recurring-dues-section" aria-label="Planes recurrentes">
             <div className="recurring-dues-section__title">
-              <div><h3>Planes configurados</h3><p>El monto significa presupuesto total cuando se distribuye por alícuota y monto por unidad cuando es fijo.</p></div>
+              <div>
+                <h3>Planes configurados</h3>
+                <p>
+                  El monto significa presupuesto total cuando se distribuye por alícuota y monto por
+                  unidad cuando es fijo.
+                </p>
+              </div>
             </div>
             {activePlans.length ? (
               <div className="recurring-dues-plan-grid">
@@ -502,12 +554,27 @@ export function RecurringDuesWorkspace({
                   const scope = scopeById.get(plan.financial_scope_id);
                   return (
                     <article key={plan.id}>
-                      <div><strong>{plan.name}</strong><Badge tone="success">Activo</Badge></div>
-                      <p>{scope?.name ?? 'Ámbito no disponible'} · {plan.distribution === 'participation_percentage' ? 'Por alícuota' : 'Monto fijo por unidad'}</p>
+                      <div>
+                        <strong>{plan.name}</strong>
+                        <Badge tone="success">Activo</Badge>
+                      </div>
+                      <p>
+                        {scope?.name ?? 'Ámbito no disponible'} ·{' '}
+                        {plan.distribution === 'participation_percentage'
+                          ? 'Por alícuota'
+                          : 'Monto fijo por unidad'}
+                      </p>
                       <b>{money(plan.amount, plan.currency_code)}</b>
                       {canManage ? (
-                        <Button disabled={busyId === `schedule:${plan.id}`} onClick={() => void scheduleNext(plan)} size="sm" variant="ghost">
-                          {busyId === `schedule:${plan.id}` ? 'Programando…' : 'Programar siguiente período'}
+                        <Button
+                          disabled={busyId === `schedule:${plan.id}`}
+                          onClick={() => void scheduleNext(plan)}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          {busyId === `schedule:${plan.id}`
+                            ? 'Programando…'
+                            : 'Programar siguiente período'}
                         </Button>
                       ) : null}
                     </article>
@@ -520,10 +587,24 @@ export function RecurringDuesWorkspace({
           </section>
 
           {recentRuns.length ? (
-            <section className="recurring-dues-section recurring-dues-history" aria-label="Cuotas recurrentes publicadas">
-              <div className="recurring-dues-section__title"><div><h3>Publicadas recientemente</h3><p>Estos períodos son históricos e inmutables.</p></div></div>
+            <section
+              className="recurring-dues-section recurring-dues-history"
+              aria-label="Cuotas recurrentes publicadas"
+            >
+              <div className="recurring-dues-section__title">
+                <div>
+                  <h3>Publicadas recientemente</h3>
+                  <p>Estos períodos son históricos e inmutables.</p>
+                </div>
+              </div>
               {recentRuns.map((run) => (
-                <div key={run.id}><span>{planById.get(run.plan_id)?.name ?? 'Cuota ordinaria'} · {run.period}</span><strong>{money(run.total_amount, run.currency_code)}</strong><Badge tone="success">Publicada</Badge></div>
+                <div key={run.id}>
+                  <span>
+                    {planById.get(run.plan_id)?.name ?? 'Cuota ordinaria'} · {run.period}
+                  </span>
+                  <strong>{money(run.total_amount, run.currency_code)}</strong>
+                  <Badge tone="success">Publicada</Badge>
+                </div>
               ))}
             </section>
           ) : null}
@@ -531,91 +612,321 @@ export function RecurringDuesWorkspace({
       )}
 
       {scopeDrawerOpen ? (
-        <Drawer eyebrow="Configuración financiera" onClose={() => setScopeDrawerOpen(false)} prefix="recurring-dues" title="Nuevo ámbito financiero">
+        <Drawer
+          eyebrow="Configuración financiera"
+          onClose={() => setScopeDrawerOpen(false)}
+          prefix="recurring-dues"
+          title="Nuevo ámbito financiero"
+        >
           <form className="recurring-dues-form" onSubmit={(event) => void saveScope(event)}>
-            <p className="recurring-dues-form__intro">Un ámbito define qué unidades participan en un gasto o cuota sin confundir la estructura física con la contabilidad.</p>
+            <p className="recurring-dues-form__intro">
+              Un ámbito define qué unidades participan en un gasto o cuota sin confundir la
+              estructura física con la contabilidad.
+            </p>
             <Field label="Tipo de ámbito">
-              <Select value={scopeForm.kind} onChange={(event) => setScopeForm((current) => ({ ...current, kind: event.target.value as FinancialScopeKind, buildingId: '', unitIds: [] }))}>
+              <Select
+                value={scopeForm.kind}
+                onChange={(event) =>
+                  setScopeForm((current) => ({
+                    ...current,
+                    kind: event.target.value as FinancialScopeKind,
+                    buildingId: '',
+                    unitIds: [],
+                  }))
+                }
+              >
                 <option value="condominium">Todo el condominio</option>
                 <option value="building">Un edificio</option>
                 <option value="custom">Grupo personalizado de unidades</option>
               </Select>
             </Field>
             <div className="recurring-dues-form-grid">
-              <Field label="Código"><input className="input" maxLength={48} onChange={(event) => setScopeForm((current) => ({ ...current, code: event.target.value }))} required value={scopeForm.code} /></Field>
-              <Field label="Nombre"><input className="input" maxLength={120} onChange={(event) => setScopeForm((current) => ({ ...current, name: event.target.value }))} required value={scopeForm.name} /></Field>
+              <Field label="Código">
+                <input
+                  className="input"
+                  maxLength={48}
+                  onChange={(event) =>
+                    setScopeForm((current) => ({ ...current, code: event.target.value }))
+                  }
+                  required
+                  value={scopeForm.code}
+                />
+              </Field>
+              <Field label="Nombre">
+                <input
+                  className="input"
+                  maxLength={120}
+                  onChange={(event) =>
+                    setScopeForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  required
+                  value={scopeForm.name}
+                />
+              </Field>
             </div>
             {scopeForm.kind === 'building' ? (
               <Field label="Edificio">
-                <Select required value={scopeForm.buildingId} onChange={(event) => setScopeForm((current) => ({ ...current, buildingId: event.target.value }))}>
+                <Select
+                  required
+                  value={scopeForm.buildingId}
+                  onChange={(event) =>
+                    setScopeForm((current) => ({ ...current, buildingId: event.target.value }))
+                  }
+                >
                   <option value="">Selecciona un edificio</option>
-                  {buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>
+                      {building.name}
+                    </option>
+                  ))}
                 </Select>
               </Field>
             ) : null}
             {scopeForm.kind === 'custom' ? (
               <fieldset className="recurring-dues-unit-picker">
                 <legend>Unidades incluidas</legend>
-                {units.filter((unit) => unit.status === 'active').map((unit) => (
-                  <label key={unit.id}>
-                    <input checked={scopeForm.unitIds.includes(unit.id)} onChange={(event) => setScopeForm((current) => ({ ...current, unitIds: event.target.checked ? [...current.unitIds, unit.id] : current.unitIds.filter((id) => id !== unit.id) }))} type="checkbox" />
-                    <span>{unit.code}</span>
-                    <small>{unit.ownership_percentage ? `Alícuota ${unit.ownership_percentage}%` : 'Sin alícuota configurada'}</small>
-                  </label>
-                ))}
+                {units
+                  .filter((unit) => unit.status === 'active')
+                  .map((unit) => (
+                    <label key={unit.id}>
+                      <input
+                        checked={scopeForm.unitIds.includes(unit.id)}
+                        onChange={(event) =>
+                          setScopeForm((current) => ({
+                            ...current,
+                            unitIds: event.target.checked
+                              ? [...current.unitIds, unit.id]
+                              : current.unitIds.filter((id) => id !== unit.id),
+                          }))
+                        }
+                        type="checkbox"
+                      />
+                      <span>{unit.code}</span>
+                      <small>
+                        {unit.ownership_percentage
+                          ? `Alícuota ${unit.ownership_percentage}%`
+                          : 'Sin alícuota configurada'}
+                      </small>
+                    </label>
+                  ))}
               </fieldset>
             ) : null}
             <div className="recurring-dues-drawer-footer">
-              <Button onClick={() => setScopeDrawerOpen(false)} type="button" variant="secondary">Cancelar</Button>
-              <Button disabled={busyId === 'scope' || (scopeForm.kind === 'custom' && scopeForm.unitIds.length === 0)} type="submit">{busyId === 'scope' ? 'Guardando…' : 'Crear ámbito'}</Button>
+              <Button
+                onClick={() => setScopeDrawerOpen(false)}
+                type="button"
+                variant="secondary"
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={
+                  busyId === 'scope' ||
+                  (scopeForm.kind === 'custom' && scopeForm.unitIds.length === 0)
+                }
+                type="submit"
+              >
+                {busyId === 'scope' ? 'Guardando…' : 'Crear ámbito'}
+              </Button>
             </div>
           </form>
         </Drawer>
       ) : null}
 
       {planDrawerOpen ? (
-        <Drawer eyebrow="Cuotas ordinarias" onClose={() => setPlanDrawerOpen(false)} prefix="recurring-dues" title="Nueva cuota recurrente" wide>
+        <Drawer
+          eyebrow="Cuotas ordinarias"
+          onClose={() => setPlanDrawerOpen(false)}
+          prefix="recurring-dues"
+          title="Nueva cuota recurrente"
+          wide
+        >
           <form className="recurring-dues-form" onSubmit={(event) => void savePlan(event)}>
-            <p className="recurring-dues-form__intro">Habitta crea el primer período como programado. Nada se carga a las unidades hasta que revises el reparto y publiques la ocurrencia.</p>
+            <p className="recurring-dues-form__intro">
+              Habitta crea el primer período como programado. Nada se carga a las unidades hasta que
+              revises el reparto y publiques la ocurrencia.
+            </p>
             <div className="recurring-dues-form-grid">
               <Field label="Concepto">
-                <Select required value={planForm.conceptId} onChange={(event) => setPlanForm((current) => ({ ...current, conceptId: event.target.value }))}>
+                <Select
+                  required
+                  value={planForm.conceptId}
+                  onChange={(event) =>
+                    setPlanForm((current) => ({ ...current, conceptId: event.target.value }))
+                  }
+                >
                   <option value="">Selecciona un concepto</option>
-                  {concepts.filter((concept) => concept.is_active !== false).map((concept) => <option key={concept.id} value={concept.id}>{concept.name}</option>)}
+                  {concepts
+                    .filter((concept) => concept.is_active !== false)
+                    .map((concept) => (
+                      <option key={concept.id} value={concept.id}>
+                        {concept.name}
+                      </option>
+                    ))}
                 </Select>
               </Field>
               <Field label="Ámbito financiero">
-                <Select required value={planForm.financialScopeId} onChange={(event) => setPlanForm((current) => ({ ...current, financialScopeId: event.target.value }))}>
+                <Select
+                  required
+                  value={planForm.financialScopeId}
+                  onChange={(event) =>
+                    setPlanForm((current) => ({
+                      ...current,
+                      financialScopeId: event.target.value,
+                    }))
+                  }
+                >
                   <option value="">Selecciona un ámbito</option>
-                  {activeScopes.map((scope) => <option key={scope.id} value={scope.id}>{scope.name}</option>)}
+                  {activeScopes.map((scope) => (
+                    <option key={scope.id} value={scope.id}>
+                      {scope.name}
+                    </option>
+                  ))}
                 </Select>
               </Field>
             </div>
-            <Field label="Nombre del plan"><input className="input" maxLength={160} onChange={(event) => setPlanForm((current) => ({ ...current, name: event.target.value }))} required value={planForm.name} /></Field>
+            <Field label="Nombre del plan">
+              <input
+                className="input"
+                maxLength={160}
+                onChange={(event) =>
+                  setPlanForm((current) => ({ ...current, name: event.target.value }))
+                }
+                required
+                value={planForm.name}
+              />
+            </Field>
             <div className="recurring-dues-form-grid">
-              <Field label="Distribución" hint={planForm.distribution === 'participation_percentage' ? 'El total del período se reparte proporcionalmente por alícuota.' : 'Cada unidad recibe exactamente el mismo monto.'}>
-                <Select value={planForm.distribution} onChange={(event) => setPlanForm((current) => ({ ...current, distribution: event.target.value as Distribution }))}>
+              <Field
+                hint={
+                  planForm.distribution === 'participation_percentage'
+                    ? 'El total del período se reparte proporcionalmente por alícuota.'
+                    : 'Cada unidad recibe exactamente el mismo monto.'
+                }
+                label="Distribución"
+              >
+                <Select
+                  value={planForm.distribution}
+                  onChange={(event) =>
+                    setPlanForm((current) => ({
+                      ...current,
+                      distribution: event.target.value as Distribution,
+                    }))
+                  }
+                >
                   <option value="participation_percentage">Por alícuota / participación</option>
                   <option value="fixed_per_unit">Monto fijo por unidad</option>
                 </Select>
               </Field>
-              <Field label={planForm.distribution === 'participation_percentage' ? 'Presupuesto total por período' : 'Monto por unidad'}>
-                <input className="input" inputMode="decimal" onChange={(event) => setPlanForm((current) => ({ ...current, amount: event.target.value }))} pattern="^(0|[1-9][0-9]*)(\.[0-9]{1,2})?$" placeholder="0.00" required value={planForm.amount} />
+              <Field
+                label={
+                  planForm.distribution === 'participation_percentage'
+                    ? 'Presupuesto total por período'
+                    : 'Monto por unidad'
+                }
+              >
+                <input
+                  className="input"
+                  inputMode="decimal"
+                  onChange={(event) =>
+                    setPlanForm((current) => ({ ...current, amount: event.target.value }))
+                  }
+                  pattern="^(0|[1-9][0-9]*)(\.[0-9]{1,2})?$"
+                  placeholder="0.00"
+                  required
+                  value={planForm.amount}
+                />
               </Field>
             </div>
             <div className="recurring-dues-form-grid recurring-dues-form-grid--three">
-              <Field label="Moneda"><input className="input" maxLength={3} minLength={3} onChange={(event) => setPlanForm((current) => ({ ...current, currencyCode: event.target.value.toUpperCase() }))} pattern="[A-Z]{3}" required value={planForm.currencyCode} /></Field>
-              <Field label="Día de emisión"><input className="input" max="28" min="1" onChange={(event) => setPlanForm((current) => ({ ...current, issueDay: event.target.value }))} required type="number" value={planForm.issueDay} /></Field>
-              <Field label="Día de vencimiento"><input className="input" max="28" min={Number(planForm.issueDay) || 1} onChange={(event) => setPlanForm((current) => ({ ...current, dueDay: event.target.value }))} required type="number" value={planForm.dueDay} /></Field>
+              <Field label="Moneda">
+                <input
+                  className="input"
+                  maxLength={3}
+                  minLength={3}
+                  onChange={(event) =>
+                    setPlanForm((current) => ({
+                      ...current,
+                      currencyCode: event.target.value.toUpperCase(),
+                    }))
+                  }
+                  pattern="[A-Z]{3}"
+                  required
+                  value={planForm.currencyCode}
+                />
+              </Field>
+              <Field label="Día de emisión">
+                <input
+                  className="input"
+                  max="28"
+                  min="1"
+                  onChange={(event) =>
+                    setPlanForm((current) => ({ ...current, issueDay: event.target.value }))
+                  }
+                  required
+                  type="number"
+                  value={planForm.issueDay}
+                />
+              </Field>
+              <Field label="Día de vencimiento">
+                <input
+                  className="input"
+                  max="28"
+                  min={Number(planForm.issueDay) || 1}
+                  onChange={(event) =>
+                    setPlanForm((current) => ({ ...current, dueDay: event.target.value }))
+                  }
+                  required
+                  type="number"
+                  value={planForm.dueDay}
+                />
+              </Field>
             </div>
             <div className="recurring-dues-form-grid">
-              <Field label="Comienza"><input className="input" onChange={(event) => setPlanForm((current) => ({ ...current, startsOn: event.target.value }))} required type="date" value={planForm.startsOn} /></Field>
-              <Field label="Finaliza" hint="Opcional. Déjalo vacío para una cuota recurrente indefinida."><input className="input" min={planForm.startsOn} onChange={(event) => setPlanForm((current) => ({ ...current, endsOn: event.target.value }))} type="date" value={planForm.endsOn} /></Field>
+              <Field label="Comienza">
+                <input
+                  className="input"
+                  onChange={(event) =>
+                    setPlanForm((current) => ({ ...current, startsOn: event.target.value }))
+                  }
+                  required
+                  type="date"
+                  value={planForm.startsOn}
+                />
+              </Field>
+              <Field
+                hint="Opcional. Déjalo vacío para una cuota recurrente indefinida."
+                label="Finaliza"
+              >
+                <input
+                  className="input"
+                  min={planForm.startsOn}
+                  onChange={(event) =>
+                    setPlanForm((current) => ({ ...current, endsOn: event.target.value }))
+                  }
+                  type="date"
+                  value={planForm.endsOn}
+                />
+              </Field>
             </div>
-            <div className="recurring-dues-safety-note"><strong>Control financiero</strong><span>Crear el plan no publica deuda. La distribución del período se congela en “Por aprobar” y después exige una acción separada para entrar al libro.</span></div>
+            <div className="recurring-dues-safety-note">
+              <strong>Control financiero</strong>
+              <span>
+                Crear el plan no publica deuda. La distribución del período se congela en “Por
+                aprobar” y después exige una acción separada para entrar al libro.
+              </span>
+            </div>
             <div className="recurring-dues-drawer-footer">
-              <Button onClick={() => setPlanDrawerOpen(false)} type="button" variant="secondary">Cancelar</Button>
-              <Button disabled={busyId === 'plan'} type="submit">{busyId === 'plan' ? 'Creando…' : 'Crear plan y programar primer período'}</Button>
+              <Button
+                onClick={() => setPlanDrawerOpen(false)}
+                type="button"
+                variant="secondary"
+              >
+                Cancelar
+              </Button>
+              <Button disabled={busyId === 'plan'} type="submit">
+                {busyId === 'plan' ? 'Creando…' : 'Crear plan y programar primer período'}
+              </Button>
             </div>
           </form>
         </Drawer>
