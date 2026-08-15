@@ -30,6 +30,17 @@ const messageForStatus = (status: number, path: string) => {
     : message;
 };
 
+const publicMessageFromResponse = async (response: Response) => {
+  try {
+    const payload = (await response.clone().json()) as { publicMessage?: unknown } | null;
+    return typeof payload?.publicMessage === 'string' && payload.publicMessage.trim()
+      ? payload.publicMessage.trim()
+      : null;
+  } catch {
+    return null;
+  }
+};
+
 export async function apiRequest<T>(path: string, session: Session, init?: RequestInit) {
   const headers = new Headers(init?.headers);
   headers.set('Authorization', `Bearer ${session.access_token}`);
@@ -38,8 +49,14 @@ export async function apiRequest<T>(path: string, session: Session, init?: Reque
 
   const response = await fetch(`${apiBaseUrl}${path}`, { ...init, headers });
 
-  if (!response.ok)
-    throw new ApiRequestError(response.status, messageForStatus(response.status, path), path);
+  if (!response.ok) {
+    const publicMessage = await publicMessageFromResponse(response);
+    throw new ApiRequestError(
+      response.status,
+      publicMessage ?? messageForStatus(response.status, path),
+      path,
+    );
+  }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
