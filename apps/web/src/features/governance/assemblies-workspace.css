@@ -1,0 +1,260 @@
+.governance-switcher {
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.governance-switcher button {
+  border: 0;
+  border-radius: 9px;
+  padding: 0.65rem 0.9rem;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.governance-switcher button[aria-selected='true'] {
+  background: var(--surface-strong, var(--background));
+  color: var(--text);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 8%);
+}
+
+.governance-switcher button:focus-visible,
+.assembly-card:focus-visible {
+  outline: 3px solid var(--focus-ring, currentColor);
+  outline-offset: 2px;
+}
+
+.assemblies-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.assemblies-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.assembly-card {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 1rem;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+}
+
+.assembly-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 8%);
+}
+
+.assembly-card__top,
+.assembly-card__footer,
+.assemblies-actions,
+.assemblies-resolutions article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.assembly-card__top > span:last-child,
+.assembly-card__footer,
+.assembly-card p {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.assembly-card > strong {
+  font-size: 1.05rem;
+}
+
+.assembly-card p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.assemblies-detail,
+.assemblies-detail-loading {
+  display: grid;
+  gap: 1rem;
+}
+
+.assemblies-detail h3 {
+  margin-top: 0;
+}
+
+.assemblies-detail__summary {
+  display: grid;
+  gap: 1rem;
+}
+
+.assemblies-detail__summary dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.assemblies-detail__summary dl > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.assemblies-detail dt {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.assemblies-detail dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.assemblies-list {
+  display: grid;
+  gap: 0.65rem;
+  padding-left: 1.4rem;
+}
+
+.assemblies-list li {
+  padding-left: 0.25rem;
+}
+
+.assemblies-list p,
+.assemblies-resolutions p {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+}
+
+.assemblies-form,
+.assemblies-inline-form,
+.assemblies-resolution-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.assemblies-form__grid,
+.assemblies-inline-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.assemblies-inline-form {
+  align-items: end;
+  margin-top: 1rem;
+}
+
+.assemblies-inline-form > button {
+  justify-self: start;
+}
+
+.assembly-quorum {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: var(--background);
+}
+
+.assembly-quorum > span {
+  color: var(--text-muted);
+}
+
+.assemblies-attendance {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.assemblies-attendance > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.assemblies-minutes {
+  width: 100%;
+  resize: vertical;
+}
+
+.assemblies-resolutions {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.assemblies-resolutions article {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.assemblies-resolution-form {
+  margin-top: 1rem;
+}
+
+@media (max-width: 1050px) {
+  .assemblies-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .assemblies-detail__summary dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .governance-switcher {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .assemblies-grid,
+  .assemblies-form__grid,
+  .assemblies-inline-form,
+  .assemblies-detail__summary dl,
+  .assembly-quorum {
+    grid-template-columns: 1fr;
+  }
+
+  .assembly-card__footer {
+    display: grid;
+  }
+
+  .assemblies-actions > button,
+  .assemblies-inline-form > button {
+    width: 100%;
+  }
+
+  .assemblies-attendance > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

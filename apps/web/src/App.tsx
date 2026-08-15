@@ -45,7 +45,9 @@ const ExpensesPage = lazy(() =>
   import('./pages/ExpensesPage').then((module) => ({ default: module.ExpensesPage })),
 );
 const GovernancePage = lazy(() =>
-  import('./pages/GovernancePage').then((module) => ({ default: module.GovernancePage })),
+  import('./pages/GovernanceWorkspacePage').then((module) => ({
+    default: module.GovernanceWorkspacePage,
+  })),
 );
 const MaintenancePage = lazy(() =>
   import('./pages/MaintenancePage').then((module) => ({ default: module.MaintenancePage })),
