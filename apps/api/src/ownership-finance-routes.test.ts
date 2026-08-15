@@ -40,7 +40,7 @@ describe('HAB-186 ownership and financial integrity API contract', () => {
     expect(source).toContain("z.enum(['disabled', 'approved_rates_only'])");
     expect(source).toContain("rpc(c, 'record_approved_exchange_rate'");
     expect(source).not.toContain('api.bcv');
-    expect(source).not.toContain('fetch(\'https://');
+    expect(source).not.toContain("fetch('https://");
   });
 
   it('does not perform direct writes to protected HAB-186 tables', () => {

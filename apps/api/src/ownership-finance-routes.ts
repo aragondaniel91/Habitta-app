@@ -13,7 +13,11 @@ export const ownershipFinanceRoutes = new Hono<{
 }>();
 
 const dateSchema = z.string().date();
-const currencyCodeSchema = z.string().trim().length(3).transform((value) => value.toUpperCase());
+const currencyCodeSchema = z
+  .string()
+  .trim()
+  .length(3)
+  .transform((value) => value.toUpperCase());
 const moneySchema = z.union([
   z.number().positive(),
   z.string().regex(/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,10})?$/),
@@ -88,7 +92,7 @@ async function parsedBody<T extends z.ZodTypeAny>(c: RouteContext, schema: T) {
   return parsed.success ? parsed.data : c.json({ error: parsed.error.flatten() }, 400);
 }
 
-async function jsonResponse(c: RouteContext, response: Response, successStatus = 200) {
+async function jsonResponse(c: RouteContext, response: Response, successStatus: 200 | 201 = 200) {
   return c.json(await response.json(), response.ok ? successStatus : 400);
 }
 
@@ -111,11 +115,17 @@ ownershipFinanceRoutes.post('/:id/units/:unitId/ownership-transfers', async (c) 
     target: condominiumId,
     target_unit: unitId,
     effective_on: body.effectiveDate,
-    new_owners: body.newOwners.map((owner) => ({
-      person_id: owner.personId,
-      ownership_percentage: owner.ownershipPercentage ?? null,
-      is_primary_contact: owner.isPrimaryContact ?? false,
-    })),
+    new_owners: body.newOwners.map(
+      (owner: {
+        personId: string;
+        ownershipPercentage?: string | number;
+        isPrimaryContact?: boolean;
+      }) => ({
+        person_id: owner.personId,
+        ownership_percentage: owner.ownershipPercentage ?? null,
+        is_primary_contact: owner.isPrimaryContact ?? false,
+      }),
+    ),
     supporting_document: body.supportingDocumentReference ?? null,
     transfer_notes: body.notes ?? null,
   });

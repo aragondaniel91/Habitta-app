@@ -49,7 +49,9 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [accountingCurrency, setAccountingCurrency] = useState('VES');
   const [acceptedCurrencies, setAcceptedCurrencies] = useState('VES, USD');
-  const [conversionMode, setConversionMode] = useState<'disabled' | 'approved_rates_only'>('disabled');
+  const [conversionMode, setConversionMode] = useState<'disabled' | 'approved_rates_only'>(
+    'disabled',
+  );
   const [defaultSource, setDefaultSource] = useState('BCV');
   const [maxRateAgeDays, setMaxRateAgeDays] = useState('7');
   const [balanceBasis, setBalanceBasis] = useState<'outstanding' | 'overdue'>('outstanding');
@@ -67,7 +69,11 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
   const [message, setMessage] = useState('');
 
   const normalizedAccepted = useMemo(
-    () => acceptedCurrencies.split(',').map((value) => value.trim().toUpperCase()).filter(Boolean),
+    () =>
+      acceptedCurrencies
+        .split(',')
+        .map((value) => value.trim().toUpperCase())
+        .filter(Boolean),
     [acceptedCurrencies],
   );
 
@@ -98,7 +104,9 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
         setValidityDays(String(nextSolvency.certificate_validity_days));
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo cargar la política financiera.');
+      setMessage(
+        error instanceof Error ? error.message : 'No se pudo cargar la política financiera.',
+      );
     }
   };
 
@@ -121,10 +129,14 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
           maxRateAgeDays: Number(maxRateAgeDays),
         }),
       });
-      setMessage('Política de moneda actualizada. Ningún saldo histórico fue convertido o revalorizado.');
+      setMessage(
+        'Política de moneda actualizada. Ningún saldo histórico fue convertido o revalorizado.',
+      );
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo guardar la política de moneda.');
+      setMessage(
+        error instanceof Error ? error.message : 'No se pudo guardar la política de moneda.',
+      );
     } finally {
       setBusy('');
     }
@@ -144,10 +156,14 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
           certificateValidityDays: Number(validityDays),
         }),
       });
-      setMessage('Criterio de solvencia actualizado para futuras evaluaciones. Los certificados emitidos permanecen inmutables.');
+      setMessage(
+        'Criterio de solvencia actualizado para futuras evaluaciones. Los certificados emitidos permanecen inmutables.',
+      );
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo guardar la política de solvencia.');
+      setMessage(
+        error instanceof Error ? error.message : 'No se pudo guardar la política de solvencia.',
+      );
     } finally {
       setBusy('');
     }
@@ -173,7 +189,9 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
       setRate('');
       setSourceReference('');
       setRateAt(nowIso());
-      setMessage('Tasa aprobada y congelada. Las transacciones futuras pueden referenciar este snapshot; las históricas no cambian.');
+      setMessage(
+        'Tasa aprobada y congelada. Las transacciones futuras pueden referenciar este snapshot; las históricas no cambian.',
+      );
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo registrar la tasa aprobada.');
@@ -187,7 +205,9 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
       <div className="account-statement-section-heading">
         <div>
           <strong>Política financiera del condominio</strong>
-          <span>Monedas, tasas aprobadas y criterio de solvencia sin conversiones silenciosas.</span>
+          <span>
+            Monedas, tasas aprobadas y criterio de solvencia sin conversiones silenciosas.
+          </span>
         </div>
         <Button onClick={() => setOpen((current) => !current)} size="sm" variant="secondary">
           {open ? 'Ocultar política' : 'Configurar política'}
@@ -195,51 +215,232 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
       </div>
 
       <div className="financial-integrity-summary">
-        <div><span>Moneda contable</span><strong>{currencyPolicy?.accounting_currency_code ?? 'Sin configurar'}</strong></div>
-        <div><span>Conversión</span><strong>{currencyPolicy?.conversion_mode === 'approved_rates_only' ? 'Solo tasas aprobadas' : 'Desactivada'}</strong></div>
-        <div><span>Solvencia</span><strong>{solvencyPolicy?.balance_basis === 'overdue' ? 'Saldo vencido' : 'Saldo pendiente'}</strong></div>
+        <div>
+          <span>Moneda contable</span>
+          <strong>{currencyPolicy?.accounting_currency_code ?? 'Sin configurar'}</strong>
+        </div>
+        <div>
+          <span>Conversión</span>
+          <strong>
+            {currencyPolicy?.conversion_mode === 'approved_rates_only'
+              ? 'Solo tasas aprobadas'
+              : 'Desactivada'}
+          </strong>
+        </div>
+        <div>
+          <span>Solvencia</span>
+          <strong>
+            {solvencyPolicy?.balance_basis === 'overdue' ? 'Saldo vencido' : 'Saldo pendiente'}
+          </strong>
+        </div>
       </div>
 
-      {message ? <div className="receivables-action-feedback" role="status">{message}</div> : null}
+      {message ? (
+        <div className="receivables-action-feedback" role="status">
+          {message}
+        </div>
+      ) : null}
 
       {open ? (
         <div className="financial-integrity-config-grid">
-          <form className="financial-integrity-card" onSubmit={(event) => void saveCurrencyPolicy(event)}>
-            <div><strong>Monedas y conversión</strong><span>VES suele ser la moneda contable en Venezuela, pero Habitta no lo impone.</span></div>
-            <Field label="Moneda contable"><input maxLength={3} minLength={3} onChange={(event) => setAccountingCurrency(event.target.value.toUpperCase())} required value={accountingCurrency} /></Field>
-            <Field label="Monedas aceptadas" hint="Sepáralas con comas. Ej. VES, USD, EUR"><input onChange={(event) => setAcceptedCurrencies(event.target.value)} required value={acceptedCurrencies} /></Field>
+          <form
+            className="financial-integrity-card"
+            onSubmit={(event) => void saveCurrencyPolicy(event)}
+          >
+            <div>
+              <strong>Monedas y conversión</strong>
+              <span>VES suele ser la moneda contable en Venezuela, pero Habitta no lo impone.</span>
+            </div>
+            <Field label="Moneda contable">
+              <input
+                maxLength={3}
+                minLength={3}
+                onChange={(event) => setAccountingCurrency(event.target.value.toUpperCase())}
+                required
+                value={accountingCurrency}
+              />
+            </Field>
+            <Field label="Monedas aceptadas" hint="Sepáralas con comas. Ej. VES, USD, EUR">
+              <input
+                onChange={(event) => setAcceptedCurrencies(event.target.value)}
+                required
+                value={acceptedCurrencies}
+              />
+            </Field>
             <Field label="Conversión entre monedas">
-              <Select onChange={(event) => setConversionMode(event.target.value as 'disabled' | 'approved_rates_only')} value={conversionMode}>
+              <Select
+                onChange={(event) =>
+                  setConversionMode(event.target.value as 'disabled' | 'approved_rates_only')
+                }
+                value={conversionMode}
+              >
                 <option value="disabled">Desactivada</option>
                 <option value="approved_rates_only">Solo con tasas aprobadas</option>
               </Select>
             </Field>
-            <Field label="Fuente sugerida" hint="BCV puede ser la fuente operativa, pero el backend es neutral y admite una fuente aprobada manualmente."><input maxLength={120} onChange={(event) => setDefaultSource(event.target.value)} placeholder="BCV" value={defaultSource} /></Field>
-            <Field label="Antigüedad máxima de una tasa"><input max="31" min="0" onChange={(event) => setMaxRateAgeDays(event.target.value)} required type="number" value={maxRateAgeDays} /></Field>
-            <Button disabled={busy === 'currency'} type="submit">{busy === 'currency' ? 'Guardando…' : 'Guardar política de moneda'}</Button>
+            <Field
+              label="Fuente sugerida"
+              hint="BCV puede ser la fuente operativa, pero el backend es neutral y admite una fuente aprobada manualmente."
+            >
+              <input
+                maxLength={120}
+                onChange={(event) => setDefaultSource(event.target.value)}
+                placeholder="BCV"
+                value={defaultSource}
+              />
+            </Field>
+            <Field label="Antigüedad máxima de una tasa">
+              <input
+                max="31"
+                min="0"
+                onChange={(event) => setMaxRateAgeDays(event.target.value)}
+                required
+                type="number"
+                value={maxRateAgeDays}
+              />
+            </Field>
+            <Button disabled={busy === 'currency'} type="submit">
+              {busy === 'currency' ? 'Guardando…' : 'Guardar política de moneda'}
+            </Button>
           </form>
 
-          <form className="financial-integrity-card" onSubmit={(event) => void saveSolvencyPolicy(event)}>
-            <div><strong>Solvencia</strong><span>El certificado se evalúa contra el ledger por moneda; nunca contra un total convertido.</span></div>
-            <Field label="Base del criterio"><Select onChange={(event) => setBalanceBasis(event.target.value as 'outstanding' | 'overdue')} value={balanceBasis}><option value="outstanding">Todo saldo pendiente</option><option value="overdue">Solo saldo vencido</option></Select></Field>
-            <Field label="Días de gracia"><input max="365" min="0" onChange={(event) => setGraceDays(event.target.value)} required type="number" value={graceDays} /></Field>
-            <Field label="Tolerancia por moneda" hint="Se aplica independientemente a USD, VES, EUR, etc."><input min="0" onChange={(event) => setTolerance(event.target.value)} required step="0.01" type="number" value={tolerance} /></Field>
-            <Field label="Vigencia del certificado (días)"><input max="365" min="1" onChange={(event) => setValidityDays(event.target.value)} required type="number" value={validityDays} /></Field>
-            <Button disabled={busy === 'solvency'} type="submit">{busy === 'solvency' ? 'Guardando…' : 'Guardar criterio de solvencia'}</Button>
+          <form
+            className="financial-integrity-card"
+            onSubmit={(event) => void saveSolvencyPolicy(event)}
+          >
+            <div>
+              <strong>Solvencia</strong>
+              <span>
+                El certificado se evalúa contra el ledger por moneda; nunca contra un total
+                convertido.
+              </span>
+            </div>
+            <Field label="Base del criterio">
+              <Select
+                onChange={(event) =>
+                  setBalanceBasis(event.target.value as 'outstanding' | 'overdue')
+                }
+                value={balanceBasis}
+              >
+                <option value="outstanding">Todo saldo pendiente</option>
+                <option value="overdue">Solo saldo vencido</option>
+              </Select>
+            </Field>
+            <Field label="Días de gracia">
+              <input
+                max="365"
+                min="0"
+                onChange={(event) => setGraceDays(event.target.value)}
+                required
+                type="number"
+                value={graceDays}
+              />
+            </Field>
+            <Field
+              label="Tolerancia por moneda"
+              hint="Se aplica independientemente a USD, VES, EUR, etc."
+            >
+              <input
+                min="0"
+                onChange={(event) => setTolerance(event.target.value)}
+                required
+                step="0.01"
+                type="number"
+                value={tolerance}
+              />
+            </Field>
+            <Field label="Vigencia del certificado (días)">
+              <input
+                max="365"
+                min="1"
+                onChange={(event) => setValidityDays(event.target.value)}
+                required
+                type="number"
+                value={validityDays}
+              />
+            </Field>
+            <Button disabled={busy === 'solvency'} type="submit">
+              {busy === 'solvency' ? 'Guardando…' : 'Guardar criterio de solvencia'}
+            </Button>
           </form>
 
           <form className="financial-integrity-card" onSubmit={(event) => void saveRate(event)}>
-            <div><strong>Registrar tasa aprobada</strong><span>La tasa queda como evidencia inmutable para transacciones que la utilicen.</span></div>
-            <div className="financial-integrity-inline">
-              <Field label="Desde"><input maxLength={3} minLength={3} onChange={(event) => setFromCurrency(event.target.value.toUpperCase())} required value={fromCurrency} /></Field>
-              <Field label="Hacia"><input maxLength={3} minLength={3} onChange={(event) => setToCurrency(event.target.value.toUpperCase())} required value={toCurrency} /></Field>
-              <Field label="Tasa"><input inputMode="decimal" min="0.0000000001" onChange={(event) => setRate(event.target.value)} required step="0.0000000001" type="number" value={rate} /></Field>
+            <div>
+              <strong>Registrar tasa aprobada</strong>
+              <span>
+                La tasa queda como evidencia inmutable para transacciones que la utilicen.
+              </span>
             </div>
-            <Field label="Fecha efectiva"><input onChange={(event) => setEffectiveOn(event.target.value)} required type="date" value={effectiveOn} /></Field>
-            <Field label="Fecha/hora observada"><input onChange={(event) => setRateAt(new Date(event.target.value).toISOString())} required type="datetime-local" value={rateAt.slice(0, 16)} /></Field>
-            <Field label="Fuente"><input maxLength={120} onChange={(event) => setSource(event.target.value)} placeholder="BCV, tasa contractual, otra fuente aprobada" required value={source} /></Field>
-            <Field label="Referencia de la fuente"><input maxLength={500} onChange={(event) => setSourceReference(event.target.value)} placeholder="Referencia interna, gaceta, captura privada, etc." value={sourceReference} /></Field>
-            <Button disabled={busy === 'rate' || conversionMode !== 'approved_rates_only'} type="submit">{busy === 'rate' ? 'Registrando…' : 'Aprobar tasa'}</Button>
+            <div className="financial-integrity-inline">
+              <Field label="Desde">
+                <input
+                  maxLength={3}
+                  minLength={3}
+                  onChange={(event) => setFromCurrency(event.target.value.toUpperCase())}
+                  required
+                  value={fromCurrency}
+                />
+              </Field>
+              <Field label="Hacia">
+                <input
+                  maxLength={3}
+                  minLength={3}
+                  onChange={(event) => setToCurrency(event.target.value.toUpperCase())}
+                  required
+                  value={toCurrency}
+                />
+              </Field>
+              <Field label="Tasa">
+                <input
+                  inputMode="decimal"
+                  min="0.0000000001"
+                  onChange={(event) => setRate(event.target.value)}
+                  required
+                  step="0.0000000001"
+                  type="number"
+                  value={rate}
+                />
+              </Field>
+            </div>
+            <Field label="Fecha efectiva">
+              <input
+                onChange={(event) => setEffectiveOn(event.target.value)}
+                required
+                type="date"
+                value={effectiveOn}
+              />
+            </Field>
+            <Field label="Fecha/hora observada">
+              <input
+                onChange={(event) => setRateAt(new Date(event.target.value).toISOString())}
+                required
+                type="datetime-local"
+                value={rateAt.slice(0, 16)}
+              />
+            </Field>
+            <Field label="Fuente">
+              <input
+                maxLength={120}
+                onChange={(event) => setSource(event.target.value)}
+                placeholder="BCV, tasa contractual, otra fuente aprobada"
+                required
+                value={source}
+              />
+            </Field>
+            <Field label="Referencia de la fuente">
+              <input
+                maxLength={500}
+                onChange={(event) => setSourceReference(event.target.value)}
+                placeholder="Referencia interna, gaceta, captura privada, etc."
+                value={sourceReference}
+              />
+            </Field>
+            <Button
+              disabled={busy === 'rate' || conversionMode !== 'approved_rates_only'}
+              type="submit"
+            >
+              {busy === 'rate' ? 'Registrando…' : 'Aprobar tasa'}
+            </Button>
           </form>
         </div>
       ) : null}
@@ -249,10 +450,16 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
           <strong>Tasas registradas</strong>
           {rates.slice(0, 6).map((item) => (
             <div key={item.id}>
-              <span>{item.from_currency_code} → {item.to_currency_code}</span>
+              <span>
+                {item.from_currency_code} → {item.to_currency_code}
+              </span>
               <b>{Number(item.rate).toLocaleString('es-VE', { maximumFractionDigits: 10 })}</b>
-              <small>{formatDashboardDate(item.effective_on)} · {item.source}</small>
-              <Badge tone={item.status === 'approved' ? 'success' : 'neutral'}>{item.status === 'approved' ? 'Aprobada' : 'Sustituida'}</Badge>
+              <small>
+                {formatDashboardDate(item.effective_on)} · {item.source}
+              </small>
+              <Badge tone={item.status === 'approved' ? 'success' : 'neutral'}>
+                {item.status === 'approved' ? 'Aprobada' : 'Sustituida'}
+              </Badge>
             </div>
           ))}
         </div>

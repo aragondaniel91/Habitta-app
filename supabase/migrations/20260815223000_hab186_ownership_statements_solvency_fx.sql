@@ -212,8 +212,6 @@ begin
     'relationship_id', o.id,
     'person_id', p.id,
     'name', trim(concat_ws(' ', p.first_name, p.last_name)),
-    'document_type', p.document_type,
-    'document_number', p.document_number,
     'ownership_percentage', o.ownership_percentage,
     'is_primary_contact', o.is_primary_contact,
     'starts_at', o.starts_at,

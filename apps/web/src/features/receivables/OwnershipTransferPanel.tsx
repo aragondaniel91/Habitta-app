@@ -83,7 +83,8 @@ export function OwnershipTransferPanel({
         setHistory(nextHistory);
       })
       .catch((error) => {
-        if (active) setMessage(error instanceof Error ? error.message : 'No se pudo cargar propiedad.');
+        if (active)
+          setMessage(error instanceof Error ? error.message : 'No se pudo cargar propiedad.');
       });
     return () => {
       active = false;
@@ -100,7 +101,10 @@ export function OwnershipTransferPanel({
   const removeOwner = (index: number) => {
     setOwners((current) => {
       const next = current.filter((_, rowIndex) => rowIndex !== index);
-      if (next.length && !next.some((owner) => owner.primary)) next[0] = { ...next[0], primary: true };
+      const firstOwner = next[0];
+      if (firstOwner && !next.some((owner) => owner.primary)) {
+        next[0] = { ...firstOwner, primary: true };
+      }
       return next;
     });
   };
@@ -146,7 +150,9 @@ export function OwnershipTransferPanel({
       setDocumentReference('');
       setNotes('');
       setOpen(false);
-      setMessage('Transferencia registrada. La cuenta financiera y toda su historia permanecen en la unidad.');
+      setMessage(
+        'Transferencia registrada. La cuenta financiera y toda su historia permanecen en la unidad.',
+      );
       onTransferred();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo registrar la transferencia.');
@@ -160,20 +166,28 @@ export function OwnershipTransferPanel({
       <div className="account-statement-section-heading">
         <div>
           <strong>Propiedad de {unitCode}</strong>
-          <span>La transferencia cambia propietarios y acceso, nunca mueve la deuda de la unidad.</span>
+          <span>
+            La transferencia cambia propietarios y acceso, nunca mueve la deuda de la unidad.
+          </span>
         </div>
         <Button onClick={() => setOpen((current) => !current)} size="sm" variant="secondary">
           {open ? 'Cerrar transferencia' : 'Transferir propiedad'}
         </Button>
       </div>
 
-      {message ? <div className="receivables-action-feedback" role="status">{message}</div> : null}
+      {message ? (
+        <div className="receivables-action-feedback" role="status">
+          {message}
+        </div>
+      ) : null}
 
       <div className="ownership-transfer-current">
         {currentOwners.map((owner) => (
           <div key={owner.person_id}>
             <span>{owner.name}</span>
-            {owner.ownership_percentage != null ? <Badge tone="info">{owner.ownership_percentage}%</Badge> : null}
+            {owner.ownership_percentage != null ? (
+              <Badge tone="info">{owner.ownership_percentage}%</Badge>
+            ) : null}
           </div>
         ))}
       </div>
@@ -183,12 +197,20 @@ export function OwnershipTransferPanel({
           <div className="ownership-transfer-warning">
             <strong>Fecha efectiva e historial</strong>
             <span>
-              Habitta cerrará la relación de los propietarios actuales el día anterior y abrirá las nuevas relaciones en la fecha indicada. Cargos, pagos, saldos y movimientos no cambian de unidad.
+              Habitta cerrará la relación de los propietarios actuales el día anterior y abrirá las
+              nuevas relaciones en la fecha indicada. Cargos, pagos, saldos y movimientos no cambian
+              de unidad.
             </span>
           </div>
 
           <Field label="Fecha efectiva">
-            <input max={todayIso()} onChange={(event) => setEffectiveDate(event.target.value)} required type="date" value={effectiveDate} />
+            <input
+              max={todayIso()}
+              onChange={(event) => setEffectiveDate(event.target.value)}
+              required
+              type="date"
+              value={effectiveDate}
+            />
           </Field>
 
           <div className="ownership-transfer-owner-list">
@@ -197,20 +219,34 @@ export function OwnershipTransferPanel({
                 <Field label={`Nuevo propietario ${index + 1}`}>
                   <Select
                     onChange={(event) =>
-                      setOwners((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, personId: event.target.value } : row))
+                      setOwners((current) =>
+                        current.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, personId: event.target.value } : row,
+                        ),
+                      )
                     }
                     required
                     value={owner.personId}
                   >
                     <option value="">Selecciona una persona</option>
-                    {people.map((person) => <option key={person.id} value={person.id}>{person.first_name} {person.last_name}</option>)}
+                    {people.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.first_name} {person.last_name}
+                      </option>
+                    ))}
                   </Select>
                 </Field>
                 <Field label="Alícuota %">
                   <input
                     max="100"
                     min="0.0001"
-                    onChange={(event) => setOwners((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, percentage: event.target.value } : row))}
+                    onChange={(event) =>
+                      setOwners((current) =>
+                        current.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, percentage: event.target.value } : row,
+                        ),
+                      )
+                    }
                     required
                     step="0.0001"
                     type="number"
@@ -221,32 +257,70 @@ export function OwnershipTransferPanel({
                   <input
                     checked={owner.primary}
                     name="primary-owner"
-                    onChange={() => setOwners((current) => current.map((row, rowIndex) => ({ ...row, primary: rowIndex === index })))}
+                    onChange={() =>
+                      setOwners((current) =>
+                        current.map((row, rowIndex) => ({ ...row, primary: rowIndex === index })),
+                      )
+                    }
                     type="radio"
                   />
                   Contacto principal
                 </label>
-                {owners.length > 1 ? <Button onClick={() => removeOwner(index)} size="sm" type="button" variant="ghost">Quitar</Button> : null}
+                {owners.length > 1 ? (
+                  <Button
+                    onClick={() => removeOwner(index)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    Quitar
+                  </Button>
+                ) : null}
               </div>
             ))}
           </div>
 
-          <div className="ownership-transfer-total" data-valid={Math.abs(percentageTotal - 100) < 0.0001 || undefined}>
+          <div
+            className="ownership-transfer-total"
+            data-valid={Math.abs(percentageTotal - 100) < 0.0001 || undefined}
+          >
             <span>Total de propiedad</span>
             <strong>{percentageTotal.toFixed(4)}%</strong>
           </div>
 
-          <Button onClick={addOwner} size="sm" type="button" variant="secondary">Agregar copropietario</Button>
+          <Button onClick={addOwner} size="sm" type="button" variant="secondary">
+            Agregar copropietario
+          </Button>
 
-          <Field label="Referencia del documento de soporte" hint="Referencia interna o ruta privada del documento; no uses una URL pública permanente.">
-            <input maxLength={500} onChange={(event) => setDocumentReference(event.target.value)} placeholder="Ej. expediente-2026-014 / escritura privada" value={documentReference} />
+          <Field
+            label="Referencia del documento de soporte"
+            hint="Referencia interna o ruta privada del documento; no uses una URL pública permanente."
+          >
+            <input
+              maxLength={500}
+              onChange={(event) => setDocumentReference(event.target.value)}
+              placeholder="Ej. expediente-2026-014 / escritura privada"
+              value={documentReference}
+            />
           </Field>
           <Field label="Notas">
-            <textarea maxLength={2000} onChange={(event) => setNotes(event.target.value)} rows={3} value={notes} />
+            <textarea
+              maxLength={2000}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+              value={notes}
+            />
           </Field>
 
           <div className="ownership-transfer-actions">
-            <Button disabled={busy || owners.some((owner) => !owner.personId) || Math.abs(percentageTotal - 100) > 0.0001} type="submit">
+            <Button
+              disabled={
+                busy ||
+                owners.some((owner) => !owner.personId) ||
+                Math.abs(percentageTotal - 100) > 0.0001
+              }
+              type="submit"
+            >
               {busy ? 'Registrando…' : 'Confirmar transferencia'}
             </Button>
           </div>
@@ -259,7 +333,11 @@ export function OwnershipTransferPanel({
           {history.slice(0, 3).map((transfer) => (
             <div key={transfer.id}>
               <span>{transfer.effective_date}</span>
-              <small>{transfer.previous_owners_snapshot.map((owner) => owner.name).join(', ') || 'Sin propietario previo'} → {transfer.new_owners_snapshot.map((owner) => owner.name).join(', ')}</small>
+              <small>
+                {transfer.previous_owners_snapshot.map((owner) => owner.name).join(', ') ||
+                  'Sin propietario previo'}{' '}
+                → {transfer.new_owners_snapshot.map((owner) => owner.name).join(', ')}
+              </small>
             </div>
           ))}
         </div>

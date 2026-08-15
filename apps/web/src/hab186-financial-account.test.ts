@@ -13,7 +13,10 @@ const policySource = readFileSync(
   new URL('./features/receivables/FinancialIntegrityPanel.tsx', import.meta.url),
   'utf8',
 );
-const wrapperSource = readFileSync(new URL('./pages/ReceivablesDrawers.tsx', import.meta.url), 'utf8');
+const wrapperSource = readFileSync(
+  new URL('./pages/ReceivablesDrawers.tsx', import.meta.url),
+  'utf8',
+);
 
 describe('HAB-186 unit financial account UI contract', () => {
   it('replaces the legacy statement drawer with the authoritative unit account', () => {
@@ -34,9 +37,11 @@ describe('HAB-186 unit financial account UI contract', () => {
   it('makes property transfer an explicit effective-dated workflow', () => {
     expect(statementSource).toContain('<OwnershipTransferPanel');
     expect(transferSource).toContain('/ownership-transfers');
-    expect(transferSource).toContain('Las alícuotas de los nuevos propietarios deben sumar exactamente 100%.');
+    expect(transferSource).toContain(
+      'Las alícuotas de los nuevos propietarios deben sumar exactamente 100%.',
+    );
     expect(transferSource).toContain('Confirmar transferencia');
-    expect(transferSource).toContain('Cargos, pagos, saldos y movimientos no cambian de unidad.');
+    expect(transferSource).toMatch(/Cargos, pagos, saldos y movimientos no cambian\s+de unidad\./);
   });
 
   it('keeps Venezuela currency policy provider-neutral and approval based', () => {
@@ -50,7 +55,9 @@ describe('HAB-186 unit financial account UI contract', () => {
   });
 
   it('exposes solvency issuance only after an eligible evaluation', () => {
-    expect(statementSource).toContain("solvency?.eligible ? 'Unidad solvente' : 'Unidad no solvente'");
+    expect(statementSource).toContain(
+      "solvency?.eligible ? 'Unidad solvente' : 'Unidad no solvente'",
+    );
     expect(statementSource).toContain('manage && solvency?.eligible');
     expect(statementSource).toContain('Emitir solvencia');
     expect(statementSource).toContain('verification_id');

@@ -8,6 +8,8 @@ import { csvFileName, downloadCsv, toCsv } from '../../lib/csv-export';
 import { formatDashboardAmount, formatDashboardDate } from '../../lib/dashboard';
 import type { ReceivableUnit } from '../../lib/receivables';
 import { canManage, useCondominiumRoles } from '../../lib/roles';
+import { FinancialIntegrityPanel } from './FinancialIntegrityPanel';
+import { OwnershipTransferPanel } from './OwnershipTransferPanel';
 
 type Amount = string | number;
 
@@ -19,8 +21,6 @@ type Balance = {
 type OwnerSnapshot = {
   person_id: string;
   name: string;
-  document_type?: string | null;
-  document_number?: string | null;
   ownership_percentage?: Amount | null;
   starts_at?: string | null;
   ends_at?: string | null;
@@ -198,7 +198,9 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
         },
       );
       setCertificates((current) => [certificate, ...current]);
-      setMessage('Solvencia emitida. El criterio y los saldos quedaron congelados en el certificado.');
+      setMessage(
+        'Solvencia emitida. El criterio y los saldos quedaron congelados en el certificado.',
+      );
     } catch (requestError) {
       setMessage(
         requestError instanceof Error ? requestError.message : 'No se pudo emitir la solvencia.',
@@ -209,9 +211,19 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
   };
 
   return (
-    <Drawer eyebrow="Cuenta financiera de la unidad" onClose={onClose} prefix="receivables" title="Estado de cuenta y solvencia" wide>
+    <Drawer
+      eyebrow="Cuenta financiera de la unidad"
+      onClose={onClose}
+      prefix="receivables"
+      title="Estado de cuenta y solvencia"
+      wide
+    >
       <div className="account-statement-drawer">
-        {message ? <div className="receivables-action-feedback" role="status">{message}</div> : null}
+        {message ? (
+          <div className="receivables-action-feedback" role="status">
+            {message}
+          </div>
+        ) : null}
 
         <div className="account-statement-filters">
           <Field label="Unidad">
@@ -224,14 +236,28 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
               value={unitId}
             >
               <option value="">Selecciona una unidad</option>
-              {activeUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.code}</option>)}
+              {activeUnits.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.code}
+                </option>
+              ))}
             </Select>
           </Field>
           <Field label="Desde" hint="Opcional; permite calcular el saldo inicial del período.">
-            <input max={periodTo} onChange={(event) => setPeriodFrom(event.target.value)} type="date" value={periodFrom} />
+            <input
+              max={periodTo}
+              onChange={(event) => setPeriodFrom(event.target.value)}
+              type="date"
+              value={periodFrom}
+            />
           </Field>
           <Field label="Hasta">
-            <input min={periodFrom || undefined} onChange={(event) => setPeriodTo(event.target.value)} type="date" value={periodTo} />
+            <input
+              min={periodFrom || undefined}
+              onChange={(event) => setPeriodTo(event.target.value)}
+              type="date"
+              value={periodTo}
+            />
           </Field>
           <Button disabled={!unitId || loading} onClick={() => void load()} variant="secondary">
             {loading ? 'Actualizando…' : 'Aplicar período'}
@@ -250,7 +276,12 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
               </div>
               <div className="account-statement-actions">
                 <Button
-                  onClick={() => downloadCsv(csvFileName('estado-de-cuenta', statement.account.unit_code), statementCsv(statement))}
+                  onClick={() =>
+                    downloadCsv(
+                      csvFileName('estado-de-cuenta', statement.account.unit_code),
+                      statementCsv(statement),
+                    )
+                  }
                   size="sm"
                   variant="secondary"
                 >
@@ -266,13 +297,19 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
               <section className="account-statement-owners">
                 <div className="account-statement-section-heading">
                   <strong>Propietarios del período</strong>
-                  <span>La identidad cambia; la cuenta y su historial permanecen en la unidad.</span>
+                  <span>
+                    La identidad cambia; la cuenta y su historial permanecen en la unidad.
+                  </span>
                 </div>
                 <div>
                   {statement.owners.map((owner) => (
                     <article key={`${owner.person_id}-${owner.starts_at ?? ''}`}>
-                      <div><strong>{owner.name}</strong><span>{owner.document_type ?? ''} {owner.document_number ?? ''}</span></div>
-                      {owner.ownership_percentage != null ? <Badge tone="info">{owner.ownership_percentage}%</Badge> : null}
+                      <div>
+                        <strong>{owner.name}</strong>
+                      </div>
+                      {owner.ownership_percentage != null ? (
+                        <Badge tone="info">{owner.ownership_percentage}%</Badge>
+                      ) : null}
                     </article>
                   ))}
                 </div>
@@ -282,10 +319,17 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
             <BalanceCards balances={statement.opening_balances} title="Saldo inicial" />
             <BalanceCards balances={statement.closing_balances} title="Saldo al cierre" />
 
-            <section className="account-statement-solvency" data-eligible={solvency?.eligible || undefined}>
-              <div className="account-statement-solvency__icon"><CheckCircleIcon size={22} /></div>
+            <section
+              className="account-statement-solvency"
+              data-eligible={solvency?.eligible || undefined}
+            >
+              <div className="account-statement-solvency__icon">
+                <CheckCircleIcon size={22} />
+              </div>
               <div>
-                <span>Solvencia al {solvency ? formatDashboardDate(solvency.as_of_date) : '—'}</span>
+                <span>
+                  Solvencia al {solvency ? formatDashboardDate(solvency.as_of_date) : '—'}
+                </span>
                 <strong>{solvency?.eligible ? 'Unidad solvente' : 'Unidad no solvente'}</strong>
                 <p>
                   {solvency?.policy.balance_basis === 'overdue'
@@ -302,9 +346,29 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
 
             {latestCertificate ? (
               <section className="account-statement-certificate">
-                <div><span>Última constancia emitida</span><strong>Verificación {latestCertificate.verification_id}</strong></div>
-                <Badge tone="success">Válida hasta {formatDashboardDate(latestCertificate.valid_until)}</Badge>
+                <div>
+                  <span>Última constancia emitida</span>
+                  <strong>Verificación {latestCertificate.verification_id}</strong>
+                </div>
+                <Badge tone="success">
+                  Válida hasta {formatDashboardDate(latestCertificate.valid_until)}
+                </Badge>
               </section>
+            ) : null}
+
+            {manage && selectedUnit ? (
+              <OwnershipTransferPanel
+                condominiumId={condominiumId}
+                currentOwners={statement.owners}
+                onTransferred={() => void load()}
+                session={session}
+                unitCode={selectedUnit.code}
+                unitId={selectedUnit.id}
+              />
+            ) : null}
+
+            {manage ? (
+              <FinancialIntegrityPanel condominiumId={condominiumId} session={session} />
             ) : null}
 
             {statement.movements.length ? (
@@ -318,7 +382,9 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
                     <article key={movement.ledger_entry_id}>
                       <div>
                         <strong>{movement.description}</strong>
-                        <span>{formatDashboardDate(movement.effective_date)} · {movement.entry_type}</span>
+                        <span>
+                          {formatDashboardDate(movement.effective_date)} · {movement.entry_type}
+                        </span>
                       </div>
                       <div>
                         <small>
@@ -328,7 +394,9 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
                               ? `Crédito ${formatDashboardAmount(movement.credit, movement.currency_code)}`
                               : 'Sin variación'}
                         </small>
-                        <strong>{formatDashboardAmount(movement.running_balance, movement.currency_code)}</strong>
+                        <strong>
+                          {formatDashboardAmount(movement.running_balance, movement.currency_code)}
+                        </strong>
                         <Badge tone="neutral">{movement.currency_code}</Badge>
                       </div>
                     </article>
@@ -336,13 +404,21 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
                 </div>
               </section>
             ) : (
-              <EmptyState description="La unidad todavía no tiene movimientos dentro del período seleccionado." icon={<ReportsIcon size={26} />} title="Sin movimientos" />
+              <EmptyState
+                description="La unidad todavía no tiene movimientos dentro del período seleccionado."
+                icon={<ReportsIcon size={26} />}
+                title="Sin movimientos"
+              />
             )}
           </>
         ) : null}
 
         {!loading && !unitId ? (
-          <EmptyState description="Selecciona una unidad para consultar su cuenta financiera, propietarios del período y elegibilidad de solvencia." icon={<ReportsIcon size={26} />} title="Selecciona una unidad" />
+          <EmptyState
+            description="Selecciona una unidad para consultar su cuenta financiera, propietarios del período y elegibilidad de solvencia."
+            icon={<ReportsIcon size={26} />}
+            title="Selecciona una unidad"
+          />
         ) : null}
       </div>
     </Drawer>

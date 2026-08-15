@@ -1,6 +1,6 @@
 # Propiedad, estado de cuenta, solvencia y política cambiaria
 
-**Estado:** disponible cuando HAB-186 esté integrado en `main`  
+**Estado:** disponible cuando HAB-186 esté integrado en `main`
 **Audiencia:** administración, junta con permisos financieros y residentes con acceso a su unidad
 
 Habitta trata a la **unidad** como la cuenta financiera permanente. Las personas pueden cambiar con el tiempo —por compraventa, sucesión, incorporación de copropietarios u otros cambios administrativos— sin mover ni reescribir la historia económica de la unidad.

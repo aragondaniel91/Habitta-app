@@ -15,24 +15,18 @@ values
   ('18600000-0000-4000-8000-000000000002', 'hab186-old-owner@example.com'),
   ('18600000-0000-4000-8000-000000000003', 'hab186-new-owner@example.com');
 
-insert into public.organizations(id, name, slug, status, created_by)
+insert into public.organizations(id, name, created_by)
 values (
   '18610000-0000-4000-8000-000000000001',
   'HAB-186 Organization',
-  'hab-186-org',
-  'active',
   '18600000-0000-4000-8000-000000000001'
 );
 
-insert into public.condominiums(id, organization_id, name, slug, country_code, timezone, status, created_by)
+insert into public.condominiums(id, organization_id, name, created_by)
 values (
   '18620000-0000-4000-8000-000000000001',
   '18610000-0000-4000-8000-000000000001',
   'HAB-186 Condominium',
-  'hab-186-condo',
-  'VE',
-  'America/Caracas',
-  'active',
   '18600000-0000-4000-8000-000000000001'
 );
 
@@ -52,12 +46,11 @@ values (
   'active'
 );
 
-insert into public.units(id, condominium_id, code, status, created_by)
+insert into public.units(id, condominium_id, code, created_by)
 values (
   '18630000-0000-4000-8000-000000000001',
   '18620000-0000-4000-8000-000000000001',
   'A-186',
-  'active',
   '18600000-0000-4000-8000-000000000001'
 );
 
