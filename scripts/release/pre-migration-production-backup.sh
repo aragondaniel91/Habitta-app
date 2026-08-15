@@ -71,14 +71,16 @@ date -u +'%Y-%m-%dT%H:%M:%SZ' > .backup-pre-release/plain/created-at.txt
 )
 tar -C .backup-pre-release/plain -czf .backup-pre-release/database-backup.tar.gz .
 
-BACKUP_ID="$(date -u +'%Y%m%dT%H%M%SZ')-${GITHUB_SHA::12}"
+BACKUP_ID="pre-release-$(date -u +'%Y%m%dT%H%M%SZ')-${GITHUB_SHA::12}"
 openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 \
   -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
   -in .backup-pre-release/database-backup.tar.gz \
   -out ".backup-pre-release/out/${BACKUP_ID}.tar.gz.enc"
 sha256sum ".backup-pre-release/out/${BACKUP_ID}.tar.gz.enc" > ".backup-pre-release/out/${BACKUP_ID}.sha256"
 
-OBJECT_PREFIX="pre-release/$(date -u +'%Y/%m/%d')"
+# Keep the same daily/YYYY/MM/DD object layout used by Database Restore Drill. The backup ID
+# distinguishes release snapshots from scheduled daily backups without creating a second restore path.
+OBJECT_PREFIX="daily/$(date -u +'%Y/%m/%d')"
 pnpm --filter @habitta/api exec wrangler r2 object put \
   "$BACKUP_BUCKET/$OBJECT_PREFIX/${BACKUP_ID}.tar.gz.enc" \
   --file "$GITHUB_WORKSPACE/.backup-pre-release/out/${BACKUP_ID}.tar.gz.enc" --remote
