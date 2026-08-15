@@ -1,0 +1,134 @@
+name: Temp HAB-183 Autofix
+
+on:
+  push:
+    branches:
+      - agent/hab-183-condo-profile-topology
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/hab-183-condo-profile-topology
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply deterministic domain fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          migration = Path('supabase/migrations/20260815183315_hab183_condominium_profile_topology.sql')
+          text = migration.read_text()
+          grant = 'grant usage on type public.condominium_property_topology to authenticated, service_role;\n\n'
+          assert grant in text
+          migration.write_text(text.replace(grant, '', 1))
+
+          onboarding = Path('apps/web/src/lib/adminOnboarding.ts')
+          text = onboarding.read_text()
+          old = """  const hasLegalType = Boolean(input.legalIdType.trim());
+          const hasLegalNumber = Boolean(input.legalIdNumber.trim());
+          if (hasLegalType !== hasLegalNumber) {
+            if (!hasLegalType) errors.legalIdType = 'Indica el tipo de identificación legal.';
+            if (!hasLegalNumber) errors.legalIdNumber = 'Indica el número de identificación legal.';
+          }
+          """
+          new = """  const hasLegalType = Boolean(input.legalIdType.trim());
+          const hasLegalNumber = Boolean(input.legalIdNumber.trim());
+          if (hasLegalNumber && !hasLegalType) {
+            errors.legalIdType = 'Indica el tipo de identificación legal.';
+          }
+          """
+          assert old in text
+          text = text.replace(old, new, 1)
+          old = """    legal_name: input.legalName.trim() || null,
+              legal_id_type: input.legalIdType.trim() || null,
+              legal_id_number: input.legalIdNumber.trim() || null,
+          """
+          new = """    legal_name: input.legalName.trim() || null,
+              legal_id_type: input.legalIdNumber.trim() ? input.legalIdType.trim() || null : null,
+              legal_id_number: input.legalIdNumber.trim() || null,
+          """
+          assert old in text
+          onboarding.write_text(text.replace(old, new, 1))
+
+          test = Path('apps/web/src/admin-onboarding-domain.test.ts')
+          text = test.read_text()
+          old = """  it('keeps legal identification optional but requires type and number as a pair', () => {
+            const missingNumber = { ...validInput(), legalIdType: 'RIF', legalIdNumber: '' };
+            expect(validateAdminOnboarding(missingNumber, true).legalIdNumber).toBeTruthy();
+
+            const omitted = { ...validInput(), legalIdType: '', legalIdNumber: '' };
+            expect(validateAdminOnboarding(omitted, true).legalIdNumber).toBeUndefined();
+
+            const complete = { ...validInput(), legalIdType: 'RIF', legalIdNumber: 'J-12345678-9' };
+            expect(validateAdminOnboarding(complete, true).legalIdNumber).toBeUndefined();
+          });
+          """
+          new = """  it('keeps legal identification optional while requiring a type when a number is entered', () => {
+            const suggestedOnly = { ...validInput(), legalIdType: 'RIF', legalIdNumber: '' };
+            expect(validateAdminOnboarding(suggestedOnly, true).legalIdNumber).toBeUndefined();
+
+            const numberWithoutType = {
+              ...validInput(),
+              legalIdType: '',
+              legalIdNumber: 'J-12345678-9',
+            };
+            expect(validateAdminOnboarding(numberWithoutType, true).legalIdType).toBeTruthy();
+
+            const omitted = { ...validInput(), legalIdType: '', legalIdNumber: '' };
+            expect(validateAdminOnboarding(omitted, true).legalIdNumber).toBeUndefined();
+
+            const complete = { ...validInput(), legalIdType: 'RIF', legalIdNumber: 'J-12345678-9' };
+            expect(validateAdminOnboarding(complete, true).legalIdNumber).toBeUndefined();
+          });
+          """
+          assert old in text
+          test.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Format HAB-183 files
+        run: |
+          pnpm exec prettier --write \
+            apps/web/src/admin-onboarding-domain.test.ts \
+            apps/web/src/components/AdminOnboardingWizard.tsx \
+            apps/web/src/components/CondominiumProfileFields.tsx \
+            apps/web/src/condominium-profile.css \
+            apps/web/src/lib/adminOnboarding.ts \
+            apps/web/src/pages/AddCondominiumPage.tsx \
+            apps/web/src/pages/StructureManagementPage.tsx \
+            supabase/migrations/20260815183315_hab183_condominium_profile_topology.sql
+
+      - name: Commit deterministic fixes
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/web/src/admin-onboarding-domain.test.ts \
+            apps/web/src/components/AdminOnboardingWizard.tsx \
+            apps/web/src/components/CondominiumProfileFields.tsx \
+            apps/web/src/condominium-profile.css \
+            apps/web/src/lib/adminOnboarding.ts \
+            apps/web/src/pages/AddCondominiumPage.tsx \
+            apps/web/src/pages/StructureManagementPage.tsx \
+            supabase/migrations/20260815183315_hab183_condominium_profile_topology.sql
+          git commit -m 'fix: normalize HAB-183 migration and onboarding UX'
+          git push origin HEAD:agent/hab-183-condo-profile-topology
