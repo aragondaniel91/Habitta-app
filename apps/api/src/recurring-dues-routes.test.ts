@@ -6,11 +6,16 @@ const source = readFileSync(
   fileURLToPath(new URL('./recurring-dues-routes.ts', import.meta.url)),
   'utf8',
 );
-const appSource = readFileSync(fileURLToPath(new URL('./index.ts', import.meta.url)), 'utf8');
+const appSource = readFileSync(
+  fileURLToPath(new URL('./index.ts', import.meta.url)),
+  'utf8',
+);
 
 describe('HAB-185 recurring dues API contract', () => {
   it('mounts the recurring dues API under authenticated condominium routes', () => {
-    expect(appSource).toContain("import { recurringDuesRoutes } from './recurring-dues-routes'");
+    expect(appSource).toContain(
+      "import { recurringDuesRoutes } from './recurring-dues-routes'",
+    );
     expect(appSource).toContain("app.route('/v1/condominiums', recurringDuesRoutes)");
   });
 
