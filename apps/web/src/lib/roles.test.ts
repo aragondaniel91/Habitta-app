@@ -72,6 +72,7 @@ describe('role aware navigation', () => {
         'people',
         'maintenance',
         'team',
+        'audit',
       ]) {
         expect(keys).not.toContain(forbidden);
       }
@@ -91,6 +92,16 @@ describe('role aware navigation', () => {
     expect(canAccessRoute(team!, ['owner'])).toBe(false);
   });
 
+  it('reserves the administrator audit log for the condominium administrator', () => {
+    const audit = APP_ROUTES.find((route) => route.key === 'audit');
+
+    expect(audit?.roles).toEqual(['condominium_admin']);
+    expect(canAccessRoute(audit!, ['accountant'])).toBe(false);
+    expect(canAccessRoute(audit!, ['board_member'])).toBe(false);
+    expect(canAccessRoute(audit!, ['owner'])).toBe(false);
+    expect(canAccessRoute(audit!, ['tenant'])).toBe(false);
+  });
+
   it('lets the board read the oversight modules without administering them', () => {
     const keys = keysFor(['board_member']);
 
@@ -98,6 +109,7 @@ describe('role aware navigation', () => {
     expect(keys).toContain('reports');
     expect(keys).toContain('treasury');
     expect(keys).not.toContain('team');
+    expect(keys).not.toContain('audit');
     expect(canManage(['board_member'])).toBe(false);
     expect(canManageGovernance(['board_member'])).toBe(true);
   });
