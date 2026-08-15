@@ -1,0 +1,24 @@
+name: Temporary Generate Integration Migration
+
+on:
+  push:
+    branches:
+      - agent/hab-48-integration-outbox
+    paths:
+      - '.github/workflows/tmp-generate-integration-migration.yml'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.84.2
+          github-token: ${{ github.token }}
+      - name: Generate migration name
+        run: |
+          supabase migration new integration_outbox_foundation
+          generated="$(find supabase/migrations -maxdepth 1 -type f -name '*_integration_outbox_foundation.sql' | sort | tail -1)"
+          echo "GENERATED_MIGRATION=$generated"
