@@ -35,6 +35,7 @@ export type AppRoute = {
     | 'requests'
     | 'announcements'
     | 'team'
+    | 'audit'
     | 'settings';
   path: string;
   label: string;
@@ -279,6 +280,18 @@ export const APP_ROUTES = [
     section: 'sistema',
     icon: PeopleIcon,
     scope: ['Administradores', 'Roles', 'Invitaciones y expiración'],
+    roles: ['condominium_admin'],
+  },
+  {
+    key: 'audit',
+    path: '/app/audit',
+    label: 'Auditoría',
+    shortLabel: 'Auditoría',
+    title: 'Registro de auditoría',
+    description: 'Consulta actividad administrativa consolidada sin modificar el historial original.',
+    section: 'sistema',
+    icon: ReportsIcon,
+    scope: ['Actividad por módulo', 'Filtros y actores', 'Trazabilidad read-only'],
     roles: ['condominium_admin'],
   },
   {
