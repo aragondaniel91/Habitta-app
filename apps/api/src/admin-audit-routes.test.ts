@@ -31,6 +31,8 @@ describe('administrator audit route contract', () => {
   it('bounds pagination and validates filters before calling Supabase', () => {
     expect(source).toContain('.int().min(1).max(100).default(50)');
     expect(source).toContain('.int().min(0).default(0)');
+    expect(source).toContain("severity: z.enum(['info', 'warning']).optional()");
+    expect(source).toContain('filter_severity: query.data.severity ?? null');
     expect(source).toContain("return c.json({ error: 'Invalid audit date range' }, 400)");
   });
 
