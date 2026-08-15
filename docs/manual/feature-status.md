@@ -29,7 +29,7 @@ Este documento evita mezclar funcionalidades existentes con roadmap. “Disponib
 | Notificaciones | Notificaciones in-app/email para eventos implementados, con controles productivos y límites de volumen existentes. |
 | Documentos privados | Carga/descarga protegida reutilizada por varios módulos; no es todavía un gestor documental comunitario completo. |
 | Seguridad de datos | RBAC/RLS por condominio, controles tenant del piloto, rate limiting de escrituras sensibles y observabilidad de errores financieros implementada. |
-| Recuperación | Backup/restore endurecido para Auth y validación de invariantes financieras según la evidencia cerrada en HAB-153. |
+| Recuperación | Código de backup/restore endurecido para Auth e invariantes financieras integrado; HAB-153 permanece abierto hasta completar backup productivo, restore drill y evidencia operativa. |
 | Auditoría administrativa | Read model/API unificado para pagos, gastos, tesorería, mantenimiento, propuestas y asambleas con filtros, paginación, aislamiento por condominio y redacción de metadata sensible. La UI/export continúa pendiente. |
 
 ## Disponible con límites explícitos
