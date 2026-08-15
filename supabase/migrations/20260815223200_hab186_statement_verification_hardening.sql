@@ -190,3 +190,44 @@ $$;
 
 revoke all on function public.verify_solvency_certificate(uuid) from public;
 grant execute on function public.verify_solvency_certificate(uuid) to anon, authenticated, service_role;
+
+-- Financial evidence cannot claim to have been observed in the future. A rate may
+-- still have a future effective date because providers can publish it in advance.
+create function public.guard_exchange_rate_observation_time()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.rate_at > now() then
+    raise exception 'exchange rate observation cannot be in the future';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger exchange_rate_observation_time_guard
+before insert on public.condominium_exchange_rates
+for each row execute function public.guard_exchange_rate_observation_time();
+
+-- Solvency certificates are evidence of an evaluated ledger state and therefore
+-- cannot be issued for a future accounting date.
+create function public.guard_solvency_certificate_as_of_date()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.as_of_date > current_date then
+    raise exception 'solvency certificate date cannot be in the future';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger solvency_certificate_as_of_date_guard
+before insert on public.solvency_certificates
+for each row execute function public.guard_solvency_certificate_as_of_date();
+
+revoke all on function public.guard_exchange_rate_observation_time()
+  from public, anon, authenticated;
+revoke all on function public.guard_solvency_certificate_as_of_date()
+  from public, anon, authenticated;
