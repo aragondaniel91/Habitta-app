@@ -41,9 +41,9 @@ describe('integration outbox scheduling', () => {
     expect(send).toHaveBeenCalledOnce();
     expect(send).toHaveBeenCalledWith({ outboxId: 'event-1' });
     expect(Object.keys(send.mock.calls[0]![0])).toEqual(['outboxId']);
-    expect(calls.findIndex((url) => url.includes('mark_integration_outbox_queued'))).toBeGreaterThan(
-      calls.findIndex((url) => url.includes('claim_due_integration_outbox')),
-    );
+    expect(
+      calls.findIndex((url) => url.includes('mark_integration_outbox_queued')),
+    ).toBeGreaterThan(calls.findIndex((url) => url.includes('claim_due_integration_outbox')));
   });
 });
 
@@ -73,16 +73,22 @@ describe('integration outbox consumption', () => {
   });
 
   it('treats an already-consumed duplicate as ignored', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json(null)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(null)),
+    );
     expect(await processIntegrationOutboxMessage({ outboxId: 'event-1' }, env())).toBe('ignored');
   });
 
   it('retries the queue message when the database transport boundary fails', async () => {
     const retry = vi.fn();
     const ack = vi.fn();
-    vi.stubGlobal('fetch', vi.fn(async () => {
-      throw new TypeError('temporary network failure');
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('temporary network failure');
+      }),
+    );
 
     await consumeIntegrationQueue(
       {
