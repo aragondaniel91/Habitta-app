@@ -43,6 +43,7 @@ import { importRoutes } from './import-routes';
 import { privateDocumentRoutes } from './private-document-routes';
 import { treasuryRoutes } from './treasury-routes';
 import { peopleRelationshipRoutes } from './people-relationships-routes';
+import { recurringDuesRoutes } from './recurring-dues-routes';
 import { withinRateLimit } from './http-security';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
@@ -83,6 +84,7 @@ app.route('/v1/condominiums', importRoutes);
 app.route('/v1/condominiums', privateDocumentRoutes);
 app.route('/v1/condominiums', treasuryRoutes);
 app.route('/v1/condominiums', peopleRelationshipRoutes);
+app.route('/v1/condominiums', recurringDuesRoutes);
 const rest = (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   path: string,
