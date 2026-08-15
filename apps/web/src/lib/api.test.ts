@@ -10,14 +10,15 @@ describe('apiRequest safe error messages', () => {
   it('uses an explicit publicMessage returned by the API', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            error: 'unit_code_conflict',
-            publicMessage: 'Ya existe una unidad con ese código en este condominio.',
-          }),
-          { status: 409, headers: { 'Content-Type': 'application/json' } },
-        ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: 'unit_code_conflict',
+              publicMessage: 'Ya existe una unidad con ese código en este condominio.',
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/json' } },
+          ),
       ),
     );
 
@@ -35,11 +36,14 @@ describe('apiRequest safe error messages', () => {
   it('does not expose arbitrary upstream error messages', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({ message: 'duplicate key value violates unique constraint secret_name' }),
-          { status: 409, headers: { 'Content-Type': 'application/json' } },
-        ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              message: 'duplicate key value violates unique constraint secret_name',
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/json' } },
+          ),
       ),
     );
 
