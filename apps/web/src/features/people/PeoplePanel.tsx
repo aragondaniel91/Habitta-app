@@ -154,22 +154,23 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
     event.preventDefault();
     if (!selected) return;
     const values = Object.fromEntries(new FormData(event.currentTarget));
-    await peopleApi(`/v1/condominiums/${condominiumId}/people/${selected.id}/occupancies`, session, {
-      method: 'POST',
-      body: JSON.stringify({
-        unitId: values.unitId,
-        occupancyType: values.occupancyType,
-        isPrimaryContact: true,
-      }),
-    });
+    await peopleApi(
+      `/v1/condominiums/${condominiumId}/people/${selected.id}/occupancies`,
+      session,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          unitId: values.unitId,
+          occupancyType: values.occupancyType,
+          isPrimaryContact: true,
+        }),
+      },
+    );
     setMessage('Ocupación asociada.');
     await loadRelationships(selected.id);
   };
 
-  const closeUnitRelationship = async (
-    kind: 'unit-owners' | 'unit-occupancies',
-    id: string,
-  ) => {
+  const closeUnitRelationship = async (kind: 'unit-owners' | 'unit-occupancies', id: string) => {
     if (!selected) return;
     await peopleApi(`/v1/condominiums/${condominiumId}/${kind}/${id}`, session, {
       method: 'PATCH',
@@ -329,7 +330,9 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
         {filtered.map((person) => (
           <button key={person.id} type="button" onClick={() => void selectPerson(person)}>
             {person.first_name} {person.last_name}
-            {person.document_number ? ` · ${person.document_type ?? 'Documento'} ${person.document_number}` : ''}
+            {person.document_number
+              ? ` · ${person.document_type ?? 'Documento'} ${person.document_number}`
+              : ''}
           </button>
         ))}
       </div>
@@ -420,14 +423,17 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
 
           <h4>Relaciones con el condominio</h4>
           <p>
-            Junta, representación y contactos se registran aquí aunque la persona no tenga una unidad.
+            Junta, representación y contactos se registran aquí aunque la persona no tenga una
+            unidad.
           </p>
           <form onSubmit={(event) => void createCondominiumRelationship(event)}>
             <select name="relationshipType" defaultValue="board_member">
-              {(Object.entries(condominiumRelationshipLabels) as [
-                CondominiumRelationshipType,
-                string,
-              ][]).map(([value, label]) => (
+              {(
+                Object.entries(condominiumRelationshipLabels) as [
+                  CondominiumRelationshipType,
+                  string,
+                ][]
+              ).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -487,7 +493,9 @@ export function PeoplePanel({ condominiumId, units, session }: Props) {
                 : `Invitar como ${residentRoleLabel(inviteRole).toLowerCase()}`}
             </button>
           </form>
-          {!selected.email ? <p>Agrega un correo a esta persona para habilitar invitaciones.</p> : null}
+          {!selected.email ? (
+            <p>Agrega un correo a esta persona para habilitar invitaciones.</p>
+          ) : null}
           {inviteUnits.length === 0 ? (
             <p>No hay una relación activa compatible con el rol seleccionado.</p>
           ) : null}

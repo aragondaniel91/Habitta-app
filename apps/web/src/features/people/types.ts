@@ -42,11 +42,7 @@ export type Occupancy = {
 };
 
 export type CondominiumRelationshipType =
-  | 'board_member'
-  | 'administrator_contact'
-  | 'representative'
-  | 'emergency_contact'
-  | 'other';
+  'board_member' | 'administrator_contact' | 'representative' | 'emergency_contact' | 'other';
 
 export type CondominiumRelationship = {
   id: string;
