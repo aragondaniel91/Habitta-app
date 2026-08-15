@@ -129,4 +129,44 @@ describe('physical structure routes', () => {
       status: 'inactive',
     });
   });
+
+  it('returns a safe 409 when another unit already owns the requested code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/auth/v1/user')) return jsonResponse({ id: userId });
+        if (url.includes('/rest/v1/units?id=eq.')) {
+          return jsonResponse(
+            {
+              code: '23505',
+              details: 'Key (condominium_id, code) already exists.',
+              message: 'duplicate key value violates unique constraint',
+            },
+            409,
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condominiumId}/units/${unitId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: 'Bearer test-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: 'A-102' }),
+      },
+      environment,
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: 'unit_code_conflict',
+      publicMessage: 'Ya existe una unidad con ese código en este condominio.',
+    });
+  });
 });

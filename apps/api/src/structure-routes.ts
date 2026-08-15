@@ -6,6 +6,7 @@ import type { NotificationBindings } from './notifications/types';
 type Variables = { token: string; userId: string };
 type StructureEnvironment = { Bindings: NotificationBindings; Variables: Variables };
 type ValidationFailure = { formErrors: string[]; fieldErrors: Record<string, string[]> };
+type PostgrestError = { code?: string; message?: string };
 
 const unitTypeSchema = z.enum(['apartment', 'house', 'commercial', 'parking', 'storage']);
 const unitStatusSchema = z.enum(['active', 'inactive']);
@@ -45,6 +46,11 @@ const parseJsonBody = async <T extends z.ZodTypeAny>(request: Request, schema: T
 
 const isValidationError = (value: unknown): value is ValidationFailure =>
   Boolean(value && typeof value === 'object' && 'fieldErrors' in value);
+
+const isPostgrestError = (value: unknown): value is PostgrestError =>
+  Boolean(value && typeof value === 'object');
+
+const isUnitCodeConflict = (value: unknown) => isPostgrestError(value) && value.code === '23505';
 
 const supabaseHeaders = (env: NotificationBindings, token: string, representation = false) => ({
   apikey: env.SUPABASE_ANON_KEY,
@@ -139,7 +145,19 @@ structureRoutes.post('/:condominiumId/units', async (c) => {
       created_by: c.get('userId'),
     }),
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  const result = await response.json();
+  if (isUnitCodeConflict(result)) {
+    return c.json(
+      {
+        error: 'unit_code_conflict',
+        publicMessage: 'Ya existe una unidad con ese código en este condominio.',
+      },
+      409,
+    );
+  }
+  if (!response.ok && response.status === 403)
+    return c.json({ error: 'Unit write forbidden' }, 403);
+  return c.json(result, response.ok ? 201 : 400);
 });
 
 structureRoutes.patch('/:condominiumId/units/:unitId', async (c) => {
@@ -168,6 +186,17 @@ structureRoutes.patch('/:condominiumId/units/:unitId', async (c) => {
     },
   );
   const result = await response.json();
+  if (isUnitCodeConflict(result)) {
+    return c.json(
+      {
+        error: 'unit_code_conflict',
+        publicMessage: 'Ya existe una unidad con ese código en este condominio.',
+      },
+      409,
+    );
+  }
+  if (!response.ok && response.status === 403)
+    return c.json({ error: 'Unit write forbidden' }, 403);
   if (response.ok && Array.isArray(result) && result.length === 0)
     return c.json({ error: 'Unit not found' }, 404);
   return c.json(result, response.ok ? 200 : 400);
