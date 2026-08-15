@@ -14,6 +14,7 @@ const querySchema = z.object({
     .optional(),
   actor: uuid.optional(),
   entityType: z.string().trim().min(1).max(80).optional(),
+  severity: z.enum(['info', 'warning']).optional(),
   from: z.string().datetime({ offset: true }).optional(),
   to: z.string().datetime({ offset: true }).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -53,6 +54,7 @@ adminAuditRoutes.get('/:id/audit-events', async (c) => {
     to_at: query.data.to ?? null,
     result_limit: query.data.limit,
     result_offset: query.data.offset,
+    filter_severity: query.data.severity ?? null,
   });
 
   const value = (await response.json()) as unknown;

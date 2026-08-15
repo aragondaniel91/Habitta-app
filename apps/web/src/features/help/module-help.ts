@@ -284,6 +284,27 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     permissions:
       'Solo propietarios de organización y administradores con facultad suficiente pueden gestionar accesos.',
   },
+  audit: {
+    purpose:
+      'Consolida actividad administrativa de módulos críticos en un historial read-only para investigación y trazabilidad.',
+    actions: [
+      'Filtrar eventos por módulo, severidad, actor, entidad o fechas.',
+      'Revisar la identidad de la entidad y del actor asociado.',
+      'Consultar únicamente la metadata sanitizada que el servidor autoriza mostrar.',
+    ],
+    steps: [
+      'Abre Sistema → Auditoría y confirma el condominio seleccionado.',
+      'Aplica solo los filtros necesarios para reducir el conjunto de eventos.',
+      'Usa Anterior y Siguiente para recorrer páginas sin modificar el historial.',
+    ],
+    tips: [
+      'El registro es de solo lectura: las correcciones deben hacerse en el módulo de origen.',
+      'Una advertencia indica un evento que merece revisión, no necesariamente un incidente de seguridad.',
+      'La metadata mostrada ya fue limitada por el servidor para evitar exponer datos sensibles.',
+    ],
+    permissions:
+      'Solo administradores de condominio autorizados pueden abrir el workspace; la base de datos vuelve a validar la autorización antes de devolver eventos.',
+  },
   settings: {
     purpose:
       'Configura preferencias, recordatorios, canales de notificación y parámetros del condominio.',

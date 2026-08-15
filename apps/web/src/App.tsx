@@ -33,6 +33,9 @@ const ResidentDashboard = lazy(() =>
 const AnnouncementsPage = lazy(() =>
   import('./pages/AnnouncementsPage').then((module) => ({ default: module.AnnouncementsPage })),
 );
+const AuditLogPage = lazy(() =>
+  import('./pages/AuditLogPage').then((module) => ({ default: module.AuditLogPage })),
+);
 const CommunityDirectoryPage = lazy(() =>
   import('./pages/CommunityDirectoryPage').then((module) => ({
     default: module.CommunityDirectoryPage,
@@ -408,6 +411,14 @@ export default function App() {
   } else if (activeRoute.key === 'team') {
     page = (
       <TeamAccessPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
+  } else if (activeRoute.key === 'audit') {
+    page = (
+      <AuditLogPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         session={session}
