@@ -6,16 +6,11 @@ const source = readFileSync(
   fileURLToPath(new URL('./recurring-dues-routes.ts', import.meta.url)),
   'utf8',
 );
-const appSource = readFileSync(
-  fileURLToPath(new URL('./index.ts', import.meta.url)),
-  'utf8',
-);
+const appSource = readFileSync(fileURLToPath(new URL('./index.ts', import.meta.url)), 'utf8');
 
 describe('HAB-185 recurring dues API contract', () => {
   it('mounts the recurring dues API under authenticated condominium routes', () => {
-    expect(appSource).toContain(
-      "import { recurringDuesRoutes } from './recurring-dues-routes'",
-    );
+    expect(appSource).toContain("import { recurringDuesRoutes } from './recurring-dues-routes'");
     expect(appSource).toContain("app.route('/v1/condominiums', recurringDuesRoutes)");
   });
 
@@ -54,6 +49,6 @@ describe('HAB-185 recurring dues API contract', () => {
     expect(source).toContain("z.enum(['fixed_per_unit', 'participation_percentage'])");
     expect(source).toContain("z.enum(['condominium', 'building', 'custom'])");
     expect(source).toContain('dueDay must not precede issueDay');
-    expect(source).toContain("regex(/^\\d{4}-(0[1-9]|1[0-2])$/)");
+    expect(source).toContain('regex(/^\\d{4}-(0[1-9]|1[0-2])$/)');
   });
 });
