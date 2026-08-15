@@ -117,8 +117,7 @@ jobs:
             apps/web/src/condominium-profile.css \
             apps/web/src/lib/adminOnboarding.ts \
             apps/web/src/pages/AddCondominiumPage.tsx \
-            apps/web/src/pages/StructureManagementPage.tsx \
-            supabase/migrations/20260815183315_hab183_condominium_profile_topology.sql
+            apps/web/src/pages/StructureManagementPage.tsx
 
       - name: Commit deterministic fixes
         run: |
