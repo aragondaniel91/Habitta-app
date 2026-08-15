@@ -29,6 +29,7 @@ import type {
   ReceivableUnit,
 } from '../lib/receivables';
 import { ReceivablesDrawerHost, type ReceivablesDrawerMode } from './ReceivablesDrawers';
+import { ChargeCreationChooser } from '../features/receivables/ChargeCreationChooser';
 import { LateFeeSettingsDrawer } from '../features/receivables/LateFeeSettingsDrawer';
 import { RecurringDuesWorkspace } from '../features/receivables/RecurringDuesWorkspace';
 import '../receivables.css';
@@ -148,6 +149,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
   const [drawer, setDrawer] = useState<ReceivablesDrawerMode>(null);
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
   const [lateFeeDrawerOpen, setLateFeeDrawerOpen] = useState(false);
+  const [chargeChooserOpen, setChargeChooserOpen] = useState(false);
 
   const load = useCallback(
     async (background = false) => {
@@ -189,6 +191,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
     setDrawer(null);
     setFilters(initialFilters);
     setSelectedReceivableId('');
+    setChargeChooserOpen(false);
   }, [condominiumId]);
 
   const currencies = useMemo(
@@ -239,6 +242,15 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
   const selectedReceivable = data.items.find((item) => item.id === selectedReceivableId);
 
   const openDrawer = (mode: Exclude<ReceivablesDrawerMode, null>) => setDrawer(mode);
+  const chooseOrdinaryCharge = () => {
+    setChargeChooserOpen(false);
+    requestAnimationFrame(() => {
+      document.querySelector('.recurring-dues-workspace')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  };
 
   return (
     <div className="receivables-page">
@@ -253,11 +265,8 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
                 <Button onClick={() => setLateFeeDrawerOpen(true)} size="sm" variant="secondary">
                   Recargos por mora
                 </Button>
-                <Button onClick={() => openDrawer('batch')} size="sm" variant="secondary">
-                  Crear lote
-                </Button>
-                <Button onClick={() => openDrawer('manual')} size="sm">
-                  Nueva cuota manual
+                <Button onClick={() => setChargeChooserOpen(true)} size="sm">
+                  Nueva cuota
                 </Button>
               </>
             ) : null}
@@ -591,6 +600,21 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
           />
         )}
       </Surface>
+
+      {chargeChooserOpen ? (
+        <ChargeCreationChooser
+          onClose={() => setChargeChooserOpen(false)}
+          onExtraordinary={() => {
+            setChargeChooserOpen(false);
+            openDrawer('batch');
+          }}
+          onOneOff={() => {
+            setChargeChooserOpen(false);
+            openDrawer('manual');
+          }}
+          onOrdinary={chooseOrdinaryCharge}
+        />
+      ) : null}
 
       <ReceivablesDrawerHost
         concepts={data.concepts}
