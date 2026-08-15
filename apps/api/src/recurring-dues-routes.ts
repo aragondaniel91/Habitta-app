@@ -5,7 +5,10 @@ import { uuidSchema } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
-type RecurringDuesContext = Context<{ Bindings: NotificationBindings; Variables: Variables }>;
+type RecurringDuesContext = Context<{
+  Bindings: NotificationBindings;
+  Variables: Variables;
+}>;
 
 export const recurringDuesRoutes = new Hono<{
   Bindings: NotificationBindings;
@@ -17,40 +20,71 @@ const moneySchema = z
   .regex(/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/)
   .refine((value) => Number(value) > 0);
 
-const scopeInputSchema = z.object({
-  code: z.string().trim().min(1).max(48),
-  name: z.string().trim().min(1).max(120),
-  kind: z.enum(['condominium', 'building', 'custom']),
-  buildingId: uuidSchema.optional(),
-  unitIds: z.array(uuidSchema).min(1).optional(),
-}).superRefine((value, context) => {
-  if (value.kind === 'building' && !value.buildingId)
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['buildingId'], message: 'buildingId is required' });
-  if (value.kind !== 'building' && value.buildingId)
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['buildingId'], message: 'buildingId is only valid for building scopes' });
-  if (value.kind === 'custom' && !value.unitIds?.length)
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['unitIds'], message: 'unitIds are required for custom scopes' });
-});
+const scopeInputSchema = z
+  .object({
+    code: z.string().trim().min(1).max(48),
+    name: z.string().trim().min(1).max(120),
+    kind: z.enum(['condominium', 'building', 'custom']),
+    buildingId: uuidSchema.optional(),
+    unitIds: z.array(uuidSchema).min(1).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.kind === 'building' && !value.buildingId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['buildingId'],
+        message: 'buildingId is required',
+      });
+    }
+    if (value.kind !== 'building' && value.buildingId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['buildingId'],
+        message: 'buildingId is only valid for building scopes',
+      });
+    }
+    if (value.kind === 'custom' && !value.unitIds?.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['unitIds'],
+        message: 'unitIds are required for custom scopes',
+      });
+    }
+  });
 
-const planInputSchema = z.object({
-  conceptId: uuidSchema,
-  financialScopeId: uuidSchema,
-  name: z.string().trim().min(1).max(160),
-  distribution: z.enum(['fixed_per_unit', 'participation_percentage']),
-  amount: moneySchema,
-  currencyCode: z.string().regex(/^[A-Z]{3}$/),
-  startsOn: z.string().date(),
-  endsOn: z.string().date().optional(),
-  issueDay: z.number().int().min(1).max(28).default(1),
-  dueDay: z.number().int().min(1).max(28).default(10),
-}).superRefine((value, context) => {
-  if (value.dueDay < value.issueDay)
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['dueDay'], message: 'dueDay must not precede issueDay' });
-  if (value.endsOn && value.endsOn < value.startsOn)
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['endsOn'], message: 'endsOn must not precede startsOn' });
-});
+const planInputSchema = z
+  .object({
+    conceptId: uuidSchema,
+    financialScopeId: uuidSchema,
+    name: z.string().trim().min(1).max(160),
+    distribution: z.enum(['fixed_per_unit', 'participation_percentage']),
+    amount: moneySchema,
+    currencyCode: z.string().regex(/^[A-Z]{3}$/),
+    startsOn: z.string().date(),
+    endsOn: z.string().date().optional(),
+    issueDay: z.number().int().min(1).max(28).default(1),
+    dueDay: z.number().int().min(1).max(28).default(10),
+  })
+  .superRefine((value, context) => {
+    if (value.dueDay < value.issueDay) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dueDay'],
+        message: 'dueDay must not precede issueDay',
+      });
+    }
+    if (value.endsOn && value.endsOn < value.startsOn) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endsOn'],
+        message: 'endsOn must not precede startsOn',
+      });
+    }
+  });
 
-const runInputSchema = z.object({ period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) });
+const runInputSchema = z.object({
+  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+});
 const runQuerySchema = z.object({
   status: z.enum(['scheduled', 'pending_review', 'posted', 'cancelled']).optional(),
 });
@@ -68,7 +102,11 @@ function rest(c: RecurringDuesContext, path: string, init: RequestInit = {}) {
   });
 }
 
-async function rpc(c: RecurringDuesContext, name: string, payload: Record<string, unknown>) {
+async function rpc(
+  c: RecurringDuesContext,
+  name: string,
+  payload: Record<string, unknown>,
+) {
   return rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
@@ -85,7 +123,10 @@ async function scopedExists(c: RecurringDuesContext, path: string) {
 
 recurringDuesRoutes.get('/:id/financial-scopes', async (c) => {
   const condominiumId = uuidSchema.parse(c.req.param('id'));
-  const response = await rest(c, `financial_scopes?condominium_id=eq.${condominiumId}&select=*&order=name`);
+  const response = await rest(
+    c,
+    `financial_scopes?condominium_id=eq.${condominiumId}&select=*&order=name`,
+  );
   return c.json(await response.json(), response.ok ? 200 : 403);
 });
 
@@ -106,7 +147,10 @@ recurringDuesRoutes.post('/:id/financial-scopes', async (c) => {
 
 recurringDuesRoutes.get('/:id/recurring-charge-plans', async (c) => {
   const condominiumId = uuidSchema.parse(c.req.param('id'));
-  const response = await rest(c, `recurring_charge_plans?condominium_id=eq.${condominiumId}&select=*&order=created_at.desc`);
+  const response = await rest(
+    c,
+    `recurring_charge_plans?condominium_id=eq.${condominiumId}&select=*&order=created_at.desc`,
+  );
   return c.json(await response.json(), response.ok ? 200 : 403);
 });
 
@@ -135,7 +179,10 @@ recurringDuesRoutes.get('/:id/recurring-charge-runs', async (c) => {
   const parsed = runQuerySchema.safeParse(c.req.query());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
   const statusFilter = parsed.data.status ? `&status=eq.${parsed.data.status}` : '';
-  const response = await rest(c, `recurring_charge_runs?condominium_id=eq.${condominiumId}${statusFilter}&select=*&order=period.desc`);
+  const response = await rest(
+    c,
+    `recurring_charge_runs?condominium_id=eq.${condominiumId}${statusFilter}&select=*&order=period.desc`,
+  );
   return c.json(await response.json(), response.ok ? 200 : 403);
 });
 
@@ -144,17 +191,35 @@ recurringDuesRoutes.post('/:id/recurring-charge-plans/:planId/runs', async (c) =
   const planId = uuidSchema.parse(c.req.param('planId'));
   const parsed = await parseBody(c, runInputSchema);
   if (parsed instanceof Response) return parsed;
-  if (!(await scopedExists(c, `recurring_charge_plans?id=eq.${planId}&condominium_id=eq.${condominiumId}&select=id`)))
+  if (
+    !(await scopedExists(
+      c,
+      `recurring_charge_plans?id=eq.${planId}&condominium_id=eq.${condominiumId}&select=id`,
+    ))
+  ) {
     return c.json({ error: 'Recurring plan not found in condominium' }, 404);
-  const response = await rpc(c, 'schedule_recurring_charge_run', { target_plan: planId, target_period: parsed.period });
+  }
+  const response = await rpc(c, 'schedule_recurring_charge_run', {
+    target_plan: planId,
+    target_period: parsed.period,
+  });
   return c.json(await response.json(), response.ok ? 201 : 400);
 });
 
-async function mutateRun(c: RecurringDuesContext, rpcName: 'prepare_recurring_charge_run' | 'post_recurring_charge_run') {
+async function mutateRun(
+  c: RecurringDuesContext,
+  rpcName: 'prepare_recurring_charge_run' | 'post_recurring_charge_run',
+) {
   const condominiumId = uuidSchema.parse(c.req.param('id'));
   const runId = uuidSchema.parse(c.req.param('runId'));
-  if (!(await scopedExists(c, `recurring_charge_runs?id=eq.${runId}&condominium_id=eq.${condominiumId}&select=id`)))
+  if (
+    !(await scopedExists(
+      c,
+      `recurring_charge_runs?id=eq.${runId}&condominium_id=eq.${condominiumId}&select=id`,
+    ))
+  ) {
     return c.json({ error: 'Recurring run not found in condominium' }, 404);
+  }
   const response = await rpc(c, rpcName, { target_run: runId });
   return c.json(await response.json(), response.ok ? 200 : 400);
 }
