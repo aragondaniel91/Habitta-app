@@ -66,8 +66,8 @@ export function EmptyState({
   icon: ReactNode;
   title: string;
   description: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  actionLabel?: string | undefined;
+  onAction?: (() => void) | undefined;
 }) {
   return (
     <div className="empty-state">
