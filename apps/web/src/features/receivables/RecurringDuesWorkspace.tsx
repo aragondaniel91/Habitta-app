@@ -261,7 +261,9 @@ export function RecurringDuesWorkspace({
       setScopeDrawerOpen(false);
       await load();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear el ámbito.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear el ámbito.',
+      );
     } finally {
       setBusyId('');
     }
@@ -291,7 +293,9 @@ export function RecurringDuesWorkspace({
       await load();
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo crear la cuota recurrente.',
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo crear la cuota recurrente.',
       );
     } finally {
       setBusyId('');
@@ -429,7 +433,10 @@ export function RecurringDuesWorkspace({
           </div>
 
           {pendingRuns.length ? (
-            <section className="recurring-dues-section" aria-label="Cuotas pendientes de aprobación">
+            <section
+              className="recurring-dues-section"
+              aria-label="Cuotas pendientes de aprobación"
+            >
               <div className="recurring-dues-section__title">
                 <div>
                   <h3>Requieren revisión</h3>
@@ -712,11 +719,7 @@ export function RecurringDuesWorkspace({
               </fieldset>
             ) : null}
             <div className="recurring-dues-drawer-footer">
-              <Button
-                onClick={() => setScopeDrawerOpen(false)}
-                type="button"
-                variant="secondary"
-              >
+              <Button onClick={() => setScopeDrawerOpen(false)} type="button" variant="secondary">
                 Cancelar
               </Button>
               <Button
@@ -917,11 +920,7 @@ export function RecurringDuesWorkspace({
               </span>
             </div>
             <div className="recurring-dues-drawer-footer">
-              <Button
-                onClick={() => setPlanDrawerOpen(false)}
-                type="button"
-                variant="secondary"
-              >
+              <Button onClick={() => setPlanDrawerOpen(false)} type="button" variant="secondary">
                 Cancelar
               </Button>
               <Button disabled={busyId === 'plan'} type="submit">
