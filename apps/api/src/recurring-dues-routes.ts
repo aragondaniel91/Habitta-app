@@ -5,10 +5,7 @@ import { uuidSchema } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
-type RecurringDuesContext = Context<{
-  Bindings: NotificationBindings;
-  Variables: Variables;
-}>;
+type RecurringDuesContext = Context<{ Bindings: NotificationBindings; Variables: Variables }>;
 
 export const recurringDuesRoutes = new Hono<{
   Bindings: NotificationBindings;
@@ -29,27 +26,24 @@ const scopeInputSchema = z
     unitIds: z.array(uuidSchema).min(1).optional(),
   })
   .superRefine((value, context) => {
-    if (value.kind === 'building' && !value.buildingId) {
+    if (value.kind === 'building' && !value.buildingId)
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['buildingId'],
         message: 'buildingId is required',
       });
-    }
-    if (value.kind !== 'building' && value.buildingId) {
+    if (value.kind !== 'building' && value.buildingId)
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['buildingId'],
         message: 'buildingId is only valid for building scopes',
       });
-    }
-    if (value.kind === 'custom' && !value.unitIds?.length) {
+    if (value.kind === 'custom' && !value.unitIds?.length)
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['unitIds'],
         message: 'unitIds are required for custom scopes',
       });
-    }
   });
 
 const planInputSchema = z
@@ -66,25 +60,21 @@ const planInputSchema = z
     dueDay: z.number().int().min(1).max(28).default(10),
   })
   .superRefine((value, context) => {
-    if (value.dueDay < value.issueDay) {
+    if (value.dueDay < value.issueDay)
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['dueDay'],
         message: 'dueDay must not precede issueDay',
       });
-    }
-    if (value.endsOn && value.endsOn < value.startsOn) {
+    if (value.endsOn && value.endsOn < value.startsOn)
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['endsOn'],
         message: 'endsOn must not precede startsOn',
       });
-    }
   });
 
-const runInputSchema = z.object({
-  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
-});
+const runInputSchema = z.object({ period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) });
 const runQuerySchema = z.object({
   status: z.enum(['scheduled', 'pending_review', 'posted', 'cancelled']).optional(),
 });
@@ -102,11 +92,7 @@ function rest(c: RecurringDuesContext, path: string, init: RequestInit = {}) {
   });
 }
 
-async function rpc(
-  c: RecurringDuesContext,
-  name: string,
-  payload: Record<string, unknown>,
-) {
+async function rpc(c: RecurringDuesContext, name: string, payload: Record<string, unknown>) {
   return rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
@@ -196,9 +182,8 @@ recurringDuesRoutes.post('/:id/recurring-charge-plans/:planId/runs', async (c) =
       c,
       `recurring_charge_plans?id=eq.${planId}&condominium_id=eq.${condominiumId}&select=id`,
     ))
-  ) {
+  )
     return c.json({ error: 'Recurring plan not found in condominium' }, 404);
-  }
   const response = await rpc(c, 'schedule_recurring_charge_run', {
     target_plan: planId,
     target_period: parsed.period,
@@ -217,9 +202,8 @@ async function mutateRun(
       c,
       `recurring_charge_runs?id=eq.${runId}&condominium_id=eq.${condominiumId}&select=id`,
     ))
-  ) {
+  )
     return c.json({ error: 'Recurring run not found in condominium' }, 404);
-  }
   const response = await rpc(c, rpcName, { target_run: runId });
   return c.json(await response.json(), response.ok ? 200 : 400);
 }
