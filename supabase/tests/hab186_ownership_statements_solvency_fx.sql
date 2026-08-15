@@ -44,11 +44,12 @@ values (
   'condominium_admin'
 );
 
-insert into public.units(id, condominium_id, code, created_by)
+insert into public.units(id, condominium_id, code, type, created_by)
 values (
   '18630000-0000-4000-8000-000000000001',
   '18620000-0000-4000-8000-000000000001',
   'A-186',
+  'apartment',
   '18600000-0000-4000-8000-000000000001'
 );
 
