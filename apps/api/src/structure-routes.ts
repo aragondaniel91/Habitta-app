@@ -50,8 +50,7 @@ const isValidationError = (value: unknown): value is ValidationFailure =>
 const isPostgrestError = (value: unknown): value is PostgrestError =>
   Boolean(value && typeof value === 'object');
 
-const isUnitCodeConflict = (value: unknown) =>
-  isPostgrestError(value) && value.code === '23505';
+const isUnitCodeConflict = (value: unknown) => isPostgrestError(value) && value.code === '23505';
 
 const supabaseHeaders = (env: NotificationBindings, token: string, representation = false) => ({
   apikey: env.SUPABASE_ANON_KEY,
