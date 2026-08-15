@@ -1,0 +1,384 @@
+.recurring-dues-workspace {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 22px;
+}
+
+.recurring-dues-heading,
+.recurring-dues-section__title,
+.recurring-dues-run__summary,
+.recurring-dues-run__actions,
+.recurring-dues-drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.recurring-dues-heading h2,
+.recurring-dues-section h3 {
+  margin: 3px 0 5px;
+  color: var(--text-primary);
+}
+
+.recurring-dues-heading p,
+.recurring-dues-section__title p,
+.recurring-dues-plan-grid p,
+.recurring-dues-muted,
+.recurring-dues-form__intro {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.recurring-dues-heading > div:first-child {
+  max-width: 760px;
+}
+
+.recurring-dues-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.recurring-dues-alert {
+  border: 1px solid color-mix(in srgb, var(--danger, #b42318) 28%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--danger, #b42318) 7%, transparent);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.recurring-dues-loading {
+  padding: 24px 0;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.recurring-dues-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recurring-dues-metrics > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-subtle, rgba(15, 23, 42, 0.025));
+  padding: 12px 14px;
+}
+
+.recurring-dues-metrics > div[data-emphasis] {
+  border-color: color-mix(in srgb, #b7791f 35%, var(--border-subtle));
+  background: color-mix(in srgb, #f6ad55 8%, var(--surface));
+}
+
+.recurring-dues-metrics strong {
+  font-size: 22px;
+}
+
+.recurring-dues-metrics span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.recurring-dues-section {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 18px;
+}
+
+.recurring-dues-section__title > div:first-child {
+  min-width: 0;
+}
+
+.recurring-dues-run-list,
+.recurring-dues-compact-list,
+.recurring-dues-history {
+  display: grid;
+  gap: 10px;
+}
+
+.recurring-dues-run {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.recurring-dues-run__summary > div:first-child,
+.recurring-dues-compact-list > div > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.recurring-dues-run__summary span,
+.recurring-dues-compact-list span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.recurring-dues-run__amount {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.recurring-dues-run__actions {
+  justify-content: flex-end;
+}
+
+.recurring-dues-allocation {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+.recurring-dues-allocation > div {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.7fr) minmax(150px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 11px;
+}
+
+.recurring-dues-allocation > div + div {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.recurring-dues-allocation small {
+  color: var(--text-secondary);
+}
+
+.recurring-dues-compact-list > div,
+.recurring-dues-history > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 11px 12px;
+}
+
+.recurring-dues-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recurring-dues-plan-grid article {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 13px;
+}
+
+.recurring-dues-plan-grid article > div:first-child {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.recurring-dues-plan-grid article > b {
+  font-size: 18px;
+}
+
+.recurring-dues-plan-grid article .button {
+  justify-self: start;
+}
+
+.recurring-dues-drawer-layer {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.recurring-dues-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.34);
+  cursor: default;
+}
+
+.recurring-dues-drawer {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(520px, 100%);
+  height: 100%;
+  background: var(--surface);
+  box-shadow: -16px 0 45px rgba(15, 23, 42, 0.14);
+}
+
+.recurring-dues-drawer[data-wide] {
+  width: min(720px, 100%);
+}
+
+.recurring-dues-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 18px 20px;
+}
+
+.recurring-dues-drawer__header span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.recurring-dues-drawer__header h2 {
+  margin: 0;
+}
+
+.recurring-dues-drawer__body {
+  overflow: auto;
+  padding: 20px;
+}
+
+.recurring-dues-form {
+  display: grid;
+  gap: 16px;
+}
+
+.recurring-dues-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recurring-dues-form-grid--three {
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(100px, 0.8fr));
+}
+
+.recurring-dues-form .input,
+.recurring-dues-form .select {
+  width: 100%;
+}
+
+.recurring-dues-unit-picker {
+  display: grid;
+  gap: 7px;
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.recurring-dues-unit-picker legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.recurring-dues-unit-picker label {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 0.7fr) minmax(150px, 1fr);
+  gap: 9px;
+  align-items: center;
+  border-radius: 8px;
+  padding: 7px 8px;
+}
+
+.recurring-dues-unit-picker label:hover {
+  background: var(--surface-subtle, rgba(15, 23, 42, 0.035));
+}
+
+.recurring-dues-unit-picker small {
+  color: var(--text-secondary);
+}
+
+.recurring-dues-safety-note {
+  display: grid;
+  gap: 4px;
+  border: 1px solid color-mix(in srgb, #2563eb 22%, var(--border-subtle));
+  border-radius: 12px;
+  background: color-mix(in srgb, #2563eb 5%, var(--surface));
+  padding: 12px;
+}
+
+.recurring-dues-safety-note span {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.recurring-dues-drawer-footer {
+  position: sticky;
+  bottom: -20px;
+  margin: 4px -20px -20px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface);
+  padding: 14px 20px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .recurring-dues-plan-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .recurring-dues-workspace {
+    padding: 16px;
+  }
+
+  .recurring-dues-heading,
+  .recurring-dues-section__title,
+  .recurring-dues-run__summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recurring-dues-actions,
+  .recurring-dues-run__actions {
+    justify-content: flex-start;
+  }
+
+  .recurring-dues-metrics,
+  .recurring-dues-form-grid,
+  .recurring-dues-form-grid--three {
+    grid-template-columns: 1fr;
+  }
+
+  .recurring-dues-run__amount {
+    justify-items: start;
+  }
+
+  .recurring-dues-compact-list > div,
+  .recurring-dues-history > div,
+  .recurring-dues-allocation > div {
+    grid-template-columns: 1fr;
+  }
+
+  .recurring-dues-unit-picker label {
+    grid-template-columns: auto 1fr;
+  }
+
+  .recurring-dues-unit-picker small {
+    grid-column: 2;
+  }
+}
