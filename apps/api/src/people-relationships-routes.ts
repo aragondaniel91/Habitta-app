@@ -59,6 +59,28 @@ async function parseBody<T extends z.ZodTypeAny>(c: PeopleContext, schema: T) {
   return parsed.success ? parsed.data : c.json({ error: parsed.error.flatten() }, 400);
 }
 
+async function scopedResourceExists(c: PeopleContext, path: string) {
+  const response = await rest(c, path);
+  if (!response.ok) return false;
+  return ((await response.json()) as unknown[]).length > 0;
+}
+
+async function ensurePersonAndUnit(
+  c: PeopleContext,
+  condominiumId: string,
+  personId: string,
+  unitId: string,
+) {
+  const [personExists, unitExists] = await Promise.all([
+    scopedResourceExists(
+      c,
+      `people?id=eq.${personId}&condominium_id=eq.${condominiumId}&select=id`,
+    ),
+    scopedResourceExists(c, `units?id=eq.${unitId}&condominium_id=eq.${condominiumId}&select=id`),
+  ]);
+  return personExists && unitExists;
+}
+
 peopleRelationshipRoutes.get('/:id/people/:personId/relationships', async (c) => {
   const condominiumId = uuidSchema.parse(c.req.param('id'));
   const personId = uuidSchema.parse(c.req.param('personId'));
@@ -104,6 +126,9 @@ peopleRelationshipRoutes.post('/:id/people/:personId/ownerships', async (c) => {
   const parsed = await parseBody(c, personOwnershipInputSchema);
   if (parsed instanceof Response) return parsed;
 
+  if (!(await ensurePersonAndUnit(c, condominiumId, personId, parsed.unitId)))
+    return c.json({ error: 'Person or unit not found in condominium' }, 404);
+
   const response = await rest(c, 'unit_owners', {
     method: 'POST',
     body: JSON.stringify({
@@ -115,17 +140,7 @@ peopleRelationshipRoutes.post('/:id/people/:personId/ownerships', async (c) => {
       created_by: c.get('userId'),
     }),
   });
-  if (!response.ok) return c.json({ error: 'Could not create ownership' }, 400);
-
-  // RLS/tenant guards are authoritative; this read makes the URL condominium scope explicit.
-  const unitCheck = await rest(
-    c,
-    `units?id=eq.${parsed.unitId}&condominium_id=eq.${condominiumId}&select=id`,
-  );
-  if (!unitCheck.ok || ((await unitCheck.json()) as unknown[]).length === 0)
-    return c.json({ error: 'Unit not found' }, 404);
-
-  return c.json(await response.json(), 201);
+  return c.json(await response.json(), response.ok ? 201 : 400);
 });
 
 peopleRelationshipRoutes.post('/:id/people/:personId/occupancies', async (c) => {
@@ -134,12 +149,8 @@ peopleRelationshipRoutes.post('/:id/people/:personId/occupancies', async (c) => 
   const parsed = await parseBody(c, personOccupancyInputSchema);
   if (parsed instanceof Response) return parsed;
 
-  const unitCheck = await rest(
-    c,
-    `units?id=eq.${parsed.unitId}&condominium_id=eq.${condominiumId}&select=id`,
-  );
-  if (!unitCheck.ok || ((await unitCheck.json()) as unknown[]).length === 0)
-    return c.json({ error: 'Unit not found' }, 404);
+  if (!(await ensurePersonAndUnit(c, condominiumId, personId, parsed.unitId)))
+    return c.json({ error: 'Person or unit not found in condominium' }, 404);
 
   const response = await rest(c, 'unit_occupancies', {
     method: 'POST',
@@ -161,6 +172,14 @@ peopleRelationshipRoutes.post('/:id/people/:personId/condominium-relationships',
   const personId = uuidSchema.parse(c.req.param('personId'));
   const parsed = await parseBody(c, condominiumRelationshipInputSchema);
   if (parsed instanceof Response) return parsed;
+
+  if (
+    !(await scopedResourceExists(
+      c,
+      `people?id=eq.${personId}&condominium_id=eq.${condominiumId}&select=id`,
+    ))
+  )
+    return c.json({ error: 'Person not found in condominium' }, 404);
 
   const response = await rest(c, 'condominium_person_relationships', {
     method: 'POST',
