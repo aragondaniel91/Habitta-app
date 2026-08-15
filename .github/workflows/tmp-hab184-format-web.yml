@@ -1,0 +1,37 @@
+name: Temporary HAB-184 web formatter
+
+on:
+  push:
+    branches:
+      - agent/hab-184-people-relationships
+    paths:
+      - '.github/workflows/tmp-hab184-format-web.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write apps/web/src/features/people/PeoplePanel.tsx apps/web/src/features/people/types.ts apps/web/src/features/people/relationship-model.ts apps/web/src/features/people/relationship-model.test.ts
+      - name: Commit formatting and remove temporary workflow
+        run: |
+          set -euo pipefail
+          rm .github/workflows/tmp-hab184-format-web.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/web/src/features/people/PeoplePanel.tsx apps/web/src/features/people/types.ts apps/web/src/features/people/relationship-model.ts apps/web/src/features/people/relationship-model.test.ts .github/workflows/tmp-hab184-format-web.yml
+          git commit -m 'style: format HAB-184 people UI'
+          git push origin HEAD:agent/hab-184-people-relationships
