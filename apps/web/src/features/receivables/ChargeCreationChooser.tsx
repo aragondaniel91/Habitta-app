@@ -23,7 +23,12 @@ export function ChargeCreationChooser({
   onOneOff,
 }: Props) {
   return (
-    <Drawer eyebrow="Cuentas por cobrar" onClose={onClose} prefix="receivables" title="Nueva cuota">
+    <Drawer
+      eyebrow="Cuentas por cobrar"
+      onClose={onClose}
+      prefix="receivables"
+      title="Nueva cuota"
+    >
       <div style={{ display: 'grid', gap: '12px' }}>
         <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
           Elige el tipo de obligación que vas a registrar. Habitta te muestra el flujo correcto sin
