@@ -8,12 +8,7 @@ import { apiRequest } from '../lib/api';
 import '../audit-log.css';
 
 type AuditModule =
-  | 'payments'
-  | 'expenses'
-  | 'treasury'
-  | 'maintenance'
-  | 'governance'
-  | 'assemblies';
+  'payments' | 'expenses' | 'treasury' | 'maintenance' | 'governance' | 'assemblies';
 type AuditSeverity = 'info' | 'warning';
 
 type AuditEvent = {
@@ -70,7 +65,8 @@ const formatDate = (value: string) =>
     new Date(value),
   );
 
-const shortId = (value: string | null) => (value ? `${value.slice(0, 8)}…${value.slice(-4)}` : 'Sistema');
+const shortId = (value: string | null) =>
+  value ? `${value.slice(0, 8)}…${value.slice(-4)}` : 'Sistema';
 const humanize = (value: string) => value.replaceAll('_', ' ');
 
 function toIso(value: string) {
@@ -222,7 +218,9 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
           <Field label="Desde">
             <input
               className="input"
-              onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, from: event.target.value }))
+              }
               type="datetime-local"
               value={filters.from}
             />
@@ -230,7 +228,9 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
           <Field label="Hasta">
             <input
               className="input"
-              onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, to: event.target.value }))
+              }
               type="datetime-local"
               value={filters.to}
             />
@@ -285,7 +285,9 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
                 {events.map((auditEvent) => (
                   <tr key={auditEvent.event_id}>
                     <td>
-                      <time dateTime={auditEvent.occurred_at}>{formatDate(auditEvent.occurred_at)}</time>
+                      <time dateTime={auditEvent.occurred_at}>
+                        {formatDate(auditEvent.occurred_at)}
+                      </time>
                     </td>
                     <td>{moduleLabels[auditEvent.module]}</td>
                     <td>
