@@ -1,0 +1,32 @@
+name: Temporary HAB-185 migration name
+
+on:
+  push:
+    branches:
+      - agent/hab-185-recurring-dues-foundation
+    paths:
+      - '.github/workflows/tmp-hab185-migration-name.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.84.2
+      - name: Generate migration and commit
+        run: |
+          set -euo pipefail
+          supabase migration new hab185_recurring_dues_foundation
+          rm .github/workflows/tmp-hab185-migration-name.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/migrations .github/workflows/tmp-hab185-migration-name.yml
+          git commit -m 'chore: create HAB-185 migration'
+          git push origin HEAD:agent/hab-185-recurring-dues-foundation
