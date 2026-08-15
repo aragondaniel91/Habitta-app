@@ -34,7 +34,7 @@ insert into public.organization_memberships(organization_id, user_id, role)
 values (
   '18610000-0000-4000-8000-000000000001',
   '18600000-0000-4000-8000-000000000001',
-  'organization_admin'
+  'organization_owner'
 );
 
 insert into public.condominium_memberships(condominium_id, user_id, role)
