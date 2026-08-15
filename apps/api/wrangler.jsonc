@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "habitta-api",
-  "main": "src/security-entry.ts",
+  "main": "src/worker-entry.ts",
   "compatibility_date": "2026-07-26",
   "vars": {
     "APP_ENV": "development",
@@ -11,7 +11,10 @@
   },
   "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-local" }],
   "queues": {
-    "producers": [{ "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-local" }],
+    "producers": [
+      { "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-local" },
+      { "binding": "INTEGRATION_QUEUE", "queue": "habitta-integrations-local" },
+    ],
     "consumers": [
       {
         "queue": "habitta-notifications-local",
@@ -19,6 +22,13 @@
         "max_retries": 5,
         "max_concurrency": 1,
         "dead_letter_queue": "habitta-notifications-dlq-local",
+      },
+      {
+        "queue": "habitta-integrations-local",
+        "max_batch_size": 10,
+        "max_retries": 5,
+        "max_concurrency": 1,
+        "dead_letter_queue": "habitta-integrations-dlq-local",
       },
     ],
   },
@@ -61,7 +71,10 @@
       },
       "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-dev" }],
       "queues": {
-        "producers": [{ "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-dev" }],
+        "producers": [
+          { "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-dev" },
+          { "binding": "INTEGRATION_QUEUE", "queue": "habitta-integrations-dev" },
+        ],
         "consumers": [
           {
             "queue": "habitta-notifications-dev",
@@ -69,6 +82,13 @@
             "max_retries": 5,
             "max_concurrency": 1,
             "dead_letter_queue": "habitta-notifications-dlq-dev",
+          },
+          {
+            "queue": "habitta-integrations-dev",
+            "max_batch_size": 10,
+            "max_retries": 5,
+            "max_concurrency": 1,
+            "dead_letter_queue": "habitta-integrations-dlq-dev",
           },
         ],
       },
@@ -121,7 +141,10 @@
       },
       "r2_buckets": [{ "binding": "PAYMENT_PROOFS", "bucket_name": "habitta-payment-proofs-prod" }],
       "queues": {
-        "producers": [{ "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-prod" }],
+        "producers": [
+          { "binding": "NOTIFICATION_QUEUE", "queue": "habitta-notifications-prod" },
+          { "binding": "INTEGRATION_QUEUE", "queue": "habitta-integrations-prod" },
+        ],
         "consumers": [
           {
             "queue": "habitta-notifications-prod",
@@ -129,6 +152,13 @@
             "max_retries": 5,
             "max_concurrency": 1,
             "dead_letter_queue": "habitta-notifications-dlq-prod",
+          },
+          {
+            "queue": "habitta-integrations-prod",
+            "max_batch_size": 10,
+            "max_retries": 5,
+            "max_concurrency": 1,
+            "dead_letter_queue": "habitta-integrations-dlq-prod",
           },
         ],
       },
