@@ -41,7 +41,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000018501
 select lives_ok($$select public.create_financial_scope('18510000-0000-0000-0000-000000000001','torre-a','Torre A','building','18520000-0000-0000-0000-000000000001',null)$$, 'administrator creates a building financial scope');
 select is((select count(*) from public.financial_scopes where condominium_id = '18510000-0000-0000-0000-000000000001'), 1::bigint, 'financial scope is persisted once');
 select is((select kind::text from public.financial_scopes where code = 'torre-a'), 'building', 'scope retains its building semantics');
-select lives_ok($$select public.create_recurring_charge_plan('18510000-0000-0000-0000-000000000001','18540000-0000-0000-0000-000000000001',(select id from public.financial_scopes where code='torre-a'),'Cuota ordinaria Torre A','participation_percentage',100.01,'USD','2026-09-01',1,10,null)$$, 'administrator creates a monthly participation plan');
+select lives_ok($$select public.create_recurring_charge_plan('18510000-0000-0000-0000-000000000001','18540000-0000-0000-0000-000000000001',(select id from public.financial_scopes where code='torre-a'),'Cuota ordinaria Torre A','participation_percentage',100.01,'USD','2026-09-01'::date,1::smallint,10::smallint,null::date)$$, 'administrator creates a monthly participation plan');
 select is((select distribution::text from public.recurring_charge_plans where name='Cuota ordinaria Torre A'), 'participation_percentage', 'plan stores participation distribution policy');
 select lives_ok($$select public.schedule_recurring_charge_run((select id from public.recurring_charge_plans where name='Cuota ordinaria Torre A'),'2026-09')$$, 'September occurrence is scheduled without posting money');
 select is((select status::text from public.recurring_charge_runs where period='2026-09'), 'scheduled', 'new occurrence starts scheduled');
@@ -68,7 +68,10 @@ reset role;
 select is((select count(*) from public.integration_outbox where event_type='finance.recurring_charge.posted'), 1::bigint, 'posting emits one durable integration event');
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000018501', true);
+reset role;
 select throws_ok($$update public.recurring_charge_runs set total_amount=1 where period='2026-09'$$, 'P0001', 'posted recurring charge runs are immutable', 'posted occurrence snapshot cannot be repriced');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000018501', true);
 select lives_ok($$select public.schedule_recurring_charge_run((select id from public.recurring_charge_plans where name='Cuota ordinaria Torre A'),'2026-10')$$, 'next month can be scheduled independently');
 select is((select status::text from public.recurring_charge_runs where period='2026-10'), 'scheduled', 'next month remains scheduled after prior month posts');
 

@@ -458,6 +458,9 @@ begin
   select * into plan from public.recurring_charge_plans where id = run.plan_id;
   select * into scope from public.financial_scopes where id = plan.financial_scope_id;
 
+  drop table if exists pg_temp.hab185_scope_units;
+  drop table if exists pg_temp.hab185_allocations;
+
   create temporary table hab185_scope_units on commit drop as
   select u.id, u.code, u.ownership_percentage
   from public.units u
