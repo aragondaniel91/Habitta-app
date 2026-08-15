@@ -3,6 +3,7 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 import { uuidSchema } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
+import { ownershipFinanceRoutes } from './ownership-finance-routes';
 
 type Variables = { token: string; userId: string };
 type RecurringDuesContext = Context<{ Bindings: NotificationBindings; Variables: Variables }>;
@@ -214,3 +215,5 @@ recurringDuesRoutes.post('/:id/recurring-charge-runs/:runId/prepare', (c) =>
 recurringDuesRoutes.post('/:id/recurring-charge-runs/:runId/post', (c) =>
   mutateRun(c, 'post_recurring_charge_run'),
 );
+
+recurringDuesRoutes.route('/', ownershipFinanceRoutes);
