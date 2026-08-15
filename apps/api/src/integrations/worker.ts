@@ -1,9 +1,5 @@
 import { serviceRpc } from '../notifications/worker';
-import type {
-  IntegrationBindings,
-  IntegrationOutboxEvent,
-  IntegrationQueueMessage,
-} from './types';
+import type { IntegrationBindings, IntegrationOutboxEvent, IntegrationQueueMessage } from './types';
 
 export const enqueuePendingIntegrationEvents = async (env: IntegrationBindings) => {
   const events = await serviceRpc<{ id: string }[]>(env, 'claim_due_integration_outbox', {
