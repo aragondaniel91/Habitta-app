@@ -94,7 +94,11 @@ export function CondominiumProfileFields({ input, errors, onChange, autoFocusNam
 
         <Field
           error={errors.legalIdType}
-          hint={input.countryCode === 'VE' ? 'En Venezuela se sugiere RIF.' : 'Ejemplo: Tax ID, RUC, NIT.'}
+          hint={
+            input.countryCode === 'VE'
+              ? 'En Venezuela se sugiere RIF.'
+              : 'Ejemplo: Tax ID, RUC, NIT.'
+          }
           label="Tipo de identificación legal"
         >
           <input
@@ -372,13 +376,13 @@ export function CondominiumProfileFields({ input, errors, onChange, autoFocusNam
             value={input.secondaryCurrencyCode}
           >
             <option value="">Sin moneda secundaria</option>
-            {CURRENCY_OPTIONS.filter(
-              (currency) => currency.code !== input.primaryCurrencyCode,
-            ).map((currency) => (
-              <option key={currency.code} value={currency.code}>
-                {currency.label}
-              </option>
-            ))}
+            {CURRENCY_OPTIONS.filter((currency) => currency.code !== input.primaryCurrencyCode).map(
+              (currency) => (
+                <option key={currency.code} value={currency.code}>
+                  {currency.label}
+                </option>
+              ),
+            )}
           </select>
         </Field>
       </div>

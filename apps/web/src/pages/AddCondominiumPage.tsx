@@ -61,11 +61,16 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
   if (createdCondominiumId) {
     return (
       <Surface className="add-condominium-card add-condominium-success">
-        <span className="admin-onboarding-success"><CheckCircleIcon size={32} /></span>
+        <span className="admin-onboarding-success">
+          <CheckCircleIcon size={32} />
+        </span>
         <div>
           <span className="access-kicker">Condominio agregado</span>
           <h2>{input.condominiumName.trim()} ya forma parte de tu organización.</h2>
-          <p>Su identidad, estructura, datos y permisos permanecen separados de las demás comunidades.</p>
+          <p>
+            Su identidad, estructura, datos y permisos permanecen separados de las demás
+            comunidades.
+          </p>
         </div>
         <Button onClick={() => void onCreated(createdCondominiumId)} type="button">
           Abrir el nuevo condominio <ArrowRightIcon size={18} />
@@ -77,7 +82,9 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
   return (
     <Surface className="add-condominium-card">
       <div className="add-condominium-heading">
-        <span className="admin-onboarding-success"><HomeIcon size={27} /></span>
+        <span className="admin-onboarding-success">
+          <HomeIcon size={27} />
+        </span>
         <div>
           <span className="access-kicker">Expande tu administración</span>
           <h2>Agregar otro condominio</h2>
@@ -93,22 +100,25 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
             value={input.organizationId}
           >
             {organizations.map((organization) => (
-              <option key={organization.id} value={organization.id}>{organization.name}</option>
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
             ))}
           </select>
         </Field>
 
-        <CondominiumProfileFields
-          autoFocusName
-          errors={errors}
-          input={input}
-          onChange={update}
-        />
+        <CondominiumProfileFields autoFocusName errors={errors} input={input} onChange={update} />
 
-        {submitError ? <p className="access-message" data-tone="error" role="alert">{submitError}</p> : null}
+        {submitError ? (
+          <p className="access-message" data-tone="error" role="alert">
+            {submitError}
+          </p>
+        ) : null}
 
         <div className="onboarding-card__actions">
-          <Button disabled={submitting} onClick={onCancel} type="button" variant="ghost">Cancelar</Button>
+          <Button disabled={submitting} onClick={onCancel} type="button" variant="ghost">
+            Cancelar
+          </Button>
           <Button disabled={submitting} type="submit">
             {submitting ? 'Creando condominio…' : 'Crear condominio'}
             {!submitting ? <ArrowRightIcon size={18} /> : null}

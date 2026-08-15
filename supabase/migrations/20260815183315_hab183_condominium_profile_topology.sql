@@ -6,8 +6,6 @@ create type public.condominium_property_topology as enum (
   'mixed'
 );
 
-grant usage on type public.condominium_property_topology to authenticated, service_role;
-
 alter table public.condominiums
   add column if not exists legal_name text,
   add column if not exists legal_id_type text,

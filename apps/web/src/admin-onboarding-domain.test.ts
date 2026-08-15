@@ -33,7 +33,11 @@ describe('HAB-183 condominium operating model', () => {
   });
 
   it('validates topology-specific declared structure', () => {
-    const house = { ...validInput(), propertyTopology: 'house_community' as const, declaredUnitCount: '' };
+    const house = {
+      ...validInput(),
+      propertyTopology: 'house_community' as const,
+      declaredUnitCount: '',
+    };
     expect(validateAdminOnboarding(house, true).declaredUnitCount).toContain('casas');
 
     const multi = {
@@ -48,9 +52,16 @@ describe('HAB-183 condominium operating model', () => {
     expect(validateAdminOnboarding(validMulti, true).declaredBuildingCount).toBeUndefined();
   });
 
-  it('keeps legal identification optional but requires type and number as a pair', () => {
-    const missingNumber = { ...validInput(), legalIdType: 'RIF', legalIdNumber: '' };
-    expect(validateAdminOnboarding(missingNumber, true).legalIdNumber).toBeTruthy();
+  it('keeps legal identification optional while requiring a type when a number is entered', () => {
+    const suggestedOnly = { ...validInput(), legalIdType: 'RIF', legalIdNumber: '' };
+    expect(validateAdminOnboarding(suggestedOnly, true).legalIdNumber).toBeUndefined();
+
+    const numberWithoutType = {
+      ...validInput(),
+      legalIdType: '',
+      legalIdNumber: 'J-12345678-9',
+    };
+    expect(validateAdminOnboarding(numberWithoutType, true).legalIdType).toBeTruthy();
 
     const omitted = { ...validInput(), legalIdType: '', legalIdNumber: '' };
     expect(validateAdminOnboarding(omitted, true).legalIdNumber).toBeUndefined();

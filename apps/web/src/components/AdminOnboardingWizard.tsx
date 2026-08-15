@@ -174,7 +174,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
       <div className="admin-onboarding-layout">
         <aside className="admin-onboarding-progress">
           <span className="access-kicker">Configuración inicial</span>
-          <h1>{hasOrganization ? 'Agrega otro condominio.' : 'Preparemos tu espacio en Habitta.'}</h1>
+          <h1>
+            {hasOrganization ? 'Agrega otro condominio.' : 'Preparemos tu espacio en Habitta.'}
+          </h1>
           <p>
             Primero definimos la identidad y estructura real del condominio. Personas, cuotas y
             operaciones se completan después sobre esa base.
@@ -223,7 +225,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                         onClick={() => update('organizationType', choice.value)}
                         type="button"
                       >
-                        <span><Icon size={25} /></span>
+                        <span>
+                          <Icon size={25} />
+                        </span>
                         <strong>{choice.title}</strong>
                         <small>{choice.description}</small>
                       </button>
@@ -254,7 +258,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                 </Field>
 
                 <div className="onboarding-card__actions">
-                  <Button type="submit">Continuar <ArrowRightIcon size={18} /></Button>
+                  <Button type="submit">
+                    Continuar <ArrowRightIcon size={18} />
+                  </Button>
                 </div>
               </form>
             ) : null}
@@ -264,7 +270,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                 <div>
                   <span className="access-kicker">Perfil del condominio</span>
                   <h2>Registra cómo está constituida y organizada la comunidad.</h2>
-                  <p>La estructura elegida adaptará Unidades, Edificios y futuras reglas financieras.</p>
+                  <p>
+                    La estructura elegida adaptará Unidades, Edificios y futuras reglas financieras.
+                  </p>
                 </div>
 
                 {hasOrganization ? (
@@ -279,7 +287,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                       value={input.organizationId}
                     >
                       {organizations.map((organization) => (
-                        <option key={organization.id} value={organization.id}>{organization.name}</option>
+                        <option key={organization.id} value={organization.id}>
+                          {organization.name}
+                        </option>
                       ))}
                     </select>
                   </Field>
@@ -294,9 +304,13 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
 
                 <div className="onboarding-card__actions">
                   {!hasOrganization ? (
-                    <Button onClick={() => setStep('organization')} type="button" variant="ghost">Atrás</Button>
+                    <Button onClick={() => setStep('organization')} type="button" variant="ghost">
+                      Atrás
+                    </Button>
                   ) : null}
-                  <Button type="submit">Revisar información <ArrowRightIcon size={18} /></Button>
+                  <Button type="submit">
+                    Revisar información <ArrowRightIcon size={18} />
+                  </Button>
                 </div>
               </form>
             ) : null}
@@ -306,13 +320,18 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                 <div>
                   <span className="access-kicker">Confirmación</span>
                   <h2>Revisa antes de crear el espacio.</h2>
-                  <p>La organización, roles, perfil legal y estructura inicial se crearán en una sola operación segura.</p>
+                  <p>
+                    La organización, roles, perfil legal y estructura inicial se crearán en una sola
+                    operación segura.
+                  </p>
                 </div>
 
                 <dl className="admin-onboarding-review">
                   <div>
                     <dt>Administración</dt>
-                    <dd>{hasOrganization ? selectedOrganization?.name : input.organizationName.trim()}</dd>
+                    <dd>
+                      {hasOrganization ? selectedOrganization?.name : input.organizationName.trim()}
+                    </dd>
                   </div>
                   <div>
                     <dt>Condominio</dt>
@@ -320,11 +339,17 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   </div>
                   <div>
                     <dt>Identificación legal</dt>
-                    <dd>{input.legalIdNumber ? `${input.legalIdType} ${input.legalIdNumber}` : 'Pendiente de completar'}</dd>
+                    <dd>
+                      {input.legalIdNumber
+                        ? `${input.legalIdType} ${input.legalIdNumber}`
+                        : 'Pendiente de completar'}
+                    </dd>
                   </div>
                   <div>
                     <dt>Dirección</dt>
-                    <dd>{input.addressLine1.trim()} · {input.city.trim()} · {input.countryCode}</dd>
+                    <dd>
+                      {input.addressLine1.trim()} · {input.city.trim()} · {input.countryCode}
+                    </dd>
                   </div>
                   <div>
                     <dt>Tipo de propiedad</dt>
@@ -336,19 +361,41 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   </div>
                   <div>
                     <dt>Monedas</dt>
-                    <dd>{input.primaryCurrencyCode}{input.secondaryCurrencyCode ? ` + ${input.secondaryCurrencyCode}` : ''}</dd>
+                    <dd>
+                      {input.primaryCurrencyCode}
+                      {input.secondaryCurrencyCode ? ` + ${input.secondaryCurrencyCode}` : ''}
+                    </dd>
                   </div>
                   <div>
                     <dt>Roles asignados</dt>
-                    <dd>{hasOrganization ? 'condominium_admin' : 'organization_owner + condominium_admin'}</dd>
+                    <dd>
+                      {hasOrganization
+                        ? 'condominium_admin'
+                        : 'organization_owner + condominium_admin'}
+                    </dd>
                   </div>
                 </dl>
 
-                {submitError ? <p className="access-message" data-tone="error" role="alert">{submitError}</p> : null}
+                {submitError ? (
+                  <p className="access-message" data-tone="error" role="alert">
+                    {submitError}
+                  </p>
+                ) : null}
 
                 <div className="onboarding-card__actions">
-                  <Button disabled={submitting} onClick={() => setStep('condominium')} type="button" variant="ghost">Editar</Button>
-                  <Button disabled={submitting} onClick={() => void createWorkspace()} type="button">
+                  <Button
+                    disabled={submitting}
+                    onClick={() => setStep('condominium')}
+                    type="button"
+                    variant="ghost"
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    disabled={submitting}
+                    onClick={() => void createWorkspace()}
+                    type="button"
+                  >
                     {submitting ? 'Creando espacio…' : 'Crear condominio'}
                     {!submitting ? <ArrowRightIcon size={18} /> : null}
                   </Button>
@@ -358,11 +405,16 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
 
             {step === 'complete' ? (
               <div className="admin-onboarding-complete">
-                <span className="admin-onboarding-success"><CheckCircleIcon size={34} /></span>
+                <span className="admin-onboarding-success">
+                  <CheckCircleIcon size={34} />
+                </span>
                 <div>
                   <span className="access-kicker">Configuración completada</span>
                   <h2>Tu condominio tiene una base operativa real.</h2>
-                  <p>Habitta ya conoce su identidad, ubicación y estructura física. Los siguientes módulos se configurarán sobre esa información.</p>
+                  <p>
+                    Habitta ya conoce su identidad, ubicación y estructura física. Los siguientes
+                    módulos se configurarán sobre esa información.
+                  </p>
                 </div>
 
                 <section className="progressive-setup-card">
@@ -375,12 +427,17 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   </div>
                   <ul>
                     {PROGRESSIVE_SETUP_ITEMS.map((item, index) => (
-                      <li key={item}><span>{index + 1}</span>{item}</li>
+                      <li key={item}>
+                        <span>{index + 1}</span>
+                        {item}
+                      </li>
                     ))}
                   </ul>
                 </section>
 
-                <Button onClick={() => void onComplete()} type="button">Ir al dashboard <ArrowRightIcon size={18} /></Button>
+                <Button onClick={() => void onComplete()} type="button">
+                  Ir al dashboard <ArrowRightIcon size={18} />
+                </Button>
               </div>
             ) : null}
           </Surface>

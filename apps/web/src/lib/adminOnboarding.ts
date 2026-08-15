@@ -2,10 +2,7 @@ import { supabase } from '../supabase';
 
 export type OrganizationType = 'independent' | 'management_company';
 export type PropertyTopology =
-  | 'house_community'
-  | 'single_building'
-  | 'multi_building_complex'
-  | 'mixed';
+  'house_community' | 'single_building' | 'multi_building_complex' | 'mixed';
 
 export type AdminOnboardingInput = {
   organizationId: string;
@@ -230,9 +227,8 @@ export function validateAdminOnboarding(
 
   const hasLegalType = Boolean(input.legalIdType.trim());
   const hasLegalNumber = Boolean(input.legalIdNumber.trim());
-  if (hasLegalType !== hasLegalNumber) {
-    if (!hasLegalType) errors.legalIdType = 'Indica el tipo de identificación legal.';
-    if (!hasLegalNumber) errors.legalIdNumber = 'Indica el número de identificación legal.';
+  if (hasLegalNumber && !hasLegalType) {
+    errors.legalIdType = 'Indica el tipo de identificación legal.';
   }
 
   if (!input.propertyTopology) {
@@ -246,20 +242,17 @@ export function validateAdminOnboarding(
       errors.declaredUnitCount = 'Indica cuántos apartamentos o unidades administra el edificio.';
     }
   } else if (input.propertyTopology === 'multi_building_complex') {
-    if (!validCount(input.declaredBuildingCount, 10000) || Number(input.declaredBuildingCount) < 2) {
+    if (
+      !validCount(input.declaredBuildingCount, 10000) ||
+      Number(input.declaredBuildingCount) < 2
+    ) {
       errors.declaredBuildingCount = 'Indica al menos 2 edificios o torres.';
     }
   } else if (input.propertyTopology === 'mixed') {
-    if (
-      input.declaredUnitCount &&
-      !validCount(input.declaredUnitCount, 100000)
-    ) {
+    if (input.declaredUnitCount && !validCount(input.declaredUnitCount, 100000)) {
       errors.declaredUnitCount = 'Introduce un número de unidades válido.';
     }
-    if (
-      input.declaredBuildingCount &&
-      !validCount(input.declaredBuildingCount, 10000)
-    ) {
+    if (input.declaredBuildingCount && !validCount(input.declaredBuildingCount, 10000)) {
       errors.declaredBuildingCount = 'Introduce un número de edificios válido.';
     }
   }
@@ -284,7 +277,7 @@ function rpcPayload(input: AdminOnboardingInput) {
     property_topology: input.propertyTopology,
     secondary_currency_code: input.secondaryCurrencyCode || null,
     legal_name: input.legalName.trim() || null,
-    legal_id_type: input.legalIdType.trim() || null,
+    legal_id_type: input.legalIdNumber.trim() ? input.legalIdType.trim() || null : null,
     legal_id_number: input.legalIdNumber.trim() || null,
     address_line2: input.addressLine2.trim() || null,
     state_region: input.stateRegion.trim() || null,
@@ -332,7 +325,11 @@ export async function submitAdminOnboarding(
     if (message.includes('legal id')) {
       throw new Error('Revisa el tipo y número de identificación legal del condominio.');
     }
-    if (message.includes('topology') || message.includes('building') || message.includes('unit count')) {
+    if (
+      message.includes('topology') ||
+      message.includes('building') ||
+      message.includes('unit count')
+    ) {
       throw new Error('Revisa el tipo de propiedad y las cantidades declaradas.');
     }
     throw new Error(
