@@ -6,12 +6,31 @@ const workspaceSource = readFileSync(
   new URL('./features/receivables/RecurringDuesWorkspace.tsx', import.meta.url),
   'utf8',
 );
+const chooserSource = readFileSync(
+  new URL('./features/receivables/ChargeCreationChooser.tsx', import.meta.url),
+  'utf8',
+);
+const rollForwardSource = readFileSync(
+  new URL('../../supabase/migrations/20260815213500_hab185_recurring_roll_forward.sql', import.meta.url),
+  'utf8',
+);
 
 describe('HAB-185 recurring dues workspace contract', () => {
   it('keeps recurring dues inside the existing receivables module', () => {
-    expect(pageSource).toContain("import { RecurringDuesWorkspace } from '../features/receivables/RecurringDuesWorkspace'");
+    expect(pageSource).toContain(
+      "import { RecurringDuesWorkspace } from '../features/receivables/RecurringDuesWorkspace'",
+    );
     expect(pageSource).toContain('<RecurringDuesWorkspace');
-    expect(pageSource).toContain('Nueva cuota manual');
+    expect(pageSource).toContain('<ChargeCreationChooser');
+  });
+
+  it('routes Nueva cuota by operator intent instead of accounting primitives', () => {
+    expect(pageSource).toContain('Nueva cuota');
+    expect(chooserSource).toContain('Ordinaria recurrente');
+    expect(chooserSource).toContain('Extraordinaria');
+    expect(chooserSource).toContain('Cargo puntual');
+    expect(pageSource).toContain("openDrawer('batch')");
+    expect(pageSource).toContain("openDrawer('manual')");
   });
 
   it('uses authenticated API routes rather than direct Supabase writes', () => {
@@ -46,8 +65,11 @@ describe('HAB-185 recurring dues workspace contract', () => {
     expect(workspaceSource).toContain("run.status === 'posted'");
   });
 
-  it('keeps a next period scheduled after a successful publication flow', () => {
-    expect(workspaceSource).toContain('const nextPeriod = addMonth(run.period)');
-    expect(workspaceSource).toContain("body: JSON.stringify({ period: nextPeriod })");
+  it('schedules the first and following periods server-side without posting money', () => {
+    expect(rollForwardSource).toContain('recurring_plan_schedule_initial_run');
+    expect(rollForwardSource).toContain('recurring_run_schedule_next_period');
+    expect(rollForwardSource).toContain("new.status <> 'posted'");
+    expect(rollForwardSource).toContain("'scheduled'");
+    expect(rollForwardSource).not.toContain('post_charge_batch');
   });
 });
