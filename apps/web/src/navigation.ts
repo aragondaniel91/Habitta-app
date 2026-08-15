@@ -288,7 +288,8 @@ export const APP_ROUTES = [
     label: 'Auditoría',
     shortLabel: 'Auditoría',
     title: 'Registro de auditoría',
-    description: 'Consulta actividad administrativa consolidada sin modificar el historial original.',
+    description:
+      'Consulta actividad administrativa consolidada sin modificar el historial original.',
     section: 'sistema',
     icon: ReportsIcon,
     scope: ['Actividad por módulo', 'Filtros y actores', 'Trazabilidad read-only'],
