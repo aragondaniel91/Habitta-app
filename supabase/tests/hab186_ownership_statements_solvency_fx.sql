@@ -30,20 +30,18 @@ values (
   '18600000-0000-4000-8000-000000000001'
 );
 
-insert into public.organization_memberships(organization_id, user_id, role, status)
+insert into public.organization_memberships(organization_id, user_id, role)
 values (
   '18610000-0000-4000-8000-000000000001',
   '18600000-0000-4000-8000-000000000001',
-  'organization_admin',
-  'active'
+  'organization_admin'
 );
 
-insert into public.condominium_memberships(condominium_id, user_id, role, status)
+insert into public.condominium_memberships(condominium_id, user_id, role)
 values (
   '18620000-0000-4000-8000-000000000001',
   '18600000-0000-4000-8000-000000000001',
-  'condominium_admin',
-  'active'
+  'condominium_admin'
 );
 
 insert into public.units(id, condominium_id, code, created_by)
