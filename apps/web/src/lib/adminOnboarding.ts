@@ -1,18 +1,34 @@
 import { supabase } from '../supabase';
 
 export type OrganizationType = 'independent' | 'management_company';
+export type PropertyTopology =
+  | 'house_community'
+  | 'single_building'
+  | 'multi_building_complex'
+  | 'mixed';
 
 export type AdminOnboardingInput = {
   organizationId: string;
   organizationName: string;
   organizationType: OrganizationType;
   condominiumName: string;
+  legalName: string;
+  legalIdType: string;
+  legalIdNumber: string;
   countryCode: string;
+  addressLine1: string;
+  addressLine2: string;
+  stateRegion: string;
+  municipality: string;
+  parish: string;
   city: string;
+  postalCode: string;
   timezone: string;
   primaryCurrencyCode: string;
   secondaryCurrencyCode: string;
-  approximateUnits: string;
+  propertyTopology: PropertyTopology | '';
+  declaredUnitCount: string;
+  declaredBuildingCount: string;
   firstBuildingName: string;
 };
 
@@ -20,7 +36,12 @@ export type AdminOnboardingErrors = Partial<Record<keyof AdminOnboardingInput, s
 
 export type AdminOnboardingResult = {
   organization?: { id: string; name: string } | null;
-  condominium?: { id: string; name: string; organization_id: string } | null;
+  condominium?: {
+    id: string;
+    name: string;
+    organization_id: string;
+    property_topology?: string;
+  } | null;
   building?: { id: string; name: string } | null;
 };
 
@@ -67,6 +88,33 @@ export const CURRENCY_OPTIONS = [
   { code: 'CRC', label: 'CRC — Colón costarricense' },
 ] as const;
 
+export const PROPERTY_TOPOLOGY_OPTIONS: Array<{
+  value: PropertyTopology;
+  title: string;
+  description: string;
+}> = [
+  {
+    value: 'house_community',
+    title: 'Conjunto de casas',
+    description: 'Casas independientes administradas bajo un mismo condominio.',
+  },
+  {
+    value: 'single_building',
+    title: 'Edificio residencial',
+    description: 'Un solo edificio con apartamentos, locales u otras unidades.',
+  },
+  {
+    value: 'multi_building_complex',
+    title: 'Conjunto residencial',
+    description: 'Un condominio general con dos o más edificios o torres.',
+  },
+  {
+    value: 'mixed',
+    title: 'Estructura mixta',
+    description: 'Combina casas, edificios, locales u otras estructuras.',
+  },
+];
+
 const CURRENCY_BY_COUNTRY: Record<string, string> = {
   VE: 'VES',
   US: 'USD',
@@ -106,20 +154,44 @@ export function suggestedTimezone(countryCode: string) {
   return TIMEZONE_BY_COUNTRY[countryCode] ?? browserTimezone ?? 'America/Caracas';
 }
 
+export function suggestedLegalIdType(countryCode: string) {
+  return countryCode === 'VE' ? 'RIF' : '';
+}
+
+export function topologyLabel(topology: AdminOnboardingInput['propertyTopology']) {
+  return PROPERTY_TOPOLOGY_OPTIONS.find((item) => item.value === topology)?.title ?? 'No definida';
+}
+
 export function createEmptyAdminOnboardingInput(organizationId = ''): AdminOnboardingInput {
   return {
     organizationId,
     organizationName: '',
     organizationType: 'independent',
     condominiumName: '',
+    legalName: '',
+    legalIdType: 'RIF',
+    legalIdNumber: '',
     countryCode: 'VE',
+    addressLine1: '',
+    addressLine2: '',
+    stateRegion: '',
+    municipality: '',
+    parish: '',
     city: '',
+    postalCode: '',
     timezone: suggestedTimezone('VE'),
     primaryCurrencyCode: suggestedCurrency('VE'),
     secondaryCurrencyCode: 'USD',
-    approximateUnits: '',
+    propertyTopology: '',
+    declaredUnitCount: '',
+    declaredBuildingCount: '',
     firstBuildingName: '',
   };
+}
+
+function validCount(value: string, maximum: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= maximum;
 }
 
 export function validateAdminOnboarding(
@@ -140,6 +212,9 @@ export function validateAdminOnboarding(
   if (!/^[A-Z]{2}$/.test(input.countryCode)) {
     errors.countryCode = 'Selecciona un país válido.';
   }
+  if (input.addressLine1.trim().length < 3) {
+    errors.addressLine1 = 'Escribe la dirección principal del condominio.';
+  }
   if (input.city.trim().length < 2) {
     errors.city = 'Escribe la ciudad donde está ubicado.';
   }
@@ -152,26 +227,75 @@ export function validateAdminOnboarding(
   if (input.secondaryCurrencyCode && input.secondaryCurrencyCode === input.primaryCurrencyCode) {
     errors.secondaryCurrencyCode = 'La moneda secundaria debe ser diferente.';
   }
-  if (input.approximateUnits) {
-    const unitCount = Number(input.approximateUnits);
-    if (!Number.isInteger(unitCount) || unitCount < 1 || unitCount > 100000) {
-      errors.approximateUnits = 'Introduce un número entre 1 y 100.000.';
+
+  const hasLegalType = Boolean(input.legalIdType.trim());
+  const hasLegalNumber = Boolean(input.legalIdNumber.trim());
+  if (hasLegalType !== hasLegalNumber) {
+    if (!hasLegalType) errors.legalIdType = 'Indica el tipo de identificación legal.';
+    if (!hasLegalNumber) errors.legalIdNumber = 'Indica el número de identificación legal.';
+  }
+
+  if (!input.propertyTopology) {
+    errors.propertyTopology = 'Selecciona cómo está estructurado este condominio.';
+  } else if (input.propertyTopology === 'house_community') {
+    if (!validCount(input.declaredUnitCount, 100000)) {
+      errors.declaredUnitCount = 'Indica cuántas casas administra el condominio.';
+    }
+  } else if (input.propertyTopology === 'single_building') {
+    if (!validCount(input.declaredUnitCount, 100000)) {
+      errors.declaredUnitCount = 'Indica cuántos apartamentos o unidades administra el edificio.';
+    }
+  } else if (input.propertyTopology === 'multi_building_complex') {
+    if (!validCount(input.declaredBuildingCount, 10000) || Number(input.declaredBuildingCount) < 2) {
+      errors.declaredBuildingCount = 'Indica al menos 2 edificios o torres.';
+    }
+  } else if (input.propertyTopology === 'mixed') {
+    if (
+      input.declaredUnitCount &&
+      !validCount(input.declaredUnitCount, 100000)
+    ) {
+      errors.declaredUnitCount = 'Introduce un número de unidades válido.';
+    }
+    if (
+      input.declaredBuildingCount &&
+      !validCount(input.declaredBuildingCount, 10000)
+    ) {
+      errors.declaredBuildingCount = 'Introduce un número de edificios válido.';
     }
   }
 
   return errors;
 }
 
+function countOrNull(value: string) {
+  return value ? Number(value) : null;
+}
+
 function rpcPayload(input: AdminOnboardingInput) {
+  if (!input.propertyTopology) throw new Error('Selecciona el tipo de condominio.');
+
   return {
     condominium_name: input.condominiumName.trim(),
     country_code: input.countryCode,
+    address_line1: input.addressLine1.trim(),
     city: input.city.trim(),
     timezone: input.timezone,
     primary_currency_code: input.primaryCurrencyCode,
+    property_topology: input.propertyTopology,
     secondary_currency_code: input.secondaryCurrencyCode || null,
-    approximate_units: input.approximateUnits ? Number(input.approximateUnits) : null,
-    first_building_name: input.firstBuildingName.trim() || null,
+    legal_name: input.legalName.trim() || null,
+    legal_id_type: input.legalIdType.trim() || null,
+    legal_id_number: input.legalIdNumber.trim() || null,
+    address_line2: input.addressLine2.trim() || null,
+    state_region: input.stateRegion.trim() || null,
+    municipality: input.municipality.trim() || null,
+    parish: input.parish.trim() || null,
+    postal_code: input.postalCode.trim() || null,
+    declared_unit_count: countOrNull(input.declaredUnitCount),
+    declared_building_count:
+      input.propertyTopology === 'single_building' ? 1 : countOrNull(input.declaredBuildingCount),
+    first_building_name:
+      input.propertyTopology === 'single_building' ? input.firstBuildingName.trim() || null : null,
   };
 }
 
@@ -182,11 +306,11 @@ export async function submitAdminOnboarding(
   if (!supabase) throw new Error('La configuración de Supabase no está disponible.');
 
   const result = hasOrganization
-    ? await supabase.rpc('create_condominium_with_profile', {
+    ? await supabase.rpc('create_condominium_with_profile_v2', {
         target_organization_id: input.organizationId,
         ...rpcPayload(input),
       })
-    : await supabase.rpc('create_admin_workspace', {
+    : await supabase.rpc('create_admin_workspace_v2', {
         organization_name: input.organizationName.trim(),
         organization_type: input.organizationType,
         ...rpcPayload(input),
@@ -203,7 +327,13 @@ export async function submitAdminOnboarding(
       throw new Error('No tienes permisos para agregar condominios a esta organización.');
     }
     if (message.includes('duplicate key')) {
-      throw new Error('Ya existe un condominio o una torre con ese nombre.');
+      throw new Error('Ya existe un condominio o un edificio con ese nombre.');
+    }
+    if (message.includes('legal id')) {
+      throw new Error('Revisa el tipo y número de identificación legal del condominio.');
+    }
+    if (message.includes('topology') || message.includes('building') || message.includes('unit count')) {
+      throw new Error('Revisa el tipo de propiedad y las cantidades declaradas.');
     }
     throw new Error(
       'No pudimos crear el condominio. Revisa la información e inténtalo nuevamente.',
@@ -214,10 +344,10 @@ export async function submitAdminOnboarding(
 }
 
 export const PROGRESSIVE_SETUP_ITEMS = [
-  'Crear torres y unidades',
+  'Completar unidades, edificios y alícuotas',
   'Agregar métodos de pago',
-  'Configurar cuotas',
+  'Configurar conceptos y cuotas',
   'Invitar administradores',
-  'Importar propietarios y residentes',
+  'Importar propietarios, residentes y contactos',
   'Configurar notificaciones',
 ] as const;
