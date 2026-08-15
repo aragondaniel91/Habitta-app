@@ -20,7 +20,7 @@ describe('HAB-175 administrator audit workspace contract', () => {
       expect(pageSource).toContain(`params.set('${filter}'`);
     }
     expect(pageSource).toContain('const PAGE_SIZE = 50');
-    expect(pageSource).toContain("params.set('offset'");
+    expect(pageSource).toContain('offset: String(offset)');
   });
 
   it('keeps the audit workspace read-only', () => {
