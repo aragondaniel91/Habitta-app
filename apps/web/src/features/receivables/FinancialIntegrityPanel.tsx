@@ -41,6 +41,11 @@ type Props = {
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const nowIso = () => new Date().toISOString();
+const toLocalDateTimeInput = (iso: string) => {
+  const value = new Date(iso);
+  const offsetMs = value.getTimezoneOffset() * 60_000;
+  return new Date(value.getTime() - offsetMs).toISOString().slice(0, 16);
+};
 
 export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
   const [open, setOpen] = useState(false);
@@ -412,10 +417,13 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
             </Field>
             <Field label="Fecha/hora observada">
               <input
-                onChange={(event) => setRateAt(new Date(event.target.value).toISOString())}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value) setRateAt(new Date(value).toISOString());
+                }}
                 required
                 type="datetime-local"
-                value={rateAt.slice(0, 16)}
+                value={toLocalDateTimeInput(rateAt)}
               />
             </Field>
             <Field label="Fuente">
