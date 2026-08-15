@@ -75,7 +75,7 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
     `Supabase local y fixture financiero requeridos: ${missingEnvironment.join(', ')}`,
   );
 
-  test('planifica, congela, aprueba y conserva el siguiente período sin publicar automáticamente', async ({
+  test('planifica, congela, aprueba y programa automáticamente el siguiente período', async ({
     request,
   }) => {
     const admin = await authenticate(request);
@@ -108,12 +108,13 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
       },
     );
 
-    const scheduled = await rpc<RecurringRun>(
+    const initialRuns = await rows<RecurringRun>(
       request,
       admin.access_token,
-      'schedule_recurring_charge_run',
-      { target_plan: plan.id, target_period: '2026-09' },
+      `recurring_charge_runs?plan_id=eq.${plan.id}&period=eq.2026-09&select=id,status,period,total_amount,distribution_snapshot,charge_batch_id`,
     );
+    expect(initialRuns).toHaveLength(1);
+    const scheduled = initialRuns[0]!;
     expect(scheduled.status).toBe('scheduled');
     expect(scheduled.charge_batch_id).toBeNull();
 
@@ -145,15 +146,6 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
     expect(receivables).toHaveLength(2);
     expect(receivables.reduce((sum, item) => sum + Number(item.original_amount), 0)).toBe(84);
 
-    const next = await rpc<RecurringRun>(
-      request,
-      admin.access_token,
-      'schedule_recurring_charge_run',
-      { target_plan: plan.id, target_period: '2026-10' },
-    );
-    expect(next.status).toBe('scheduled');
-    expect(next.charge_batch_id).toBeNull();
-
     const allRuns = await rows<RecurringRun>(
       request,
       admin.access_token,
@@ -163,5 +155,6 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
       ['2026-09', 'posted'],
       ['2026-10', 'scheduled'],
     ]);
+    expect(allRuns[1]?.charge_batch_id).toBeNull();
   });
 });
