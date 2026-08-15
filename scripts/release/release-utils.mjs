@@ -2,6 +2,8 @@ export const developmentResources = Object.freeze({
   worker: 'habitta-api-dev',
   queue: 'habitta-notifications-dev',
   dlq: 'habitta-notifications-dlq-dev',
+  integrationQueue: 'habitta-integrations-dev',
+  integrationDlq: 'habitta-integrations-dlq-dev',
   r2: 'habitta-payment-proofs-dev',
   pages: 'habitta-web-dev',
   environment: 'development',

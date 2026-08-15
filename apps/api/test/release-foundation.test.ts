@@ -57,7 +57,12 @@ describe('development release safeguards', () => {
     expect(calls).toBe(0);
     expect(
       resourcePlan({
-        queues: ['habitta-notifications-dev', 'habitta-notifications-dlq-dev'],
+        queues: [
+          'habitta-notifications-dev',
+          'habitta-notifications-dlq-dev',
+          'habitta-integrations-dev',
+          'habitta-integrations-dlq-dev',
+        ],
         buckets: ['habitta-payment-proofs-dev'],
         pages: ['habitta-web-dev'],
       }),
@@ -69,12 +74,19 @@ describe('development release safeguards', () => {
         queuesResult: [
           { queue_name: 'habitta-notifications-dev' },
           { queue_name: 'habitta-notifications-dlq-dev' },
+          { queue_name: 'habitta-integrations-dev' },
+          { queue_name: 'habitta-integrations-dlq-dev' },
         ],
         r2Result: { buckets: [{ name: 'habitta-payment-proofs-dev' }] },
         pagesResult: { name: 'habitta-web-dev' },
       }),
     ).toEqual({
-      queues: ['habitta-notifications-dev', 'habitta-notifications-dlq-dev'],
+      queues: [
+        'habitta-notifications-dev',
+        'habitta-notifications-dlq-dev',
+        'habitta-integrations-dev',
+        'habitta-integrations-dlq-dev',
+      ],
       buckets: ['habitta-payment-proofs-dev'],
       pages: ['habitta-web-dev'],
     });

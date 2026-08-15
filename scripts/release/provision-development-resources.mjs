@@ -5,7 +5,12 @@ import { developmentResources } from './release-utils.mjs';
 const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4';
 
 export const resourcePlan = (existing = { queues: [], buckets: [], pages: [] }) => [
-  ...[developmentResources.queue, developmentResources.dlq]
+  ...[
+    developmentResources.queue,
+    developmentResources.dlq,
+    developmentResources.integrationQueue,
+    developmentResources.integrationDlq,
+  ]
     .filter((name) => !existing.queues.includes(name))
     .map((name) => ({ kind: 'queue', name })),
   ...[developmentResources.r2]
