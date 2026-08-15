@@ -33,55 +33,60 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           migration = Path('supabase/migrations/20260815183315_hab183_condominium_profile_topology.sql')
           text = migration.read_text()
-          grant = 'grant usage on type public.condominium_property_topology to authenticated, service_role;\n\n'
-          assert grant in text
-          migration.write_text(text.replace(grant, '', 1))
+          text, count = re.subn(
+              r'grant usage on type public\.condominium_property_topology to authenticated, service_role;\n\n',
+              '',
+              text,
+              count=1,
+          )
+          assert count == 1, f'expected one enum grant, found {count}'
+          migration.write_text(text)
 
           onboarding = Path('apps/web/src/lib/adminOnboarding.ts')
           text = onboarding.read_text()
-          old = """  const hasLegalType = Boolean(input.legalIdType.trim());
-          const hasLegalNumber = Boolean(input.legalIdNumber.trim());
-          if (hasLegalType !== hasLegalNumber) {
-            if (!hasLegalType) errors.legalIdType = 'Indica el tipo de identificación legal.';
-            if (!hasLegalNumber) errors.legalIdNumber = 'Indica el número de identificación legal.';
-          }
-          """
-          new = """  const hasLegalType = Boolean(input.legalIdType.trim());
-          const hasLegalNumber = Boolean(input.legalIdNumber.trim());
-          if (hasLegalNumber && !hasLegalType) {
-            errors.legalIdType = 'Indica el tipo de identificación legal.';
-          }
-          """
-          assert old in text
-          text = text.replace(old, new, 1)
-          old = """    legal_name: input.legalName.trim() || null,
-              legal_id_type: input.legalIdType.trim() || null,
-              legal_id_number: input.legalIdNumber.trim() || null,
-          """
-          new = """    legal_name: input.legalName.trim() || null,
-              legal_id_type: input.legalIdNumber.trim() ? input.legalIdType.trim() || null : null,
-              legal_id_number: input.legalIdNumber.trim() || null,
-          """
-          assert old in text
-          onboarding.write_text(text.replace(old, new, 1))
+          legal_validation = re.compile(
+              r"  const hasLegalType = Boolean\(input\.legalIdType\.trim\(\)\);\n"
+              r"  const hasLegalNumber = Boolean\(input\.legalIdNumber\.trim\(\)\);\n"
+              r"  if \(hasLegalType !== hasLegalNumber\) \{\n"
+              r"    if \(!hasLegalType\) errors\.legalIdType = 'Indica el tipo de identificación legal\.';\n"
+              r"    if \(!hasLegalNumber\) errors\.legalIdNumber = 'Indica el número de identificación legal\.';\n"
+              r"  \}\n"
+          )
+          replacement = (
+              "  const hasLegalType = Boolean(input.legalIdType.trim());\n"
+              "  const hasLegalNumber = Boolean(input.legalIdNumber.trim());\n"
+              "  if (hasLegalNumber && !hasLegalType) {\n"
+              "    errors.legalIdType = 'Indica el tipo de identificación legal.';\n"
+              "  }\n"
+          )
+          text, count = legal_validation.subn(replacement, text, count=1)
+          assert count == 1, f'expected one legal validation block, found {count}'
+
+          legal_payload = re.compile(
+              r"    legal_name: input\.legalName\.trim\(\) \|\| null,\n"
+              r"    legal_id_type: input\.legalIdType\.trim\(\) \|\| null,\n"
+              r"    legal_id_number: input\.legalIdNumber\.trim\(\) \|\| null,\n"
+          )
+          replacement = (
+              "    legal_name: input.legalName.trim() || null,\n"
+              "    legal_id_type: input.legalIdNumber.trim() ? input.legalIdType.trim() || null : null,\n"
+              "    legal_id_number: input.legalIdNumber.trim() || null,\n"
+          )
+          text, count = legal_payload.subn(replacement, text, count=1)
+          assert count == 1, f'expected one legal payload block, found {count}'
+          onboarding.write_text(text)
 
           test = Path('apps/web/src/admin-onboarding-domain.test.ts')
           text = test.read_text()
-          old = """  it('keeps legal identification optional but requires type and number as a pair', () => {
-            const missingNumber = { ...validInput(), legalIdType: 'RIF', legalIdNumber: '' };
-            expect(validateAdminOnboarding(missingNumber, true).legalIdNumber).toBeTruthy();
-
-            const omitted = { ...validInput(), legalIdType: '', legalIdNumber: '' };
-            expect(validateAdminOnboarding(omitted, true).legalIdNumber).toBeUndefined();
-
-            const complete = { ...validInput(), legalIdType: 'RIF', legalIdNumber: 'J-12345678-9' };
-            expect(validateAdminOnboarding(complete, true).legalIdNumber).toBeUndefined();
-          });
-          """
-          new = """  it('keeps legal identification optional while requiring a type when a number is entered', () => {
+          legal_test = re.compile(
+              r"  it\('keeps legal identification optional but requires type and number as a pair', \(\) => \{.*?\n  \}\);",
+              re.DOTALL,
+          )
+          replacement = """  it('keeps legal identification optional while requiring a type when a number is entered', () => {
             const suggestedOnly = { ...validInput(), legalIdType: 'RIF', legalIdNumber: '' };
             expect(validateAdminOnboarding(suggestedOnly, true).legalIdNumber).toBeUndefined();
 
@@ -97,10 +102,10 @@ jobs:
 
             const complete = { ...validInput(), legalIdType: 'RIF', legalIdNumber: 'J-12345678-9' };
             expect(validateAdminOnboarding(complete, true).legalIdNumber).toBeUndefined();
-          });
-          """
-          assert old in text
-          test.write_text(text.replace(old, new, 1))
+          });"""
+          text, count = legal_test.subn(replacement, text, count=1)
+          assert count == 1, f'expected one legal test block, found {count}'
+          test.write_text(text)
           PY
 
       - name: Format HAB-183 files
