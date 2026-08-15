@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const pageSource = readFileSync(
-  new URL('./pages/ReceivablesPage.tsx', import.meta.url),
-  'utf8',
-);
+const pageSource = readFileSync(new URL('./pages/ReceivablesPage.tsx', import.meta.url), 'utf8');
 const workspaceSource = readFileSync(
   new URL('./features/receivables/RecurringDuesWorkspace.tsx', import.meta.url),
   'utf8',
