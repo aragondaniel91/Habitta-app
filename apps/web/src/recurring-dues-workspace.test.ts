@@ -11,7 +11,7 @@ const chooserSource = readFileSync(
   'utf8',
 );
 const rollForwardSource = readFileSync(
-  new URL('../../supabase/migrations/20260815213500_hab185_recurring_roll_forward.sql', import.meta.url),
+  new URL('../../../supabase/migrations/20260815213500_hab185_recurring_roll_forward.sql', import.meta.url),
   'utf8',
 );
 
