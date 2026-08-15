@@ -1,0 +1,244 @@
+.account-statement-drawer {
+  display: grid;
+  gap: 20px;
+}
+
+.receivables-drawer__body {
+  overflow: auto;
+  padding: 20px;
+}
+
+.account-statement-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(140px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.account-statement-filters input,
+.account-statement-filters select {
+  width: 100%;
+}
+
+.account-statement-identity,
+.account-statement-solvency,
+.account-statement-certificate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.account-statement-identity > div:first-child,
+.account-statement-certificate > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.account-statement-identity span,
+.account-statement-certificate span,
+.account-statement-section-heading span,
+.account-statement-solvency span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.account-statement-identity > div:first-child strong {
+  font-size: 22px;
+}
+
+.account-statement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.account-statement-balance-section,
+.account-statement-owners,
+.account-statement-movements {
+  display: grid;
+  gap: 10px;
+}
+
+.account-statement-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-statement-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 9px;
+}
+
+.account-statement-balance-grid article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-subtle, rgba(15, 23, 42, 0.025));
+  padding: 12px;
+}
+
+.account-statement-balance-grid article span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-statement-balance-grid article strong {
+  font-size: 18px;
+}
+
+.account-statement-owners > div:last-child,
+.account-statement-movement-list {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.account-statement-owners article,
+.account-statement-movement-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+}
+
+.account-statement-owners article + article,
+.account-statement-movement-list article + article {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.account-statement-owners article > div,
+.account-statement-movement-list article > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.account-statement-owners article span,
+.account-statement-movement-list article span,
+.account-statement-movement-list article small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.account-statement-solvency {
+  justify-content: flex-start;
+  background: color-mix(in srgb, #b42318 4%, var(--surface));
+}
+
+.account-statement-solvency[data-eligible] {
+  border-color: color-mix(in srgb, #0f8a4b 28%, var(--border-subtle));
+  background: color-mix(in srgb, #0f8a4b 5%, var(--surface));
+}
+
+.account-statement-solvency__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.account-statement-solvency > div:nth-child(2) {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.account-statement-solvency p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.account-statement-certificate {
+  background: var(--surface-subtle, rgba(15, 23, 42, 0.025));
+}
+
+.account-statement-certificate strong {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.account-statement-movement-list article > div:last-child {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  text-align: right;
+}
+
+.account-statement-movement-list article > div:last-child strong {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .account-statement-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .account-statement-identity,
+  .account-statement-solvency,
+  .account-statement-certificate {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-statement-actions {
+    justify-content: flex-start;
+  }
+
+  .account-statement-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .account-statement-movement-list article,
+  .account-statement-owners article {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .account-statement-movement-list article > div:last-child {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+}
+
+@media print {
+  .receivables-drawer-layer {
+    position: static;
+  }
+
+  .receivables-drawer-backdrop,
+  .receivables-drawer__header button,
+  .account-statement-filters,
+  .account-statement-actions,
+  .account-statement-solvency button {
+    display: none !important;
+  }
+
+  .receivables-drawer {
+    width: 100%;
+    height: auto;
+    box-shadow: none;
+  }
+
+  .receivables-drawer__body {
+    overflow: visible;
+  }
+}
