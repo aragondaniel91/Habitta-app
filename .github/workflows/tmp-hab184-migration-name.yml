@@ -1,3 +1,4 @@
+# Temporary workflow. Delete before merging HAB-184.
 name: Temporary HAB-184 migration name
 
 on:
