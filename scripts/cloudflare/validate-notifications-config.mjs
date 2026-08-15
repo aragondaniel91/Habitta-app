@@ -81,7 +81,7 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
     if (prod.vars?.NOTIFICATIONS_EMAIL_PROVIDER !== 'zeptomail')
       errors.push('invalid_prod_email_provider');
     if (prod.vars?.APP_ENV !== 'production') errors.push('invalid_prod_app_environment');
-    if (prod.vars?.APP_BASE_URL !== 'https://habitta-web-prod.pages.dev')
+    if (prod.vars?.APP_BASE_URL !== 'https://app.mihabitta.com')
       errors.push('invalid_prod_app_base_url');
     const requiredSecrets = new Set(prod.secrets?.required ?? []);
     for (const secret of ['SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']) {
@@ -91,22 +91,12 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
       errors.push('prod_zeptomail_secret_must_be_mode_gated');
   }
 
-  // Habitta currently has one hosted Supabase project. Treat that project as production-owned.
-  // When preview and production share it, only production may run the notification scheduler so
-  // workers cannot compete for the same pending deliveries. Development keeps its queue bindings
-  // for explicit tests, but scheduled claims must remain disabled.
-  const sharesHostedDatabase =
-    Boolean(dev?.vars?.SUPABASE_URL) && dev?.vars?.SUPABASE_URL === prod?.vars?.SUPABASE_URL;
-  if (sharesHostedDatabase) {
-    if ((dev?.triggers?.crons ?? []).length) errors.push('unsafe_dev_cron_on_shared_database');
-    if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
-      errors.push('missing_prod_notification_cron');
-  } else {
-    if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
-      errors.push('missing_notification_cron');
-    if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
-      errors.push('missing_prod_notification_cron');
-  }
+  // Production receives its isolated Supabase URL at release time rather than carrying a
+  // development fallback in Wrangler. With isolated environments both schedulers may run safely:
+  // development remains sandboxed and production is live-only.
+  if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *')) errors.push('missing_notification_cron');
+  if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
+    errors.push('missing_prod_notification_cron');
 
   if (config.vars?.NOTIFICATIONS_EMAIL_MODE !== 'disabled')
     errors.push('unsafe_default_email_mode');
