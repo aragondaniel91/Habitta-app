@@ -75,93 +75,87 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
     `Supabase local y fixture financiero requeridos: ${missingEnvironment.join(', ')}`,
   );
 
-  test(
-    'planifica, congela, aprueba y programa automáticamente el siguiente período',
-    async ({ request }, testInfo) => {
-      const admin = await authenticate(request);
-      const runKey = `${testInfo.workerIndex}-${testInfo.retry}`;
+  test('planifica, congela, aprueba y programa automáticamente el siguiente período', async ({
+    request,
+  }, testInfo) => {
+    const admin = await authenticate(request);
+    const runKey = `${testInfo.workerIndex}-${testInfo.retry}`;
 
-      const scope = await rpc<FinancialScope>(
-        request,
-        admin.access_token,
-        'create_financial_scope',
-        {
-          target: ids.condominium,
-          scope_code: `e2e-recurring-${runKey}`,
-          scope_name: `E2E recurrente ${runKey}`,
-          scope_kind: 'condominium',
-          target_building: null,
-          target_units: null,
-        },
-      );
+    const scope = await rpc<FinancialScope>(request, admin.access_token, 'create_financial_scope', {
+      target: ids.condominium,
+      scope_code: `e2e-recurring-${runKey}`,
+      scope_name: `E2E recurrente ${runKey}`,
+      scope_kind: 'condominium',
+      target_building: null,
+      target_units: null,
+    });
 
-      const plan = await rpc<RecurringPlan>(
-        request,
-        admin.access_token,
-        'create_recurring_charge_plan',
-        {
-          target: ids.condominium,
-          target_concept: ids.chargeConcept,
-          target_scope: scope.id,
-          plan_name: `Cuota recurrente E2E ${runKey}`,
-          plan_distribution: 'fixed_per_unit',
-          plan_amount: '42.00',
-          plan_currency: 'USD',
-          plan_starts_on: '2026-09-01',
-          plan_issue_day: 1,
-          plan_due_day: 10,
-          plan_ends_on: null,
-        },
-      );
+    const plan = await rpc<RecurringPlan>(
+      request,
+      admin.access_token,
+      'create_recurring_charge_plan',
+      {
+        target: ids.condominium,
+        target_concept: ids.chargeConcept,
+        target_scope: scope.id,
+        plan_name: `Cuota recurrente E2E ${runKey}`,
+        plan_distribution: 'fixed_per_unit',
+        plan_amount: '42.00',
+        plan_currency: 'USD',
+        plan_starts_on: '2026-09-01',
+        plan_issue_day: 1,
+        plan_due_day: 10,
+        plan_ends_on: null,
+      },
+    );
 
-      const initialRuns = await rows<RecurringRun>(
-        request,
-        admin.access_token,
-        `recurring_charge_runs?plan_id=eq.${plan.id}&period=eq.2026-09&select=id,status,period,total_amount,distribution_snapshot,charge_batch_id`,
-      );
-      expect(initialRuns).toHaveLength(1);
-      const scheduled = initialRuns[0]!;
-      expect(scheduled.status).toBe('scheduled');
-      expect(scheduled.charge_batch_id).toBeNull();
+    const initialRuns = await rows<RecurringRun>(
+      request,
+      admin.access_token,
+      `recurring_charge_runs?plan_id=eq.${plan.id}&period=eq.2026-09&select=id,status,period,total_amount,distribution_snapshot,charge_batch_id`,
+    );
+    expect(initialRuns).toHaveLength(1);
+    const scheduled = initialRuns[0]!;
+    expect(scheduled.status).toBe('scheduled');
+    expect(scheduled.charge_batch_id).toBeNull();
 
-      const prepared = await rpc<RecurringRun>(
-        request,
-        admin.access_token,
-        'prepare_recurring_charge_run',
-        { target_run: scheduled.id },
-      );
-      expect(prepared.status).toBe('pending_review');
-      expect(Number(prepared.total_amount)).toBe(84);
-      expect(prepared.distribution_snapshot).toHaveLength(2);
-      expect(prepared.charge_batch_id).toBeNull();
+    const prepared = await rpc<RecurringRun>(
+      request,
+      admin.access_token,
+      'prepare_recurring_charge_run',
+      { target_run: scheduled.id },
+    );
+    expect(prepared.status).toBe('pending_review');
+    expect(Number(prepared.total_amount)).toBe(84);
+    expect(prepared.distribution_snapshot).toHaveLength(2);
+    expect(prepared.charge_batch_id).toBeNull();
 
-      const posted = await rpc<RecurringRun>(
-        request,
-        admin.access_token,
-        'post_recurring_charge_run',
-        { target_run: scheduled.id },
-      );
-      expect(posted.status).toBe('posted');
-      expect(posted.charge_batch_id).toBeTruthy();
+    const posted = await rpc<RecurringRun>(
+      request,
+      admin.access_token,
+      'post_recurring_charge_run',
+      { target_run: scheduled.id },
+    );
+    expect(posted.status).toBe('posted');
+    expect(posted.charge_batch_id).toBeTruthy();
 
-      const receivables = await rows<{ id: string; original_amount: string }>(
-        request,
-        admin.access_token,
-        `receivable_items?charge_batch_id=eq.${posted.charge_batch_id}&select=id,original_amount`,
-      );
-      expect(receivables).toHaveLength(2);
-      expect(receivables.reduce((sum, item) => sum + Number(item.original_amount), 0)).toBe(84);
+    const receivables = await rows<{ id: string; original_amount: string }>(
+      request,
+      admin.access_token,
+      `receivable_items?charge_batch_id=eq.${posted.charge_batch_id}&select=id,original_amount`,
+    );
+    expect(receivables).toHaveLength(2);
+    expect(receivables.reduce((sum, item) => sum + Number(item.original_amount), 0)).toBe(84);
 
-      const allRuns = await rows<RecurringRun>(
-        request,
-        admin.access_token,
-        `recurring_charge_runs?plan_id=eq.${plan.id}&select=id,status,period,total_amount,distribution_snapshot,charge_batch_id&order=period.asc`,
-      );
-      expect(allRuns.map((run) => [run.period, run.status])).toEqual([
-        ['2026-09', 'posted'],
-        ['2026-10', 'scheduled'],
-      ]);
-      expect(allRuns[1]?.charge_batch_id).toBeNull();
-    },
-  );
+    const allRuns = await rows<RecurringRun>(
+      request,
+      admin.access_token,
+      `recurring_charge_runs?plan_id=eq.${plan.id}&select=id,status,period,total_amount,distribution_snapshot,charge_batch_id&order=period.asc`,
+    );
+    expect(allRuns.map((run) => [run.period, run.status])).toEqual([
+      ['2026-09', 'posted'],
+      ['2026-10', 'scheduled'],
+    ]);
+    expect(allRuns[1]?.charge_batch_id).toBeNull();
+  });
 });
