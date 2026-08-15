@@ -30,10 +30,12 @@ import type {
 } from '../lib/receivables';
 import { ReceivablesDrawerHost, type ReceivablesDrawerMode } from './ReceivablesDrawers';
 import { LateFeeSettingsDrawer } from '../features/receivables/LateFeeSettingsDrawer';
+import { RecurringDuesWorkspace } from '../features/receivables/RecurringDuesWorkspace';
 import '../receivables.css';
 import '../receivables-core.css';
 import '../receivables-drawers.css';
 import '../receivables-responsive.css';
+import '../recurring-dues.css';
 
 type ReceivablesData = {
   units: ReceivableUnit[];
@@ -255,7 +257,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
                   Crear lote
                 </Button>
                 <Button onClick={() => openDrawer('manual')} size="sm">
-                  Nueva cuota
+                  Nueva cuota manual
                 </Button>
               </>
             ) : null}
@@ -271,6 +273,14 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
           {error} Se mantienen los últimos datos cargados.
         </div>
       ) : null}
+
+      <RecurringDuesWorkspace
+        canManage={manage}
+        concepts={data.concepts}
+        condominiumId={condominiumId}
+        onLedgerChanged={() => void load(true)}
+        session={session}
+      />
 
       <div className="receivables-currency-row">
         <div>
