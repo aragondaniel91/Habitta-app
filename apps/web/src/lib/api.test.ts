@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '@supabase/supabase-js';
-import { ApiRequestError, apiRequest } from './api';
+import { apiRequest } from './api';
 
 const session = { access_token: 'test-token' } as Session;
 
@@ -27,7 +27,8 @@ describe('apiRequest safe error messages', () => {
         method: 'PATCH',
         body: JSON.stringify({ code: '1A' }),
       }),
-    ).rejects.toMatchObject<ApiRequestError>({
+    ).rejects.toMatchObject({
+      name: 'ApiRequestError',
       status: 409,
       message: 'Ya existe una unidad con ese código en este condominio.',
     });
@@ -47,7 +48,8 @@ describe('apiRequest safe error messages', () => {
       ),
     );
 
-    await expect(apiRequest('/v1/example', session)).rejects.toMatchObject<ApiRequestError>({
+    await expect(apiRequest('/v1/example', session)).rejects.toMatchObject({
+      name: 'ApiRequestError',
       status: 409,
       message: expect.not.stringContaining('unique constraint'),
     });
