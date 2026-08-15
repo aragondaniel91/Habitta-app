@@ -109,7 +109,8 @@ describe('person-centric relationships', () => {
     expect(
       fetchMock.mock.calls.some(
         ([input, init]) =>
-          String(input).endsWith('/rest/v1/unit_owners') && (init as RequestInit | undefined)?.method === 'POST',
+          String(input).endsWith('/rest/v1/unit_owners') &&
+          (init as RequestInit | undefined)?.method === 'POST',
       ),
     ).toBe(false);
   });

@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(23);
 
 select has_type('public', 'condominium_person_relationship_type', 'condominium relationship type exists');
 select has_table('public', 'condominium_person_relationships', 'condominium relationships table exists');
