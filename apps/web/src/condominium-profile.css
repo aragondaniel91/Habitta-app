@@ -1,0 +1,82 @@
+.admin-onboarding-section-heading {
+  display: grid;
+  gap: 0.28rem;
+  padding-top: 0.35rem;
+}
+
+.admin-onboarding-section-heading > span {
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-onboarding-section-heading h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1rem;
+}
+
+.admin-onboarding-section-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.property-topology-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.property-topology-choice {
+  display: grid;
+  min-height: 116px;
+  align-content: start;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.property-topology-choice:hover {
+  border-color: var(--blue);
+  transform: translateY(-1px);
+}
+
+.property-topology-choice:focus-visible {
+  outline: 3px solid rgb(24 119 242 / 0.2);
+  outline-offset: 2px;
+}
+
+.property-topology-choice[data-selected] {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgb(40 167 69 / 0.12);
+}
+
+.property-topology-choice strong {
+  color: var(--text-strong);
+  font-size: 0.86rem;
+}
+
+.property-topology-choice small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 680px) {
+  .property-topology-grid,
+  .admin-onboarding-fields {
+    grid-template-columns: 1fr;
+  }
+}

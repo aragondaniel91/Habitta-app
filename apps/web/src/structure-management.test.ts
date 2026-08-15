@@ -17,15 +17,19 @@ describe('physical structure management workspace', () => {
     expect(main).not.toContain("import './structure-management.css'");
   });
 
-  it('supports building administration and non-destructive unit editing', async () => {
+  it('supports topology-aware building administration and non-destructive unit editing', async () => {
     const source = await readFile(pageUrl, 'utf8');
 
+    expect(source).toContain("const houseMode = topology === 'house_community'");
+    expect(source).toContain("const singleBuildingMode = topology === 'single_building'");
     expect(source).toContain('Nueva torre o edificio');
     expect(source).toContain('Torres y edificios');
+    expect(source).toContain('Casas y unidades');
+    expect(source).toContain("houseMode ? 'house' : 'apartment'");
     expect(source).toContain("method: building ? 'PATCH' : 'POST'");
     expect(source).toContain("method: unit ? 'PATCH' : 'POST'");
     expect(source).toContain('Inactiva / archivada');
-    expect(source).toContain('Sin torre asignada');
+    expect(source).toContain('Sin edificio asignado');
     expect(source).not.toContain("method: 'DELETE'");
   });
 });

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Organization } from './AppShell';
+import { CondominiumProfileFields } from './CondominiumProfileFields';
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -11,14 +12,10 @@ import {
 } from './icons';
 import { Button, Field, Surface } from './ui';
 import {
-  COUNTRY_OPTIONS,
-  CURRENCY_OPTIONS,
   PROGRESSIVE_SETUP_ITEMS,
-  TIMEZONE_OPTIONS,
   createEmptyAdminOnboardingInput,
   submitAdminOnboarding,
-  suggestedCurrency,
-  suggestedTimezone,
+  topologyLabel,
   validateAdminOnboarding,
   type AdminOnboardingErrors,
   type AdminOnboardingInput,
@@ -71,6 +68,22 @@ function reviewValue(value: string) {
   return value.trim() || 'No especificado';
 }
 
+function structureSummary(input: AdminOnboardingInput) {
+  if (input.propertyTopology === 'house_community') {
+    return `${reviewValue(input.declaredUnitCount)} casas`;
+  }
+  if (input.propertyTopology === 'single_building') {
+    return `${reviewValue(input.declaredUnitCount)} unidades · ${reviewValue(input.firstBuildingName || input.condominiumName)}`;
+  }
+  if (input.propertyTopology === 'multi_building_complex') {
+    return `${reviewValue(input.declaredBuildingCount)} edificios o torres`;
+  }
+  if (input.propertyTopology === 'mixed') {
+    return `${reviewValue(input.declaredBuildingCount)} edificios · ${reviewValue(input.declaredUnitCount)} unidades conocidas`;
+  }
+  return 'No definida';
+}
+
 export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: Props) {
   const hasOrganization = organizations.length > 0;
   const [step, setStep] = useState<Step>(hasOrganization ? 'condominium' : 'organization');
@@ -88,23 +101,20 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
 
   const steps = hasOrganization
     ? [
-        { key: 'condominium', label: 'Condominio', hint: 'Datos principales' },
+        { key: 'condominium', label: 'Condominio', hint: 'Perfil y estructura' },
         { key: 'review', label: 'Confirmación', hint: 'Revisa y crea' },
         { key: 'complete', label: 'Listo', hint: 'Próximos pasos' },
       ]
     : [
         { key: 'organization', label: 'Administración', hint: 'Cómo trabajarás' },
-        { key: 'condominium', label: 'Condominio', hint: 'Datos principales' },
+        { key: 'condominium', label: 'Condominio', hint: 'Perfil y estructura' },
         { key: 'review', label: 'Confirmación', hint: 'Revisa y crea' },
         { key: 'complete', label: 'Listo', hint: 'Próximos pasos' },
       ];
 
   const activeIndex = steps.findIndex((item) => item.key === step);
 
-  const update = <Key extends keyof AdminOnboardingInput>(
-    key: Key,
-    value: AdminOnboardingInput[Key],
-  ) => {
+  const update = (key: keyof AdminOnboardingInput, value: string) => {
     setInput((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
     setSubmitError('');
@@ -168,8 +178,8 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
             {hasOrganization ? 'Agrega otro condominio.' : 'Preparemos tu espacio en Habitta.'}
           </h1>
           <p>
-            Solo pediremos la información necesaria para empezar. La configuración financiera y la
-            carga de residentes se completan después.
+            Primero definimos la identidad y estructura real del condominio. Personas, cuotas y
+            operaciones se completan después sobre esa base.
           </p>
           <ol>
             {steps.map((item, index) => {
@@ -243,19 +253,13 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                     className="input"
                     maxLength={120}
                     onChange={(event) => update('organizationName', event.target.value)}
-                    placeholder={
-                      input.organizationType === 'management_company'
-                        ? 'Nombre de la empresa'
-                        : 'Nombre de la administración'
-                    }
                     value={input.organizationName}
                   />
                 </Field>
 
                 <div className="onboarding-card__actions">
                   <Button type="submit">
-                    Continuar
-                    <ArrowRightIcon size={18} />
+                    Continuar <ArrowRightIcon size={18} />
                   </Button>
                 </div>
               </form>
@@ -264,9 +268,11 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
             {step === 'condominium' ? (
               <form className="admin-onboarding-form" onSubmit={continueFromCondominium}>
                 <div>
-                  <span className="access-kicker">Primer condominio</span>
-                  <h2>Registra la información principal.</h2>
-                  <p>Estos datos se usarán en reportes, fechas, pagos y comunicaciones.</p>
+                  <span className="access-kicker">Perfil del condominio</span>
+                  <h2>Registra cómo está constituida y organizada la comunidad.</h2>
+                  <p>
+                    La estructura elegida adaptará Unidades, Edificios y futuras reglas financieras.
+                  </p>
                 </div>
 
                 {hasOrganization ? (
@@ -289,132 +295,12 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   </Field>
                 ) : null}
 
-                <div className="admin-onboarding-fields">
-                  <Field error={errors.condominiumName} label="Nombre del condominio">
-                    <input
-                      autoFocus
-                      className="input"
-                      maxLength={120}
-                      onChange={(event) => update('condominiumName', event.target.value)}
-                      placeholder="Ejemplo: Residencias Los Pinos"
-                      value={input.condominiumName}
-                    />
-                  </Field>
-
-                  <Field error={errors.countryCode} label="País">
-                    <select
-                      className="select"
-                      onChange={(event) => {
-                        const countryCode = event.target.value;
-                        const primaryCurrencyCode = suggestedCurrency(countryCode);
-                        update('countryCode', countryCode);
-                        setInput((current) => ({
-                          ...current,
-                          countryCode,
-                          timezone: suggestedTimezone(countryCode),
-                          primaryCurrencyCode,
-                          secondaryCurrencyCode: primaryCurrencyCode === 'USD' ? '' : 'USD',
-                        }));
-                      }}
-                      value={input.countryCode}
-                    >
-                      {COUNTRY_OPTIONS.map((country) => (
-                        <option key={country.code} value={country.code}>
-                          {country.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field error={errors.city} label="Ciudad">
-                    <input
-                      className="input"
-                      maxLength={100}
-                      onChange={(event) => update('city', event.target.value)}
-                      placeholder="Ciudad"
-                      value={input.city}
-                    />
-                  </Field>
-
-                  <Field error={errors.timezone} label="Zona horaria">
-                    <select
-                      className="select"
-                      onChange={(event) => update('timezone', event.target.value)}
-                      value={input.timezone}
-                    >
-                      {TIMEZONE_OPTIONS.map((timezone) => (
-                        <option key={timezone.value} value={timezone.value}>
-                          {timezone.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field error={errors.primaryCurrencyCode} label="Moneda principal">
-                    <select
-                      className="select"
-                      onChange={(event) => update('primaryCurrencyCode', event.target.value)}
-                      value={input.primaryCurrencyCode}
-                    >
-                      {CURRENCY_OPTIONS.map((currency) => (
-                        <option key={currency.code} value={currency.code}>
-                          {currency.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field
-                    error={errors.secondaryCurrencyCode}
-                    hint="Opcional. Habitta mantendrá saldos separados por moneda."
-                    label="Moneda secundaria"
-                  >
-                    <select
-                      className="select"
-                      onChange={(event) => update('secondaryCurrencyCode', event.target.value)}
-                      value={input.secondaryCurrencyCode}
-                    >
-                      <option value="">Sin moneda secundaria</option>
-                      {CURRENCY_OPTIONS.filter(
-                        (currency) => currency.code !== input.primaryCurrencyCode,
-                      ).map((currency) => (
-                        <option key={currency.code} value={currency.code}>
-                          {currency.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field
-                    error={errors.approximateUnits}
-                    hint="Solo se usa para orientar la configuración inicial."
-                    label="Cantidad aproximada de unidades"
-                  >
-                    <input
-                      className="input"
-                      inputMode="numeric"
-                      max="100000"
-                      min="1"
-                      onChange={(event) => update('approximateUnits', event.target.value)}
-                      placeholder="Ejemplo: 120"
-                      type="number"
-                      value={input.approximateUnits}
-                    />
-                  </Field>
-
-                  <Field
-                    hint="Opcional. Podrás crear el resto de las torres después."
-                    label="Nombre de la primera torre"
-                  >
-                    <input
-                      className="input"
-                      maxLength={120}
-                      onChange={(event) => update('firstBuildingName', event.target.value)}
-                      placeholder="Ejemplo: Torre A"
-                      value={input.firstBuildingName}
-                    />
-                  </Field>
-                </div>
+                <CondominiumProfileFields
+                  autoFocusName
+                  errors={errors}
+                  input={input}
+                  onChange={update}
+                />
 
                 <div className="onboarding-card__actions">
                   {!hasOrganization ? (
@@ -423,8 +309,7 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                     </Button>
                   ) : null}
                   <Button type="submit">
-                    Revisar información
-                    <ArrowRightIcon size={18} />
+                    Revisar información <ArrowRightIcon size={18} />
                   </Button>
                 </div>
               </form>
@@ -436,8 +321,8 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   <span className="access-kicker">Confirmación</span>
                   <h2>Revisa antes de crear el espacio.</h2>
                   <p>
-                    La organización, los roles y el condominio se crearán en una sola operación
-                    segura.
+                    La organización, roles, perfil legal y estructura inicial se crearán en una sola
+                    operación segura.
                   </p>
                 </div>
 
@@ -448,37 +333,37 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                       {hasOrganization ? selectedOrganization?.name : input.organizationName.trim()}
                     </dd>
                   </div>
-                  {!hasOrganization ? (
-                    <div>
-                      <dt>Tipo</dt>
-                      <dd>
-                        {input.organizationType === 'management_company'
-                          ? 'Empresa administradora'
-                          : 'Administración independiente'}
-                      </dd>
-                    </div>
-                  ) : null}
                   <div>
                     <dt>Condominio</dt>
                     <dd>{input.condominiumName.trim()}</dd>
                   </div>
                   <div>
-                    <dt>Ubicación</dt>
+                    <dt>Identificación legal</dt>
                     <dd>
-                      {input.city.trim()} · {input.countryCode} · {input.timezone}
+                      {input.legalIdNumber
+                        ? `${input.legalIdType} ${input.legalIdNumber}`
+                        : 'Pendiente de completar'}
                     </dd>
+                  </div>
+                  <div>
+                    <dt>Dirección</dt>
+                    <dd>
+                      {input.addressLine1.trim()} · {input.city.trim()} · {input.countryCode}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Tipo de propiedad</dt>
+                    <dd>{topologyLabel(input.propertyTopology)}</dd>
+                  </div>
+                  <div>
+                    <dt>Estructura declarada</dt>
+                    <dd>{structureSummary(input)}</dd>
                   </div>
                   <div>
                     <dt>Monedas</dt>
                     <dd>
                       {input.primaryCurrencyCode}
                       {input.secondaryCurrencyCode ? ` + ${input.secondaryCurrencyCode}` : ''}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Unidades / primera torre</dt>
-                    <dd>
-                      {reviewValue(input.approximateUnits)} / {reviewValue(input.firstBuildingName)}
                     </dd>
                   </div>
                   <div>
@@ -525,16 +410,11 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                 </span>
                 <div>
                   <span className="access-kicker">Configuración completada</span>
-                  <h2>Tu condominio está listo para comenzar.</h2>
+                  <h2>Tu condominio tiene una base operativa real.</h2>
                   <p>
-                    Los datos quedaron separados por comunidad y los permisos fueron asignados por
-                    el servidor.
+                    Habitta ya conoce su identidad, ubicación y estructura física. Los siguientes
+                    módulos se configurarán sobre esa información.
                   </p>
-                </div>
-
-                <div className="admin-onboarding-roles">
-                  {!hasOrganization ? <span>organization_owner</span> : null}
-                  <span>condominium_admin</span>
                 </div>
 
                 <section className="progressive-setup-card">
@@ -542,7 +422,7 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                     <SettingsIcon size={21} />
                     <div>
                       <strong>Configuración progresiva</strong>
-                      <small>Completa estos pasos desde Configuración cuando estés listo.</small>
+                      <small>Completa estos pasos cuando tengas la información disponible.</small>
                     </div>
                   </div>
                   <ul>
@@ -556,8 +436,7 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                 </section>
 
                 <Button onClick={() => void onComplete()} type="button">
-                  Ir al dashboard
-                  <ArrowRightIcon size={18} />
+                  Ir al dashboard <ArrowRightIcon size={18} />
                 </Button>
               </div>
             ) : null}
