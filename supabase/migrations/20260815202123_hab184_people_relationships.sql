@@ -79,25 +79,33 @@ create index condominium_person_relationships_condominium_history_idx
 create index condominium_person_relationships_person_history_idx
   on public.condominium_person_relationships (person_id, starts_at desc);
 
-create or replace function public.touch_condominium_person_relationship_updated_at()
+create or replace function public.guard_condominium_person_relationship_update()
 returns trigger
 language plpgsql
 set search_path = public
 as $$
 begin
+  if new.condominium_id is distinct from old.condominium_id
+    or new.person_id is distinct from old.person_id
+    or new.relationship_type is distinct from old.relationship_type
+    or new.created_by is distinct from old.created_by
+  then
+    raise exception 'relationship identity and authorship are immutable';
+  end if;
+
   new.updated_at := now();
   return new;
 end;
 $$;
 
-revoke all on function public.touch_condominium_person_relationship_updated_at() from public;
-revoke all on function public.touch_condominium_person_relationship_updated_at() from anon;
-revoke all on function public.touch_condominium_person_relationship_updated_at() from authenticated;
+revoke all on function public.guard_condominium_person_relationship_update() from public;
+revoke all on function public.guard_condominium_person_relationship_update() from anon;
+revoke all on function public.guard_condominium_person_relationship_update() from authenticated;
 
-create trigger condominium_person_relationships_touch_updated_at
+create trigger condominium_person_relationships_guard_update
 before update on public.condominium_person_relationships
 for each row
-execute function public.touch_condominium_person_relationship_updated_at();
+execute function public.guard_condominium_person_relationship_update();
 
 alter table public.condominium_person_relationships enable row level security;
 
@@ -134,10 +142,7 @@ on public.condominium_person_relationships
 for update
 to authenticated
 using (public.can_manage_people(condominium_id))
-with check (
-  public.can_manage_people(condominium_id)
-  and created_by = auth.uid()
-);
+with check (public.can_manage_people(condominium_id));
 
 comment on table public.condominium_person_relationships is
   'Historical condominium-level relationships for people that do not require a unit assignment.';
