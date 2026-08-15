@@ -42,6 +42,7 @@ import { operationsRoutes } from './operations-routes';
 import { importRoutes } from './import-routes';
 import { privateDocumentRoutes } from './private-document-routes';
 import { treasuryRoutes } from './treasury-routes';
+import { peopleRelationshipRoutes } from './people-relationships-routes';
 import { withinRateLimit } from './http-security';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
@@ -81,6 +82,7 @@ app.route('/v1/condominiums', operationsRoutes);
 app.route('/v1/condominiums', importRoutes);
 app.route('/v1/condominiums', privateDocumentRoutes);
 app.route('/v1/condominiums', treasuryRoutes);
+app.route('/v1/condominiums', peopleRelationshipRoutes);
 const rest = (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   path: string,
@@ -236,6 +238,8 @@ app.post('/v1/condominiums/:id/people', async (c) => {
       last_name: p.lastName,
       email: p.email ?? null,
       phone: p.phone ?? null,
+      document_type: p.documentType === '' ? null : (p.documentType ?? null),
+      document_number: p.documentNumber === '' ? null : (p.documentNumber ?? null),
       status: p.status,
       created_by: c.get('userId'),
     }),
@@ -262,6 +266,8 @@ app.patch('/v1/condominiums/:id/people/:personId', async (c) => {
         last_name: p.lastName,
         email: p.email,
         phone: p.phone,
+        document_type: p.documentType === '' ? null : p.documentType,
+        document_number: p.documentNumber === '' ? null : p.documentNumber,
         status: p.status,
       }),
     },
