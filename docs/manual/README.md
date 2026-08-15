@@ -1,6 +1,6 @@
 # Habitta — Manual de usuario
 
-**Versión:** 0.3  
+**Versión:** 0.4  
 **Estado:** fuente canónica dentro del repositorio  
 **Última actualización:** 14 de agosto de 2026
 
@@ -45,7 +45,7 @@ Comprobantes, facturas y otros archivos privados usan rutas protegidas. No deben
 |---|---|---|
 | Primer acceso y onboarding | [Administrador](./admin-quick-start.md) | Disponible hoy |
 | Inicio del residente | [Residente](./resident-quick-start.md) | Disponible hoy |
-| Asambleas, actas y resoluciones | [Asambleas](./assemblies.md) | Backend disponible; UI HAB-171 en implementación |
+| Asambleas, actas y resoluciones | [Asambleas](./assemblies.md) | Disponible hoy |
 | Estado de módulos y roadmap visible | [Estado de funcionalidades](./feature-status.md) | Disponible hoy |
 | Capturas anotadas por flujo | Pendiente de incorporación cerca del piloto/lanzamiento | Planificado |
 | Help Center navegable dentro de la app | Debe consumir/reutilizar esta fuente de verdad | Planificado |
@@ -58,4 +58,4 @@ Comprobantes, facturas y otros archivos privados usan rutas protegidas. No deben
 
 ## Alcance de esta versión
 
-La versión 0.3 documenta la estructura funcional actual de la aplicación web, onboarding administrativo, Resident Portal y la fundación de asambleas/actas/resoluciones. Las capturas reales/anotadas se añadirán cuando la UI del piloto esté suficientemente estable para no mantener imágenes obsoletas en cada iteración.
+La versión 0.4 documenta la estructura funcional actual de la aplicación web, onboarding administrativo, Resident Portal y el flujo completo disponible de Asambleas/Actas/Resoluciones dentro de Gobernanza. Las capturas reales/anotadas se añadirán cuando la UI del piloto esté suficientemente estable para no mantener imágenes obsoletas en cada iteración.
