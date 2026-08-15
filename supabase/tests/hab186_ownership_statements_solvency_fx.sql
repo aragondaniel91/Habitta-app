@@ -277,7 +277,7 @@ select set_config(
 select lives_ok(
   $$select public.configure_solvency_policy(
     '18620000-0000-4000-8000-000000000001',
-    'outstanding', 0, 0, 30
+    'outstanding', 0::smallint, 0::numeric, 30::smallint
   )$$,
   'administrator can configure a strict authoritative solvency policy'
 );
@@ -351,6 +351,8 @@ select ok(
   (select verification_id is not null from public.solvency_certificates limit 1),
   'issued solvency certificate has an immutable verification ID'
 );
+
+reset role;
 select throws_ok(
   $$update public.solvency_certificates set valid_until = valid_until + 1$$,
   'P0001',
@@ -358,10 +360,20 @@ select throws_ok(
   'issued certificate metadata cannot be rewritten'
 );
 
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object(
+    'sub', '18600000-0000-4000-8000-000000000001',
+    'role', 'authenticated',
+    'email', 'hab186-admin@example.com'
+  )::text,
+  true
+);
 select lives_ok(
   $$select public.configure_condominium_currency_policy(
     '18620000-0000-4000-8000-000000000001',
-    'VES', array['VES','USD'], 'approved_rates_only', 'BCV', 7
+    'VES', array['VES','USD'], 'approved_rates_only', 'BCV', 7::smallint
   )$$,
   'administrator can enable provider-neutral approved-rate conversion policy'
 );
