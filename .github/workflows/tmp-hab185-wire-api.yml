@@ -1,0 +1,43 @@
+name: Temporary HAB-185 API wiring
+
+on:
+  push:
+    branches:
+      - agent/hab-185-recurring-dues-foundation
+    paths:
+      - '.github/workflows/tmp-hab185-wire-api.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Wire route module and remove temporary workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('apps/api/src/index.ts')
+          s = p.read_text()
+          a = "import { peopleRelationshipRoutes } from './people-relationships-routes';\n"
+          b = a + "import { recurringDuesRoutes } from './recurring-dues-routes';\n"
+          if s.count(a) != 1:
+              raise SystemExit('people route import anchor mismatch')
+          s = s.replace(a, b)
+          a = "app.route('/v1/condominiums', peopleRelationshipRoutes);\n"
+          b = a + "app.route('/v1/condominiums', recurringDuesRoutes);\n"
+          if s.count(a) != 1:
+              raise SystemExit('people route mount anchor mismatch')
+          s = s.replace(a, b)
+          p.write_text(s)
+          PY
+          rm .github/workflows/tmp-hab185-wire-api.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api/src/index.ts .github/workflows/tmp-hab185-wire-api.yml
+          git commit -m 'feat: mount recurring dues routes'
+          git push origin HEAD:agent/hab-185-recurring-dues-foundation
