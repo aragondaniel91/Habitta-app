@@ -30,7 +30,7 @@ Este documento evita mezclar funcionalidades existentes con roadmap. “Disponib
 | Documentos privados | Carga/descarga protegida reutilizada por varios módulos; no es todavía un gestor documental comunitario completo. |
 | Seguridad de datos | RBAC/RLS por condominio, controles tenant del piloto, rate limiting de escrituras sensibles y observabilidad de errores financieros implementada. |
 | Recuperación | Código de backup/restore endurecido para Auth e invariantes financieras integrado; HAB-153 permanece abierto hasta completar backup productivo, restore drill y evidencia operativa. |
-| Auditoría administrativa | Read model/API unificado para pagos, gastos, tesorería, mantenimiento, propuestas y asambleas con filtros, paginación, aislamiento por condominio y redacción de metadata sensible. La UI/export continúa pendiente. |
+| Auditoría administrativa | Workspace read-only en Sistema → Auditoría para `condominium_admin`, sobre un read model unificado de pagos, gastos, tesorería, mantenimiento, propuestas y asambleas; filtros server-side por módulo, severidad, actor, entidad y fechas; paginación estable, aislamiento por condominio y metadata sensible redactada. |
 
 ## Disponible con límites explícitos
 
@@ -45,6 +45,10 @@ Owner y tenant usan un inicio simplificado, pero cada tarjeta/fuente sigue depen
 ### Asambleas
 
 El workspace actual cubre creación, agenda, transiciones de estado, snapshot de elegibilidad, asistencia, quórum, acta y resoluciones. No incluye todavía firma electrónica, videoconferencia integrada, proxy legal avanzado ni exportación regulatoria certificada.
+
+### Auditoría administrativa
+
+La vista administrativa y sus filtros están disponibles. Exportación formal del feed y controles adicionales de retención todavía no forman parte del workspace actual.
 
 ### Preview de desarrollo
 
@@ -62,7 +66,7 @@ Existen adjuntos privados dentro de módulos. Todavía no equivale al gestor doc
 | Payment Connector Hub | Adaptadores configurables por condominio para bancos/Pago Móvil y otros proveedores soportados; manual upload permanece como fallback. |
 | Captura financiera asistida por AI | Extracción segura desde comprobantes para sugerir campos, siempre con revisión humana y sin auto-aprobación. |
 | Gestor documental comunitario | Carpetas/categorías/versionado/permisos/retención y enlaces transversales. |
-| Audit log visible al administrador | Workspace visual sobre el read model ya integrado, con filtros, retención/export y protección de datos sensibles. |
+| Exportación/retención de auditoría | Export formal del audit feed y políticas/controles adicionales de retención sobre la base read-only existente. |
 | Integration/outbox foundation ampliada | Outbox, webhooks firmados, reintentos/DLQ y health de integraciones de terceros. |
 | Help Center dentro de la app | Navegación de ayuda basada en esta fuente canónica, evitando contenido duplicado. |
 | Capturas/recorridos anotados | Se incorporarán cerca del piloto/lanzamiento cuando la UI sea suficientemente estable. |
