@@ -1,14 +1,15 @@
 # Habitta — Manual de usuario
 
-**Versión:** 0.5  
+**Versión:** 0.6  
 **Estado:** fuente canónica dentro del repositorio  
-**Última actualización:** 14 de agosto de 2026
+**Última actualización:** 15 de agosto de 2026
 
 Este directorio es la fuente de verdad del contenido de ayuda para administradores, junta, propietarios e inquilinos. Las pantallas de ayuda dentro de Habitta pueden resumir este contenido, pero no deben mantener una segunda versión contradictoria del manual.
 
 ## Cómo usar este manual
 
 - Si estás configurando un condominio por primera vez, comienza con [Guía rápida del administrador](./admin-quick-start.md).
+- Para cuotas ordinarias, alícuotas, ámbitos financieros y aprobación mensual, consulta [Cuotas ordinarias recurrentes](./recurring-dues.md).
 - Si eres propietario o inquilino, comienza con [Guía rápida del residente](./resident-quick-start.md).
 - Para asambleas, actas, quórum y resoluciones, consulta [Asambleas](./assemblies.md).
 - Para actividad administrativa consolidada, consulta [Registro de auditoría](./audit-log.md).
@@ -45,6 +46,7 @@ Comprobantes, facturas y otros archivos privados usan rutas protegidas. No deben
 | Área | Documentación | Estado |
 |---|---|---|
 | Primer acceso y onboarding | [Administrador](./admin-quick-start.md) | Disponible hoy |
+| Cuotas recurrentes, ámbitos y alícuotas | [Cuotas ordinarias recurrentes](./recurring-dues.md) | Disponible al integrar HAB-185 |
 | Inicio del residente | [Residente](./resident-quick-start.md) | Disponible hoy |
 | Asambleas, actas y resoluciones | [Asambleas](./assemblies.md) | Disponible hoy |
 | Registro de auditoría administrativa | [Auditoría](./audit-log.md) | Disponible hoy para administrador |
@@ -60,4 +62,4 @@ Comprobantes, facturas y otros archivos privados usan rutas protegidas. No deben
 
 ## Alcance de esta versión
 
-La versión 0.5 documenta la estructura funcional actual de la aplicación web, onboarding administrativo, Resident Portal, Asambleas/Actas/Resoluciones y el Registro de auditoría administrativa read-only. Las capturas reales/anotadas se añadirán cuando la UI del piloto esté suficientemente estable para no mantener imágenes obsoletas en cada iteración.
+La versión 0.6 documenta la estructura funcional actual de la aplicación web y añade el flujo operativo de cuotas ordinarias recurrentes que acompaña HAB-185. Hasta que ese PR entre en `main`, la guía específica de recurrencia debe entenderse como documentación del mismo cambio, no como una afirmación de que la función ya está liberada. Las capturas reales/anotadas se añadirán cuando la UI del piloto esté suficientemente estable para no mantener imágenes obsoletas en cada iteración.
