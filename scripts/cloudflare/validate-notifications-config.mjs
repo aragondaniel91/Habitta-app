@@ -94,7 +94,8 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
   // Production receives its isolated Supabase URL at release time rather than carrying a
   // development fallback in Wrangler. With isolated environments both schedulers may run safely:
   // development remains sandboxed and production is live-only.
-  if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *')) errors.push('missing_notification_cron');
+  if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
+    errors.push('missing_notification_cron');
   if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
     errors.push('missing_prod_notification_cron');
 

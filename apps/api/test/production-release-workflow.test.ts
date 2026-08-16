@@ -17,7 +17,9 @@ describe('production release workflow hardening', () => {
     expect(workflow).toContain('habitta-integrations-dlq-prod');
     expect(workflow).toContain('habitta-database-backups-prod');
     expect(workflow).toContain('/deployments/$PREVIOUS_PAGES_DEPLOYMENT/rollback');
-    expect(workflow).toContain('wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env prod');
+    expect(workflow).toContain(
+      'wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env prod',
+    );
     expect(workflow).not.toContain('canonical_domain_runner_403');
     expect(workflow).not.toContain('browser verification required');
   });
@@ -33,13 +35,12 @@ describe('production release workflow hardening', () => {
   });
 
   it('makes scheduled production backups use configuration instead of the development ref', async () => {
-    const workflow = await readFile(
-      new URL('.github/workflows/database-backup.yml', root),
-      'utf8',
-    );
+    const workflow = await readFile(new URL('.github/workflows/database-backup.yml', root), 'utf8');
 
     expect(workflow).toContain('SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}');
-    expect(workflow).toContain('Refusing production backup: SUPABASE_PROJECT_REF points to Habitta-dev.');
+    expect(workflow).toContain(
+      'Refusing production backup: SUPABASE_PROJECT_REF points to Habitta-dev.',
+    );
     expect(workflow).not.toContain('SUPABASE_PROJECT_REF: kgsfaahixbcwcmykmhat');
   });
 });

@@ -13,8 +13,12 @@ export const validateProductionRelease = ({
 } = {}) => {
   const errors = [];
   const normalizedProjectRef = String(projectRef ?? '').trim();
-  const normalizedSupabaseUrl = String(supabaseUrl ?? '').trim().replace(/\/$/, '');
-  const normalizedViteSupabaseUrl = String(viteSupabaseUrl ?? '').trim().replace(/\/$/, '');
+  const normalizedSupabaseUrl = String(supabaseUrl ?? '')
+    .trim()
+    .replace(/\/$/, '');
+  const normalizedViteSupabaseUrl = String(viteSupabaseUrl ?? '')
+    .trim()
+    .replace(/\/$/, '');
 
   if (appEnv !== 'production') errors.push('app_environment_must_be_production');
   if (emailMode !== 'live') errors.push('notifications_email_must_be_live');
