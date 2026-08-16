@@ -414,7 +414,7 @@ select throws_ok(
     '18670000-0000-4000-8000-000000000001',
     '18650000-0000-4000-8000-000000000002',
     'USD', 'VES', 1.00, 36.50, 36.5000000000,
-    'BCV', current_date::timestamptz + interval '12 hours',
+    'BCV', now() - interval '2 minutes',
     '18600000-0000-4000-8000-000000000001'
   )$$,
   'P0001',
@@ -436,7 +436,7 @@ select lives_ok(
   $$select public.record_approved_exchange_rate(
     '18620000-0000-4000-8000-000000000001',
     'USD', 'VES', 36.5000000000, current_date,
-    current_date::timestamptz + interval '12 hours',
+    now() - interval '2 minutes',
     'BCV', 'Manual/admin-approved BCV snapshot'
   )$$,
   'administrator can record an approved provider-neutral exchange rate'
@@ -454,7 +454,7 @@ select lives_ok(
     '18670000-0000-4000-8000-000000000001',
     '18650000-0000-4000-8000-000000000002',
     'USD', 'VES', 1.00, 36.50, 36.5000000000,
-    'BCV', current_date::timestamptz + interval '12 hours',
+    'BCV', now() - interval '2 minutes',
     '18600000-0000-4000-8000-000000000001'
   )$$,
   'cross-currency allocation accepts the exact approved-rate snapshot'
@@ -483,7 +483,7 @@ select lives_ok(
   $$select public.record_approved_exchange_rate(
     '18620000-0000-4000-8000-000000000001',
     'USD', 'VES', 37.0000000000, current_date,
-    current_date::timestamptz + interval '18 hours',
+    now() - interval '1 minute',
     'BCV', 'Replacement approved rate'
   )$$,
   'a newer approved snapshot can supersede the prior source/date rate'
