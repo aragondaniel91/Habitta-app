@@ -15,7 +15,7 @@ concurrency:
 env:
   SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
   BACKUP_BUCKET: habitta-database-backups-prod
-  HABITTA_DEV_PROJECT_REF: kgsfaahixbcwcmykmhat
+  HABITTA_PROD_PROJECT_REF: kgsfaahixbcwcmykmhat
 
 jobs:
   backup:
@@ -57,8 +57,8 @@ jobs:
           for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD BACKUP_ENCRYPTION_PASSPHRASE CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID SUPABASE_PROJECT_REF; do
             test -n "${!name:-}" || { echo "Missing required production setting: $name" >&2; exit 1; }
           done
-          test "$SUPABASE_PROJECT_REF" != "$HABITTA_DEV_PROJECT_REF" || {
-            echo 'Refusing production backup: SUPABASE_PROJECT_REF points to Habitta-dev.' >&2
+          test "$SUPABASE_PROJECT_REF" = "$HABITTA_PROD_PROJECT_REF" || {
+            echo 'Refusing production backup: SUPABASE_PROJECT_REF does not match Habitta Production.' >&2
             exit 1
           }
 
