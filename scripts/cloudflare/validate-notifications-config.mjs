@@ -43,6 +43,9 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
   requiredR2(config, 'habitta-payment-proofs-local', errors);
   if (config.vars?.NOTIFICATIONS_EMAIL_PROVIDER !== 'zeptomail')
     errors.push('invalid_default_email_provider');
+  if (config.vars?.SUPABASE_URL !== 'http://127.0.0.1:54321')
+    errors.push('unsafe_default_supabase_url');
+
   const dev = config.env?.dev;
   if (!dev || dev.name !== 'habitta-api-dev') errors.push('missing_dev_environment');
   else {
@@ -57,6 +60,9 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
       errors.push('unsafe_dev_email_mode');
     if (dev.vars?.NOTIFICATIONS_EMAIL_PROVIDER !== 'zeptomail')
       errors.push('invalid_dev_email_provider');
+    if (dev.vars?.SUPABASE_URL) errors.push('development_supabase_url_must_be_runtime_only');
+    if ((dev.triggers?.crons ?? []).length)
+      errors.push('parked_development_must_not_schedule_notifications');
     const requiredSecrets = new Set(dev.secrets?.required ?? []);
     for (const secret of [
       'SUPABASE_ANON_KEY',
@@ -91,11 +97,9 @@ export const validateNotificationsConfig = (wranglerSource, devVarsSource) => {
       errors.push('prod_zeptomail_secret_must_be_mode_gated');
   }
 
-  // Production receives its isolated Supabase URL at release time rather than carrying a
-  // development fallback in Wrangler. With isolated environments both schedulers may run safely:
-  // development remains sandboxed and production is live-only.
-  if (!(dev?.triggers?.crons ?? []).includes('*/5 * * * *'))
-    errors.push('missing_notification_cron');
+  // The current hosted Supabase project is production-owned. Remote development is intentionally
+  // parked until a separate development project exists, so it must not carry a hosted DB URL or
+  // scheduler. Production remains the only hosted scheduler.
   if (!(prod?.triggers?.crons ?? []).includes('*/5 * * * *'))
     errors.push('missing_prod_notification_cron');
 
