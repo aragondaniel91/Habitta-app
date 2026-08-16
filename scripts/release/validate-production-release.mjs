@@ -1,5 +1,5 @@
-export const HABITTA_DEV_PROJECT_REF = 'kgsfaahixbcwcmykmhat';
-export const HABITTA_DEV_SUPABASE_URL = `https://${HABITTA_DEV_PROJECT_REF}.supabase.co`;
+export const HABITTA_PROD_PROJECT_REF = 'kgsfaahixbcwcmykmhat';
+export const HABITTA_PROD_SUPABASE_URL = `https://${HABITTA_PROD_PROJECT_REF}.supabase.co`;
 
 export const validateProductionRelease = ({
   appEnv,
@@ -23,11 +23,11 @@ export const validateProductionRelease = ({
   if (appEnv !== 'production') errors.push('app_environment_must_be_production');
   if (emailMode !== 'live') errors.push('notifications_email_must_be_live');
   if (!normalizedProjectRef) errors.push('supabase_project_ref_missing');
-  if (normalizedProjectRef === HABITTA_DEV_PROJECT_REF)
-    errors.push('production_cannot_use_habitta_dev_project');
+  else if (normalizedProjectRef !== HABITTA_PROD_PROJECT_REF)
+    errors.push('production_project_ref_mismatch');
   if (!normalizedSupabaseUrl) errors.push('supabase_url_missing');
-  if (normalizedSupabaseUrl === HABITTA_DEV_SUPABASE_URL)
-    errors.push('production_cannot_use_habitta_dev_url');
+  else if (normalizedSupabaseUrl !== HABITTA_PROD_SUPABASE_URL)
+    errors.push('production_supabase_url_mismatch');
   if (
     normalizedProjectRef &&
     normalizedSupabaseUrl &&
