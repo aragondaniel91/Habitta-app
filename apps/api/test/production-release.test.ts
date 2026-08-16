@@ -30,7 +30,10 @@ describe('production release validation', () => {
         viteSupabaseUrl: 'https://differentprojectref123.supabase.co',
       }),
     ).toEqual(
-      expect.arrayContaining(['production_project_ref_mismatch', 'production_supabase_url_mismatch']),
+      expect.arrayContaining([
+        'production_project_ref_mismatch',
+        'production_supabase_url_mismatch',
+      ]),
     );
   });
 
