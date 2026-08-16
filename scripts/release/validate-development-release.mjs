@@ -27,8 +27,7 @@ export const validateWranglerDevelopmentConfig = (source) => {
     pages: developmentResources.pages,
   });
   if (dev?.vars?.SUPABASE_URL) errors.push('development_supabase_url_must_be_runtime_only');
-  if ((dev?.triggers?.crons ?? []).length)
-    errors.push('parked_development_must_not_have_cron');
+  if ((dev?.triggers?.crons ?? []).length) errors.push('parked_development_must_not_have_cron');
   if (dev?.r2_buckets?.[0]?.bucket_name !== developmentResources.r2)
     errors.push('missing_r2_binding');
   if (!consumer || consumer.dead_letter_queue !== developmentResources.dlq)
