@@ -143,9 +143,8 @@ begin
   where o.unit_id = target_unit
     and o.starts_at <= period_to
     and (
-      period_from is null
-      or o.ends_at is null
-      or o.ends_at >= period_from
+      o.ends_at is null
+      or o.ends_at >= coalesce(period_from, period_to)
     );
 
   return jsonb_build_object(
