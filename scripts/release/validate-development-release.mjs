@@ -2,7 +2,18 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { developmentResources, validateDevelopmentRelease } from './release-utils.mjs';
 
+export const HABITTA_PROD_PROJECT_REF = 'kgsfaahixbcwcmykmhat';
+
 const parseJsonc = (source) => JSON.parse(source.replace(/,\s*([}\]])/g, '$1'));
+
+export const validateDevelopmentSupabaseProjectRef = (projectRef) => {
+  const normalized = String(projectRef ?? '').trim();
+  if (!normalized) return [];
+  return normalized === HABITTA_PROD_PROJECT_REF
+    ? ['development_cannot_use_production_supabase_project']
+    : [];
+};
+
 export const validateWranglerDevelopmentConfig = (source) => {
   const config = parseJsonc(source);
   const dev = config.env?.dev;
@@ -15,6 +26,8 @@ export const validateWranglerDevelopmentConfig = (source) => {
     worker: dev?.name,
     pages: developmentResources.pages,
   });
+  if (dev?.vars?.SUPABASE_URL) errors.push('development_supabase_url_must_be_runtime_only');
+  if ((dev?.triggers?.crons ?? []).length) errors.push('parked_development_must_not_have_cron');
   if (dev?.r2_buckets?.[0]?.bucket_name !== developmentResources.r2)
     errors.push('missing_r2_binding');
   if (!consumer || consumer.dead_letter_queue !== developmentResources.dlq)
@@ -36,7 +49,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     new URL('../../apps/api/wrangler.jsonc', import.meta.url),
     'utf8',
   );
-  const errors = validateWranglerDevelopmentConfig(wrangler);
+  const errors = [
+    ...validateWranglerDevelopmentConfig(wrangler),
+    ...validateDevelopmentSupabaseProjectRef(process.env.SUPABASE_PROJECT_REF),
+  ];
   if (errors.length) {
     console.error(`development release validation failed: ${errors.join(', ')}`);
     process.exitCode = 1;

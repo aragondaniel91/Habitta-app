@@ -5,7 +5,7 @@
   "compatibility_date": "2026-07-26",
   "vars": {
     "APP_ENV": "development",
-    "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
+    "SUPABASE_URL": "http://127.0.0.1:54321",
     "NOTIFICATIONS_EMAIL_MODE": "disabled",
     "NOTIFICATIONS_EMAIL_PROVIDER": "zeptomail",
   },
@@ -59,8 +59,7 @@
       "name": "habitta-api-dev",
       "vars": {
         "APP_ENV": "development",
-        "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
-        "NOTIFICATIONS_EMAIL_MODE": "sandbox",
+        "NOTIFICATIONS_EMAIL_MODE": "disabled",
         "NOTIFICATIONS_EMAIL_PROVIDER": "zeptomail",
         "NOTIFICATIONS_FROM_EMAIL": "notifications@mihabitta.com",
         "NOTIFICATIONS_FROM_NAME": "Habitta",
@@ -92,7 +91,7 @@
           },
         ],
       },
-      "triggers": { "crons": ["*/5 * * * *"] },
+      "triggers": { "crons": [] },
       "ratelimits": [
         {
           "name": "PROOF_UPLOAD_LIMIT",

@@ -9,10 +9,10 @@ set -euo pipefail
 : "${GITHUB_SHA:?GITHUB_SHA is required}"
 
 BACKUP_BUCKET="${BACKUP_BUCKET:-habitta-database-backups-prod}"
-HABITTA_DEV_PROJECT_REF="${HABITTA_DEV_PROJECT_REF:-kgsfaahixbcwcmykmhat}"
+HABITTA_PROD_PROJECT_REF="${HABITTA_PROD_PROJECT_REF:-kgsfaahixbcwcmykmhat}"
 
-if [[ "$SUPABASE_PROJECT_REF" == "$HABITTA_DEV_PROJECT_REF" ]]; then
-  echo 'Refusing pre-migration production backup: project ref points to Habitta-dev.' >&2
+if [[ "$SUPABASE_PROJECT_REF" != "$HABITTA_PROD_PROJECT_REF" ]]; then
+  echo 'Refusing pre-migration production backup: project ref does not match Habitta Production.' >&2
   exit 1
 fi
 
