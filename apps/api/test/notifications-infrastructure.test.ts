@@ -90,15 +90,18 @@ describe('notification environment modes', () => {
   });
 });
 
-describe('isolated hosted database notification ownership', () => {
+describe('production-owned hosted database notification ownership', () => {
   const productionCron = '*/5 * * * *';
   const parsedConfig = () => JSON.parse(wranglerSource.replace(/,\s*([}\]])/g, '$1'));
 
-  it('treats the current Habitta Supabase project as production-owned', () => {
+  it('uses local Supabase by default and parks remote development', () => {
     const config = parsedConfig();
 
+    expect(config.vars.SUPABASE_URL).toBe('http://127.0.0.1:54321');
+    expect(config.env.dev.vars.SUPABASE_URL).toBeUndefined();
+    expect(config.env.dev.vars.NOTIFICATIONS_EMAIL_MODE).toBe('disabled');
+    expect(config.env.dev.triggers?.crons ?? []).toEqual([]);
     expect(config.env.prod.vars.SUPABASE_URL).toBeUndefined();
-    expect(config.env.dev.triggers?.crons).toContain(productionCron);
     expect(config.env.prod.triggers.crons).toContain(productionCron);
   });
 
@@ -114,14 +117,20 @@ describe('isolated hosted database notification ownership', () => {
     expect(validate(JSON.stringify(config))).toContain('prod_zeptomail_secret_must_be_mode_gated');
   });
 
-  it('requires the development scheduler for the isolated development environment', () => {
+  it('rejects a hosted database URL or scheduler while remote development is parked', () => {
     const config = parsedConfig();
-    config.env.dev.triggers = { crons: [] };
+    config.env.dev.vars.SUPABASE_URL = 'https://kgsfaahixbcwcmykmhat.supabase.co';
+    config.env.dev.triggers = { crons: [productionCron] };
 
-    expect(validate(JSON.stringify(config))).toContain('missing_notification_cron');
+    expect(validate(JSON.stringify(config))).toEqual(
+      expect.arrayContaining([
+        'development_supabase_url_must_be_runtime_only',
+        'parked_development_must_not_schedule_notifications',
+      ]),
+    );
   });
 
-  it('requires production to own the scheduler while the hosted database is shared', () => {
+  it('requires production to own the hosted scheduler', () => {
     const config = parsedConfig();
     config.env.prod.triggers = { crons: [] };
 
