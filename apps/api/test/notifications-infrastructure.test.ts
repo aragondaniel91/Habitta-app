@@ -90,15 +90,15 @@ describe('notification environment modes', () => {
   });
 });
 
-describe('shared hosted database notification ownership', () => {
+describe('isolated hosted database notification ownership', () => {
   const productionCron = '*/5 * * * *';
   const parsedConfig = () => JSON.parse(wranglerSource.replace(/,\s*([}\]])/g, '$1'));
 
   it('treats the current Habitta Supabase project as production-owned', () => {
     const config = parsedConfig();
 
-    expect(config.env.prod.vars.SUPABASE_URL).toBe(config.env.dev.vars.SUPABASE_URL);
-    expect(config.env.dev.triggers?.crons ?? []).toEqual([]);
+    expect(config.env.prod.vars.SUPABASE_URL).toBeUndefined();
+    expect(config.env.dev.triggers?.crons).toContain(productionCron);
     expect(config.env.prod.triggers.crons).toContain(productionCron);
   });
 
@@ -114,11 +114,11 @@ describe('shared hosted database notification ownership', () => {
     expect(validate(JSON.stringify(config))).toContain('prod_zeptomail_secret_must_be_mode_gated');
   });
 
-  it('rejects a development scheduler while the hosted database is shared', () => {
+  it('requires the development scheduler for the isolated development environment', () => {
     const config = parsedConfig();
-    config.env.dev.triggers = { crons: [productionCron] };
+    config.env.dev.triggers = { crons: [] };
 
-    expect(validate(JSON.stringify(config))).toContain('unsafe_dev_cron_on_shared_database');
+    expect(validate(JSON.stringify(config))).toContain('missing_notification_cron');
   });
 
   it('requires production to own the scheduler while the hosted database is shared', () => {
@@ -126,7 +126,6 @@ describe('shared hosted database notification ownership', () => {
     config.env.prod.triggers = { crons: [] };
 
     expect(validate(JSON.stringify(config))).toContain('missing_prod_notification_cron');
-    expect(validate(wranglerSource)).not.toContain('unsafe_dev_cron_on_shared_database');
     expect(validate(wranglerSource)).not.toContain('missing_prod_notification_cron');
   });
 });

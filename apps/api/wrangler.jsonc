@@ -92,6 +92,7 @@
           },
         ],
       },
+      "triggers": { "crons": ["*/5 * * * *"] },
       "ratelimits": [
         {
           "name": "PROOF_UPLOAD_LIMIT",
@@ -129,12 +130,12 @@
       "name": "habitta-api-prod",
       "vars": {
         "APP_ENV": "production",
-        "SUPABASE_URL": "https://kgsfaahixbcwcmykmhat.supabase.co",
         "NOTIFICATIONS_EMAIL_MODE": "live",
         "NOTIFICATIONS_EMAIL_PROVIDER": "zeptomail",
         "NOTIFICATIONS_FROM_EMAIL": "notifications@mihabitta.com",
         "NOTIFICATIONS_FROM_NAME": "Habitta",
-        "APP_BASE_URL": "https://habitta-web-prod.pages.dev",
+        "APP_BASE_URL": "https://app.mihabitta.com",
+        "CORS_ALLOWED_ORIGINS": "https://app.mihabitta.com",
       },
       "secrets": {
         "required": ["SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"],

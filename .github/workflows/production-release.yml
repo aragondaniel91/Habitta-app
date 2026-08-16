@@ -19,11 +19,12 @@ permissions:
 
 concurrency:
   group: production-release
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: production
     env:
       APP_ENV: production
       NOTIFICATIONS_EMAIL_MODE: live
@@ -35,6 +36,8 @@ jobs:
       CLOUDFLARE_PAGES_PROJECT_NAME: habitta-web-prod
       CLOUDFLARE_PAGES_PROD_URL: https://app.mihabitta.com
       CORS_ALLOWED_ORIGINS: https://app.mihabitta.com
+      BACKUP_BUCKET: habitta-database-backups-prod
+      HABITTA_DEV_PROJECT_REF: kgsfaahixbcwcmykmhat
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -42,6 +45,7 @@ jobs:
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       ZEPTOMAIL_SEND_TOKEN: ${{ secrets.ZEPTOMAIL_SEND_TOKEN }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
       INPUT_RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.sha }}
       INPUT_CONFIRMATION: ${{ inputs.confirmation }}
       INPUT_CONFIRM_PROJECT_REF: ${{ inputs.confirm_project_ref }}
@@ -63,18 +67,11 @@ jobs:
       - name: Validate production release invariants
         run: |
           set -euo pipefail
-          test "$APP_ENV" = production
-          test "$NOTIFICATIONS_EMAIL_MODE" = live
-          test -n "$ZEPTOMAIL_SEND_TOKEN"
-          test -n "$SUPABASE_PROJECT_REF"
-          test -n "$SUPABASE_URL"
-          test -n "$CLOUDFLARE_API_TOKEN"
-          test -n "$CLOUDFLARE_ACCOUNT_ID"
-          test -n "$SUPABASE_DB_PASSWORD"
-          test -n "$SUPABASE_ANON_KEY"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          for name in ZEPTOMAIL_SEND_TOKEN SUPABASE_PROJECT_REF SUPABASE_URL VITE_SUPABASE_URL CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY BACKUP_ENCRYPTION_PASSPHRASE; do
+            test -n "${!name:-}" || { echo "Missing required production setting: $name" >&2; exit 1; }
+          done
+          node scripts/release/validate-production-release.mjs
           test "$VITE_API_BASE_URL" = "$CLOUDFLARE_WORKER_PROD_URL"
-          test "$CORS_ALLOWED_ORIGINS" = "$CLOUDFLARE_PAGES_PROD_URL"
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             test "$INPUT_CONFIRMATION" = DEPLOY-HABITTA-PRODUCTION
             test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
@@ -93,23 +90,59 @@ jobs:
           pnpm test
           pnpm build
           git diff --check
+      - name: Verify production Supabase API credentials
+        run: |
+          set -euo pipefail
+          curl -fsS -o /dev/null \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/auth/v1/settings"
+          curl -fsS -o /dev/null \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/"
       - name: Provision isolated production resources
         run: |
           set -euo pipefail
           QUEUES=$(pnpm --filter @habitta/api exec wrangler queues list)
-          for NAME in habitta-notifications-prod habitta-notifications-dlq-prod; do
+          for NAME in \
+            habitta-notifications-prod \
+            habitta-notifications-dlq-prod \
+            habitta-integrations-prod \
+            habitta-integrations-dlq-prod; do
             if ! printf '%s\n' "$QUEUES" | grep -Fq "$NAME"; then
               pnpm --filter @habitta/api exec wrangler queues create "$NAME"
             fi
           done
           BUCKETS=$(pnpm --filter @habitta/api exec wrangler r2 bucket list)
-          if ! printf '%s\n' "$BUCKETS" | grep -Fq 'habitta-payment-proofs-prod'; then
-            pnpm --filter @habitta/api exec wrangler r2 bucket create habitta-payment-proofs-prod
-          fi
+          for NAME in habitta-payment-proofs-prod habitta-database-backups-prod; do
+            if ! printf '%s\n' "$BUCKETS" | grep -Fq "$NAME"; then
+              pnpm --filter @habitta/api exec wrangler r2 bucket create "$NAME"
+            fi
+          done
           PAGES=$(pnpm --filter @habitta/api exec wrangler pages project list)
           if ! printf '%s\n' "$PAGES" | grep -Fq 'habitta-web-prod'; then
             pnpm --filter @habitta/api exec wrangler pages project create habitta-web-prod --production-branch main
           fi
+      - name: Capture production rollback targets
+        run: |
+          set -euo pipefail
+          WORKER_STATUS="$RUNNER_TEMP/production-worker-status.json"
+          if pnpm --filter @habitta/api exec wrangler deployments status --env prod --json >"$WORKER_STATUS" 2>/dev/null; then
+            PREVIOUS_WORKER_VERSION=$(jq -r '[.versions[]? | select(.percentage == 100)] | if length == 1 then .[0].version_id else empty end' "$WORKER_STATUS")
+          else
+            PREVIOUS_WORKER_VERSION=''
+          fi
+
+          PROJECT_JSON=$(curl -fsS \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT_NAME")
+          printf '%s' "$PROJECT_JSON" | jq -e '.success == true' >/dev/null
+          PREVIOUS_PAGES_DEPLOYMENT=$(printf '%s' "$PROJECT_JSON" | jq -r '.result.canonical_deployment.id // empty')
+
+          echo "PREVIOUS_WORKER_VERSION=$PREVIOUS_WORKER_VERSION" >> "$GITHUB_ENV"
+          echo "PREVIOUS_PAGES_DEPLOYMENT=$PREVIOUS_PAGES_DEPLOYMENT" >> "$GITHUB_ENV"
+      - name: Create encrypted pre-migration backup
+        run: bash scripts/release/pre-migration-production-backup.sh
       - name: Apply reviewed Supabase migrations
         run: |
           set -euo pipefail
@@ -127,28 +160,55 @@ jobs:
           pnpm --filter @habitta/api build
           pnpm --filter @habitta/web build
           pnpm release:dev:verify-web
-      - name: Deploy production Worker
+          if grep -R -F "$HABITTA_DEV_PROJECT_REF" apps/web/dist >/dev/null; then
+            echo 'Production web bundle contains the Habitta-dev project ref.' >&2
+            exit 1
+          fi
+      - name: Bootstrap or update production Worker
         run: |
           set -euo pipefail
           SECRETS_FILE="$RUNNER_TEMP/production-worker-secrets"
-          trap 'rm -f "$SECRETS_FILE"' EXIT
+          VERSION_LIST_FILE="$RUNNER_TEMP/production-worker-versions.json"
+          ACTIVE_STATUS_FILE="$RUNNER_TEMP/production-worker-active.json"
+          cleanup() {
+            rm -f "$SECRETS_FILE" "$VERSION_LIST_FILE" "$ACTIVE_STATUS_FILE"
+          }
+          trap cleanup EXIT
           node scripts/release/create-worker-secrets-file.mjs "$SECRETS_FILE"
           SHA=$(git rev-parse HEAD)
           BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           APP_VERSION=$(node -p "require('./apps/api/package.json').version || '0.0.0'")
-          pnpm --filter @habitta/api exec wrangler deploy \
-            --env prod \
-            --secrets-file "$SECRETS_FILE" \
-            --keep-vars \
-            --message "production-$SHA" \
-            --var "BUILD_COMMIT:$SHA" \
-            --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP" \
-            --var "APP_VERSION:$APP_VERSION" \
-            --var "APP_ENV:production" \
-            --var "SUPABASE_URL:$SUPABASE_URL" \
-            --var "NOTIFICATIONS_EMAIL_MODE:live" \
-            --var "CORS_ALLOWED_ORIGINS:$CORS_ALLOWED_ORIGINS" \
+          TAG="production-$SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          COMMON_ARGS=(
+            --env prod
+            --secrets-file "$SECRETS_FILE"
+            --message "$TAG"
+            --tag "$TAG"
+            --keep-vars
+            --var "BUILD_COMMIT:$SHA"
+            --var "BUILD_TIMESTAMP:$BUILD_TIMESTAMP"
+            --var "APP_VERSION:$APP_VERSION"
+            --var "APP_ENV:production"
+            --var "SUPABASE_URL:$SUPABASE_URL"
+            --var "NOTIFICATIONS_EMAIL_MODE:live"
+            --var "CORS_ALLOWED_ORIGINS:$CORS_ALLOWED_ORIGINS"
             --var "APP_BASE_URL:$CLOUDFLARE_PAGES_PROD_URL"
+          )
+          if [ -z "$PREVIOUS_WORKER_VERSION" ]; then
+            echo 'Bootstrapping the first production Worker deployment.'
+            pnpm --filter @habitta/api exec wrangler deploy "${COMMON_ARGS[@]}"
+          else
+            pnpm --filter @habitta/api exec wrangler versions upload "${COMMON_ARGS[@]}"
+            pnpm --filter @habitta/api exec wrangler versions list --env prod --json >"$VERSION_LIST_FILE"
+            ACTIVE_VERSION_ID=$(jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end' "$VERSION_LIST_FILE")
+            test -n "$ACTIVE_VERSION_ID"
+            pnpm --filter @habitta/api exec wrangler versions deploy "$ACTIVE_VERSION_ID@100%" --env prod --yes
+          fi
+          pnpm --filter @habitta/api exec wrangler deployments status --env prod --json >"$ACTIVE_STATUS_FILE"
+          ACTIVE_VERSION_ID=$(jq -r '[.versions[]? | select(.percentage == 100)] | if length == 1 then .[0].version_id else empty end' "$ACTIVE_STATUS_FILE")
+          test -n "$ACTIVE_VERSION_ID"
+          echo "ACTIVE_WORKER_VERSION=$ACTIVE_VERSION_ID" >> "$GITHUB_ENV"
+          echo 'WORKER_DEPLOYED=true' >> "$GITHUB_ENV"
       - name: Smoke production Worker
         run: |
           node --input-type=module <<'NODE'
@@ -186,7 +246,6 @@ jobs:
         run: |
           set -euo pipefail
           SHA=$(git rev-parse HEAD)
-          # pnpm --filter executes Wrangler from apps/api, so the web dist is one level up.
           DEPLOY_OUTPUT=$(pnpm --filter @habitta/api exec wrangler pages deploy ../web/dist \
             --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" \
             --branch main \
@@ -196,6 +255,7 @@ jobs:
           PAGES_DEPLOYMENT_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | grep -Eo 'https://[a-z0-9]+\.habitta-web-prod\.pages\.dev' | tail -1)
           test -n "$PAGES_DEPLOYMENT_URL"
           echo "PAGES_DEPLOYMENT_URL=$PAGES_DEPLOYMENT_URL" >> "$GITHUB_ENV"
+          echo 'PAGES_DEPLOYED=true' >> "$GITHUB_ENV"
       - name: End-to-end production smoke
         run: |
           node --input-type=module <<'NODE'
@@ -205,7 +265,7 @@ jobs:
           const origin = canonicalUrl;
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
           let lastError;
-          for (let attempt = 1; attempt <= 10; attempt += 1) {
+          for (let attempt = 1; attempt <= 12; attempt += 1) {
             try {
               const web = await fetch(`${deploymentUrl}/app/dashboard`);
               if (!web.ok) throw new Error(`deployment_web_${web.status}`);
@@ -219,17 +279,31 @@ jobs:
               if (!preflight.ok || preflight.headers.get('access-control-allow-origin') !== origin)
                 throw new Error('preflight_mismatch');
               const canonical = await fetch(`${canonicalUrl}/app/dashboard`, { redirect: 'manual' });
-              if (canonical.status === 403) {
-                console.warn('canonical_domain_runner_403: deployment and CORS are healthy; browser verification required');
-              } else if (!canonical.ok && (canonical.status < 300 || canonical.status >= 400)) {
+              if (!canonical.ok && (canonical.status < 300 || canonical.status >= 400))
                 throw new Error(`canonical_web_${canonical.status}`);
-              }
               lastError = undefined;
               break;
             } catch (error) {
               lastError = error;
-              if (attempt < 10) await sleep(5_000);
+              if (attempt < 12) await sleep(5_000);
             }
           }
           if (lastError) throw lastError;
           NODE
+      - name: Roll back production edge deploys on release failure
+        if: ${{ failure() }}
+        run: |
+          set +e
+          if [ "${WORKER_DEPLOYED:-false}" = true ] && [ -n "${PREVIOUS_WORKER_VERSION:-}" ]; then
+            echo "Rolling Worker back to $PREVIOUS_WORKER_VERSION"
+            pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env prod --yes
+          fi
+          if [ "${PAGES_DEPLOYED:-false}" = true ] && [ -n "${PREVIOUS_PAGES_DEPLOYMENT:-}" ]; then
+            echo "Rolling Pages back to $PREVIOUS_PAGES_DEPLOYMENT"
+            curl -fsS -X POST \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data '{}' \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT_NAME/deployments/$PREVIOUS_PAGES_DEPLOYMENT/rollback" \
+              | jq -e '.success == true' >/dev/null
+          fi
