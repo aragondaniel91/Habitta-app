@@ -1,39 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import {
-  HABITTA_DEV_PROJECT_REF,
-  HABITTA_DEV_SUPABASE_URL,
+  HABITTA_PROD_PROJECT_REF,
+  HABITTA_PROD_SUPABASE_URL,
   validateProductionRelease,
 } from '../../../scripts/release/validate-production-release.mjs';
 
 const valid = {
   appEnv: 'production',
   emailMode: 'live',
-  projectRef: 'prodprojectref123456',
-  supabaseUrl: 'https://prodprojectref123456.supabase.co',
-  viteSupabaseUrl: 'https://prodprojectref123456.supabase.co',
+  projectRef: HABITTA_PROD_PROJECT_REF,
+  supabaseUrl: HABITTA_PROD_SUPABASE_URL,
+  viteSupabaseUrl: HABITTA_PROD_SUPABASE_URL,
   workerUrl: 'https://habitta-api-prod.aragondaniel91.workers.dev',
   pagesUrl: 'https://app.mihabitta.com',
   corsAllowedOrigins: 'https://app.mihabitta.com',
 };
 
 describe('production release validation', () => {
-  it('accepts an isolated production environment', () => {
+  it('accepts the canonical Habitta production environment', () => {
     expect(validateProductionRelease(valid)).toEqual([]);
   });
 
-  it('fails closed when production points at Habitta-dev', () => {
+  it('fails closed when production points at any other Supabase project', () => {
     expect(
       validateProductionRelease({
         ...valid,
-        projectRef: HABITTA_DEV_PROJECT_REF,
-        supabaseUrl: HABITTA_DEV_SUPABASE_URL,
-        viteSupabaseUrl: HABITTA_DEV_SUPABASE_URL,
+        projectRef: 'differentprojectref123',
+        supabaseUrl: 'https://differentprojectref123.supabase.co',
+        viteSupabaseUrl: 'https://differentprojectref123.supabase.co',
       }),
     ).toEqual(
-      expect.arrayContaining([
-        'production_cannot_use_habitta_dev_project',
-        'production_cannot_use_habitta_dev_url',
-      ]),
+      expect.arrayContaining(['production_project_ref_mismatch', 'production_supabase_url_mismatch']),
     );
   });
 
