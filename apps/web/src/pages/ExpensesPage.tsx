@@ -594,7 +594,9 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             <div className="expenses-detail">
               <div className="expenses-detail__amount">
                 <small>Monto registrado</small>
-                <strong>{formatMoney(selectedExpense.amount, selectedExpense.currency_code)}</strong>
+                <strong>
+                  {formatMoney(selectedExpense.amount, selectedExpense.currency_code)}
+                </strong>
                 <Badge tone={statusTone(selectedExpense.status)}>
                   {expenseStatusLabels[selectedExpense.status]}
                 </Badge>
@@ -611,14 +613,15 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
                 <div>
                   <dt>Categoría</dt>
                   <dd>
-                    {data.categories.find((item) => item.id === selectedExpense.category_id)?.name ??
-                      '—'}
+                    {data.categories.find((item) => item.id === selectedExpense.category_id)
+                      ?.name ?? '—'}
                   </dd>
                 </div>
                 <div>
                   <dt>Proveedor</dt>
                   <dd>
-                    {data.vendors.find((item) => item.id === selectedExpense.vendor_id)?.name ?? '—'}
+                    {data.vendors.find((item) => item.id === selectedExpense.vendor_id)?.name ??
+                      '—'}
                   </dd>
                 </div>
                 <div>
