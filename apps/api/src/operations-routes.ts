@@ -4,9 +4,10 @@ import { assembliesRoutes } from './assemblies-routes';
 import { budgetRoutes } from './budget-routes';
 import { condominiumDeletionRoutes } from './condominium-deletion-routes';
 import { governanceThresholdRoutes } from './governance-threshold-routes';
-import { operationsRoutes as baseOperationsRoutes } from './operations-routes-base';
 import { maintenanceFinancialRoutes } from './maintenance-financial-routes';
 import type { NotificationBindings } from './notifications/types';
+import { operationsRoutes as baseOperationsRoutes } from './operations-routes-base';
+import { residentInvitationRoutes } from './resident-invitations';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
@@ -16,6 +17,7 @@ baseOperationsRoutes.route('/', assembliesRoutes);
 baseOperationsRoutes.route('/', adminAuditRoutes);
 baseOperationsRoutes.route('/', budgetRoutes);
 baseOperationsRoutes.route('/', condominiumDeletionRoutes);
+baseOperationsRoutes.route('/', residentInvitationRoutes);
 
 export const operationsRoutes = new Hono<AppEnvironment>();
 operationsRoutes.route('/', governanceThresholdRoutes);
