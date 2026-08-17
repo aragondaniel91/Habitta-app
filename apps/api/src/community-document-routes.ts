@@ -92,11 +92,7 @@ const errorPayload = async (response: Response, fallback: string) => {
   }
 };
 
-const supabase = (
-  c: CommunityDocumentContext,
-  path: string,
-  init: RequestInit = {},
-) =>
+const supabase = (c: CommunityDocumentContext, path: string, init: RequestInit = {}) =>
   fetch(`${c.env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
     headers: {
@@ -106,11 +102,7 @@ const supabase = (
     },
   });
 
-const callRpc = (
-  c: CommunityDocumentContext,
-  name: string,
-  payload: Record<string, unknown>,
-) =>
+const callRpc = (c: CommunityDocumentContext, name: string, payload: Record<string, unknown>) =>
   supabase(c, `rpc/${name}`, {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -157,7 +149,9 @@ communityDocumentRoutes.post('/:condominiumId/community-documents/categories', a
     target_default_retention_days: input.defaultRetentionDays ?? null,
   });
   return c.json(
-    response.ok ? await response.json() : await errorPayload(response, 'Category could not be created'),
+    response.ok
+      ? await response.json()
+      : await errorPayload(response, 'Category could not be created'),
     response.ok ? 201 : response.status === 401 || response.status === 403 ? 403 : 400,
   );
 });
@@ -183,7 +177,9 @@ communityDocumentRoutes.post('/:condominiumId/community-documents/folders', asyn
     target_description: input.description ?? null,
   });
   return c.json(
-    response.ok ? await response.json() : await errorPayload(response, 'Folder could not be created'),
+    response.ok
+      ? await response.json()
+      : await errorPayload(response, 'Folder could not be created'),
     response.ok ? 201 : response.status === 401 || response.status === 403 ? 403 : 400,
   );
 });
@@ -212,7 +208,9 @@ communityDocumentRoutes.post('/:condominiumId/community-documents', async (c) =>
     target_retention_days: input.retentionDays ?? null,
   });
   return c.json(
-    response.ok ? await response.json() : await errorPayload(response, 'Document could not be created'),
+    response.ok
+      ? await response.json()
+      : await errorPayload(response, 'Document could not be created'),
     response.ok ? 201 : response.status === 401 || response.status === 403 ? 403 : 400,
   );
 });
@@ -222,8 +220,7 @@ communityDocumentRoutes.get(
   async (c) => {
     const condominiumId = readUuid(c.req.param('condominiumId'));
     const documentId = readUuid(c.req.param('documentId'));
-    if (!condominiumId || !documentId)
-      return c.json({ error: 'Invalid document identifier' }, 400);
+    if (!condominiumId || !documentId) return c.json({ error: 'Invalid document identifier' }, 400);
     const response = await supabase(
       c,
       `community_document_versions?condominium_id=eq.${condominiumId}&document_id=eq.${documentId}&select=*&order=version_number.desc`,
@@ -237,8 +234,7 @@ communityDocumentRoutes.put(
   async (c) => {
     const condominiumId = readUuid(c.req.param('condominiumId'));
     const documentId = readUuid(c.req.param('documentId'));
-    if (!condominiumId || !documentId)
-      return c.json({ error: 'Invalid document identifier' }, 400);
+    if (!condominiumId || !documentId) return c.json({ error: 'Invalid document identifier' }, 400);
 
     if (!(await ensureManager(c, condominiumId)))
       return c.json({ error: 'Community document manager required' }, 403);
@@ -355,8 +351,7 @@ communityDocumentRoutes.post(
   async (c) => {
     const condominiumId = readUuid(c.req.param('condominiumId'));
     const documentId = readUuid(c.req.param('documentId'));
-    if (!condominiumId || !documentId)
-      return c.json({ error: 'Invalid document identifier' }, 400);
+    if (!condominiumId || !documentId) return c.json({ error: 'Invalid document identifier' }, 400);
     if (!(await ensureManager(c, condominiumId)))
       return c.json({ error: 'Community document manager required' }, 403);
 
@@ -371,64 +366,60 @@ communityDocumentRoutes.post(
       target_document_id: documentId,
     });
     return c.json(
-      response.ok ? await response.json() : await errorPayload(response, 'Document could not be archived'),
+      response.ok
+        ? await response.json()
+        : await errorPayload(response, 'Document could not be archived'),
       response.ok ? 200 : response.status === 401 || response.status === 403 ? 403 : 400,
     );
   },
 );
 
-communityDocumentRoutes.get(
-  '/:condominiumId/community-documents/:documentId/links',
-  async (c) => {
-    const condominiumId = readUuid(c.req.param('condominiumId'));
-    const documentId = readUuid(c.req.param('documentId'));
-    if (!condominiumId || !documentId)
-      return c.json({ error: 'Invalid document identifier' }, 400);
-    const response = await supabase(
-      c,
-      `community_document_links?condominium_id=eq.${condominiumId}&document_id=eq.${documentId}&select=*&order=created_at.asc`,
-    );
-    return c.json(await response.json(), response.ok ? 200 : 400);
-  },
-);
+communityDocumentRoutes.get('/:condominiumId/community-documents/:documentId/links', async (c) => {
+  const condominiumId = readUuid(c.req.param('condominiumId'));
+  const documentId = readUuid(c.req.param('documentId'));
+  if (!condominiumId || !documentId) return c.json({ error: 'Invalid document identifier' }, 400);
+  const response = await supabase(
+    c,
+    `community_document_links?condominium_id=eq.${condominiumId}&document_id=eq.${documentId}&select=*&order=created_at.asc`,
+  );
+  return c.json(await response.json(), response.ok ? 200 : 400);
+});
 
-communityDocumentRoutes.post(
-  '/:condominiumId/community-documents/:documentId/links',
-  async (c) => {
-    const condominiumId = readUuid(c.req.param('condominiumId'));
-    const documentId = readUuid(c.req.param('documentId'));
-    const input = await parseJson(c, linkInputSchema);
-    if (!condominiumId || !documentId || !input)
-      return c.json({ error: 'Invalid document link input' }, 400);
-    if (!(await ensureManager(c, condominiumId)))
-      return c.json({ error: 'Community document manager required' }, 403);
+communityDocumentRoutes.post('/:condominiumId/community-documents/:documentId/links', async (c) => {
+  const condominiumId = readUuid(c.req.param('condominiumId'));
+  const documentId = readUuid(c.req.param('documentId'));
+  const input = await parseJson(c, linkInputSchema);
+  if (!condominiumId || !documentId || !input)
+    return c.json({ error: 'Invalid document link input' }, 400);
+  if (!(await ensureManager(c, condominiumId)))
+    return c.json({ error: 'Community document manager required' }, 403);
 
-    const metadata = await supabase(
-      c,
-      `community_documents?id=eq.${documentId}&condominium_id=eq.${condominiumId}&select=id`,
-    );
-    const rows = (await metadata.json()) as Array<{ id: string }>;
-    if (!metadata.ok || !rows[0]) return c.json({ error: 'Document not found' }, 404);
+  const metadata = await supabase(
+    c,
+    `community_documents?id=eq.${documentId}&condominium_id=eq.${condominiumId}&select=id`,
+  );
+  const rows = (await metadata.json()) as Array<{ id: string }>;
+  if (!metadata.ok || !rows[0]) return c.json({ error: 'Document not found' }, 404);
 
-    const response = await callRpc(c, 'link_community_document', {
-      target_document_id: documentId,
-      target_type: input.targetType,
-      target_id: input.targetId,
-    });
-    return c.json(
-      response.ok ? await response.json() : await errorPayload(response, 'Document link could not be created'),
-      response.ok ? 201 : response.status === 401 || response.status === 403 ? 403 : 400,
-    );
-  },
-);
+  const response = await callRpc(c, 'link_community_document', {
+    target_document_id: documentId,
+    target_type: input.targetType,
+    target_id: input.targetId,
+  });
+  return c.json(
+    response.ok
+      ? await response.json()
+      : await errorPayload(response, 'Document link could not be created'),
+    response.ok ? 201 : response.status === 401 || response.status === 403 ? 403 : 400,
+  );
+});
 
 communityDocumentRoutes.get('/:condominiumId/community-documents/download-events', async (c) => {
   const condominiumId = readUuid(c.req.param('condominiumId'));
   if (!condominiumId) return c.json({ error: 'Invalid condominium identifier' }, 400);
   const documentIdHeader = c.req.query('documentId');
   const documentId = documentIdHeader ? readUuid(documentIdHeader) : null;
-  if (documentIdHeader && !documentId)
-    return c.json({ error: 'Invalid document identifier' }, 400);
+  if (documentIdHeader && !documentId) return c.json({ error: 'Invalid document identifier' }, 400);
   const filter = documentId ? `&document_id=eq.${documentId}` : '';
   const response = await supabase(
     c,
