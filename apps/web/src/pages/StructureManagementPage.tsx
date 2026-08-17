@@ -547,7 +547,12 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   hint="Ejemplos: Torre A, Edificio Norte, Bloque 3."
                   label="Nombre del edificio"
                 >
-                  <input autoFocus defaultValue={editor.building?.name ?? ''} name="name" required />
+                  <input
+                    autoFocus
+                    defaultValue={editor.building?.name ?? ''}
+                    name="name"
+                    required
+                  />
                 </Field>
                 <div className="structure-form-note">
                   Cambiar el nombre conserva unidades e historial asociados.
@@ -616,10 +621,7 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   }
                   label="Tipo"
                 >
-                  <Select
-                    defaultValue={editor.unit?.type ?? defaultUnitType(topology)}
-                    name="type"
-                  >
+                  <Select defaultValue={editor.unit?.type ?? defaultUnitType(topology)} name="type">
                     {availableUnitTypes.map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -629,7 +631,10 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                 </Field>
 
                 {!houseMode ? (
-                  <Field hint="Puede ser un número, PB, PH o nivel descriptivo." label="Piso o nivel">
+                  <Field
+                    hint="Puede ser un número, PB, PH o nivel descriptivo."
+                    label="Piso o nivel"
+                  >
                     <input defaultValue={editor.unit?.floor ?? ''} maxLength={20} name="floor" />
                   </Field>
                 ) : null}
