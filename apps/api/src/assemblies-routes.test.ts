@@ -24,21 +24,13 @@ describe('assemblies routes contract', () => {
   });
 
   it('exposes action items inside the existing assembly resource', () => {
-    expect(source).toContain(
-      "assembliesRoutes.get('/:id/assemblies/:assemblyId/action-items'",
-    );
-    expect(source).toContain(
-      "assembliesRoutes.post('/:id/assemblies/:assemblyId/action-items'",
-    );
+    expect(source).toContain("assembliesRoutes.get('/:id/assemblies/:assemblyId/action-items'");
+    expect(source).toContain("assembliesRoutes.post('/:id/assemblies/:assemblyId/action-items'");
     expect(source).toContain(
       "assembliesRoutes.patch('/:id/assemblies/:assemblyId/action-items/:actionItemId'",
     );
-    expect(source).toContain(
-      "'/:id/assemblies/:assemblyId/action-items/:actionItemId/transition'",
-    );
-    expect(source).toContain(
-      'assembly_action_items?condominium_id=eq.${condominiumId}',
-    );
+    expect(source).toContain("'/:id/assemblies/:assemblyId/action-items/:actionItemId/transition'");
+    expect(source).toContain('assembly_action_items?condominium_id=eq.${condominiumId}');
   });
 
   it('uses lifecycle RPCs for every sensitive write', () => {
@@ -66,9 +58,7 @@ describe('assemblies routes contract', () => {
   });
 
   it('validates action item status and operational link inputs', () => {
-    expect(source).toContain(
-      "z.enum(['open', 'in_progress', 'completed', 'cancelled'])",
-    );
+    expect(source).toContain("z.enum(['open', 'in_progress', 'completed', 'cancelled'])");
     expect(source).toContain('resolutionId: optionalUuid');
     expect(source).toContain('serviceRequestId: optionalUuid');
     expect(source).toContain('maintenanceWorkOrderId: optionalUuid');
