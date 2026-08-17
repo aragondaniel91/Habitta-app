@@ -1,15 +1,17 @@
 import type {
+  Building,
   CondominiumRelationshipType,
   Occupancy,
   Ownership,
   Person,
+  Unit,
   UnitContext,
 } from './types';
 
 export const condominiumRelationshipLabels: Record<CondominiumRelationshipType, string> = {
   board_member: 'Junta de condominio',
   administrator_contact: 'Contacto de administración',
-  representative: 'Representante',
+  representative: 'Representante legal',
   emergency_contact: 'Contacto de emergencia',
   other: 'Otra relación',
 };
@@ -21,8 +23,32 @@ export const occupancyLabels: Record<Occupancy['occupancy_type'], string> = {
   authorized_occupant: 'Ocupante autorizado',
 };
 
-export function unitContextLabel(unit: UnitContext) {
+export type ResidentAccessRole = 'owner' | 'tenant';
+export type ResidentInvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
+
+export const residentInvitationStatusLabels: Record<ResidentInvitationStatus, string> = {
+  pending: 'Pendiente de aceptación',
+  accepted: 'Aceptada',
+  expired: 'Vencida',
+  revoked: 'Revocada',
+};
+
+export type ResidentAccessOption = {
+  role: ResidentAccessRole;
+  unitId: string;
+  unitLabel: string;
+  relationshipId: string;
+};
+
+export function unitContextLabel(unit: Pick<UnitContext, 'code' | 'buildings'>) {
   return unit.buildings?.name ? `${unit.buildings.name} · ${unit.code}` : unit.code;
+}
+
+export function directoryUnitLabel(unit: Unit, buildings: Building[]) {
+  const building = unit.building_id
+    ? buildings.find((item) => item.id === unit.building_id)
+    : undefined;
+  return building ? `${building.name} · ${unit.code}` : unit.code;
 }
 
 export function personSearchText(person: Person) {
@@ -45,4 +71,38 @@ export function activeOwnerships(items: Ownership[]) {
 
 export function activeOccupancies(items: Occupancy[]) {
   return items.filter((item) => !item.ends_at);
+}
+
+export function residentAccessOptions(ownerships: Ownership[], occupancies: Occupancy[]) {
+  const options: ResidentAccessOption[] = [
+    ...activeOwnerships(ownerships).map((item) => ({
+      role: 'owner' as const,
+      unitId: item.unit_id,
+      unitLabel: unitContextLabel(item.units),
+      relationshipId: item.id,
+    })),
+    ...activeOccupancies(occupancies)
+      .filter((item) => item.occupancy_type === 'tenant')
+      .map((item) => ({
+        role: 'tenant' as const,
+        unitId: item.unit_id,
+        unitLabel: unitContextLabel(item.units),
+        relationshipId: item.id,
+      })),
+  ];
+
+  return options.filter(
+    (option, index) =>
+      options.findIndex(
+        (candidate) => candidate.role === option.role && candidate.unitId === option.unitId,
+      ) === index,
+  );
+}
+
+export function residentInvitationDisplayStatus(
+  invitation: { status: ResidentInvitationStatus; expires_at: string },
+  now = new Date(),
+): ResidentInvitationStatus {
+  if (invitation.status !== 'pending') return invitation.status;
+  return new Date(invitation.expires_at).getTime() < now.getTime() ? 'expired' : 'pending';
 }
