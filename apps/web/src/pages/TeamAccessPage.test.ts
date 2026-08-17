@@ -36,14 +36,18 @@ describe('invitation delivery diagnostics', () => {
 });
 
 describe('team lifecycle controls', () => {
-  it('exposes role changes, suspension, reactivation and access removal in Team & Access', async () => {
+  it('exposes role changes, guarded suspension, reactivation and guarded access removal', async () => {
     const source = await readFile(pageSourceUrl, 'utf8');
 
     expect(source).toContain("runMemberAction(member, 'change_role')");
-    expect(source).toContain("runMemberAction(member, 'suspend')");
+    expect(source).toContain("setPendingMemberAction({ member, action: 'suspend' })");
     expect(source).toContain("runMemberAction(member, 'reactivate')");
-    expect(source).toContain("runMemberAction(member, 'remove')");
-    expect(source).toContain('Su cuenta e historial se conservarán');
+    expect(source).toContain("setPendingMemberAction({ member, action: 'remove' })");
+    expect(source).toContain('<ConfirmDialog');
+    expect(source).toContain(
+      'runMemberAction(pendingMemberAction.member, pendingMemberAction.action)',
+    );
+    expect(source).toContain('Su cuenta global y el historial de acciones se conservarán.');
   });
 
   it('routes all member lifecycle changes through the guarded database RPC', async () => {
