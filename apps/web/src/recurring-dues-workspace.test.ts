@@ -60,10 +60,14 @@ describe('HAB-185 recurring dues workspace contract', () => {
     expect(workspaceSource).toContain('Presupuesto total por período');
   });
 
-  it('requires a visible review step before ledger posting', () => {
+  it('requires a visible review and in-app confirmation before ledger posting', () => {
     expect(workspaceSource).toContain('Preparar para revisión');
     expect(workspaceSource).toContain('Aprobar y publicar');
-    expect(workspaceSource).toContain('Después de publicar, el período queda inmutable');
+    expect(workspaceSource).toContain("onClick={() => setRunToPost(run)}");
+    expect(workspaceSource).toContain('<ConfirmDialog');
+    expect(workspaceSource).toContain('Esto creará la deuda en cartera usando el reparto congelado');
+    expect(workspaceSource).toContain('el período quedará inmutable');
+    expect(workspaceSource).toContain('onConfirm={() => void postRun(runToPost)}');
     expect(workspaceSource).toContain("run.status === 'pending_review'");
     expect(workspaceSource).toContain("run.status === 'posted'");
   });
