@@ -43,9 +43,7 @@ type Unit = {
 };
 
 type EditorState =
-  | { kind: 'building'; building: Building | null }
-  | { kind: 'unit'; unit: Unit | null }
-  | null;
+  { kind: 'building'; building: Building | null } | { kind: 'unit'; unit: Unit | null } | null;
 
 type Props = {
   condominiumId: string;
@@ -328,14 +326,18 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
           <small>{activeUnits} activas</small>
         </Surface>
         <Surface className="structure-metric">
-          <span>{houseMode || singleBuildingMode ? 'Unidades declaradas' : 'Edificios declarados'}</span>
+          <span>
+            {houseMode || singleBuildingMode ? 'Unidades declaradas' : 'Edificios declarados'}
+          </span>
           <strong>{declaredStructure ?? '—'}</strong>
           <small>{topologyLabels[topology]}</small>
         </Surface>
         <Surface className="structure-metric">
           <span>{showBuildings ? 'Sin edificio asignado' : 'Unidades inactivas'}</span>
           <strong>{showBuildings ? unassignedUnits : units.length - activeUnits}</strong>
-          <small>{showBuildings ? 'Áreas comunes o pendientes de ubicar' : 'Historial preservado'}</small>
+          <small>
+            {showBuildings ? 'Áreas comunes o pendientes de ubicar' : 'Historial preservado'}
+          </small>
         </Surface>
       </div>
 
@@ -359,7 +361,8 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                 role="tab"
                 type="button"
               >
-                {singleBuildingMode ? 'Edificio' : 'Torres y edificios'} <span>{buildings.length}</span>
+                {singleBuildingMode ? 'Edificio' : 'Torres y edificios'}{' '}
+                <span>{buildings.length}</span>
               </button>
             ) : null}
           </div>
@@ -447,7 +450,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
           ) : (
             <EmptyState
               actionLabel={newUnitLabel}
-              description={search ? 'No encontramos unidades con esos criterios.' : unitEmptyDescription}
+              description={
+                search ? 'No encontramos unidades con esos criterios.' : unitEmptyDescription
+              }
               icon={<UnitsIcon size={25} />}
               onAction={() => setEditor({ kind: 'unit', unit: null })}
               title={search ? 'Sin coincidencias' : 'Aún no hay unidades'}
@@ -457,7 +462,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
           <div className="structure-building-grid">
             {filteredBuildings.map((building) => {
               const buildingUnits = units.filter((unit) => unit.building_id === building.id);
-              const activeBuildingUnits = buildingUnits.filter((unit) => unit.status === 'active').length;
+              const activeBuildingUnits = buildingUnits.filter(
+                (unit) => unit.status === 'active',
+              ).length;
               return (
                 <article className="structure-building-card" key={building.id}>
                   <div className="structure-building-card__top">
@@ -474,11 +481,16 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   </div>
                   <h2>{building.name}</h2>
                   <p>
-                    {buildingUnits.length} {buildingUnits.length === 1 ? 'unidad registrada' : 'unidades registradas'}
+                    {buildingUnits.length}{' '}
+                    {buildingUnits.length === 1 ? 'unidad registrada' : 'unidades registradas'}
                   </p>
                   <div className="structure-building-card__stats">
-                    <span><strong>{activeBuildingUnits}</strong> activas</span>
-                    <span><strong>{buildingUnits.length - activeBuildingUnits}</strong> inactivas</span>
+                    <span>
+                      <strong>{activeBuildingUnits}</strong> activas
+                    </span>
+                    <span>
+                      <strong>{buildingUnits.length - activeBuildingUnits}</strong> inactivas
+                    </span>
                   </div>
                 </article>
               );
@@ -487,7 +499,11 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
         ) : (
           <EmptyState
             actionLabel={
-              canCreateBuilding ? (singleBuildingMode ? 'Crear edificio' : 'Crear torre o edificio') : undefined
+              canCreateBuilding
+                ? singleBuildingMode
+                  ? 'Crear edificio'
+                  : 'Crear torre o edificio'
+                : undefined
             }
             description={
               search
@@ -495,7 +511,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                 : 'Configura los edificios físicos antes de asignarles unidades.'
             }
             icon={<UnitsIcon size={25} />}
-            onAction={canCreateBuilding ? () => setEditor({ kind: 'building', building: null }) : undefined}
+            onAction={
+              canCreateBuilding ? () => setEditor({ kind: 'building', building: null }) : undefined
+            }
             title={search ? 'Sin coincidencias' : 'Aún no hay edificios'}
           />
         )}
@@ -525,7 +543,12 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                       : 'Crear edificio'}
                 </h2>
               </div>
-              <button aria-label="Cerrar" disabled={saving} onClick={() => setEditor(null)} type="button">
+              <button
+                aria-label="Cerrar"
+                disabled={saving}
+                onClick={() => setEditor(null)}
+                type="button"
+              >
                 ×
               </button>
             </div>
@@ -533,7 +556,10 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
             {editor.kind === 'building' ? (
               <form onSubmit={(event) => void saveBuilding(event, editor.building)}>
                 <div className="structure-dialog__body">
-                  <Field hint="Ejemplos: Torre A, Edificio Norte, Bloque 3." label="Nombre del edificio">
+                  <Field
+                    hint="Ejemplos: Torre A, Edificio Norte, Bloque 3."
+                    label="Nombre del edificio"
+                  >
                     <input defaultValue={editor.building?.name ?? ''} name="name" required />
                   </Field>
                   <div className="structure-form-note">
@@ -541,7 +567,12 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   </div>
                 </div>
                 <div className="structure-dialog__footer">
-                  <Button disabled={saving} onClick={() => setEditor(null)} type="button" variant="ghost">
+                  <Button
+                    disabled={saving}
+                    onClick={() => setEditor(null)}
+                    type="button"
+                    variant="ghost"
+                  >
                     Cancelar
                   </Button>
                   <Button disabled={saving} type="submit">
@@ -552,19 +583,32 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
             ) : (
               <form onSubmit={(event) => void saveUnit(event, editor.unit)}>
                 <div className="structure-dialog__body structure-form-grid">
-                  <Field label={houseMode ? 'Código o número de casa' : 'Código o número de unidad'}>
-                    <input defaultValue={editor.unit?.code ?? ''} maxLength={40} name="code" required />
+                  <Field
+                    label={houseMode ? 'Código o número de casa' : 'Código o número de unidad'}
+                  >
+                    <input
+                      defaultValue={editor.unit?.code ?? ''}
+                      maxLength={40}
+                      name="code"
+                      required
+                    />
                   </Field>
 
                   {!houseMode && !singleBuildingMode ? (
                     <Field
-                      hint={multiBuildingMode ? 'El mismo código puede existir en otra torre.' : undefined}
+                      hint={
+                        multiBuildingMode
+                          ? 'El mismo código puede existir en otra torre.'
+                          : undefined
+                      }
                       label="Torre o edificio"
                     >
                       <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
                         <option value="">Sin edificio / área común</option>
                         {buildings.map((building) => (
-                          <option key={building.id} value={building.id}>{building.name}</option>
+                          <option key={building.id} value={building.id}>
+                            {building.name}
+                          </option>
                         ))}
                       </Select>
                     </Field>
@@ -572,7 +616,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
 
                   {singleBuildingMode ? (
                     <div className="structure-form-note">
-                      Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>. La unidad se asociará automáticamente y su código será único dentro de este edificio.
+                      Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>.
+                      La unidad se asociará automáticamente y su código será único dentro de este
+                      edificio.
                     </div>
                   ) : null}
 
@@ -586,15 +632,23 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                     }
                     label="Tipo"
                   >
-                    <Select defaultValue={editor.unit?.type ?? defaultUnitType(topology)} name="type">
+                    <Select
+                      defaultValue={editor.unit?.type ?? defaultUnitType(topology)}
+                      name="type"
+                    >
                       {availableUnitTypes.map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
                       ))}
                     </Select>
                   </Field>
 
                   {!houseMode ? (
-                    <Field hint="Puede ser un número, PB, PH o nivel descriptivo." label="Piso o nivel">
+                    <Field
+                      hint="Puede ser un número, PB, PH o nivel descriptivo."
+                      label="Piso o nivel"
+                    >
                       <input defaultValue={editor.unit?.floor ?? ''} maxLength={20} name="floor" />
                     </Field>
                   ) : null}
@@ -610,7 +664,10 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                     />
                   </Field>
 
-                  <Field hint="Inactiva conserva pagos, cuotas, propietarios y ocupaciones históricas." label="Estado">
+                  <Field
+                    hint="Inactiva conserva pagos, cuotas, propietarios y ocupaciones históricas."
+                    label="Estado"
+                  >
                     <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
                       <option value="active">Activa</option>
                       <option value="inactive">Inactiva / archivada</option>
@@ -618,7 +675,12 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   </Field>
                 </div>
                 <div className="structure-dialog__footer">
-                  <Button disabled={saving} onClick={() => setEditor(null)} type="button" variant="ghost">
+                  <Button
+                    disabled={saving}
+                    onClick={() => setEditor(null)}
+                    type="button"
+                    variant="ghost"
+                  >
                     Cancelar
                   </Button>
                   <Button disabled={saving} type="submit">
