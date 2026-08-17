@@ -85,11 +85,11 @@ export type CommunityDocumentLink = {
 
 export type CreateCommunityDocumentInput = {
   title: string;
-  description?: string;
-  folderId?: string;
-  categoryId?: string;
+  description?: string | undefined;
+  folderId?: string | undefined;
+  categoryId?: string | undefined;
   audience: CommunityDocumentAudience;
-  retentionDays?: number;
+  retentionDays?: number | undefined;
 };
 
 export const COMMUNITY_DOCUMENT_ACCEPT = 'application/pdf,image/jpeg,image/png';
@@ -189,9 +189,9 @@ export async function createCommunityDocumentCategory(
   session: Session,
   input: {
     name: string;
-    description?: string;
+    description?: string | undefined;
     defaultAudience: CommunityDocumentAudience;
-    defaultRetentionDays?: number;
+    defaultRetentionDays?: number | undefined;
   },
 ) {
   const created = await apiRequest<CommunityDocumentCategory | CommunityDocumentCategory[]>(
@@ -205,7 +205,11 @@ export async function createCommunityDocumentCategory(
 export async function createCommunityDocumentFolder(
   condominiumId: string,
   session: Session,
-  input: { name: string; description?: string; parentFolderId?: string },
+  input: {
+    name: string;
+    description?: string | undefined;
+    parentFolderId?: string | undefined;
+  },
 ) {
   const created = await apiRequest<CommunityDocumentFolder | CommunityDocumentFolder[]>(
     `${basePath(condominiumId)}/folders`,
