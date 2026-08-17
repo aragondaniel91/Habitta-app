@@ -4,12 +4,7 @@ import { apiBaseUrl, apiRequest } from '../../lib/api';
 export type CommunityDocumentAudience = 'management' | 'owners' | 'residents';
 export type CommunityDocumentStatus = 'active' | 'archived';
 export type CommunityDocumentLinkType =
-  | 'announcement'
-  | 'service_request'
-  | 'expense'
-  | 'assembly'
-  | 'proposal'
-  | 'budget';
+  'announcement' | 'service_request' | 'expense' | 'assembly' | 'proposal' | 'budget';
 
 export type CommunityDocumentCategory = {
   id: string;
@@ -311,15 +306,18 @@ export const linkCommunityDocument = (
   documentId: string,
   session: Session,
   input: { targetType: CommunityDocumentLinkType; targetId: string },
-) =>
-  input.targetType === 'budget'
-    ? apiRequest<CommunityDocumentLink | CommunityDocumentLink[]>(
-        `/v1/condominiums/${condominiumId}/budgets/${input.targetId}/community-document-link`,
-        session,
-        { method: 'POST', body: JSON.stringify({ documentId }) },
-      )
-    : apiRequest<CommunityDocumentLink | CommunityDocumentLink[]>(
-        `${basePath(condominiumId)}/${documentId}/links`,
-        session,
-        { method: 'POST', body: JSON.stringify(input) },
-      );
+) => {
+  if (input.targetType === 'budget') {
+    return apiRequest<CommunityDocumentLink | CommunityDocumentLink[]>(
+      `/v1/condominiums/${condominiumId}/budgets/${input.targetId}/community-document-link`,
+      session,
+      { method: 'POST', body: JSON.stringify({ documentId }) },
+    );
+  }
+
+  return apiRequest<CommunityDocumentLink | CommunityDocumentLink[]>(
+    `${basePath(condominiumId)}/${documentId}/links`,
+    session,
+    { method: 'POST', body: JSON.stringify(input) },
+  );
+};
