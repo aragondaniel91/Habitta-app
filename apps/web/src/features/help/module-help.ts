@@ -172,6 +172,27 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     permissions:
       'Contadores pueden preparar borradores; administradores autorizados aprueban o anulan.',
   },
+  budgets: {
+    purpose:
+      'Planifica los egresos del condominio por período, categoría y moneda, conservando versiones aprobadas y comparándolas con la ejecución real.',
+    actions: [
+      'Crear períodos y líneas presupuestarias.',
+      'Enviar versiones a aprobación y crear revisiones sin reescribir el historial.',
+      'Comparar el presupuesto aprobado con gastos reales por categoría y moneda.',
+    ],
+    steps: [
+      'Define el período y agrega una línea por categoría y moneda.',
+      'Revisa los montos y envía el borrador a aprobación.',
+      'Cuando exista una versión aprobada, abre la ejecución para comparar presupuesto, gasto real y disponible.',
+    ],
+    tips: [
+      'No combines USD, VES o EUR: cada moneda mantiene su propio presupuesto y ejecución.',
+      'Una revisión crea una nueva versión; no modifica las cifras históricas ya aprobadas.',
+      'Solo los gastos aprobados o pagados del período cuentan como ejecución real.',
+    ],
+    permissions:
+      'Administradores y contadores pueden preparar presupuestos; la aprobación requiere autorización administrativa y la junta mantiene acceso de consulta.',
+  },
   reports: {
     purpose:
       'Convierte la información financiera en indicadores de cobranza, cartera y comportamiento por unidad.',
