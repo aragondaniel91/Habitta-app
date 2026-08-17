@@ -4,11 +4,7 @@ import { apiBaseUrl, apiRequest } from '../../lib/api';
 export type CommunityDocumentAudience = 'management' | 'owners' | 'residents';
 export type CommunityDocumentStatus = 'active' | 'archived';
 export type CommunityDocumentLinkType =
-  | 'announcement'
-  | 'service_request'
-  | 'expense'
-  | 'assembly'
-  | 'proposal';
+  'announcement' | 'service_request' | 'expense' | 'assembly' | 'proposal';
 
 export type CommunityDocumentCategory = {
   id: string;
@@ -123,8 +119,7 @@ export function communityDocumentFileError(file: File) {
   return '';
 }
 
-const basePath = (condominiumId: string) =>
-  `/v1/condominiums/${condominiumId}/community-documents`;
+const basePath = (condominiumId: string) => `/v1/condominiums/${condominiumId}/community-documents`;
 
 const responseError = async (response: Response, fallback: string) => {
   try {
@@ -173,8 +168,7 @@ export const listCommunityDocumentLinks = (
   condominiumId: string,
   documentId: string,
   session: Session,
-) =>
-  apiRequest<CommunityDocumentLink[]>(`${basePath(condominiumId)}/${documentId}/links`, session);
+) => apiRequest<CommunityDocumentLink[]>(`${basePath(condominiumId)}/${documentId}/links`, session);
 
 export const listCommunityDocumentDownloadEvents = (
   condominiumId: string,
