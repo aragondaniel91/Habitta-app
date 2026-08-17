@@ -126,7 +126,8 @@ from (
     ('12800000-0000-0000-0000-000000000142'::uuid, '12800000-0000-0000-0000-000000000104'::uuid, 'Rechazar', 1)
 ) as options(option_id, proposal_id, label, sort_order);
 
-set local role authenticated;
+-- Internal setup functions remain non-executable by authenticated clients. The fixture owner
+-- sets the admin claim so auth.uid() and manager checks use the same identity as production.
 select set_config('request.jwt.claim.sub', '12800000-0000-0000-0000-000000000001', true);
 select public.capture_governance_eligibility(
   (select (payload #>> '{condominium,id}')::uuid from hab128_workspace), proposal_id
@@ -138,7 +139,6 @@ from (
     ('12800000-0000-0000-0000-000000000103'::uuid),
     ('12800000-0000-0000-0000-000000000104'::uuid)
 ) as proposals(proposal_id);
-reset role;
 
 update public.governance_proposals
 set status = 'closed', closed_at = now()
