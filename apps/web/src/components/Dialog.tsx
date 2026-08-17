@@ -127,11 +127,17 @@ export function ConfirmDialog({
         ) : null}
       </DialogBody>
       <DialogFooter>
-        <Button disabled={busy} onClick={onCancel} type="button" variant="secondary">
+        <Button
+          autoFocus={destructive}
+          disabled={busy}
+          onClick={onCancel}
+          type="button"
+          variant="secondary"
+        >
           {cancelLabel}
         </Button>
         <Button
-          autoFocus
+          autoFocus={!destructive}
           disabled={busy}
           onClick={onConfirm}
           type="button"
