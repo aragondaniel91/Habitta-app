@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { ConfirmDialog } from '../../components/Dialog';
 import { Drawer } from '../../components/Drawer';
 import { Badge, Button, EmptyState, Field, Select, Surface } from '../../components/ui';
 import { FeesIcon } from '../../components/icons';
@@ -178,6 +179,7 @@ export function RecurringDuesWorkspace({
   const [busyId, setBusyId] = useState('');
   const [planDrawerOpen, setPlanDrawerOpen] = useState(false);
   const [scopeDrawerOpen, setScopeDrawerOpen] = useState(false);
+  const [runToPost, setRunToPost] = useState<RecurringRun | null>(null);
   const [expandedRunId, setExpandedRunId] = useState('');
   const [scopeForm, setScopeForm] = useState<ScopeForm>(initialScopeForm);
   const [planForm, setPlanForm] = useState<PlanForm>(() => initialPlanForm(concepts, []));
@@ -222,6 +224,7 @@ export function RecurringDuesWorkspace({
   useEffect(() => {
     setPlanDrawerOpen(false);
     setScopeDrawerOpen(false);
+    setRunToPost(null);
     setExpandedRunId('');
   }, [condominiumId]);
 
@@ -349,13 +352,6 @@ export function RecurringDuesWorkspace({
   };
 
   const postRun = async (run: RecurringRun) => {
-    if (
-      !window.confirm(
-        `¿Publicar la cuota de ${run.period} en la cartera? Después de publicar, el período queda inmutable.`,
-      )
-    ) {
-      return;
-    }
     setBusyId(`post:${run.id}`);
     setError('');
     try {
@@ -364,6 +360,7 @@ export function RecurringDuesWorkspace({
         session,
         { method: 'POST' },
       );
+      setRunToPost(null);
       setExpandedRunId('');
       onLedgerChanged();
       await load();
@@ -475,7 +472,7 @@ export function RecurringDuesWorkspace({
                         {canManage ? (
                           <Button
                             disabled={busyId === `post:${run.id}`}
-                            onClick={() => void postRun(run)}
+                            onClick={() => setRunToPost(run)}
                             size="sm"
                           >
                             {busyId === `post:${run.id}` ? 'Publicando…' : 'Aprobar y publicar'}
@@ -617,6 +614,19 @@ export function RecurringDuesWorkspace({
           ) : null}
         </>
       )}
+
+      {runToPost ? (
+        <ConfirmDialog
+          busy={busyId === `post:${runToPost.id}`}
+          busyLabel="Publicando cuota…"
+          confirmLabel="Publicar cuota"
+          description={`Vas a publicar el período ${runToPost.period} por ${money(runToPost.total_amount, runToPost.currency_code)}. Esto creará la deuda en cartera usando el reparto congelado y el período quedará inmutable.`}
+          destructive
+          onCancel={() => !busyId && setRunToPost(null)}
+          onConfirm={() => void postRun(runToPost)}
+          title="Aprobar y publicar cuota"
+        />
+      ) : null}
 
       {scopeDrawerOpen ? (
         <Drawer
