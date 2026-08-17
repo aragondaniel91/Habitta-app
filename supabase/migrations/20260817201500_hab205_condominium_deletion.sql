@@ -38,6 +38,54 @@ declare
   expected_confirmation text;
   deletion_job_id uuid;
   object_keys text[];
+  protected_table text;
+  protected_tables constant text[] := array[
+    'announcement_attachments',
+    'announcement_events',
+    'assembly_action_item_events',
+    'assembly_action_items',
+    'assembly_agenda_items',
+    'assembly_eligibility_snapshots',
+    'assembly_resolutions',
+    'budget_events',
+    'budget_lines',
+    'charge_batches',
+    'community_document_download_events',
+    'community_document_versions',
+    'community_documents',
+    'condominium_exchange_rates',
+    'expense_attachments',
+    'governance_attachments',
+    'governance_eligibility_snapshots',
+    'governance_events',
+    'governance_options',
+    'governance_votes',
+    'maintenance_attachments',
+    'maintenance_events',
+    'maintenance_service_logs',
+    'maintenance_work_order_expenses',
+    'notification_deliveries',
+    'notification_events',
+    'ownership_transfers',
+    'payment_allocations',
+    'payment_events',
+    'payment_proofs',
+    'payment_receipts',
+    'payments',
+    'receivable_ledger_entries',
+    'recurring_charge_runs',
+    'service_request_attachments',
+    'service_request_comments',
+    'service_request_events',
+    'service_requests',
+    'solvency_certificates',
+    'treasury_events',
+    'treasury_movements',
+    'treasury_overdraft_authorizations',
+    'treasury_reconciliation_items',
+    'treasury_transfers',
+    'unit_owners'
+  ];
 begin
   if caller_user_id is null then
     raise exception 'Authentication required' using errcode = '42501';
@@ -109,6 +157,14 @@ begin
   )
   returning id into deletion_job_id;
 
+  -- Immutable/audit guards are USER triggers. Disable them only inside this transaction.
+  -- ALTER TABLE takes locks that prevent concurrent writes to these history tables while the
+  -- destructive owner-only reset runs. Internal FK triggers remain enabled, so cascades and
+  -- referential integrity continue to be enforced. Any exception rolls the trigger state back.
+  foreach protected_table in array protected_tables loop
+    execute pg_catalog.format('alter table public.%I disable trigger user', protected_table);
+  end loop;
+
   -- Financial tables intentionally use NO ACTION to prevent accidental history loss.
   -- The dedicated owner-only deletion path removes them from leaf to root.
   delete from public.receivable_ledger_entries where condominium_id = target_condominium_id;
@@ -138,6 +194,10 @@ begin
 
   -- Everything else tenant-scoped must either cascade or fail this transaction closed.
   delete from public.condominiums where id = target_condominium_id;
+
+  foreach protected_table in array protected_tables loop
+    execute pg_catalog.format('alter table public.%I enable trigger user', protected_table);
+  end loop;
 
   update public.condominium_deletion_jobs
      set database_deleted_at = now()
