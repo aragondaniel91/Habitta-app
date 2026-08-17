@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { AssemblyActionItemsWorkspace } from '../features/governance/AssemblyActionItemsWorkspace';
 import { AssembliesWorkspace } from '../features/governance/AssembliesWorkspace';
 import { GovernancePage } from './GovernancePage';
 import '../features/governance/assemblies-workspace.css';
+import '../features/governance/governance-workspace.css';
 
 type Props = {
   condominiumId: string;
@@ -10,7 +12,7 @@ type Props = {
   session: Session;
 };
 
-type View = 'proposals' | 'assemblies';
+type View = 'proposals' | 'assemblies' | 'action-items';
 
 export function GovernanceWorkspacePage(props: Props) {
   const [view, setView] = useState<View>('proposals');
@@ -38,8 +40,18 @@ export function GovernanceWorkspacePage(props: Props) {
         >
           Asambleas y actas
         </button>
+        <button
+          aria-selected={view === 'action-items'}
+          onClick={() => setView('action-items')}
+          role="tab"
+          type="button"
+        >
+          Acuerdos y seguimiento
+        </button>
       </nav>
-      {view === 'proposals' ? <GovernancePage {...props} /> : <AssembliesWorkspace {...props} />}
+      {view === 'proposals' ? <GovernancePage {...props} /> : null}
+      {view === 'assemblies' ? <AssembliesWorkspace {...props} /> : null}
+      {view === 'action-items' ? <AssemblyActionItemsWorkspace {...props} /> : null}
     </div>
   );
 }
