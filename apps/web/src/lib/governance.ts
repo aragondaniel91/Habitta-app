@@ -13,6 +13,7 @@ export type GovernanceProposal = {
   status: GovernanceStatus;
   voting_basis: GovernanceVotingBasis;
   quorum_percentage: number | string;
+  approval_threshold_percentage: number | string;
   budget_amount: string | null;
   currency_code: string | null;
   opens_at: string | null;
@@ -59,6 +60,11 @@ export type GovernanceResults = {
   participation_percentage: number | string;
   quorum_percentage: number | string;
   quorum_met: boolean;
+  approval_option_id: string | null;
+  approval_vote_count: number;
+  approval_percentage: number | string;
+  approval_threshold_percentage: number | string;
+  approval_threshold_met: boolean;
   options: Array<{
     id: string;
     label: string;

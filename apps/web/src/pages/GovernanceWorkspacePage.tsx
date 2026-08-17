@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AssemblyActionItemsWorkspace } from '../features/governance/AssemblyActionItemsWorkspace';
 import { AssembliesWorkspace } from '../features/governance/AssembliesWorkspace';
+import { GovernanceVotingRulesPanel } from '../features/governance/GovernanceVotingRulesPanel';
 import { GovernancePage } from './GovernancePage';
 import '../features/governance/assemblies-workspace.css';
 import '../features/governance/governance-workspace.css';
@@ -49,7 +50,12 @@ export function GovernanceWorkspacePage(props: Props) {
           Acuerdos y seguimiento
         </button>
       </nav>
-      {view === 'proposals' ? <GovernancePage {...props} /> : null}
+      {view === 'proposals' ? (
+        <>
+          <GovernancePage {...props} />
+          <GovernanceVotingRulesPanel condominiumId={props.condominiumId} session={props.session} />
+        </>
+      ) : null}
       {view === 'assemblies' ? <AssembliesWorkspace {...props} /> : null}
       {view === 'action-items' ? <AssemblyActionItemsWorkspace {...props} /> : null}
     </div>

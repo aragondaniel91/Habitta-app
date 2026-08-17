@@ -81,9 +81,11 @@ cross join (
     ('12800000-0000-0000-0000-000000000014'::uuid)
 ) as users(user_id);
 
+-- HAB-128 predates frozen option configuration. Build these historical fixtures as drafts,
+-- attach their options while mutation is valid, capture the electorate, then close them.
 insert into public.governance_proposals (
   id, condominium_id, title, description, category, status, voting_basis,
-  quorum_percentage, closes_at, created_by, closed_at
+  quorum_percentage, approval_threshold_percentage, closes_at, created_by
 )
 select
   proposal_id,
@@ -91,12 +93,12 @@ select
   proposal_title,
   'HAB-128 decision guard test',
   'community',
-  'closed',
+  'draft',
   'one_per_unit',
   quorum,
+  0,
   now() - interval '1 hour',
-  '12800000-0000-0000-0000-000000000001',
-  now()
+  '12800000-0000-0000-0000-000000000001'
 from (
   values
     ('12800000-0000-0000-0000-000000000101'::uuid, 'No quorum', 75::numeric),
@@ -124,20 +126,39 @@ from (
     ('12800000-0000-0000-0000-000000000142'::uuid, '12800000-0000-0000-0000-000000000104'::uuid, 'Rechazar', 1)
 ) as options(option_id, proposal_id, label, sort_order);
 
+-- Internal setup functions remain non-executable by authenticated clients. The fixture owner
+-- sets the admin claim so auth.uid() and manager checks use the same identity as production.
+select set_config('request.jwt.claim.sub', '12800000-0000-0000-0000-000000000001', true);
+select public.capture_governance_eligibility(
+  (select (payload #>> '{condominium,id}')::uuid from hab128_workspace), proposal_id
+)
+from (
+  values
+    ('12800000-0000-0000-0000-000000000101'::uuid),
+    ('12800000-0000-0000-0000-000000000102'::uuid),
+    ('12800000-0000-0000-0000-000000000103'::uuid),
+    ('12800000-0000-0000-0000-000000000104'::uuid)
+) as proposals(proposal_id);
+
+update public.governance_proposals
+set status = 'closed', closed_at = now()
+where id in (
+  '12800000-0000-0000-0000-000000000101',
+  '12800000-0000-0000-0000-000000000102',
+  '12800000-0000-0000-0000-000000000103',
+  '12800000-0000-0000-0000-000000000104'
+);
+
 insert into public.governance_votes (proposal_id, option_id, condominium_id, user_id, unit_id)
 select proposal_id, option_id, (select (payload #>> '{condominium,id}')::uuid from hab128_workspace), user_id, unit_id
 from (
   values
-    -- 25% participation: quorum is not met.
     ('12800000-0000-0000-0000-000000000101'::uuid, '12800000-0000-0000-0000-000000000111'::uuid, '12800000-0000-0000-0000-000000000011'::uuid, '12800000-0000-0000-0000-000000000021'::uuid),
-    -- 50% participation and a 1-1 tie.
     ('12800000-0000-0000-0000-000000000102'::uuid, '12800000-0000-0000-0000-000000000121'::uuid, '12800000-0000-0000-0000-000000000011'::uuid, '12800000-0000-0000-0000-000000000021'::uuid),
     ('12800000-0000-0000-0000-000000000102'::uuid, '12800000-0000-0000-0000-000000000122'::uuid, '12800000-0000-0000-0000-000000000012'::uuid, '12800000-0000-0000-0000-000000000022'::uuid),
-    -- 75% participation and affirmative option wins 2-1.
     ('12800000-0000-0000-0000-000000000103'::uuid, '12800000-0000-0000-0000-000000000131'::uuid, '12800000-0000-0000-0000-000000000011'::uuid, '12800000-0000-0000-0000-000000000021'::uuid),
     ('12800000-0000-0000-0000-000000000103'::uuid, '12800000-0000-0000-0000-000000000131'::uuid, '12800000-0000-0000-0000-000000000012'::uuid, '12800000-0000-0000-0000-000000000022'::uuid),
     ('12800000-0000-0000-0000-000000000103'::uuid, '12800000-0000-0000-0000-000000000132'::uuid, '12800000-0000-0000-0000-000000000013'::uuid, '12800000-0000-0000-0000-000000000023'::uuid),
-    -- 75% participation and negative option wins 2-1.
     ('12800000-0000-0000-0000-000000000104'::uuid, '12800000-0000-0000-0000-000000000141'::uuid, '12800000-0000-0000-0000-000000000011'::uuid, '12800000-0000-0000-0000-000000000021'::uuid),
     ('12800000-0000-0000-0000-000000000104'::uuid, '12800000-0000-0000-0000-000000000142'::uuid, '12800000-0000-0000-0000-000000000012'::uuid, '12800000-0000-0000-0000-000000000022'::uuid),
     ('12800000-0000-0000-0000-000000000104'::uuid, '12800000-0000-0000-0000-000000000142'::uuid, '12800000-0000-0000-0000-000000000013'::uuid, '12800000-0000-0000-0000-000000000023'::uuid)
