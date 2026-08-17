@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
+import { allowedUnitTypes, defaultUnitType } from './lib/unit-domain';
 
 const appUrl = new URL('./App.tsx', import.meta.url);
 const pageUrl = new URL('./pages/StructureManagementPage.tsx', import.meta.url);
@@ -22,10 +23,14 @@ describe('physical structure management workspace', () => {
 
     expect(source).toContain("const houseMode = topology === 'house_community'");
     expect(source).toContain("const singleBuildingMode = topology === 'single_building'");
+    expect(source).toContain('unitTypeOptions(topology)');
+    expect(source).toContain('defaultUnitType(topology)');
+    expect(defaultUnitType('house_community')).toBe('house');
+    expect(allowedUnitTypes('single_building')).not.toContain('house');
+    expect(allowedUnitTypes('multi_building_complex')).not.toContain('house');
     expect(source).toContain('Nueva torre o edificio');
     expect(source).toContain('Torres y edificios');
     expect(source).toContain('Casas y unidades');
-    expect(source).toContain("houseMode ? 'house' : 'apartment'");
     expect(source).toContain("method: building ? 'PATCH' : 'POST'");
     expect(source).toContain("method: unit ? 'PATCH' : 'POST'");
     expect(source).toContain('Inactiva / archivada');

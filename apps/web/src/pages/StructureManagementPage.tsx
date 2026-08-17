@@ -5,10 +5,14 @@ import { CheckCircleIcon, SettingsIcon, UnitsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import {
+  defaultUnitType,
+  type PropertyTopology,
+  UNIT_TYPE_LABELS,
+  type UnitType,
+  unitTypeOptions,
+} from '../lib/unit-domain';
 import '../structure-management.css';
-
-type PropertyTopology =
-  'unspecified' | 'house_community' | 'single_building' | 'multi_building_complex' | 'mixed';
 
 type CondominiumProfile = {
   id: string;
@@ -30,7 +34,7 @@ type Unit = {
   condominium_id: string;
   building_id: string | null;
   code: string;
-  type: 'apartment' | 'house' | 'commercial' | 'parking' | 'storage';
+  type: UnitType;
   floor: string | null;
   ownership_percentage: number | string | null;
   status: 'active' | 'inactive';
@@ -46,16 +50,6 @@ type Props = {
   condominiumName: string;
   session: Session;
 };
-
-const unitTypeLabels: Record<Unit['type'], string> = {
-  apartment: 'Apartamento',
-  house: 'Casa',
-  commercial: 'Local comercial',
-  parking: 'Estacionamiento',
-  storage: 'Depósito',
-};
-
-const unitTypeOptions = Object.entries(unitTypeLabels) as Array<[Unit['type'], string]>;
 
 const topologyLabels: Record<PropertyTopology, string> = {
   unspecified: 'Estructura pendiente de definir',
@@ -99,8 +93,10 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
   const topology = profile?.property_topology ?? 'unspecified';
   const houseMode = topology === 'house_community';
   const singleBuildingMode = topology === 'single_building';
+  const multiBuildingMode = topology === 'multi_building_complex';
   const showBuildings = !houseMode;
   const canCreateBuilding = showBuildings && (!singleBuildingMode || buildings.length === 0);
+  const availableUnitTypes = useMemo(() => unitTypeOptions(topology), [topology]);
 
   const loadStructure = useCallback(async () => {
     setLoading(true);
@@ -145,7 +141,7 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
         const buildingName = unit.building_id
           ? (buildingById.get(unit.building_id)?.name ?? '')
           : '';
-        return [unit.code, unit.floor ?? '', unitTypeLabels[unit.type], buildingName, unit.status]
+        return [unit.code, unit.floor ?? '', UNIT_TYPE_LABELS[unit.type], buildingName, unit.status]
           .join(' ')
           .toLocaleLowerCase('es')
           .includes(normalizedSearch);
@@ -212,7 +208,7 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
     const payload = {
       code: String(form.get('code') ?? '').trim(),
       buildingId: selectedBuildingId,
-      type: String(form.get('type') ?? (houseMode ? 'house' : 'apartment')),
+      type: String(form.get('type') ?? defaultUnitType(topology)),
       floor: String(form.get('floor') ?? '').trim() || null,
       ownershipPercentage: percentage ? Number(percentage) : null,
       status: String(form.get('status') ?? 'active'),
@@ -259,6 +255,11 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
     houseMode || singleBuildingMode
       ? profile?.declared_unit_count
       : profile?.declared_building_count;
+  const unitEmptyDescription = houseMode
+    ? 'Registra las casas, locales, depósitos o estacionamientos que forman parte de este condominio.'
+    : singleBuildingMode || multiBuildingMode
+      ? 'Registra apartamentos, locales, depósitos o estacionamientos de la estructura declarada.'
+      : 'Registra las unidades que forman parte de este condominio.';
 
   return (
     <div className="structure-page">
@@ -273,10 +274,15 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                 {singleBuildingMode ? 'Crear edificio' : 'Nueva torre o edificio'}
               </Button>
             ) : null}
-            <Button onClick={() => setEditor({ kind: 'unit', unit: null })}>{newUnitLabel}</Button>
+            <Button
+              disabled={singleBuildingMode && buildings.length !== 1}
+              onClick={() => setEditor({ kind: 'unit', unit: null })}
+            >
+              {newUnitLabel}
+            </Button>
           </>
         }
-        description={`Organiza la estructura física de ${condominiumName}. La configuración se adapta al tipo de propiedad y preserva el historial.`}
+        description={`Organiza la estructura física de ${condominiumName}. Habitta adapta las opciones al tipo de propiedad definido durante el onboarding.`}
         eyebrow={topologyLabels[topology]}
         title={pageTitle}
       />
@@ -287,6 +293,16 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
           <span>
             Este condominio fue creado con el modelo anterior. Completa su tipo de propiedad para
             activar la experiencia adaptativa.
+          </span>
+        </div>
+      ) : null}
+
+      {singleBuildingMode && buildings.length !== 1 ? (
+        <div className="structure-message" data-tone="error" role="status">
+          <SettingsIcon size={18} />
+          <span>
+            Antes de crear unidades configura el único edificio de este condominio. La base de datos
+            también exige esa asociación para evitar unidades huérfanas.
           </span>
         </div>
       ) : null}
@@ -319,7 +335,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
         <Surface className="structure-metric">
           <span>{showBuildings ? 'Sin edificio asignado' : 'Unidades inactivas'}</span>
           <strong>{showBuildings ? unassignedUnits : units.length - activeUnits}</strong>
-          <small>{showBuildings ? 'Revisa si requieren ubicación' : 'Historial preservado'}</small>
+          <small>
+            {showBuildings ? 'Áreas comunes o pendientes de ubicar' : 'Historial preservado'}
+          </small>
         </Surface>
       </div>
 
@@ -403,11 +421,11 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                         {houseMode
                           ? 'Conjunto de casas'
                           : building
-                            ? 'Torre o edificio'
-                            : 'Unidad independiente'}
+                            ? `${building.name} · ${unit.code}`
+                            : 'Área común / sin edificio'}
                       </small>
                     </div>
-                    <div data-label="Tipo">{unitTypeLabels[unit.type]}</div>
+                    <div data-label="Tipo">{UNIT_TYPE_LABELS[unit.type]}</div>
                     <div data-label="Alícuota">
                       {unit.ownership_percentage === null
                         ? 'No definida'
@@ -433,11 +451,7 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
             <EmptyState
               actionLabel={newUnitLabel}
               description={
-                search
-                  ? 'No encontramos unidades con esos criterios.'
-                  : houseMode
-                    ? 'Registra las casas que forman parte de este condominio.'
-                    : 'Registra apartamentos, casas, locales, depósitos o estacionamientos.'
+                search ? 'No encontramos unidades con esos criterios.' : unitEmptyDescription
               }
               icon={<UnitsIcon size={25} />}
               onAction={() => setEditor({ kind: 'unit', unit: null })}
@@ -581,9 +595,16 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   </Field>
 
                   {!houseMode && !singleBuildingMode ? (
-                    <Field label="Torre o edificio">
+                    <Field
+                      hint={
+                        multiBuildingMode
+                          ? 'El mismo código puede existir en otra torre.'
+                          : undefined
+                      }
+                      label="Torre o edificio"
+                    >
                       <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
-                        <option value="">Sin edificio asignado</option>
+                        <option value="">Sin edificio / área común</option>
                         {buildings.map((building) => (
                           <option key={building.id} value={building.id}>
                             {building.name}
@@ -596,16 +617,26 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                   {singleBuildingMode ? (
                     <div className="structure-form-note">
                       Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>.
-                      Las nuevas unidades se asociarán automáticamente.
+                      La unidad se asociará automáticamente y su código será único dentro de este
+                      edificio.
                     </div>
                   ) : null}
 
-                  <Field label="Tipo">
+                  <Field
+                    hint={
+                      houseMode
+                        ? 'Habitta oculta Apartamento porque este condominio fue definido como conjunto de casas.'
+                        : singleBuildingMode || multiBuildingMode
+                          ? 'Habitta oculta Casa porque la estructura fue definida por edificios.'
+                          : undefined
+                    }
+                    label="Tipo"
+                  >
                     <Select
-                      defaultValue={editor.unit?.type ?? (houseMode ? 'house' : 'apartment')}
+                      defaultValue={editor.unit?.type ?? defaultUnitType(topology)}
                       name="type"
                     >
-                      {unitTypeOptions.map(([value, label]) => (
+                      {availableUnitTypes.map(([value, label]) => (
                         <option key={value} value={value}>
                           {label}
                         </option>
