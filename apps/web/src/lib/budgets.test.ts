@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  budgetTotalsByCurrency,
-  latestBudgetVersion,
-  linesForBudgetVersion,
-} from './budgets';
+import { budgetTotalsByCurrency, latestBudgetVersion, linesForBudgetVersion } from './budgets';
 import type { BudgetLine, BudgetPeriod, BudgetVersion } from './budgets';
 
 const period: BudgetPeriod = {
@@ -32,12 +28,7 @@ const version = (versionNumber: number): BudgetVersion => ({
   created_at: '2026-01-10T00:00:00Z',
 });
 
-const line = (
-  id: string,
-  versionId: string,
-  currencyCode: string,
-  amount: string,
-): BudgetLine => ({
+const line = (id: string, versionId: string, currencyCode: string, amount: string): BudgetLine => ({
   id,
   budget_version_id: versionId,
   budget_period_id: period.id,
