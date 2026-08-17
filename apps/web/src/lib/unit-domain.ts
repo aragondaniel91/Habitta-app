@@ -1,9 +1,5 @@
 export type PropertyTopology =
-  | 'unspecified'
-  | 'house_community'
-  | 'single_building'
-  | 'multi_building_complex'
-  | 'mixed';
+  'unspecified' | 'house_community' | 'single_building' | 'multi_building_complex' | 'mixed';
 
 export type UnitType = 'apartment' | 'house' | 'commercial' | 'parking' | 'storage';
 
