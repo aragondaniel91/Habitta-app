@@ -25,10 +25,7 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Revisa primero las tarjetas de alerta.',
       'Abre el módulo relacionado para completar la acción.',
     ],
-    tips: [
-      'El dashboard no reemplaza los reportes contables.',
-      'Los totales nunca mezclan monedas.',
-    ],
+    tips: ['El dashboard no reemplaza los reportes contables.', 'Los totales nunca mezclan monedas.'],
     permissions: 'Cada persona ve únicamente la información permitida por su rol.',
   },
   units: {
@@ -209,6 +206,27 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Evita publicar datos privados en anuncios generales.',
     ],
     permissions: 'La información visible se limita según el rol del usuario.',
+  },
+  documents: {
+    purpose:
+      'Organiza documentos privados del condominio por carpetas y categorías, conservando versiones, permisos y trazabilidad de las descargas.',
+    actions: [
+      'Crear documentos, carpetas y categorías cuando tu rol lo permita.',
+      'Agregar nuevas versiones sin reemplazar el historial anterior.',
+      'Descargar archivos autorizados y consultar registros relacionados.',
+    ],
+    steps: [
+      'Selecciona una carpeta o categoría para ubicar el documento.',
+      'Confirma la audiencia antes de cargar o publicar una versión.',
+      'Usa una nueva versión para corregir un archivo y archiva el documento cuando deje de estar vigente.',
+    ],
+    tips: [
+      'Los archivos admitidos son PDF, JPG y PNG de hasta 10 MB.',
+      'No borres versiones históricas: el módulo conserva la trazabilidad.',
+      'Cada descarga autorizada queda registrada antes de entregar el archivo.',
+    ],
+    permissions:
+      'Administración, contabilidad, asistentes autorizados y junta pueden gestionar la biblioteca; propietarios y residentes solo ven los documentos que su audiencia y relación activa permiten.',
   },
   governance: {
     purpose: 'Gestiona propuestas, presupuestos, quórum, votaciones y decisiones de la comunidad.',
