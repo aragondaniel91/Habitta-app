@@ -9,8 +9,14 @@ import { apiRequest } from '../../lib/api';
 import type { MaintenanceWorkOrder } from '../../lib/maintenance';
 import type { ServiceRequestRecord } from '../../lib/service-requests';
 import { canManageGovernance, useCondominiumRoles } from '../../lib/roles';
-import { loadAssemblyActionAssignees } from './action-item-assignees';
-import type { AssemblyActionAssignee as Assignee } from './action-item-assignees';
+import {
+  loadAssemblyActionAssigneeLabels,
+  loadAssemblyActionAssignees,
+} from './action-item-assignees';
+import type {
+  AssemblyActionAssignee as Assignee,
+  AssemblyActionAssigneeLabel,
+} from './action-item-assignees';
 import './assembly-action-items-workspace.css';
 
 type Props = {
@@ -117,12 +123,17 @@ const assemblyDateLabel = (value: string) => {
   }).format(parsed);
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const localDateKey = (value: Date) => {
+  const shifted = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+  return shifted.toISOString().slice(0, 10);
+};
+
+const today = () => localDateKey(new Date());
 
 const upcomingLimit = () => {
   const limit = new Date();
   limit.setDate(limit.getDate() + 7);
-  return limit.toISOString().slice(0, 10);
+  return localDateKey(limit);
 };
 
 const emptyDraft = (assemblyId = ''): Draft => ({
@@ -149,6 +160,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
   const [items, setItems] = useState<ActionItem[]>([]);
   const [resolutions, setResolutions] = useState<AssemblyResolution[]>([]);
   const [assignees, setAssignees] = useState<Assignee[]>([]);
+  const [assignedLabels, setAssignedLabels] = useState<AssemblyActionAssigneeLabel[]>([]);
   const [requests, setRequests] = useState<ServiceRequestRecord[]>([]);
   const [workOrders, setWorkOrders] = useState<MaintenanceWorkOrder[]>([]);
   const [assemblyFilter, setAssemblyFilter] = useState('all');
@@ -158,6 +170,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
   const [referenceLoading, setReferenceLoading] = useState(false);
   const [error, setError] = useState('');
   const [referenceError, setReferenceError] = useState('');
+  const [labelError, setLabelError] = useState('');
   const [editor, setEditor] = useState<EditorState>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [saving, setSaving] = useState(false);
@@ -197,6 +210,20 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       setLoading(false);
     }
   }, [condominiumId, session]);
+
+  const loadAssignedLabels = useCallback(async () => {
+    setLabelError('');
+    try {
+      setAssignedLabels(await loadAssemblyActionAssigneeLabels(condominiumId));
+    } catch (loadError) {
+      setAssignedLabels([]);
+      setLabelError(
+        loadError instanceof Error
+          ? loadError.message
+          : 'No se pudieron cargar los nombres de los responsables.',
+      );
+    }
+  }, [condominiumId]);
 
   const loadManagementReferences = useCallback(async () => {
     if (!manage) {
@@ -239,7 +266,8 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
     setEditor(null);
     setDraft(emptyDraft());
     void loadWorkspace();
-  }, [condominiumId, loadWorkspace]);
+    void loadAssignedLabels();
+  }, [condominiumId, loadAssignedLabels, loadWorkspace]);
 
   useEffect(() => {
     void loadManagementReferences();
@@ -256,6 +284,10 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
   const assigneeById = useMemo(
     () => new Map(assignees.map((assignee) => [assignee.user_id, assignee])),
     [assignees],
+  );
+  const assignedLabelById = useMemo(
+    () => new Map(assignedLabels.map((label) => [label.user_id, label.display_name])),
+    [assignedLabels],
   );
   const requestById = useMemo(
     () => new Map(requests.map((request) => [request.id, request])),
@@ -283,9 +315,9 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       if (dueFilter === 'upcoming') {
         return Boolean(
           !isFinalized(item.status) &&
-          item.due_on &&
-          item.due_on >= currentDate &&
-          item.due_on <= nextWeek,
+            item.due_on &&
+            item.due_on >= currentDate &&
+            item.due_on <= nextWeek,
         );
       }
       if (dueFilter === 'completed') return item.status === 'completed';
@@ -376,7 +408,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
         );
       }
       setEditor(null);
-      await loadWorkspace();
+      await Promise.all([loadWorkspace(), loadAssignedLabels()]);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'No se pudo guardar el acuerdo.');
     } finally {
@@ -445,6 +477,14 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       {error ? (
         <div aria-live="polite" className="action-items-alert" role="status">
           {error}
+        </div>
+      ) : null}
+      {labelError ? (
+        <div aria-live="polite" className="action-items-alert" role="status">
+          Los acuerdos siguen visibles, pero no se pudieron resolver los nombres de sus responsables: {labelError}
+          <Button onClick={() => void loadAssignedLabels()} size="sm" variant="ghost">
+            Reintentar
+          </Button>
         </div>
       ) : null}
       {manage && referenceError ? (
@@ -553,6 +593,9 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
             const assignee = item.assigned_to_user_id
               ? assigneeById.get(item.assigned_to_user_id)
               : undefined;
+            const assignedDisplayName = item.assigned_to_user_id
+              ? assignedLabelById.get(item.assigned_to_user_id)
+              : undefined;
             const request = item.service_request_id
               ? requestById.get(item.service_request_id)
               : undefined;
@@ -589,7 +632,9 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
                       <dt>Responsable</dt>
                       <dd>
                         {item.assigned_to_user_id
-                          ? assigneeLabel(assignee)
+                          ? assignee
+                            ? assigneeLabel(assignee)
+                            : assignedDisplayName || 'Responsable asignado'
                           : 'Sin responsable asignado'}
                       </dd>
                     </div>
