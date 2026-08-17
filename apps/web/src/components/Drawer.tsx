@@ -21,13 +21,10 @@ type Props = {
 };
 
 /**
- * Every module had written its own drawer shell, and only three of the ten declared any dialog
- * semantics at all. This is the single implementation: it announces itself as a modal dialog,
- * closes on Escape, keeps Tab inside while open, and gives focus back where it came from.
- */
-/**
  * Escape to close, Tab kept inside, focus returned on unmount. Exported so panels with their own
- * markup — the help drawer, for one — get the same behaviour without copying it.
+ * markup — the help drawer, for one — get the same behaviour without copying it. Explicit
+ * autofocus targets win over the panel itself so forms and safe confirmation actions can choose
+ * their initial focus deliberately.
  */
 export function useDialogBehavior(
   panel: { current: HTMLElement | null },
@@ -35,7 +32,8 @@ export function useDialogBehavior(
 ): void {
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
-    panel.current?.focus();
+    const autoFocusTarget = panel.current?.querySelector<HTMLElement>('[autofocus]');
+    (autoFocusTarget ?? panel.current)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {

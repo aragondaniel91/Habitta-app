@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { Dialog, DialogBody, DialogFooter } from '../components/Dialog';
 import { CheckCircleIcon, SettingsIcon, UnitsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
@@ -261,6 +262,18 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
       ? 'Registra apartamentos, locales, depósitos o estacionamientos de la estructura declarada.'
       : 'Registra las unidades que forman parte de este condominio.';
 
+  const editorTitle = editor
+    ? editor.kind === 'unit'
+      ? editor.unit
+        ? `Editar ${editor.unit.code}`
+        : houseMode
+          ? 'Crear casa'
+          : 'Crear unidad'
+      : editor.building
+        ? `Editar ${editor.building.name}`
+        : 'Crear edificio'
+    : '';
+
   return (
     <div className="structure-page">
       <PageHeader
@@ -520,177 +533,149 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
       </Surface>
 
       {editor ? (
-        <div className="structure-dialog-backdrop" onMouseDown={() => !saving && setEditor(null)}>
-          <section
-            aria-labelledby="structure-dialog-title"
-            aria-modal="true"
-            className="structure-dialog"
-            onMouseDown={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <div className="structure-dialog__header">
-              <div>
-                <span>{editor.kind === 'unit' ? 'UNIDAD' : 'EDIFICIO'}</span>
-                <h2 id="structure-dialog-title">
-                  {editor.kind === 'unit'
-                    ? editor.unit
-                      ? `Editar ${editor.unit.code}`
-                      : houseMode
-                        ? 'Crear casa'
-                        : 'Crear unidad'
-                    : editor.building
-                      ? `Editar ${editor.building.name}`
-                      : 'Crear edificio'}
-                </h2>
-              </div>
-              <button
-                aria-label="Cerrar"
-                disabled={saving}
-                onClick={() => setEditor(null)}
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-
-            {editor.kind === 'building' ? (
-              <form onSubmit={(event) => void saveBuilding(event, editor.building)}>
-                <div className="structure-dialog__body">
-                  <Field
-                    hint="Ejemplos: Torre A, Edificio Norte, Bloque 3."
-                    label="Nombre del edificio"
-                  >
-                    <input defaultValue={editor.building?.name ?? ''} name="name" required />
-                  </Field>
-                  <div className="structure-form-note">
-                    Cambiar el nombre conserva unidades e historial asociados.
-                  </div>
+        <Dialog
+          closeDisabled={saving}
+          eyebrow={editor.kind === 'unit' ? 'Unidad' : 'Edificio'}
+          onClose={() => setEditor(null)}
+          size="md"
+          title={editorTitle}
+        >
+          {editor.kind === 'building' ? (
+            <form onSubmit={(event) => void saveBuilding(event, editor.building)}>
+              <DialogBody>
+                <Field
+                  hint="Ejemplos: Torre A, Edificio Norte, Bloque 3."
+                  label="Nombre del edificio"
+                >
+                  <input
+                    autoFocus
+                    defaultValue={editor.building?.name ?? ''}
+                    name="name"
+                    required
+                  />
+                </Field>
+                <div className="structure-form-note">
+                  Cambiar el nombre conserva unidades e historial asociados.
                 </div>
-                <div className="structure-dialog__footer">
-                  <Button
-                    disabled={saving}
-                    onClick={() => setEditor(null)}
-                    type="button"
-                    variant="ghost"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button disabled={saving} type="submit">
-                    {saving ? 'Guardando…' : 'Guardar'}
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={(event) => void saveUnit(event, editor.unit)}>
-                <div className="structure-dialog__body structure-form-grid">
-                  <Field
-                    label={houseMode ? 'Código o número de casa' : 'Código o número de unidad'}
-                  >
-                    <input
-                      defaultValue={editor.unit?.code ?? ''}
-                      maxLength={40}
-                      name="code"
-                      required
-                    />
-                  </Field>
+              </DialogBody>
+              <DialogFooter>
+                <Button
+                  disabled={saving}
+                  onClick={() => setEditor(null)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button disabled={saving} type="submit">
+                  {saving ? 'Guardando…' : 'Guardar edificio'}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <form onSubmit={(event) => void saveUnit(event, editor.unit)}>
+              <DialogBody className="structure-form-grid">
+                <Field label={houseMode ? 'Código o número de casa' : 'Código o número de unidad'}>
+                  <input
+                    autoFocus
+                    defaultValue={editor.unit?.code ?? ''}
+                    maxLength={40}
+                    name="code"
+                    required
+                  />
+                </Field>
 
-                  {!houseMode && !singleBuildingMode ? (
-                    <Field
-                      hint={
-                        multiBuildingMode
-                          ? 'El mismo código puede existir en otra torre.'
-                          : undefined
-                      }
-                      label="Torre o edificio"
-                    >
-                      <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
-                        <option value="">Sin edificio / área común</option>
-                        {buildings.map((building) => (
-                          <option key={building.id} value={building.id}>
-                            {building.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  ) : null}
-
-                  {singleBuildingMode ? (
-                    <div className="structure-form-note">
-                      Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>.
-                      La unidad se asociará automáticamente y su código será único dentro de este
-                      edificio.
-                    </div>
-                  ) : null}
-
+                {!houseMode && !singleBuildingMode ? (
                   <Field
                     hint={
-                      houseMode
-                        ? 'Habitta oculta Apartamento porque este condominio fue definido como conjunto de casas.'
-                        : singleBuildingMode || multiBuildingMode
-                          ? 'Habitta oculta Casa porque la estructura fue definida por edificios.'
-                          : undefined
+                      multiBuildingMode ? 'El mismo código puede existir en otra torre.' : undefined
                     }
-                    label="Tipo"
+                    label="Torre o edificio"
                   >
-                    <Select
-                      defaultValue={editor.unit?.type ?? defaultUnitType(topology)}
-                      name="type"
-                    >
-                      {availableUnitTypes.map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
+                    <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
+                      <option value="">Sin edificio / área común</option>
+                      {buildings.map((building) => (
+                        <option key={building.id} value={building.id}>
+                          {building.name}
                         </option>
                       ))}
                     </Select>
                   </Field>
+                ) : null}
 
-                  {!houseMode ? (
-                    <Field
-                      hint="Puede ser un número, PB, PH o nivel descriptivo."
-                      label="Piso o nivel"
-                    >
-                      <input defaultValue={editor.unit?.floor ?? ''} maxLength={20} name="floor" />
-                    </Field>
-                  ) : null}
+                {singleBuildingMode ? (
+                  <div className="structure-form-note">
+                    Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>. La
+                    unidad se asociará automáticamente y su código será único dentro de este
+                    edificio.
+                  </div>
+                ) : null}
 
-                  <Field hint="Porcentaje de participación entre 0 y 100." label="Alícuota (%)">
-                    <input
-                      defaultValue={normalizePercentage(editor.unit?.ownership_percentage ?? null)}
-                      max="100"
-                      min="0.0001"
-                      name="ownershipPercentage"
-                      step="0.0001"
-                      type="number"
-                    />
-                  </Field>
+                <Field
+                  hint={
+                    houseMode
+                      ? 'Habitta oculta Apartamento porque este condominio fue definido como conjunto de casas.'
+                      : singleBuildingMode || multiBuildingMode
+                        ? 'Habitta oculta Casa porque la estructura fue definida por edificios.'
+                        : undefined
+                  }
+                  label="Tipo"
+                >
+                  <Select defaultValue={editor.unit?.type ?? defaultUnitType(topology)} name="type">
+                    {availableUnitTypes.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
 
+                {!houseMode ? (
                   <Field
-                    hint="Inactiva conserva pagos, cuotas, propietarios y ocupaciones históricas."
-                    label="Estado"
+                    hint="Puede ser un número, PB, PH o nivel descriptivo."
+                    label="Piso o nivel"
                   >
-                    <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
-                      <option value="active">Activa</option>
-                      <option value="inactive">Inactiva / archivada</option>
-                    </Select>
+                    <input defaultValue={editor.unit?.floor ?? ''} maxLength={20} name="floor" />
                   </Field>
-                </div>
-                <div className="structure-dialog__footer">
-                  <Button
-                    disabled={saving}
-                    onClick={() => setEditor(null)}
-                    type="button"
-                    variant="ghost"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button disabled={saving} type="submit">
-                    {saving ? 'Guardando…' : houseMode ? 'Guardar casa' : 'Guardar unidad'}
-                  </Button>
-                </div>
-              </form>
-            )}
-          </section>
-        </div>
+                ) : null}
+
+                <Field hint="Porcentaje de participación entre 0 y 100." label="Alícuota (%)">
+                  <input
+                    defaultValue={normalizePercentage(editor.unit?.ownership_percentage ?? null)}
+                    max="100"
+                    min="0.0001"
+                    name="ownershipPercentage"
+                    step="0.0001"
+                    type="number"
+                  />
+                </Field>
+
+                <Field
+                  hint="Inactiva conserva pagos, cuotas, propietarios y ocupaciones históricas."
+                  label="Estado"
+                >
+                  <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
+                    <option value="active">Activa</option>
+                    <option value="inactive">Inactiva / archivada</option>
+                  </Select>
+                </Field>
+              </DialogBody>
+              <DialogFooter>
+                <Button
+                  disabled={saving}
+                  onClick={() => setEditor(null)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+                <Button disabled={saving} type="submit">
+                  {saving ? 'Guardando…' : houseMode ? 'Guardar casa' : 'Guardar unidad'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </Dialog>
       ) : null}
     </div>
   );
