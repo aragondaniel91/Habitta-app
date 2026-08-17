@@ -4,7 +4,12 @@ import { apiBaseUrl, apiRequest } from '../../lib/api';
 export type CommunityDocumentAudience = 'management' | 'owners' | 'residents';
 export type CommunityDocumentStatus = 'active' | 'archived';
 export type CommunityDocumentLinkType =
-  'announcement' | 'service_request' | 'expense' | 'assembly' | 'proposal';
+  | 'announcement'
+  | 'service_request'
+  | 'expense'
+  | 'assembly'
+  | 'proposal'
+  | 'budget';
 
 export type CommunityDocumentCategory = {
   id: string;
@@ -307,8 +312,14 @@ export const linkCommunityDocument = (
   session: Session,
   input: { targetType: CommunityDocumentLinkType; targetId: string },
 ) =>
-  apiRequest<CommunityDocumentLink | CommunityDocumentLink[]>(
-    `${basePath(condominiumId)}/${documentId}/links`,
-    session,
-    { method: 'POST', body: JSON.stringify(input) },
-  );
+  input.targetType === 'budget'
+    ? apiRequest<CommunityDocumentLink | CommunityDocumentLink[]>(
+        `/v1/condominiums/${condominiumId}/budgets/${input.targetId}/community-document-link`,
+        session,
+        { method: 'POST', body: JSON.stringify({ documentId }) },
+      )
+    : apiRequest<CommunityDocumentLink | CommunityDocumentLink[]>(
+        `${basePath(condominiumId)}/${documentId}/links`,
+        session,
+        { method: 'POST', body: JSON.stringify(input) },
+      );
