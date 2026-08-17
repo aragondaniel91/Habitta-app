@@ -4,7 +4,12 @@ const required = (value, name) => {
   return normalized;
 };
 
-export const validateProductionPagesState = ({ project, domain, expectedCommit, expectedDomain }) => {
+export const validateProductionPagesState = ({
+  project,
+  domain,
+  expectedCommit,
+  expectedDomain,
+}) => {
   const errors = [];
   const deployment = project?.canonical_deployment;
 
@@ -35,9 +40,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const token = required(process.env.CLOUDFLARE_API_TOKEN, 'cloudflare_api_token');
   const projectName = required(process.env.CLOUDFLARE_PAGES_PROJECT_NAME, 'pages_project_name');
   const expectedCommit = required(process.env.RELEASE_COMMIT, 'release_commit');
-  const expectedDomain = new URL(
-    required(process.env.CLOUDFLARE_PAGES_PROD_URL, 'pages_prod_url'),
-  ).hostname;
+  const expectedDomain = new URL(required(process.env.CLOUDFLARE_PAGES_PROD_URL, 'pages_prod_url'))
+    .hostname;
   const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}`;
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   let lastErrors = ['verification_not_started'];
