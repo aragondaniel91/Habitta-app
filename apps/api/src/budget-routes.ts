@@ -111,9 +111,7 @@ const responseJson = async (c: AppContext, response: Response, successStatus: 20
   );
 };
 
-const serializeLines = (
-  lines: Array<{ categoryId: string; currencyCode: string; amount: string; note?: string }>,
-) =>
+const serializeLines = (lines: Array<z.infer<typeof lineSchema>>) =>
   lines.map((line) => ({
     category_id: line.categoryId,
     currency_code: line.currencyCode,
