@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { privateDocumentRoutes as basePrivateDocumentRoutes } from './private-document-routes-base';
 import { maintenanceDocumentRoutes } from './maintenance-document-routes';
+import { communityDocumentRoutes } from './community-document-routes';
 import { withinRateLimit } from './http-security';
 import type { NotificationBindings } from './notifications/types';
 
@@ -10,7 +11,7 @@ type PrivateDocumentEnvironment = { Bindings: NotificationBindings; Variables: V
 export const privateDocumentRoutes = new Hono<PrivateDocumentEnvironment>();
 
 // All private document uploads share the distributed upload budget with payment proofs.
-// Enforce this before a route reads/buffers up to 20 MB or writes anything to R2.
+// Enforce this before a route reads/buffers a private file or writes anything to R2.
 privateDocumentRoutes.use('*', async (c, next) => {
   if (
     c.req.method === 'PUT' &&
@@ -24,3 +25,4 @@ privateDocumentRoutes.use('*', async (c, next) => {
 
 privateDocumentRoutes.route('/', basePrivateDocumentRoutes);
 privateDocumentRoutes.route('/', maintenanceDocumentRoutes);
+privateDocumentRoutes.route('/', communityDocumentRoutes);
