@@ -1,3 +1,5 @@
+import type { Session } from '@supabase/supabase-js';
+import { apiRequest } from './api';
 import { supabase } from '../supabase';
 
 export type ResidentRole = 'owner' | 'tenant';
@@ -30,9 +32,35 @@ export type ResidentInvitationPreview = {
   expires_at: string;
 };
 
+export type ResidentInvitationDelivery = {
+  status: 'disabled' | 'sent' | 'failed';
+  recipient: string | null;
+  provider: string;
+  mode: string;
+  providerId?: string;
+  errorCode?: string;
+};
+
+export type ResidentInvitationDeliveryEvent = {
+  id: string;
+  sequence_number: number;
+  invitation_id: string;
+  condominium_id: string;
+  person_id: string;
+  unit_id: string;
+  event_type: 'email_sent' | 'email_failed' | 'email_disabled';
+  provider: string;
+  mode: string;
+  error_code: string | null;
+  provider_id: string | null;
+  occurred_at: string;
+};
+
 export type CreatedResidentInvitation = {
   invitation: ResidentInvitation;
   invitationUrl: string;
+  emailDelivery: ResidentInvitationDelivery;
+  auditPersisted: boolean;
 };
 
 function requireSupabase() {
@@ -69,26 +97,22 @@ export async function createResidentInvitation({
   personId,
   unitId,
   role,
+  session,
 }: {
   condominiumId: string;
   personId: string;
   unitId: string;
   role: ResidentRole;
+  session: Session;
 }): Promise<CreatedResidentInvitation> {
-  const client = requireSupabase();
-  const result = await client.rpc('create_resident_invitation', {
-    target_condominium_id: condominiumId,
-    target_person_id: personId,
-    target_unit_id: unitId,
-    target_role: role,
-    target_expires_at: null,
-  });
-  if (result.error) throw new Error(residentError(result.error));
-  const data = result.data as { invitation: ResidentInvitation; raw_token: string };
-  return {
-    invitation: data.invitation,
-    invitationUrl: `${window.location.origin}/invite/${encodeURIComponent(data.raw_token)}`,
-  };
+  return apiRequest<CreatedResidentInvitation>(
+    `/v1/condominiums/${condominiumId}/resident-invitations`,
+    session,
+    {
+      method: 'POST',
+      body: JSON.stringify({ personId, unitId, role }),
+    },
+  );
 }
 
 export async function listResidentInvitations(condominiumId: string, personId?: string) {
@@ -104,6 +128,24 @@ export async function listResidentInvitations(condominiumId: string, personId?: 
   const result = await query;
   if (result.error) throw new Error(residentError(result.error));
   return (result.data ?? []) as ResidentInvitation[];
+}
+
+export async function listResidentInvitationDeliveryEvents(
+  condominiumId: string,
+  personId?: string,
+) {
+  const client = requireSupabase();
+  let query = client
+    .from('resident_invitation_delivery_events')
+    .select(
+      'id,sequence_number,invitation_id,condominium_id,person_id,unit_id,event_type,provider,mode,error_code,provider_id,occurred_at',
+    )
+    .eq('condominium_id', condominiumId)
+    .order('sequence_number', { ascending: false });
+  if (personId) query = query.eq('person_id', personId);
+  const result = await query;
+  if (result.error) throw new Error(residentError(result.error));
+  return (result.data ?? []) as ResidentInvitationDeliveryEvent[];
 }
 
 export async function revokeResidentInvitation(invitationId: string) {
@@ -133,4 +175,11 @@ export async function acceptResidentInvitation(rawToken: string) {
 
 export function residentRoleLabel(role: ResidentRole) {
   return role === 'owner' ? 'Propietario' : 'Inquilino';
+}
+
+export function residentDeliveryLabel(event?: ResidentInvitationDeliveryEvent) {
+  if (!event) return 'Sin intento de correo';
+  if (event.event_type === 'email_sent') return 'Correo enviado';
+  if (event.event_type === 'email_failed') return 'Error de envío';
+  return 'Envío desactivado';
 }
