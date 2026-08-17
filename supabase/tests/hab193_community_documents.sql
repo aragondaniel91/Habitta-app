@@ -298,6 +298,14 @@ select throws_ok(
   'related-record links cannot cross condominium boundaries'
 );
 
+-- Preserve the real UUID before changing roles. This simulates a tenant who
+-- somehow knows the identifier even though RLS correctly hides the metadata.
+select set_config(
+  'hab193.owner_document_id',
+  (select id::text from public.community_documents where title = 'Documento de Propietarios'),
+  true
+);
+
 select set_config(
   'request.jwt.claims',
   json_build_object(
@@ -348,12 +356,12 @@ select is(
 );
 select throws_ok(
   $$select public.record_community_document_download(
-    null,
+    current_setting('hab193.owner_document_id')::uuid,
     '19380000-0000-4000-8000-000000000002'
   )$$,
   'P0001',
   'community document access denied',
-  'tenant cannot bypass owner-audience document download authorization'
+  'tenant cannot bypass owner-audience document download authorization with a known document id'
 );
 
 select set_config(
