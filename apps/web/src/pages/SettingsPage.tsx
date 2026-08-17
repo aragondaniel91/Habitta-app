@@ -11,6 +11,7 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
+import { CondominiumDangerZone } from '../features/settings/CondominiumDangerZone';
 import {
   getNotificationSettings,
   getPreferences,
@@ -543,6 +544,12 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
               que permita entregas.
             </p>
           </Surface>
+
+          <CondominiumDangerZone
+            condominiumId={condominiumId}
+            condominiumName={condominiumName}
+            session={session}
+          />
         </aside>
       </section>
     </div>
