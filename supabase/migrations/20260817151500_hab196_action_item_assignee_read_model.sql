@@ -1,5 +1,6 @@
--- HAB-196: authoritative, governance-scoped assignee selector for assembly action items.
--- Reuse the exact assignment predicate enforced by lifecycle RPCs; never infer validity in the UI.
+-- HAB-196: authoritative, governance-scoped assignee read models for assembly action items.
+-- Candidate enumeration stays management-only. Read-only viewers only receive identities already
+-- referenced by action items they are authorized to read.
 
 create function public.list_assembly_action_assignees(target_condominium uuid)
 returns table (
@@ -71,5 +72,38 @@ begin
 end;
 $$;
 
+create function public.list_assembly_action_item_assignee_labels(target_condominium uuid)
+returns table (
+  user_id uuid,
+  display_name text
+)
+language plpgsql
+security definer
+set search_path = public
+set row_security = off
+as $$
+begin
+  if auth.uid() is null or not public.can_read_governance(target_condominium) then
+    raise exception 'not authorized to list assembly action item assignee labels';
+  end if;
+
+  return query
+  select distinct
+    ai.assigned_to_user_id as user_id,
+    coalesce(
+      nullif(trim(coalesce(au.raw_user_meta_data ->> 'full_name', '')), ''),
+      nullif(trim(coalesce(au.email, '')), ''),
+      'Responsable'
+    )::text as display_name
+  from public.assembly_action_items ai
+  join auth.users au on au.id = ai.assigned_to_user_id
+  where ai.condominium_id = target_condominium
+    and ai.assigned_to_user_id is not null
+  order by display_name, user_id;
+end;
+$$;
+
 revoke execute on function public.list_assembly_action_assignees(uuid) from public;
+revoke execute on function public.list_assembly_action_item_assignee_labels(uuid) from public;
 grant execute on function public.list_assembly_action_assignees(uuid) to authenticated, service_role;
+grant execute on function public.list_assembly_action_item_assignee_labels(uuid) to authenticated, service_role;
