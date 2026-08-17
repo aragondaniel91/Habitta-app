@@ -43,9 +43,7 @@ const budgetCreateSchema = z
         message: 'Budget end date must not precede start date',
       });
     }
-    const keys = value.lines.map(
-      (line) => `${line.categoryId}:${line.currencyCode.toUpperCase()}`,
-    );
+    const keys = value.lines.map((line) => `${line.categoryId}:${line.currencyCode.toUpperCase()}`);
     if (new Set(keys).size !== keys.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -132,10 +130,7 @@ budgetRoutes.get('/:id/budgets', async (c) => {
       c,
       `budget_periods?condominium_id=eq.${condominiumId}&select=*&order=starts_on.desc,created_at.desc`,
     ),
-    rest(
-      c,
-      `budget_versions?condominium_id=eq.${condominiumId}&select=*&order=created_at.desc`,
-    ),
+    rest(c, `budget_versions?condominium_id=eq.${condominiumId}&select=*&order=created_at.desc`),
     rest(
       c,
       `budget_lines?condominium_id=eq.${condominiumId}&select=*&order=currency_code.asc,created_at.asc`,
