@@ -9,7 +9,16 @@ export type Person = {
   status?: 'active' | 'inactive';
 };
 
-export type Unit = { id: string; code: string };
+export type Building = { id: string; name: string };
+
+export type Unit = {
+  id: string;
+  code: string;
+  condominium_id?: string;
+  building_id?: string | null;
+  buildings?: { id: string; name: string } | null;
+  status?: string;
+};
 
 export type UnitContext = {
   id: string;
@@ -42,7 +51,11 @@ export type Occupancy = {
 };
 
 export type CondominiumRelationshipType =
-  'board_member' | 'administrator_contact' | 'representative' | 'emergency_contact' | 'other';
+  | 'board_member'
+  | 'administrator_contact'
+  | 'representative'
+  | 'emergency_contact'
+  | 'other';
 
 export type CondominiumRelationship = {
   id: string;
