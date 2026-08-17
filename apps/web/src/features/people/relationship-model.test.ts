@@ -39,10 +39,9 @@ describe('people relationship presentation model', () => {
     ).toBe('Torre Este · A-12');
     expect(unitContextLabel({ code: 'Casa 8' })).toBe('Casa 8');
     expect(
-      directoryUnitLabel(
-        { id: 'unit-2', code: '1A', building_id: 'building-2' },
-        [{ id: 'building-2', name: 'Torre Oeste' }],
-      ),
+      directoryUnitLabel({ id: 'unit-2', code: '1A', building_id: 'building-2' }, [
+        { id: 'building-2', name: 'Torre Oeste' },
+      ]),
     ).toBe('Torre Oeste · 1A');
   });
 
