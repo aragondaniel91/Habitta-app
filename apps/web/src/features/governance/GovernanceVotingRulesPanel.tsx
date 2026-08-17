@@ -94,8 +94,8 @@ export function GovernanceVotingRulesPanel({ condominiumId, session }: Props) {
           <small>Reglas de decisión</small>
           <h2>Quórum y aprobación</h2>
           <p>
-            El quórum mide participación. La aprobación requerida mide el porcentaje de votos válidos
-            emitidos a favor. Son reglas distintas y se congelan al abrir la votación.
+            El quórum mide participación. La aprobación requerida mide el porcentaje de votos
+            válidos emitidos a favor. Son reglas distintas y se congelan al abrir la votación.
           </p>
         </div>
       </div>
@@ -121,7 +121,10 @@ export function GovernanceVotingRulesPanel({ condominiumId, session }: Props) {
               </div>
 
               <div className="governance-voting-rule__fields">
-                <Field label="Quórum de participación" hint="Mínimo de entidades elegibles que deben votar.">
+                <Field
+                  label="Quórum de participación"
+                  hint="Mínimo de entidades elegibles que deben votar."
+                >
                   <input
                     className="input"
                     disabled={!editable}
