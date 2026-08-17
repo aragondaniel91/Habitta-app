@@ -140,7 +140,7 @@ describe('physical structure routes', () => {
           return jsonResponse(
             {
               code: '23505',
-              details: 'Key (condominium_id, code) already exists.',
+              details: 'Key (condominium_id, building_id, code) already exists.',
               message: 'duplicate key value violates unique constraint',
             },
             409,
@@ -166,7 +166,7 @@ describe('physical structure routes', () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: 'unit_code_conflict',
-      publicMessage: 'Ya existe una unidad con ese código en este condominio.',
+      publicMessage: 'Ya existe una unidad con ese código en esta torre o ubicación.',
     });
   });
 });
