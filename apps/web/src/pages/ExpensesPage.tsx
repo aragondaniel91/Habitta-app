@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { Dialog, DialogBody, DialogFooter } from '../components/Dialog';
 import {
   CheckCircleIcon,
   ExpensesIcon,
@@ -8,7 +9,7 @@ import {
   PaymentsIcon,
   PeopleIcon,
 } from '../components/icons';
-import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { ExpenseCaptureDrawer } from '../features/expenses/ExpenseCaptureDrawer';
@@ -252,6 +253,8 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
   const [events, setEvents] = useState<ExpenseEvent[]>([]);
   const [attachments, setAttachments] = useState<ExpenseAttachment[]>([]);
   const [transitioning, setTransitioning] = useState(false);
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [voidReason, setVoidReason] = useState('');
   const [filters, setFilters] = useState({ query: '', status: '', currency: '' });
 
   const load = useCallback(async () => {
@@ -288,6 +291,8 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     setDrawer(null);
     setSelectedExpenseId('');
     setAttachments([]);
+    setVoidDialogOpen(false);
+    setVoidReason('');
     setFilters({ query: '', status: '', currency: '' });
   }, [condominiumId]);
 
@@ -331,10 +336,8 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     setEvents(eventsResult.status === 'fulfilled' ? eventsResult.value : []);
   };
 
-  const transition = async (action: string) => {
+  const transition = async (action: string, reason?: string) => {
     if (!selectedExpense) return;
-    const reason = action === 'void' ? window.prompt('Motivo de la anulación:')?.trim() : undefined;
-    if (action === 'void' && !reason) return;
     setTransitioning(true);
     setError('');
     try {
@@ -347,6 +350,8 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
         },
       );
       await load();
+      setVoidDialogOpen(false);
+      setVoidReason('');
       setDrawer(null);
       setSelectedExpenseId('');
     } catch (requestError) {
@@ -377,354 +382,418 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
   const firstCurrency = data.summary.totals_by_currency[0];
 
   return (
-    <div className="expenses-page">
-      <PageHeader
-        actions={
-          <>
-            <Button onClick={() => setDrawer('catalogs')} size="sm" variant="secondary">
-              Categorías y proveedores
-            </Button>
-            <Button onClick={() => setDrawer('create')} size="sm">
-              Registrar gasto
-            </Button>
-          </>
-        }
-        description={`${condominiumName} · egresos, proveedores, soportes y aprobaciones con trazabilidad.`}
-        eyebrow="Operación financiera"
-        title="Gastos"
-      />
-
-      {error ? <div className="expenses-inline-alert">{error}</div> : null}
-
-      <section aria-label="Indicadores de gastos" className="expenses-metrics-grid">
-        <MetricCard
-          detail={
-            firstCurrency
-              ? 'Los importes se muestran separados por moneda.'
-              : 'Registra el primer gasto para iniciar el control.'
+    <>
+      <div className="expenses-page">
+        <PageHeader
+          actions={
+            <>
+              <Button onClick={() => setDrawer('catalogs')} size="sm" variant="secondary">
+                Categorías y proveedores
+              </Button>
+              <Button onClick={() => setDrawer('create')} size="sm">
+                Registrar gasto
+              </Button>
+            </>
           }
-          icon={<ExpensesIcon size={20} />}
-          label={firstCurrency ? `Total ${firstCurrency.currency_code}` : 'Gastos registrados'}
-          tone="blue"
-          value={
-            firstCurrency
-              ? formatMoney(firstCurrency.total_amount, firstCurrency.currency_code)
-              : String(data.expenses.length)
-          }
+          description={`${condominiumName} · egresos, proveedores, soportes y aprobaciones con trazabilidad.`}
+          eyebrow="Operación financiera"
+          title="Gastos"
         />
-        <MetricCard
-          detail="Requieren revisión de un administrador autorizado."
-          icon={<CheckCircleIcon size={20} />}
-          label="Pendientes de aprobación"
-          tone="red"
-          value={String(data.summary.pending_approval_count || counts.pending_approval)}
-        />
-        <MetricCard
-          detail="Gastos que ya completaron su ciclo de pago."
-          icon={<PaymentsIcon size={20} />}
-          label="Pagados"
-          tone="green"
-          value={String(counts.paid)}
-        />
-        <MetricCard
-          detail="Proveedores activos disponibles en el directorio."
-          icon={<PeopleIcon size={20} />}
-          label="Proveedores"
-          tone="navy"
-          value={String(
-            data.summary.active_vendor_count ||
-              data.vendors.filter((item) => item.is_active).length,
+
+        {error ? <div className="expenses-inline-alert">{error}</div> : null}
+
+        <section aria-label="Indicadores de gastos" className="expenses-metrics-grid">
+          <MetricCard
+            detail={
+              firstCurrency
+                ? 'Los importes se muestran separados por moneda.'
+                : 'Registra el primer gasto para iniciar el control.'
+            }
+            icon={<ExpensesIcon size={20} />}
+            label={firstCurrency ? `Total ${firstCurrency.currency_code}` : 'Gastos registrados'}
+            tone="blue"
+            value={
+              firstCurrency
+                ? formatMoney(firstCurrency.total_amount, firstCurrency.currency_code)
+                : String(data.expenses.length)
+            }
+          />
+          <MetricCard
+            detail="Requieren revisión de un administrador autorizado."
+            icon={<CheckCircleIcon size={20} />}
+            label="Pendientes de aprobación"
+            tone="red"
+            value={String(data.summary.pending_approval_count || counts.pending_approval)}
+          />
+          <MetricCard
+            detail="Gastos que ya completaron su ciclo de pago."
+            icon={<PaymentsIcon size={20} />}
+            label="Pagados"
+            tone="green"
+            value={String(counts.paid)}
+          />
+          <MetricCard
+            detail="Proveedores activos disponibles en el directorio."
+            icon={<PeopleIcon size={20} />}
+            label="Proveedores"
+            tone="navy"
+            value={String(
+              data.summary.active_vendor_count ||
+                data.vendors.filter((item) => item.is_active).length,
+            )}
+          />
+        </section>
+
+        {data.summary.totals_by_currency.length > 1 ? (
+          <Surface className="expenses-currency-strip">
+            <div>
+              <strong>Resumen por moneda</strong>
+              <span>Habitta nunca suma monedas distintas.</span>
+            </div>
+            <div>
+              {data.summary.totals_by_currency.map((summary) => (
+                <article key={summary.currency_code}>
+                  <small>{summary.currency_code}</small>
+                  <strong>{formatMoney(summary.total_amount, summary.currency_code)}</strong>
+                  <span>{summary.expense_count} movimientos</span>
+                </article>
+              ))}
+            </div>
+          </Surface>
+        ) : null}
+
+        <Surface className="expenses-workspace">
+          <div className="expenses-toolbar">
+            <input
+              aria-label="Buscar gastos"
+              className="input expenses-search"
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, query: event.target.value }))
+              }
+              placeholder="Buscar descripción, factura o referencia…"
+              value={filters.query}
+            />
+            <Select
+              aria-label="Filtrar por estado"
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, status: event.target.value }))
+              }
+              value={filters.status}
+            >
+              <option value="">Todos los estados</option>
+              {Object.entries(expenseStatusLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Filtrar por moneda"
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, currency: event.target.value }))
+              }
+              value={filters.currency}
+            >
+              <option value="">Todas las monedas</option>
+              {currencies.map((currencyCode) => (
+                <option key={currencyCode} value={currencyCode}>
+                  {currencyCode}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          {filteredExpenses.length ? (
+            <div className="expenses-table-wrap">
+              <table className="expenses-table">
+                <thead>
+                  <tr>
+                    <th>Gasto</th>
+                    <th>Categoría</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredExpenses.map((expense) => {
+                    const category = data.categories.find(
+                      (item) => item.id === expense.category_id,
+                    );
+                    const vendor = data.vendors.find((item) => item.id === expense.vendor_id);
+                    return (
+                      <tr key={expense.id} onClick={() => void openDetail(expense)}>
+                        <td>
+                          <strong>{expense.description}</strong>
+                          <span>{vendor?.name ?? expense.invoice_number ?? 'Sin proveedor'}</span>
+                        </td>
+                        <td>{category?.name ?? 'Sin categoría'}</td>
+                        <td>{formatExpenseDate(expense.expense_date)}</td>
+                        <td>
+                          <Badge tone={statusTone(expense.status)}>
+                            {expenseStatusLabels[expense.status]}
+                          </Badge>
+                        </td>
+                        <td>
+                          <strong>{formatMoney(expense.amount, expense.currency_code)}</strong>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState
+              actionLabel="Registrar gasto"
+              description="Crea el primer egreso o ajusta los filtros actuales."
+              icon={<FeesIcon size={27} />}
+              onAction={() => setDrawer('create')}
+              title="No hay gastos para mostrar"
+            />
           )}
-        />
-      </section>
-
-      {data.summary.totals_by_currency.length > 1 ? (
-        <Surface className="expenses-currency-strip">
-          <div>
-            <strong>Resumen por moneda</strong>
-            <span>Habitta nunca suma monedas distintas.</span>
-          </div>
-          <div>
-            {data.summary.totals_by_currency.map((summary) => (
-              <article key={summary.currency_code}>
-                <small>{summary.currency_code}</small>
-                <strong>{formatMoney(summary.total_amount, summary.currency_code)}</strong>
-                <span>{summary.expense_count} movimientos</span>
-              </article>
-            ))}
-          </div>
         </Surface>
-      ) : null}
 
-      <Surface className="expenses-workspace">
-        <div className="expenses-toolbar">
-          <input
-            aria-label="Buscar gastos"
-            className="input expenses-search"
-            onChange={(event) =>
-              setFilters((current) => ({ ...current, query: event.target.value }))
-            }
-            placeholder="Buscar descripción, factura o referencia…"
-            value={filters.query}
-          />
-          <Select
-            aria-label="Filtrar por estado"
-            onChange={(event) =>
-              setFilters((current) => ({ ...current, status: event.target.value }))
-            }
-            value={filters.status}
-          >
-            <option value="">Todos los estados</option>
-            {Object.entries(expenseStatusLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            aria-label="Filtrar por moneda"
-            onChange={(event) =>
-              setFilters((current) => ({ ...current, currency: event.target.value }))
-            }
-            value={filters.currency}
-          >
-            <option value="">Todas las monedas</option>
-            {currencies.map((currencyCode) => (
-              <option key={currencyCode} value={currencyCode}>
-                {currencyCode}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        {filteredExpenses.length ? (
-          <div className="expenses-table-wrap">
-            <table className="expenses-table">
-              <thead>
-                <tr>
-                  <th>Gasto</th>
-                  <th>Categoría</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
-                  <th>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExpenses.map((expense) => {
-                  const category = data.categories.find((item) => item.id === expense.category_id);
-                  const vendor = data.vendors.find((item) => item.id === expense.vendor_id);
-                  return (
-                    <tr key={expense.id} onClick={() => void openDetail(expense)}>
-                      <td>
-                        <strong>{expense.description}</strong>
-                        <span>{vendor?.name ?? expense.invoice_number ?? 'Sin proveedor'}</span>
-                      </td>
-                      <td>{category?.name ?? 'Sin categoría'}</td>
-                      <td>{formatExpenseDate(expense.expense_date)}</td>
-                      <td>
-                        <Badge tone={statusTone(expense.status)}>
-                          {expenseStatusLabels[expense.status]}
-                        </Badge>
-                      </td>
-                      <td>
-                        <strong>{formatMoney(expense.amount, expense.currency_code)}</strong>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState
-            actionLabel="Registrar gasto"
-            description="Crea el primer egreso o ajusta los filtros actuales."
-            icon={<FeesIcon size={27} />}
-            onAction={() => setDrawer('create')}
-            title="No hay gastos para mostrar"
-          />
-        )}
-      </Surface>
-
-      {drawer === 'create' ? (
-        <ExpenseCaptureDrawer
-          categories={data.categories}
-          condominiumId={condominiumId}
-          onClose={() => setDrawer(null)}
-          onComplete={async () => {
-            await load();
-            setDrawer(null);
-          }}
-          onDraftCreated={load}
-          session={session}
-          vendors={data.vendors}
-        />
-      ) : null}
-
-      {drawer === 'catalogs' ? (
-        <DrawerShell
-          eyebrow="Configuración operativa"
-          onClose={() => setDrawer(null)}
-          title="Catálogos de gastos"
-        >
-          <CatalogsPanel
+        {drawer === 'create' ? (
+          <ExpenseCaptureDrawer
             categories={data.categories}
             condominiumId={condominiumId}
-            onChanged={() => void load()}
+            onClose={() => setDrawer(null)}
+            onComplete={async () => {
+              await load();
+              setDrawer(null);
+            }}
+            onDraftCreated={load}
             session={session}
             vendors={data.vendors}
           />
-        </DrawerShell>
-      ) : null}
+        ) : null}
 
-      {drawer === 'detail' && selectedExpense ? (
-        <DrawerShell
-          eyebrow="Trazabilidad del egreso"
-          onClose={() => setDrawer(null)}
-          title={selectedExpense.description}
-        >
-          <div className="expenses-detail">
-            <div className="expenses-detail__amount">
-              <small>Monto registrado</small>
-              <strong>{formatMoney(selectedExpense.amount, selectedExpense.currency_code)}</strong>
-              <Badge tone={statusTone(selectedExpense.status)}>
-                {expenseStatusLabels[selectedExpense.status]}
-              </Badge>
-            </div>
-            <dl className="expenses-detail-list">
-              <div>
-                <dt>Fecha</dt>
-                <dd>{formatExpenseDate(selectedExpense.expense_date)}</dd>
+        {drawer === 'catalogs' ? (
+          <DrawerShell
+            eyebrow="Configuración operativa"
+            onClose={() => setDrawer(null)}
+            title="Catálogos de gastos"
+          >
+            <CatalogsPanel
+              categories={data.categories}
+              condominiumId={condominiumId}
+              onChanged={() => void load()}
+              session={session}
+              vendors={data.vendors}
+            />
+          </DrawerShell>
+        ) : null}
+
+        {drawer === 'detail' && selectedExpense ? (
+          <DrawerShell
+            eyebrow="Trazabilidad del egreso"
+            onClose={() => setDrawer(null)}
+            title={selectedExpense.description}
+          >
+            <div className="expenses-detail">
+              <div className="expenses-detail__amount">
+                <small>Monto registrado</small>
+                <strong>{formatMoney(selectedExpense.amount, selectedExpense.currency_code)}</strong>
+                <Badge tone={statusTone(selectedExpense.status)}>
+                  {expenseStatusLabels[selectedExpense.status]}
+                </Badge>
               </div>
-              <div>
-                <dt>Vencimiento</dt>
-                <dd>{formatExpenseDate(selectedExpense.due_date)}</dd>
-              </div>
-              <div>
-                <dt>Categoría</dt>
-                <dd>
-                  {data.categories.find((item) => item.id === selectedExpense.category_id)?.name ??
-                    '—'}
-                </dd>
-              </div>
-              <div>
-                <dt>Proveedor</dt>
-                <dd>
-                  {data.vendors.find((item) => item.id === selectedExpense.vendor_id)?.name ?? '—'}
-                </dd>
-              </div>
-              <div>
-                <dt>Factura</dt>
-                <dd>{selectedExpense.invoice_number ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>Referencia</dt>
-                <dd>{selectedExpense.payment_reference ?? '—'}</dd>
-              </div>
-            </dl>
-            {selectedExpense.notes ? (
-              <p className="expenses-detail__notes">{selectedExpense.notes}</p>
-            ) : null}
-            <section className="expenses-documents">
-              <h3>Documentos privados</h3>
-              {attachments.length ? (
-                <div className="expenses-documents__list">
-                  {attachments.map((attachment) => (
-                    <div className="private-document-row" key={attachment.id}>
-                      <div>
-                        <ExpensesIcon size={17} />
-                        <span>
-                          <strong>{attachment.original_filename}</strong>
-                          <small>
-                            {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB ·{' '}
-                            {attachment.document_type}
-                          </small>
-                        </span>
-                      </div>
-                      <Button
-                        onClick={() =>
-                          void downloadPrivateDocument(
-                            `/v1/condominiums/${condominiumId}/expenses/${selectedExpense.id}/attachments/${attachment.id}/file`,
-                            session,
-                            attachment.original_filename,
-                          ).catch((downloadError: Error) => setError(downloadError.message))
-                        }
-                        size="sm"
-                        variant="secondary"
-                      >
-                        Descargar
-                      </Button>
-                    </div>
-                  ))}
+              <dl className="expenses-detail-list">
+                <div>
+                  <dt>Fecha</dt>
+                  <dd>{formatExpenseDate(selectedExpense.expense_date)}</dd>
                 </div>
-              ) : (
-                <p>No hay documentos adjuntos.</p>
-              )}
-              {selectedExpense.support_url ? (
-                <a
-                  className="expenses-support-link"
-                  href={selectedExpense.support_url}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Abrir soporte externo anterior
-                </a>
+                <div>
+                  <dt>Vencimiento</dt>
+                  <dd>{formatExpenseDate(selectedExpense.due_date)}</dd>
+                </div>
+                <div>
+                  <dt>Categoría</dt>
+                  <dd>
+                    {data.categories.find((item) => item.id === selectedExpense.category_id)?.name ??
+                      '—'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Proveedor</dt>
+                  <dd>
+                    {data.vendors.find((item) => item.id === selectedExpense.vendor_id)?.name ?? '—'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Factura</dt>
+                  <dd>{selectedExpense.invoice_number ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Referencia</dt>
+                  <dd>{selectedExpense.payment_reference ?? '—'}</dd>
+                </div>
+              </dl>
+              {selectedExpense.notes ? (
+                <p className="expenses-detail__notes">{selectedExpense.notes}</p>
               ) : null}
-              <PrivateDocumentUploader
-                defaultDocumentType="invoice"
-                documentTypes={[
-                  { value: 'invoice', label: 'Factura' },
-                  { value: 'receipt', label: 'Recibo' },
-                  { value: 'quote', label: 'Cotización' },
-                  { value: 'support', label: 'Soporte' },
-                  { value: 'other', label: 'Otro' },
-                ]}
-                onUploaded={() => loadExpenseDocuments(selectedExpense.id)}
-                path={`/v1/condominiums/${condominiumId}/expenses/${selectedExpense.id}/attachments`}
-                session={session}
-                title="Adjuntar factura o soporte"
-              />
-            </section>
-            <div className="expenses-detail__actions">
-              {nextExpenseActions(selectedExpense.status).map((action) => (
-                <Button
-                  disabled={transitioning}
-                  key={action}
-                  onClick={() => void transition(action)}
-                  size="sm"
-                  variant={
-                    action === 'void' ? 'danger' : action === 'submit' ? 'secondary' : 'primary'
-                  }
-                >
-                  {action === 'submit'
-                    ? 'Enviar a aprobación'
-                    : action === 'approve'
-                      ? 'Aprobar gasto'
-                      : action === 'mark-paid'
-                        ? 'Marcar pagado'
-                        : 'Anular'}
-                </Button>
-              ))}
+              <section className="expenses-documents">
+                <h3>Documentos privados</h3>
+                {attachments.length ? (
+                  <div className="expenses-documents__list">
+                    {attachments.map((attachment) => (
+                      <div className="private-document-row" key={attachment.id}>
+                        <div>
+                          <ExpensesIcon size={17} />
+                          <span>
+                            <strong>{attachment.original_filename}</strong>
+                            <small>
+                              {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB ·{' '}
+                              {attachment.document_type}
+                            </small>
+                          </span>
+                        </div>
+                        <Button
+                          onClick={() =>
+                            void downloadPrivateDocument(
+                              `/v1/condominiums/${condominiumId}/expenses/${selectedExpense.id}/attachments/${attachment.id}/file`,
+                              session,
+                              attachment.original_filename,
+                            ).catch((downloadError: Error) => setError(downloadError.message))
+                          }
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Descargar
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No hay documentos adjuntos.</p>
+                )}
+                {selectedExpense.support_url ? (
+                  <a
+                    className="expenses-support-link"
+                    href={selectedExpense.support_url}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Abrir soporte externo anterior
+                  </a>
+                ) : null}
+                <PrivateDocumentUploader
+                  defaultDocumentType="invoice"
+                  documentTypes={[
+                    { value: 'invoice', label: 'Factura' },
+                    { value: 'receipt', label: 'Recibo' },
+                    { value: 'quote', label: 'Cotización' },
+                    { value: 'support', label: 'Soporte' },
+                    { value: 'other', label: 'Otro' },
+                  ]}
+                  onUploaded={() => loadExpenseDocuments(selectedExpense.id)}
+                  path={`/v1/condominiums/${condominiumId}/expenses/${selectedExpense.id}/attachments`}
+                  session={session}
+                  title="Adjuntar factura o soporte"
+                />
+              </section>
+              <div className="expenses-detail__actions">
+                {nextExpenseActions(selectedExpense.status).map((action) => (
+                  <Button
+                    disabled={transitioning}
+                    key={action}
+                    onClick={() => {
+                      if (action === 'void') {
+                        setVoidReason('');
+                        setVoidDialogOpen(true);
+                        return;
+                      }
+                      void transition(action);
+                    }}
+                    size="sm"
+                    variant={
+                      action === 'void' ? 'danger' : action === 'submit' ? 'secondary' : 'primary'
+                    }
+                  >
+                    {action === 'submit'
+                      ? 'Enviar a aprobación'
+                      : action === 'approve'
+                        ? 'Aprobar gasto'
+                        : action === 'mark-paid'
+                          ? 'Marcar pagado'
+                          : 'Anular'}
+                  </Button>
+                ))}
+              </div>
+              <section className="expenses-timeline">
+                <h3>Historial</h3>
+                {events.length ? (
+                  events.map((event) => (
+                    <article key={event.id}>
+                      <span />
+                      <div>
+                        <strong>{expenseEventLabels[event.event_type]}</strong>
+                        <small>{formatExpenseDate(event.occurred_at)}</small>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <p>No hay eventos adicionales disponibles.</p>
+                )}
+              </section>
             </div>
-            <section className="expenses-timeline">
-              <h3>Historial</h3>
-              {events.length ? (
-                events.map((event) => (
-                  <article key={event.id}>
-                    <span />
-                    <div>
-                      <strong>{expenseEventLabels[event.event_type]}</strong>
-                      <small>{formatExpenseDate(event.occurred_at)}</small>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <p>No hay eventos adicionales disponibles.</p>
-              )}
-            </section>
-          </div>
-        </DrawerShell>
+          </DrawerShell>
+        ) : null}
+      </div>
+
+      {voidDialogOpen && selectedExpense ? (
+        <Dialog
+          closeDisabled={transitioning}
+          description={`Vas a anular “${selectedExpense.description}”. El gasto no se eliminará: Habitta conservará su historial y registrará el motivo de la anulación.`}
+          eyebrow="Acción financiera sensible"
+          onClose={() => {
+            if (!transitioning) {
+              setVoidDialogOpen(false);
+              setVoidReason('');
+            }
+          }}
+          size="sm"
+          title="Anular gasto"
+        >
+          <DialogBody>
+            <Field
+              hint="El motivo quedará guardado en la trazabilidad financiera."
+              label="Motivo de la anulación"
+            >
+              <textarea
+                autoFocus
+                maxLength={500}
+                onChange={(event) => setVoidReason(event.target.value)}
+                required
+                rows={4}
+                value={voidReason}
+              />
+            </Field>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              disabled={transitioning}
+              onClick={() => {
+                setVoidDialogOpen(false);
+                setVoidReason('');
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Conservar gasto
+            </Button>
+            <Button
+              disabled={transitioning || !voidReason.trim()}
+              onClick={() => void transition('void', voidReason.trim())}
+              type="button"
+              variant="danger"
+            >
+              {transitioning ? 'Anulando…' : 'Anular gasto'}
+            </Button>
+          </DialogFooter>
+        </Dialog>
       ) : null}
-    </div>
+    </>
   );
 }
