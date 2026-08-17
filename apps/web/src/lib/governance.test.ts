@@ -12,6 +12,7 @@ const proposal = (values: Partial<GovernanceProposal>): GovernanceProposal => ({
   status: 'draft',
   voting_basis: 'one_per_unit',
   quorum_percentage: 50,
+  approval_threshold_percentage: 50,
   budget_amount: null,
   currency_code: null,
   opens_at: null,
