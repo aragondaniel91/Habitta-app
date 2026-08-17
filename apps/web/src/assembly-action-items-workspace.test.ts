@@ -33,6 +33,8 @@ describe('HAB-196 assembly action items workspace contract', () => {
 
   it('uses real condominium-scoped selectors instead of manual UUID inputs', () => {
     expect(assigneeSource).toContain("client.rpc('list_assembly_action_assignees'");
+    expect(assigneeSource).toContain("client.rpc('list_assembly_action_item_assignee_labels'");
+    expect(workspaceSource).toContain('loadAssemblyActionAssigneeLabels');
     expect(workspaceSource).toContain('/requests`');
     expect(workspaceSource).toContain('/maintenance/work-orders`');
     expect(workspaceSource).toContain('/resolutions`');
@@ -44,6 +46,7 @@ describe('HAB-196 assembly action items workspace contract', () => {
     expect(workspaceSource).toContain('canManageGovernance');
     expect(workspaceSource).toContain("status === 'completed' || status === 'cancelled'");
     expect(workspaceSource).toContain("item.status === 'open'");
+    expect(workspaceSource).toContain('assignedDisplayName');
     expect(workspaceSource).toContain('/app/requests');
     expect(workspaceSource).toContain('/app/maintenance');
   });
