@@ -9,21 +9,6 @@ type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
 
 type ResidentRole = 'owner' | 'tenant';
-type CreatedInvitation = {
-  id: string;
-  condominium_id: string;
-  person_id: string;
-  unit_id: string;
-  email: string;
-  intended_role: ResidentRole;
-  status: string;
-  expires_at: string;
-};
-
-type RpcResult = {
-  invitation: CreatedInvitation;
-  raw_token: string;
-};
 
 export type ResidentInvitationDelivery = {
   status: 'disabled' | 'sent' | 'failed';
@@ -44,6 +29,20 @@ const invitationInputSchema = z.object({
   unitId: z.string().uuid(),
   role: z.enum(['owner', 'tenant']),
   expiresAt: z.string().datetime({ offset: true }).optional(),
+});
+
+const residentInvitationRpcSchema = z.object({
+  invitation: z.object({
+    id: z.string().uuid(),
+    condominium_id: z.string().uuid(),
+    person_id: z.string().uuid(),
+    unit_id: z.string().uuid(),
+    email: z.string().email(),
+    intended_role: z.enum(['owner', 'tenant']),
+    status: z.string(),
+    expires_at: z.string(),
+  }),
+  raw_token: z.string().min(1),
 });
 
 const roleLabels: Record<ResidentRole, string> = {
@@ -165,14 +164,26 @@ residentInvitationRoutes.post('/:condominiumId/resident-invitations', async (c) 
     }),
   });
 
-  const rpcData = (await rpcResponse.json()) as RpcResult | Record<string, unknown>;
-  if (!rpcResponse.ok || !('invitation' in rpcData) || !('raw_token' in rpcData)) {
-    const message = readErrorMessage(rpcData).toLowerCase();
+  const rawRpcData: unknown = await rpcResponse.json();
+  if (!rpcResponse.ok) {
+    const message = readErrorMessage(rawRpcData).toLowerCase();
     if (message.includes('resident invitation rate limit exceeded')) {
       return c.json({ error: 'Too many requests' }, 429);
     }
     return c.json({ error: 'Resident invitation could not be created' }, 400);
   }
+
+  const rpcResult = residentInvitationRpcSchema.safeParse(rawRpcData);
+  if (!rpcResult.success) {
+    console.error(
+      JSON.stringify({
+        event: 'resident_invitation_rpc_payload_invalid',
+        condominiumId,
+      }),
+    );
+    return c.json({ error: 'Resident invitation could not be created' }, 502);
+  }
+  const rpcData = rpcResult.data;
 
   const [condominiumResponse, unitResponse] = await Promise.all([
     fetch(`${c.env.SUPABASE_URL}/rest/v1/condominiums?id=eq.${condominiumId}&select=name&limit=1`, {
