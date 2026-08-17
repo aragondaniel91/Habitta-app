@@ -25,7 +25,10 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Revisa primero las tarjetas de alerta.',
       'Abre el módulo relacionado para completar la acción.',
     ],
-    tips: ['El dashboard no reemplaza los reportes contables.', 'Los totales nunca mezclan monedas.'],
+    tips: [
+      'El dashboard no reemplaza los reportes contables.',
+      'Los totales nunca mezclan monedas.',
+    ],
     permissions: 'Cada persona ve únicamente la información permitida por su rol.',
   },
   units: {
