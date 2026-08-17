@@ -102,7 +102,10 @@ condominiumDeletionRoutes.post('/:id/danger-zone/delete', async (c) => {
   });
   if (!response.ok) {
     const status: 400 | 403 = response.status === 401 || response.status === 403 ? 403 : 400;
-    return c.json({ error: await errorMessage(response, 'Residence could not be deleted') }, status);
+    return c.json(
+      { error: await errorMessage(response, 'Residence could not be deleted') },
+      status,
+    );
   }
 
   const rows = (await response.json()) as DeletionJob[];
