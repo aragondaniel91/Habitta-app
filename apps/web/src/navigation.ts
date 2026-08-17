@@ -216,7 +216,8 @@ export const APP_ROUTES = [
     label: 'Documentos',
     shortLabel: 'Documentos',
     title: 'Documentos',
-    description: 'Organiza archivos privados del condominio con versiones, permisos y trazabilidad.',
+    description:
+      'Organiza archivos privados del condominio con versiones, permisos y trazabilidad.',
     section: 'comunidad',
     icon: CommunityIcon,
     scope: ['Carpetas y categorías', 'Versiones', 'Descargas auditadas'],
