@@ -70,10 +70,7 @@ type Draft = {
   maintenanceWorkOrderId: string;
 };
 
-type EditorState =
-  | { mode: 'create'; item: null }
-  | { mode: 'edit'; item: ActionItem }
-  | null;
+type EditorState = { mode: 'create'; item: null } | { mode: 'edit'; item: ActionItem } | null;
 
 const statusLabels: Record<ActionItemStatus, string> = {
   open: 'Pendiente',
@@ -90,8 +87,7 @@ const roleLabels: Record<string, string> = {
   board_member: 'Junta de condominio',
 };
 
-const isFinalized = (status: ActionItemStatus) =>
-  status === 'completed' || status === 'cancelled';
+const isFinalized = (status: ActionItemStatus) => status === 'completed' || status === 'cancelled';
 
 const statusTone = (status: ActionItemStatus) => {
   if (status === 'completed') return 'success' as const;
@@ -194,7 +190,9 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       setItems(grouped.flatMap((group) => group.actionItems));
       setResolutions(grouped.flatMap((group) => group.assemblyResolutions));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'No se pudieron cargar los acuerdos.');
+      setError(
+        loadError instanceof Error ? loadError.message : 'No se pudieron cargar los acuerdos.',
+      );
     } finally {
       setLoading(false);
     }
@@ -285,9 +283,9 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       if (dueFilter === 'upcoming') {
         return Boolean(
           !isFinalized(item.status) &&
-            item.due_on &&
-            item.due_on >= currentDate &&
-            item.due_on <= nextWeek,
+          item.due_on &&
+          item.due_on >= currentDate &&
+          item.due_on <= nextWeek,
         );
       }
       if (dueFilter === 'completed') return item.status === 'completed';
@@ -413,7 +411,11 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
 
   if (loading) {
     return (
-      <div aria-busy="true" aria-label="Cargando acuerdos y seguimiento" className="action-items-page">
+      <div
+        aria-busy="true"
+        aria-label="Cargando acuerdos y seguimiento"
+        className="action-items-page"
+      >
         <PageHeader eyebrow="Gobernanza" title="Acuerdos y seguimiento" />
         <div className="action-items-metrics">
           {Array.from({ length: 4 }, (_, index) => (
@@ -480,7 +482,10 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
 
       <Surface className="action-items-filters">
         <Field label="Asamblea">
-          <Select value={assemblyFilter} onChange={(event) => setAssemblyFilter(event.target.value)}>
+          <Select
+            value={assemblyFilter}
+            onChange={(event) => setAssemblyFilter(event.target.value)}
+          >
             <option value="all">Todas las asambleas</option>
             {assemblies.map((assembly) => (
               <option key={assembly.id} value={assembly.id}>
@@ -542,7 +547,9 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
         <div className="action-items-list">
           {visibleItems.map((item) => {
             const assembly = assemblyById.get(item.assembly_id);
-            const resolution = item.resolution_id ? resolutionById.get(item.resolution_id) : undefined;
+            const resolution = item.resolution_id
+              ? resolutionById.get(item.resolution_id)
+              : undefined;
             const assignee = item.assigned_to_user_id
               ? assigneeById.get(item.assigned_to_user_id)
               : undefined;
