@@ -7,7 +7,9 @@ const wrapperUrl = new URL('./operations-routes.ts', import.meta.url);
 describe('condominium deletion API contract', () => {
   it('mounts the danger-zone route under authenticated condominium operations', async () => {
     const source = await readFile(wrapperUrl, 'utf8');
-    expect(source).toContain("import { condominiumDeletionRoutes } from './condominium-deletion-routes'");
+    expect(source).toContain(
+      "import { condominiumDeletionRoutes } from './condominium-deletion-routes'",
+    );
     expect(source).toContain("baseOperationsRoutes.route('/', condominiumDeletionRoutes)");
   });
 
