@@ -115,12 +115,7 @@ export function PaymentReviewDetail({
         >
           Solicitar corrección
         </Button>
-        <Button
-          onClick={() => openReasonDialog('reject')}
-          size="sm"
-          type="button"
-          variant="danger"
-        >
+        <Button onClick={() => openReasonDialog('reject')} size="sm" type="button" variant="danger">
           Rechazar
         </Button>
         <PaymentAllocationEditor
