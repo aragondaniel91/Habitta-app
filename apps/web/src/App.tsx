@@ -44,6 +44,9 @@ const CommunityDirectoryPage = lazy(() =>
 const CommunityPage = lazy(() =>
   import('./pages/CommunityPage').then((module) => ({ default: module.CommunityPage })),
 );
+const DocumentsPage = lazy(() =>
+  import('./pages/DocumentsPage').then((module) => ({ default: module.DocumentsPage })),
+);
 const ExpensesPage = lazy(() =>
   import('./pages/ExpensesPage').then((module) => ({ default: module.ExpensesPage })),
 );
@@ -397,6 +400,14 @@ export default function App() {
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         onNavigate={navigate}
+        session={session}
+      />
+    );
+  } else if (activeRoute.key === 'documents') {
+    page = (
+      <DocumentsPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
         session={session}
       />
     );

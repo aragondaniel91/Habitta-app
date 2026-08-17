@@ -31,6 +31,7 @@ export type AppRoute = {
     | 'expenses'
     | 'reports'
     | 'community'
+    | 'documents'
     | 'governance'
     | 'requests'
     | 'announcements'
@@ -199,6 +200,27 @@ export const APP_ROUTES = [
     section: 'comunidad',
     icon: CommunityIcon,
     scope: ['Directorio', 'Documentos', 'Información compartida'],
+    roles: [
+      'condominium_admin',
+      'accountant',
+      'assistant',
+      'payment_reviewer',
+      'board_member',
+      'owner',
+      'tenant',
+    ],
+  },
+  {
+    key: 'documents',
+    path: '/app/documents',
+    label: 'Documentos',
+    shortLabel: 'Documentos',
+    title: 'Documentos',
+    description:
+      'Organiza archivos privados del condominio con versiones, permisos y trazabilidad.',
+    section: 'comunidad',
+    icon: CommunityIcon,
+    scope: ['Carpetas y categorías', 'Versiones', 'Descargas auditadas'],
     roles: [
       'condominium_admin',
       'accountant',
