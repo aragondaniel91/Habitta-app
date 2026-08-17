@@ -35,6 +35,8 @@ describe('physical structure management workspace', () => {
     expect(source).toContain("method: unit ? 'PATCH' : 'POST'");
     expect(source).toContain('Inactiva / archivada');
     expect(source).toContain('Sin edificio asignado');
+    expect(source).toContain("import { Dialog, DialogBody, DialogFooter } from '../components/Dialog'");
+    expect(source).not.toContain('structure-dialog-backdrop');
     expect(source).not.toContain("method: 'DELETE'");
   });
 });
