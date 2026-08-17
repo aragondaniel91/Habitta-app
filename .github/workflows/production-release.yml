@@ -256,13 +256,12 @@ jobs:
           test -n "$PAGES_DEPLOYMENT_URL"
           echo "PAGES_DEPLOYMENT_URL=$PAGES_DEPLOYMENT_URL" >> "$GITHUB_ENV"
           echo 'PAGES_DEPLOYED=true' >> "$GITHUB_ENV"
-      - name: End-to-end production smoke
+      - name: Smoke production Pages deployment and API wiring
         run: |
           node --input-type=module <<'NODE'
           const deploymentUrl = process.env.PAGES_DEPLOYMENT_URL;
-          const canonicalUrl = process.env.CLOUDFLARE_PAGES_PROD_URL;
           const apiUrl = process.env.CLOUDFLARE_WORKER_PROD_URL;
-          const origin = canonicalUrl;
+          const origin = process.env.CLOUDFLARE_PAGES_PROD_URL;
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
           let lastError;
           for (let attempt = 1; attempt <= 12; attempt += 1) {
@@ -278,9 +277,6 @@ jobs:
               });
               if (!preflight.ok || preflight.headers.get('access-control-allow-origin') !== origin)
                 throw new Error('preflight_mismatch');
-              const canonical = await fetch(`${canonicalUrl}/app/dashboard`, { redirect: 'manual' });
-              if (!canonical.ok && (canonical.status < 300 || canonical.status >= 400))
-                throw new Error(`canonical_web_${canonical.status}`);
               lastError = undefined;
               break;
             } catch (error) {
@@ -290,6 +286,8 @@ jobs:
           }
           if (lastError) throw lastError;
           NODE
+      - name: Verify canonical production Pages control plane
+        run: node scripts/release/verify-production-pages-control-plane.mjs
       - name: Roll back production edge deploys on release failure
         if: ${{ failure() }}
         run: |
