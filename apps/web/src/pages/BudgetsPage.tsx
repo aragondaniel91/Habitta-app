@@ -15,12 +15,7 @@ import {
   latestBudgetVersion,
   linesForBudgetVersion,
 } from '../lib/budgets';
-import type {
-  BudgetActualRow,
-  BudgetPeriod,
-  BudgetVersion,
-  BudgetWorkspace,
-} from '../lib/budgets';
+import type { BudgetActualRow, BudgetPeriod, BudgetVersion, BudgetWorkspace } from '../lib/budgets';
 import '../budgets.css';
 
 type Props = {
