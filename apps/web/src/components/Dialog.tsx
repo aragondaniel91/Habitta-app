@@ -113,7 +113,7 @@ export function ConfirmDialog({
     <Dialog
       closeDisabled={busy}
       description={description}
-      eyebrow={destructive ? 'Confirmación requerida' : undefined}
+      {...(destructive ? { eyebrow: 'Confirmación requerida' } : {})}
       onClose={onCancel}
       size="sm"
       title={title}
