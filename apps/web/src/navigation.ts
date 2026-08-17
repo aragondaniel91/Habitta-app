@@ -29,6 +29,7 @@ export type AppRoute = {
     | 'payments'
     | 'treasury'
     | 'expenses'
+    | 'budgets'
     | 'reports'
     | 'community'
     | 'documents'
@@ -176,6 +177,18 @@ export const APP_ROUTES = [
     section: 'finanzas',
     icon: ExpensesIcon,
     scope: ['Registro de gastos', 'Proveedores', 'Soportes y categorías'],
+    roles: ['condominium_admin', 'accountant', 'board_member'],
+  },
+  {
+    key: 'budgets',
+    path: '/app/budgets',
+    label: 'Presupuestos',
+    shortLabel: 'Presupuestos',
+    title: 'Presupuestos',
+    description: 'Planifica, aprueba y compara el presupuesto con la ejecución real por moneda.',
+    section: 'finanzas',
+    icon: ExpensesIcon,
+    scope: ['Períodos y versiones', 'Aprobación', 'Ejecución real vs. presupuesto'],
     roles: ['condominium_admin', 'accountant', 'board_member'],
   },
   {
