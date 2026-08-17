@@ -315,9 +315,9 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       if (dueFilter === 'upcoming') {
         return Boolean(
           !isFinalized(item.status) &&
-            item.due_on &&
-            item.due_on >= currentDate &&
-            item.due_on <= nextWeek,
+          item.due_on &&
+          item.due_on >= currentDate &&
+          item.due_on <= nextWeek,
         );
       }
       if (dueFilter === 'completed') return item.status === 'completed';
