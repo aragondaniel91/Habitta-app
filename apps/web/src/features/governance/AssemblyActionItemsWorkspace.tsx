@@ -481,7 +481,8 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       ) : null}
       {labelError ? (
         <div aria-live="polite" className="action-items-alert" role="status">
-          Los acuerdos siguen visibles, pero no se pudieron resolver los nombres de sus responsables: {labelError}
+          Los acuerdos siguen visibles, pero no se pudieron resolver los nombres de sus
+          responsables: {labelError}
           <Button onClick={() => void loadAssignedLabels()} size="sm" variant="ghost">
             Reintentar
           </Button>
