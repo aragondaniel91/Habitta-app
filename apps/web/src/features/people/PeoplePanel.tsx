@@ -76,7 +76,10 @@ const emptyPersonDraft: PersonDraft = {
   status: 'active',
 };
 
-const occupancyTypeOptions = Object.entries(occupancyLabels) as [Occupancy['occupancy_type'], string][];
+const occupancyTypeOptions = Object.entries(occupancyLabels) as [
+  Occupancy['occupancy_type'],
+  string,
+][];
 const condominiumRelationshipOptions = Object.entries(condominiumRelationshipLabels) as [
   CondominiumRelationshipType,
   string,
@@ -87,7 +90,9 @@ function personName(person: Person) {
 }
 
 function personInitials(person: Person) {
-  return `${person.first_name.trim().charAt(0)}${person.last_name.trim().charAt(0)}`.toUpperCase() || '—';
+  return (
+    `${person.first_name.trim().charAt(0)}${person.last_name.trim().charAt(0)}`.toUpperCase() || '—'
+  );
 }
 
 function formatDate(value: string) {
@@ -291,7 +296,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
       if (savedPerson) await loadPersonContext(savedPerson.id);
       setMessage(editingPersonId ? 'Perfil actualizado.' : 'Persona creada y lista para vincular.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar la persona.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo guardar la persona.',
+      );
     } finally {
       setBusyAction('');
     }
@@ -303,21 +310,29 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     setBusyAction('ownership');
     setError('');
     try {
-      await peopleApi(`/v1/condominiums/${condominiumId}/people/${selected.id}/ownerships`, session, {
-        method: 'POST',
-        body: JSON.stringify({
-          unitId: ownershipDraft.unitId,
-          ...(ownershipDraft.percentage
-            ? { ownershipPercentage: Number(ownershipDraft.percentage) }
-            : {}),
-          isPrimaryContact: true,
-        }),
-      });
+      await peopleApi(
+        `/v1/condominiums/${condominiumId}/people/${selected.id}/ownerships`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            unitId: ownershipDraft.unitId,
+            ...(ownershipDraft.percentage
+              ? { ownershipPercentage: Number(ownershipDraft.percentage) }
+              : {}),
+            isPrimaryContact: true,
+          }),
+        },
+      );
       setOwnershipDraft({ unitId: '', percentage: '' });
       await loadPersonContext(selected.id);
-      setMessage('Propiedad asociada; la persona sigue siendo un único registro aunque tenga varias unidades.');
+      setMessage(
+        'Propiedad asociada; la persona sigue siendo un único registro aunque tenga varias unidades.',
+      );
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo asociar la propiedad.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo asociar la propiedad.',
+      );
     } finally {
       setBusyAction('');
     }
@@ -329,19 +344,25 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     setBusyAction('occupancy');
     setError('');
     try {
-      await peopleApi(`/v1/condominiums/${condominiumId}/people/${selected.id}/occupancies`, session, {
-        method: 'POST',
-        body: JSON.stringify({
-          unitId: occupancyDraft.unitId,
-          occupancyType: occupancyDraft.occupancyType,
-          isPrimaryContact: true,
-        }),
-      });
+      await peopleApi(
+        `/v1/condominiums/${condominiumId}/people/${selected.id}/occupancies`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            unitId: occupancyDraft.unitId,
+            occupancyType: occupancyDraft.occupancyType,
+            isPrimaryContact: true,
+          }),
+        },
+      );
       setOccupancyDraft({ unitId: '', occupancyType: 'tenant' });
       await loadPersonContext(selected.id);
       setMessage('Ocupación asociada correctamente.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo asociar la ocupación.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo asociar la ocupación.',
+      );
     } finally {
       setBusyAction('');
     }
@@ -368,7 +389,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
       await loadPersonContext(selected.id);
       setMessage('Relación con el condominio agregada.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo agregar la relación.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo agregar la relación.',
+      );
     } finally {
       setBusyAction('');
     }
@@ -402,7 +425,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
       await loadPersonContext(selected.id);
       setMessage('Relación cerrada. El historial se conserva y sigue siendo auditable.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo cerrar la relación.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo cerrar la relación.',
+      );
     } finally {
       setBusyAction('');
     }
@@ -416,7 +441,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     }
     const option = accessOptions.find((item) => item.role === role && item.unitId === unitId);
     if (!option) {
-      setError('La relación activa ya no es compatible con ese acceso. Actualiza el perfil e intenta nuevamente.');
+      setError(
+        'La relación activa ya no es compatible con ese acceso. Actualiza el perfil e intenta nuevamente.',
+      );
       return;
     }
     setBusyAction('invitation');
@@ -432,9 +459,13 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
       });
       setLatestInvitation({ url: result.invitationUrl, role, unitLabel: option.unitLabel });
       setInvitations(await listResidentInvitations(condominiumId, selected.id));
-      setMessage('Invitación lista. Puedes copiar el enlace seguro o abrir tu correo para compartirlo.');
+      setMessage(
+        'Invitación lista. Puedes copiar el enlace seguro o abrir tu correo para compartirlo.',
+      );
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la invitación.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear la invitación.',
+      );
     } finally {
       setBusyAction('');
     }
@@ -456,7 +487,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
       setInvitations(await listResidentInvitations(condominiumId, selected.id));
       setMessage('Invitación revocada. Ese enlace ya no podrá utilizarse.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo revocar la invitación.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo revocar la invitación.',
+      );
     } finally {
       setBusyAction('');
     }
@@ -479,7 +512,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
       `Hola ${selected.first_name},\n\nTienes una invitación a ${condominiumName} en Habitta como ${residentRoleLabel(latestInvitation.role).toLowerCase()} de ${latestInvitation.unitLabel}.\n\nAbre este enlace seguro para aceptar el acceso:\n${latestInvitation.url}\n\nEl enlace es personal y temporal.`,
     );
     window.location.href = `mailto:${encodeURIComponent(selected.email)}?subject=${subject}&body=${body}`;
-    setMessage('Abrimos tu cliente de correo. Habitta no marcará el mensaje como enviado hasta tener entrega transaccional para residentes.');
+    setMessage(
+      'Abrimos tu cliente de correo. Habitta no marcará el mensaje como enviado hasta tener entrega transaccional para residentes.',
+    );
   };
 
   const previewCsv = async () => {
@@ -514,7 +549,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
       await loadDirectory();
       setMessage('Importación de personas completada.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo importar el CSV.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo importar el CSV.',
+      );
     } finally {
       setBusyAction('');
     }
@@ -599,7 +636,10 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
               />
             </Field>
             <Field label="Estado">
-              <Select onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}>
+              <Select
+                onChange={(event) => setStatusFilter(event.target.value)}
+                value={statusFilter}
+              >
                 <option value="">Todos</option>
                 <option value="active">Activas</option>
                 <option value="inactive">Inactivas</option>
@@ -651,7 +691,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
             ) : selected ? (
               <>
                 <div className="people-profile-header">
-                  <span className="people-avatar people-avatar--large">{personInitials(selected)}</span>
+                  <span className="people-avatar people-avatar--large">
+                    {personInitials(selected)}
+                  </span>
                   <div>
                     <span className="people-kicker">Perfil operativo</span>
                     <h2>{personName(selected)}</h2>
@@ -695,11 +737,17 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     </div>
                     <Badge tone="info">{ownerships.filter((item) => !item.ends_at).length}</Badge>
                   </div>
-                  <form className="people-inline-form" onSubmit={(event) => void createOwnership(event)}>
+                  <form
+                    className="people-inline-form"
+                    onSubmit={(event) => void createOwnership(event)}
+                  >
                     <Field label="Unidad">
                       <Select
                         onChange={(event) =>
-                          setOwnershipDraft((current) => ({ ...current, unitId: event.target.value }))
+                          setOwnershipDraft((current) => ({
+                            ...current,
+                            unitId: event.target.value,
+                          }))
                         }
                         required
                         value={ownershipDraft.unitId}
@@ -772,7 +820,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                         </article>
                       );
                     })}
-                    {!ownerships.length ? <p className="people-muted">Sin propiedades registradas.</p> : null}
+                    {!ownerships.length ? (
+                      <p className="people-muted">Sin propiedades registradas.</p>
+                    ) : null}
                   </div>
                 </section>
 
@@ -781,15 +831,24 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     <div>
                       <span className="people-kicker">Ocupación</span>
                       <h3>Residencia y ocupantes</h3>
-                      <p>Registra al inquilino, propietario residente, familiar u ocupante autorizado.</p>
+                      <p>
+                        Registra al inquilino, propietario residente, familiar u ocupante
+                        autorizado.
+                      </p>
                     </div>
                     <Badge tone="info">{occupancies.filter((item) => !item.ends_at).length}</Badge>
                   </div>
-                  <form className="people-inline-form" onSubmit={(event) => void createOccupancy(event)}>
+                  <form
+                    className="people-inline-form"
+                    onSubmit={(event) => void createOccupancy(event)}
+                  >
                     <Field label="Unidad">
                       <Select
                         onChange={(event) =>
-                          setOccupancyDraft((current) => ({ ...current, unitId: event.target.value }))
+                          setOccupancyDraft((current) => ({
+                            ...current,
+                            unitId: event.target.value,
+                          }))
                         }
                         required
                         value={occupancyDraft.unitId}
@@ -836,7 +895,8 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                           <div>
                             <strong>{unitContextLabel(item.units)}</strong>
                             <small>
-                              {occupancyLabels[item.occupancy_type]} · desde {formatDate(item.starts_at)}
+                              {occupancyLabels[item.occupancy_type]} · desde{' '}
+                              {formatDate(item.starts_at)}
                             </small>
                           </div>
                           <Badge tone={current ? 'success' : 'neutral'}>
@@ -860,7 +920,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                         </article>
                       );
                     })}
-                    {!occupancies.length ? <p className="people-muted">Sin ocupaciones registradas.</p> : null}
+                    {!occupancies.length ? (
+                      <p className="people-muted">Sin ocupaciones registradas.</p>
+                    ) : null}
                   </div>
                 </section>
 
@@ -901,14 +963,19 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                         className="input"
                         maxLength={120}
                         onChange={(event) =>
-                          setRelationshipDraft((current) => ({ ...current, title: event.target.value }))
+                          setRelationshipDraft((current) => ({
+                            ...current,
+                            title: event.target.value,
+                          }))
                         }
                         placeholder="Ej. Presidente de la junta"
                         value={relationshipDraft.title}
                       />
                     </Field>
                     <Button disabled={busyAction === 'condominium-relationship'} type="submit">
-                      {busyAction === 'condominium-relationship' ? 'Agregando…' : 'Agregar relación'}
+                      {busyAction === 'condominium-relationship'
+                        ? 'Agregando…'
+                        : 'Agregar relación'}
                     </Button>
                   </form>
                   <div className="people-relationship-list">
@@ -937,7 +1004,8 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                                 setPendingClose({
                                   kind: 'condominium',
                                   id: relationship.id,
-                                  label: condominiumRelationshipLabels[relationship.relationship_type],
+                                  label:
+                                    condominiumRelationshipLabels[relationship.relationship_type],
                                 })
                               }
                               size="sm"
@@ -961,8 +1029,8 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                       <span className="people-kicker">Acceso digital</span>
                       <h3>Invitar a Habitta</h3>
                       <p>
-                        El acceso se concede solo desde una propiedad activa o una ocupación activa como
-                        inquilino.
+                        El acceso se concede solo desde una propiedad activa o una ocupación activa
+                        como inquilino.
                       </p>
                     </div>
                     <Badge tone={accessOptions.length ? 'success' : 'neutral'}>
@@ -970,7 +1038,10 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     </Badge>
                   </div>
 
-                  <form className="people-invitation-form" onSubmit={(event) => void createInvitation(event)}>
+                  <form
+                    className="people-invitation-form"
+                    onSubmit={(event) => void createInvitation(event)}
+                  >
                     <Field label="Rol que recibirá">
                       <Select
                         onChange={(event) => setInviteRole(event.target.value as ResidentRole)}
@@ -1012,11 +1083,14 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                   </form>
 
                   {!selected.email ? (
-                    <p className="people-muted">Agrega un correo al perfil para habilitar invitaciones.</p>
+                    <p className="people-muted">
+                      Agrega un correo al perfil para habilitar invitaciones.
+                    </p>
                   ) : null}
                   {selected.email && !accessOptions.length ? (
                     <p className="people-muted">
-                      Registra primero una propiedad o una ocupación de tipo Inquilino que esté activa.
+                      Registra primero una propiedad o una ocupación de tipo Inquilino que esté
+                      activa.
                     </p>
                   ) : null}
 
@@ -1028,8 +1102,8 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                           {residentRoleLabel(latestInvitation.role)} · {latestInvitation.unitLabel}
                         </strong>
                         <small>
-                          Habitta almacena solo el hash del token. Este enlace se muestra para que puedas
-                          compartirlo sin administrar tokens manualmente.
+                          Habitta almacena solo el hash del token. Este enlace se muestra para que
+                          puedas compartirlo sin administrar tokens manualmente.
                         </small>
                       </div>
                       <input
@@ -1042,7 +1116,12 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                         <Button onClick={() => void copyLatestInvitation()} size="sm" type="button">
                           Copiar enlace
                         </Button>
-                        <Button onClick={openInvitationEmail} size="sm" type="button" variant="secondary">
+                        <Button
+                          onClick={openInvitationEmail}
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
                           Abrir correo
                         </Button>
                       </div>
@@ -1059,7 +1138,8 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                         const displayStatus = residentInvitationDisplayStatus(invitation);
                         const eligible = accessOptions.some(
                           (option) =>
-                            option.role === invitation.intended_role && option.unitId === invitation.unit_id,
+                            option.role === invitation.intended_role &&
+                            option.unitId === invitation.unit_id,
                         );
                         return (
                           <article key={invitation.id}>
@@ -1081,7 +1161,10 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                                 <Button
                                   disabled={busyAction === 'invitation'}
                                   onClick={() =>
-                                    void issueInvitation(invitation.intended_role, invitation.unit_id)
+                                    void issueInvitation(
+                                      invitation.intended_role,
+                                      invitation.unit_id,
+                                    )
                                   }
                                   size="sm"
                                   type="button"
@@ -1100,11 +1183,15 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                                   Revocar
                                 </Button>
                               ) : null}
-                              {(displayStatus === 'expired' || displayStatus === 'revoked') && eligible ? (
+                              {(displayStatus === 'expired' || displayStatus === 'revoked') &&
+                              eligible ? (
                                 <Button
                                   disabled={busyAction === 'invitation'}
                                   onClick={() =>
-                                    void issueInvitation(invitation.intended_role, invitation.unit_id)
+                                    void issueInvitation(
+                                      invitation.intended_role,
+                                      invitation.unit_id,
+                                    )
                                   }
                                   size="sm"
                                   type="button"
@@ -1118,7 +1205,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                         );
                       })
                     ) : (
-                      <p className="people-muted">No hay invitaciones registradas para esta persona.</p>
+                      <p className="people-muted">
+                        No hay invitaciones registradas para esta persona.
+                      </p>
                     )}
                   </div>
                 </section>
@@ -1242,7 +1331,10 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                 <input
                   className="input"
                   onChange={(event) =>
-                    setPersonDraft((current) => ({ ...current, documentNumber: event.target.value }))
+                    setPersonDraft((current) => ({
+                      ...current,
+                      documentNumber: event.target.value,
+                    }))
                   }
                   value={personDraft.documentNumber}
                 />
