@@ -51,7 +51,9 @@ describe('HAB-210 shared app dialogs', () => {
       readFile(dangerZoneUrl, 'utf8'),
     ]);
 
-    expect(structure).toContain("import { Dialog, DialogBody, DialogFooter } from '../components/Dialog'");
+    expect(structure).toContain(
+      "import { Dialog, DialogBody, DialogFooter } from '../components/Dialog'",
+    );
     expect(structure).toContain('<Dialog');
     expect(structure).not.toContain('structure-dialog-backdrop');
     expect(dangerZone).toContain("import { ConfirmDialog } from '../../components/Dialog'");
