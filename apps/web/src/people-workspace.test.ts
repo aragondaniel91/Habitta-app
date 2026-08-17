@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const routeSource = readFileSync(new URL('./pages/CommunityDirectoryPage.tsx', import.meta.url), 'utf8');
+const routeSource = readFileSync(
+  new URL('./pages/CommunityDirectoryPage.tsx', import.meta.url),
+  'utf8',
+);
 const workspaceSource = readFileSync(
   new URL('./features/people/PeoplePanel.tsx', import.meta.url),
   'utf8',
