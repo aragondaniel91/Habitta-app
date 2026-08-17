@@ -38,10 +38,10 @@ export async function getCondominiumDeletionCapability(
   return {
     canDelete: Boolean(
       organizationId &&
-        memberships.organizations.some(
-          (membership) =>
-            membership.organization_id === organizationId && membership.role === 'organization_owner',
-        ),
+      memberships.organizations.some(
+        (membership) =>
+          membership.organization_id === organizationId && membership.role === 'organization_owner',
+      ),
     ),
     organizationId,
     expectedConfirmation: `ELIMINAR ${condominiumName}`,
