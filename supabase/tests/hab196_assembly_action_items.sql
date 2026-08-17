@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(27);
 
 select has_table('public', 'assembly_action_items', 'assembly action items exist');
 select has_table('public', 'assembly_action_item_events', 'assembly action item audit events exist');
