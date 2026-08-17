@@ -155,8 +155,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
   const [documentDescription, setDocumentDescription] = useState('');
   const [documentFolderId, setDocumentFolderId] = useState('');
   const [documentCategoryId, setDocumentCategoryId] = useState('');
-  const [documentAudience, setDocumentAudience] =
-    useState<CommunityDocumentAudience>('management');
+  const [documentAudience, setDocumentAudience] = useState<CommunityDocumentAudience>('management');
   const [documentRetention, setDocumentRetention] = useState('');
   const [initialFile, setInitialFile] = useState<File | null>(null);
 
@@ -166,8 +165,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
 
   const [categoryName, setCategoryName] = useState('');
   const [categoryDescription, setCategoryDescription] = useState('');
-  const [categoryAudience, setCategoryAudience] =
-    useState<CommunityDocumentAudience>('management');
+  const [categoryAudience, setCategoryAudience] = useState<CommunityDocumentAudience>('management');
   const [categoryRetention, setCategoryRetention] = useState('');
 
   const [versionFile, setVersionFile] = useState<File | null>(null);
@@ -266,8 +264,10 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       if (audienceFilter && document.audience !== audienceFilter) return false;
       if (statusFilter && document.status !== statusFilter) return false;
       if (!term) return true;
-      const category = document.category_id ? categoryById.get(document.category_id)?.name ?? '' : '';
-      const folder = document.folder_id ? folderById.get(document.folder_id)?.name ?? '' : '';
+      const category = document.category_id
+        ? (categoryById.get(document.category_id)?.name ?? '')
+        : '';
+      const folder = document.folder_id ? (folderById.get(document.folder_id)?.name ?? '') : '';
       return [document.title, document.description ?? '', category, folder]
         .join(' ')
         .toLocaleLowerCase('es')
@@ -350,7 +350,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       await loadLibrary();
       setSelectedDocumentId(created.id);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear el documento.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear el documento.',
+      );
     } finally {
       setSaving(false);
     }
@@ -371,7 +373,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       setNotice('Carpeta creada.');
       await loadLibrary();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la carpeta.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear la carpeta.',
+      );
     } finally {
       setSaving(false);
     }
@@ -393,7 +397,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       setNotice('Categoría creada.');
       await loadLibrary();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la categoría.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo crear la categoría.',
+      );
     } finally {
       setSaving(false);
     }
@@ -423,7 +429,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       await Promise.all([loadLibrary(), loadDetail(selectedDocument.id)]);
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo guardar la nueva versión.',
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo guardar la nueva versión.',
       );
     } finally {
       setSaving(false);
@@ -434,22 +442,20 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
     if (!selectedDocument) return;
     setError('');
     try {
-      await downloadCommunityDocumentVersion(
-        condominiumId,
-        selectedDocument.id,
-        version,
-        session,
-      );
+      await downloadCommunityDocumentVersion(condominiumId, selectedDocument.id, version, session);
       setNotice('Descarga autorizada y registrada en la auditoría.');
       await loadDetail(selectedDocument.id);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo descargar el archivo.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo descargar el archivo.',
+      );
     }
   };
 
   const archiveSelectedDocument = async () => {
     if (!selectedDocument || selectedDocument.status !== 'active') return;
-    if (!window.confirm('¿Archivar este documento? El historial y los archivos se conservarán.')) return;
+    if (!window.confirm('¿Archivar este documento? El historial y los archivos se conservarán.'))
+      return;
     setSaving(true);
     setError('');
     try {
@@ -458,7 +464,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       await loadLibrary();
       await loadDetail(selectedDocument.id);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo archivar el documento.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo archivar el documento.',
+      );
     } finally {
       setSaving(false);
     }
@@ -481,7 +489,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       setNotice('Registro relacionado vinculado al documento.');
       await loadDetail(selectedDocument.id);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo vincular el registro.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo vincular el registro.',
+      );
     } finally {
       setSaving(false);
     }
@@ -600,7 +610,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                     if (category) {
                       setDocumentAudience(category.default_audience);
                       setDocumentRetention(
-                        category.default_retention_days ? String(category.default_retention_days) : '',
+                        category.default_retention_days
+                          ? String(category.default_retention_days)
+                          : '',
                       );
                     }
                   }}
@@ -628,7 +640,10 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                   ))}
                 </Select>
               </Field>
-              <Field hint="Déjalo vacío si no aplica una retención específica." label="Retención (días)">
+              <Field
+                hint="Déjalo vacío si no aplica una retención específica."
+                label="Retención (días)"
+              >
                 <input
                   min={1}
                   onChange={(event) => setDocumentRetention(event.target.value)}
@@ -666,7 +681,10 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                 />
               </Field>
               <Field label="Carpeta superior">
-                <Select onChange={(event) => setFolderParentId(event.target.value)} value={folderParentId}>
+                <Select
+                  onChange={(event) => setFolderParentId(event.target.value)}
+                  value={folderParentId}
+                >
                   <option value="">Raíz de la biblioteca</option>
                   {folderRows.map(({ folder, depth }) => (
                     <option key={folder.id} value={folder.id}>
@@ -801,7 +819,11 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
           <div className="documents-section-heading">
             <div>
               <span className="documents-kicker">Archivos autorizados</span>
-              <h2>{selectedFolderId ? folderById.get(selectedFolderId)?.name ?? 'Carpeta' : 'Documentos'}</h2>
+              <h2>
+                {selectedFolderId
+                  ? (folderById.get(selectedFolderId)?.name ?? 'Carpeta')
+                  : 'Documentos'}
+              </h2>
               <p>{filteredDocuments.length} visibles con los filtros actuales.</p>
             </div>
             <Button onClick={() => void loadLibrary()} size="sm" variant="ghost">
@@ -845,10 +867,12 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
           </div>
 
           {filteredDocuments.length ? (
-            <div className="documents-list" role="list">
+            <div className="documents-list">
               {filteredDocuments.map((document) => {
                 const selected = selectedDocumentId === document.id;
-                const category = document.category_id ? categoryById.get(document.category_id) : undefined;
+                const category = document.category_id
+                  ? categoryById.get(document.category_id)
+                  : undefined;
                 const folder = document.folder_id ? folderById.get(document.folder_id) : undefined;
                 return (
                   <button
@@ -856,7 +880,6 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                     className={selected ? 'documents-row is-selected' : 'documents-row'}
                     key={document.id}
                     onClick={() => setSelectedDocumentId(document.id)}
-                    role="listitem"
                     type="button"
                   >
                     <span className="documents-file-mark" aria-hidden="true">
@@ -865,7 +888,8 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                     <span className="documents-row__copy">
                       <strong>{document.title}</strong>
                       <small>
-                        {[folder?.name, category?.name].filter(Boolean).join(' · ') || 'Sin clasificación'}
+                        {[folder?.name, category?.name].filter(Boolean).join(' · ') ||
+                          'Sin clasificación'}
                       </small>
                     </span>
                     <span className="documents-row__meta">
@@ -1001,7 +1025,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                     ))}
                   </div>
                 ) : (
-                  <p className="documents-muted">Este documento todavía no tiene un archivo cargado.</p>
+                  <p className="documents-muted">
+                    Este documento todavía no tiene un archivo cargado.
+                  </p>
                 )}
               </section>
 
@@ -1018,7 +1044,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                   <form className="documents-link-form" onSubmit={saveLink}>
                     <Select
                       aria-label="Tipo de registro relacionado"
-                      onChange={(event) => setLinkType(event.target.value as CommunityDocumentLinkType)}
+                      onChange={(event) =>
+                        setLinkType(event.target.value as CommunityDocumentLinkType)
+                      }
                       value={linkType}
                     >
                       {Object.entries(linkLabels).map(([value, label]) => (
