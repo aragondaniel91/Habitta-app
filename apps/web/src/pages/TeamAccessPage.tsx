@@ -433,9 +433,9 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
               </Field>
 
               <p className="team-role-description">
-                En producción, al enviar esta invitación Habitta enviará un correo transaccional real
-                a la dirección indicada. Este envío es independiente de los correos automáticos del
-                condominio.
+                En producción, al enviar esta invitación Habitta enviará un correo transaccional
+                real a la dirección indicada. Este envío es independiente de los correos automáticos
+                del condominio.
               </p>
 
               <Button disabled={creating} type="submit">
@@ -513,9 +513,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                             </Button>
                             <Button
                               disabled={busy}
-                              onClick={() =>
-                                setPendingMemberAction({ member, action: 'suspend' })
-                              }
+                              onClick={() => setPendingMemberAction({ member, action: 'suspend' })}
                               size="sm"
                               type="button"
                               variant="ghost"
@@ -612,7 +610,9 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
           busy={pendingMemberBusy}
           busyLabel={pendingMemberAction.action === 'remove' ? 'Quitando acceso…' : 'Suspendiendo…'}
           cancelLabel="Conservar acceso"
-          confirmLabel={pendingMemberAction.action === 'remove' ? 'Quitar acceso' : 'Suspender acceso'}
+          confirmLabel={
+            pendingMemberAction.action === 'remove' ? 'Quitar acceso' : 'Suspender acceso'
+          }
           description={
             pendingMemberAction.action === 'remove'
               ? `${pendingMemberName} dejará de pertenecer al equipo de ${condominiumName}. Su cuenta global y el historial de acciones se conservarán.`
@@ -622,7 +622,9 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
           onConfirm={() =>
             void runMemberAction(pendingMemberAction.member, pendingMemberAction.action)
           }
-          title={pendingMemberAction.action === 'remove' ? 'Quitar acceso al equipo' : 'Suspender acceso'}
+          title={
+            pendingMemberAction.action === 'remove' ? 'Quitar acceso al equipo' : 'Suspender acceso'
+          }
         />
       ) : null}
     </>
