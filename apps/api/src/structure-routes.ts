@@ -150,7 +150,7 @@ structureRoutes.post('/:condominiumId/units', async (c) => {
     return c.json(
       {
         error: 'unit_code_conflict',
-        publicMessage: 'Ya existe una unidad con ese código en este condominio.',
+        publicMessage: 'Ya existe una unidad con ese código en esta torre o ubicación.',
       },
       409,
     );
@@ -190,7 +190,7 @@ structureRoutes.patch('/:condominiumId/units/:unitId', async (c) => {
     return c.json(
       {
         error: 'unit_code_conflict',
-        publicMessage: 'Ya existe una unidad con ese código en este condominio.',
+        publicMessage: 'Ya existe una unidad con ese código en esta torre o ubicación.',
       },
       409,
     );
