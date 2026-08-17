@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { ConfirmDialog } from '../components/Dialog';
 import { ArrowRightIcon, CheckCircleIcon, CommunityIcon, ReportsIcon } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
@@ -149,6 +150,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [composer, setComposer] = useState<Composer>(null);
@@ -240,6 +242,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
     setStatusFilter('');
     setSearch('');
     setComposer(null);
+    setArchiveDialogOpen(false);
     setNotice('');
     void loadLibrary();
   }, [condominiumId, loadLibrary]);
@@ -456,12 +459,11 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
 
   const archiveSelectedDocument = async () => {
     if (!selectedDocument || selectedDocument.status !== 'active') return;
-    if (!window.confirm('¿Archivar este documento? El historial y los archivos se conservarán.'))
-      return;
     setSaving(true);
     setError('');
     try {
       await archiveCommunityDocument(condominiumId, selectedDocument.id, session);
+      setArchiveDialogOpen(false);
       setNotice('Documento archivado. El historial permanece intacto.');
       await loadLibrary();
       await loadDetail(selectedDocument.id);
@@ -522,610 +524,624 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
   }
 
   return (
-    <div className="documents-page">
-      <PageHeader
-        actions={
-          canManageDocuments ? (
-            <div className="documents-header-actions">
-              <Button onClick={() => openComposer('folder')} size="sm" variant="secondary">
-                Nueva carpeta
-              </Button>
-              <Button onClick={() => openComposer('category')} size="sm" variant="secondary">
-                Nueva categoría
-              </Button>
-              <Button onClick={() => openComposer('document')} size="sm">
-                Nuevo documento
-              </Button>
-            </div>
-          ) : undefined
-        }
-        description={`${condominiumName} · archivos privados con permisos, versiones y descargas auditadas.`}
-        eyebrow="Biblioteca comunitaria"
-        title="Documentos"
-      />
+    <>
+      <div className="documents-page">
+        <PageHeader
+          actions={
+            canManageDocuments ? (
+              <div className="documents-header-actions">
+                <Button onClick={() => openComposer('folder')} size="sm" variant="secondary">
+                  Nueva carpeta
+                </Button>
+                <Button onClick={() => openComposer('category')} size="sm" variant="secondary">
+                  Nueva categoría
+                </Button>
+                <Button onClick={() => openComposer('document')} size="sm">
+                  Nuevo documento
+                </Button>
+              </div>
+            ) : undefined
+          }
+          description={`${condominiumName} · archivos privados con permisos, versiones y descargas auditadas.`}
+          eyebrow="Biblioteca comunitaria"
+          title="Documentos"
+        />
 
-      {error ? (
-        <div className="documents-alert documents-alert--error" role="alert">
-          <span>{error}</span>
-          <Button onClick={() => setError('')} size="sm" variant="ghost">
-            Cerrar
-          </Button>
-        </div>
-      ) : null}
-      {notice ? (
-        <div className="documents-alert documents-alert--success" role="status">
-          <CheckCircleIcon size={18} />
-          <span>{notice}</span>
-          <Button onClick={() => setNotice('')} size="sm" variant="ghost">
-            Cerrar
-          </Button>
-        </div>
-      ) : null}
-
-      {composer ? (
-        <Surface className="documents-composer">
-          <div className="documents-section-heading">
-            <div>
-              <span className="documents-kicker">Administración de biblioteca</span>
-              <h2>
-                {composer === 'document'
-                  ? 'Nuevo documento'
-                  : composer === 'folder'
-                    ? 'Nueva carpeta'
-                    : 'Nueva categoría'}
-              </h2>
-            </div>
-            <Button disabled={saving} onClick={() => setComposer(null)} size="sm" variant="ghost">
-              Cancelar
+        {error ? (
+          <div className="documents-alert documents-alert--error" role="alert">
+            <span>{error}</span>
+            <Button onClick={() => setError('')} size="sm" variant="ghost">
+              Cerrar
             </Button>
           </div>
-
-          {composer === 'document' ? (
-            <form className="documents-form-grid" onSubmit={saveDocument}>
-              <Field label="Título">
-                <input
-                  maxLength={200}
-                  onChange={(event) => setDocumentTitle(event.target.value)}
-                  required
-                  value={documentTitle}
-                />
-              </Field>
-              <Field label="Carpeta">
-                <Select
-                  onChange={(event) => setDocumentFolderId(event.target.value)}
-                  value={documentFolderId}
-                >
-                  <option value="">Sin carpeta</option>
-                  {folderRows.map(({ folder, depth }) => (
-                    <option key={folder.id} value={folder.id}>
-                      {`${'— '.repeat(depth)}${folder.name}`}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Categoría">
-                <Select
-                  onChange={(event) => {
-                    const categoryId = event.target.value;
-                    setDocumentCategoryId(categoryId);
-                    const category = categoryById.get(categoryId);
-                    if (category) {
-                      setDocumentAudience(category.default_audience);
-                      setDocumentRetention(
-                        category.default_retention_days
-                          ? String(category.default_retention_days)
-                          : '',
-                      );
-                    }
-                  }}
-                  value={documentCategoryId}
-                >
-                  <option value="">Sin categoría</option>
-                  {activeCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Visibilidad">
-                <Select
-                  onChange={(event) =>
-                    setDocumentAudience(event.target.value as CommunityDocumentAudience)
-                  }
-                  value={documentAudience}
-                >
-                  {Object.entries(audienceLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field
-                hint="Déjalo vacío si no aplica una retención específica."
-                label="Retención (días)"
-              >
-                <input
-                  min={1}
-                  onChange={(event) => setDocumentRetention(event.target.value)}
-                  type="number"
-                  value={documentRetention}
-                />
-              </Field>
-              <Field hint="PDF, JPG o PNG · máximo 10 MB." label="Archivo inicial (opcional)">
-                <input accept={COMMUNITY_DOCUMENT_ACCEPT} onChange={onInitialFile} type="file" />
-              </Field>
-              <Field label="Descripción">
-                <textarea
-                  maxLength={4000}
-                  onChange={(event) => setDocumentDescription(event.target.value)}
-                  rows={3}
-                  value={documentDescription}
-                />
-              </Field>
-              <div className="documents-form-actions">
-                <Button disabled={saving || !documentTitle.trim()} type="submit">
-                  {saving ? 'Guardando…' : 'Crear documento'}
-                </Button>
-              </div>
-            </form>
-          ) : null}
-
-          {composer === 'folder' ? (
-            <form className="documents-form-grid" onSubmit={saveFolder}>
-              <Field label="Nombre">
-                <input
-                  maxLength={120}
-                  onChange={(event) => setFolderName(event.target.value)}
-                  required
-                  value={folderName}
-                />
-              </Field>
-              <Field label="Carpeta superior">
-                <Select
-                  onChange={(event) => setFolderParentId(event.target.value)}
-                  value={folderParentId}
-                >
-                  <option value="">Raíz de la biblioteca</option>
-                  {folderRows.map(({ folder, depth }) => (
-                    <option key={folder.id} value={folder.id}>
-                      {`${'— '.repeat(depth)}${folder.name}`}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Descripción">
-                <textarea
-                  maxLength={1000}
-                  onChange={(event) => setFolderDescription(event.target.value)}
-                  rows={3}
-                  value={folderDescription}
-                />
-              </Field>
-              <div className="documents-form-actions">
-                <Button disabled={saving || !folderName.trim()} type="submit">
-                  {saving ? 'Guardando…' : 'Crear carpeta'}
-                </Button>
-              </div>
-            </form>
-          ) : null}
-
-          {composer === 'category' ? (
-            <form className="documents-form-grid" onSubmit={saveCategory}>
-              <Field label="Nombre">
-                <input
-                  maxLength={120}
-                  onChange={(event) => setCategoryName(event.target.value)}
-                  required
-                  value={categoryName}
-                />
-              </Field>
-              <Field label="Visibilidad predeterminada">
-                <Select
-                  onChange={(event) =>
-                    setCategoryAudience(event.target.value as CommunityDocumentAudience)
-                  }
-                  value={categoryAudience}
-                >
-                  {Object.entries(audienceLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Retención predeterminada (días)">
-                <input
-                  min={1}
-                  onChange={(event) => setCategoryRetention(event.target.value)}
-                  type="number"
-                  value={categoryRetention}
-                />
-              </Field>
-              <Field label="Descripción">
-                <textarea
-                  maxLength={1000}
-                  onChange={(event) => setCategoryDescription(event.target.value)}
-                  rows={3}
-                  value={categoryDescription}
-                />
-              </Field>
-              <div className="documents-form-actions">
-                <Button disabled={saving || !categoryName.trim()} type="submit">
-                  {saving ? 'Guardando…' : 'Crear categoría'}
-                </Button>
-              </div>
-            </form>
-          ) : null}
-        </Surface>
-      ) : null}
-
-      <div className="documents-layout">
-        <Surface className="documents-nav-panel">
-          <div className="documents-section-heading documents-section-heading--compact">
-            <div>
-              <span className="documents-kicker">Organización</span>
-              <h2>Biblioteca</h2>
-            </div>
+        ) : null}
+        {notice ? (
+          <div className="documents-alert documents-alert--success" role="status">
+            <CheckCircleIcon size={18} />
+            <span>{notice}</span>
+            <Button onClick={() => setNotice('')} size="sm" variant="ghost">
+              Cerrar
+            </Button>
           </div>
-          <nav aria-label="Carpetas de documentos" className="documents-folder-nav">
-            <button
-              className={!selectedFolderId ? 'is-active' : ''}
-              onClick={() => setSelectedFolderId('')}
-              type="button"
-            >
-              <span>Toda la biblioteca</span>
-              <b>{documents.length}</b>
-            </button>
-            {folderRows.map(({ folder, depth }) => {
-              const count = documents.filter((document) => document.folder_id === folder.id).length;
-              return (
-                <button
-                  className={selectedFolderId === folder.id ? 'is-active' : ''}
-                  key={folder.id}
-                  onClick={() => setSelectedFolderId(folder.id)}
-                  style={{ paddingInlineStart: `${16 + depth * 14}px` }}
-                  type="button"
-                >
-                  <span>{folder.name}</span>
-                  <b>{count}</b>
-                </button>
-              );
-            })}
-          </nav>
+        ) : null}
 
-          <div className="documents-category-nav">
-            <span className="documents-kicker">Categorías</span>
-            <button
-              className={!selectedCategoryId ? 'is-active' : ''}
-              onClick={() => setSelectedCategoryId('')}
-              type="button"
-            >
-              Todas
-            </button>
-            {activeCategories.map((category) => (
+        {composer ? (
+          <Surface className="documents-composer">
+            <div className="documents-section-heading">
+              <div>
+                <span className="documents-kicker">Administración de biblioteca</span>
+                <h2>
+                  {composer === 'document'
+                    ? 'Nuevo documento'
+                    : composer === 'folder'
+                      ? 'Nueva carpeta'
+                      : 'Nueva categoría'}
+                </h2>
+              </div>
+              <Button disabled={saving} onClick={() => setComposer(null)} size="sm" variant="ghost">
+                Cancelar
+              </Button>
+            </div>
+
+            {composer === 'document' ? (
+              <form className="documents-form-grid" onSubmit={saveDocument}>
+                <Field label="Título">
+                  <input
+                    maxLength={200}
+                    onChange={(event) => setDocumentTitle(event.target.value)}
+                    required
+                    value={documentTitle}
+                  />
+                </Field>
+                <Field label="Carpeta">
+                  <Select
+                    onChange={(event) => setDocumentFolderId(event.target.value)}
+                    value={documentFolderId}
+                  >
+                    <option value="">Sin carpeta</option>
+                    {folderRows.map(({ folder, depth }) => (
+                      <option key={folder.id} value={folder.id}>
+                        {`${'— '.repeat(depth)}${folder.name}`}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Categoría">
+                  <Select
+                    onChange={(event) => {
+                      const categoryId = event.target.value;
+                      setDocumentCategoryId(categoryId);
+                      const category = categoryById.get(categoryId);
+                      if (category) {
+                        setDocumentAudience(category.default_audience);
+                        setDocumentRetention(
+                          category.default_retention_days
+                            ? String(category.default_retention_days)
+                            : '',
+                        );
+                      }
+                    }}
+                    value={documentCategoryId}
+                  >
+                    <option value="">Sin categoría</option>
+                    {activeCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Visibilidad">
+                  <Select
+                    onChange={(event) =>
+                      setDocumentAudience(event.target.value as CommunityDocumentAudience)
+                    }
+                    value={documentAudience}
+                  >
+                    {Object.entries(audienceLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field
+                  hint="Déjalo vacío si no aplica una retención específica."
+                  label="Retención (días)"
+                >
+                  <input
+                    min={1}
+                    onChange={(event) => setDocumentRetention(event.target.value)}
+                    type="number"
+                    value={documentRetention}
+                  />
+                </Field>
+                <Field hint="PDF, JPG o PNG · máximo 10 MB." label="Archivo inicial (opcional)">
+                  <input accept={COMMUNITY_DOCUMENT_ACCEPT} onChange={onInitialFile} type="file" />
+                </Field>
+                <Field label="Descripción">
+                  <textarea
+                    maxLength={4000}
+                    onChange={(event) => setDocumentDescription(event.target.value)}
+                    rows={3}
+                    value={documentDescription}
+                  />
+                </Field>
+                <div className="documents-form-actions">
+                  <Button disabled={saving || !documentTitle.trim()} type="submit">
+                    {saving ? 'Guardando…' : 'Crear documento'}
+                  </Button>
+                </div>
+              </form>
+            ) : null}
+
+            {composer === 'folder' ? (
+              <form className="documents-form-grid" onSubmit={saveFolder}>
+                <Field label="Nombre">
+                  <input
+                    maxLength={120}
+                    onChange={(event) => setFolderName(event.target.value)}
+                    required
+                    value={folderName}
+                  />
+                </Field>
+                <Field label="Carpeta superior">
+                  <Select
+                    onChange={(event) => setFolderParentId(event.target.value)}
+                    value={folderParentId}
+                  >
+                    <option value="">Raíz de la biblioteca</option>
+                    {folderRows.map(({ folder, depth }) => (
+                      <option key={folder.id} value={folder.id}>
+                        {`${'— '.repeat(depth)}${folder.name}`}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Descripción">
+                  <textarea
+                    maxLength={1000}
+                    onChange={(event) => setFolderDescription(event.target.value)}
+                    rows={3}
+                    value={folderDescription}
+                  />
+                </Field>
+                <div className="documents-form-actions">
+                  <Button disabled={saving || !folderName.trim()} type="submit">
+                    {saving ? 'Guardando…' : 'Crear carpeta'}
+                  </Button>
+                </div>
+              </form>
+            ) : null}
+
+            {composer === 'category' ? (
+              <form className="documents-form-grid" onSubmit={saveCategory}>
+                <Field label="Nombre">
+                  <input
+                    maxLength={120}
+                    onChange={(event) => setCategoryName(event.target.value)}
+                    required
+                    value={categoryName}
+                  />
+                </Field>
+                <Field label="Visibilidad predeterminada">
+                  <Select
+                    onChange={(event) =>
+                      setCategoryAudience(event.target.value as CommunityDocumentAudience)
+                    }
+                    value={categoryAudience}
+                  >
+                    {Object.entries(audienceLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Retención predeterminada (días)">
+                  <input
+                    min={1}
+                    onChange={(event) => setCategoryRetention(event.target.value)}
+                    type="number"
+                    value={categoryRetention}
+                  />
+                </Field>
+                <Field label="Descripción">
+                  <textarea
+                    maxLength={1000}
+                    onChange={(event) => setCategoryDescription(event.target.value)}
+                    rows={3}
+                    value={categoryDescription}
+                  />
+                </Field>
+                <div className="documents-form-actions">
+                  <Button disabled={saving || !categoryName.trim()} type="submit">
+                    {saving ? 'Guardando…' : 'Crear categoría'}
+                  </Button>
+                </div>
+              </form>
+            ) : null}
+          </Surface>
+        ) : null}
+
+        <div className="documents-layout">
+          <Surface className="documents-nav-panel">
+            <div className="documents-section-heading documents-section-heading--compact">
+              <div>
+                <span className="documents-kicker">Organización</span>
+                <h2>Biblioteca</h2>
+              </div>
+            </div>
+            <nav aria-label="Carpetas de documentos" className="documents-folder-nav">
               <button
-                className={selectedCategoryId === category.id ? 'is-active' : ''}
-                key={category.id}
-                onClick={() => setSelectedCategoryId(category.id)}
+                className={!selectedFolderId ? 'is-active' : ''}
+                onClick={() => setSelectedFolderId('')}
                 type="button"
               >
-                {category.name}
+                <span>Toda la biblioteca</span>
+                <b>{documents.length}</b>
               </button>
-            ))}
-          </div>
-        </Surface>
-
-        <Surface className="documents-library-panel">
-          <div className="documents-section-heading">
-            <div>
-              <span className="documents-kicker">Archivos autorizados</span>
-              <h2>
-                {selectedFolderId
-                  ? (folderById.get(selectedFolderId)?.name ?? 'Carpeta')
-                  : 'Documentos'}
-              </h2>
-              <p>{filteredDocuments.length} visibles con los filtros actuales.</p>
-            </div>
-            <Button onClick={() => void loadLibrary()} size="sm" variant="ghost">
-              Actualizar
-            </Button>
-          </div>
-
-          <div className="documents-filters">
-            <label className="documents-search">
-              <span className="sr-only">Buscar documentos</span>
-              <input
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por título, carpeta o categoría…"
-                type="search"
-                value={search}
-              />
-            </label>
-            <Select
-              aria-label="Filtrar por visibilidad"
-              onChange={(event) => setAudienceFilter(event.target.value as AudienceFilter)}
-              value={audienceFilter}
-            >
-              <option value="">Toda visibilidad</option>
-              {Object.entries(audienceLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-            {canManageDocuments ? (
-              <Select
-                aria-label="Filtrar por estado"
-                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                value={statusFilter}
-              >
-                <option value="">Activos y archivados</option>
-                <option value="active">Activos</option>
-                <option value="archived">Archivados</option>
-              </Select>
-            ) : null}
-          </div>
-
-          {filteredDocuments.length ? (
-            <div className="documents-list">
-              {filteredDocuments.map((document) => {
-                const selected = selectedDocumentId === document.id;
-                const category = document.category_id
-                  ? categoryById.get(document.category_id)
-                  : undefined;
-                const folder = document.folder_id ? folderById.get(document.folder_id) : undefined;
+              {folderRows.map(({ folder, depth }) => {
+                const count = documents.filter((document) => document.folder_id === folder.id).length;
                 return (
                   <button
-                    aria-pressed={selected}
-                    className={selected ? 'documents-row is-selected' : 'documents-row'}
-                    key={document.id}
-                    onClick={() => setSelectedDocumentId(document.id)}
+                    className={selectedFolderId === folder.id ? 'is-active' : ''}
+                    key={folder.id}
+                    onClick={() => setSelectedFolderId(folder.id)}
+                    style={{ paddingInlineStart: `${16 + depth * 14}px` }}
                     type="button"
                   >
-                    <span className="documents-file-mark" aria-hidden="true">
-                      <ReportsIcon size={19} />
-                    </span>
-                    <span className="documents-row__copy">
-                      <strong>{document.title}</strong>
-                      <small>
-                        {[folder?.name, category?.name].filter(Boolean).join(' · ') ||
-                          'Sin clasificación'}
-                      </small>
-                    </span>
-                    <span className="documents-row__meta">
-                      <Badge tone={document.status === 'active' ? 'success' : 'neutral'}>
-                        {document.status === 'active' ? 'Activo' : 'Archivado'}
-                      </Badge>
-                      <Badge tone="info">{audienceLabels[document.audience]}</Badge>
-                      <small>v{document.latest_version_number}</small>
-                    </span>
+                    <span>{folder.name}</span>
+                    <b>{count}</b>
                   </button>
                 );
               })}
-            </div>
-          ) : (
-            <EmptyState
-              actionLabel={canManageDocuments ? 'Crear documento' : undefined}
-              description="Ajusta los filtros o agrega el primer archivo de esta sección."
-              icon={<CommunityIcon size={28} />}
-              onAction={canManageDocuments ? () => openComposer('document') : undefined}
-              title="No hay documentos para mostrar"
-            />
-          )}
-        </Surface>
+            </nav>
 
-        <Surface className="documents-detail-panel">
-          {!selectedDocument ? (
-            <EmptyState
-              description="Selecciona un documento para consultar versiones, descargas y registros relacionados."
-              icon={<ReportsIcon size={28} />}
-              title="Selecciona un documento"
-            />
-          ) : detailLoading ? (
-            <div aria-label="Cargando detalle" className="documents-detail-loading">
-              <Skeleton className="skeleton--title" />
-              <Skeleton className="skeleton--card" />
-              <Skeleton className="skeleton--card" />
+            <div className="documents-category-nav">
+              <span className="documents-kicker">Categorías</span>
+              <button
+                className={!selectedCategoryId ? 'is-active' : ''}
+                onClick={() => setSelectedCategoryId('')}
+                type="button"
+              >
+                Todas
+              </button>
+              {activeCategories.map((category) => (
+                <button
+                  className={selectedCategoryId === category.id ? 'is-active' : ''}
+                  key={category.id}
+                  onClick={() => setSelectedCategoryId(category.id)}
+                  type="button"
+                >
+                  {category.name}
+                </button>
+              ))}
             </div>
-          ) : (
-            <>
-              <div className="documents-detail-heading">
-                <div>
-                  <span className="documents-kicker">Detalle del documento</span>
-                  <h2>{selectedDocument.title}</h2>
-                  <p>{selectedDocument.description || 'Sin descripción.'}</p>
-                </div>
-                {canManageDocuments && selectedDocument.status === 'active' ? (
-                  <Button
-                    disabled={saving}
-                    onClick={() => void archiveSelectedDocument()}
-                    size="sm"
-                    variant="danger"
-                  >
-                    Archivar
-                  </Button>
-                ) : null}
+          </Surface>
+
+          <Surface className="documents-library-panel">
+            <div className="documents-section-heading">
+              <div>
+                <span className="documents-kicker">Archivos autorizados</span>
+                <h2>
+                  {selectedFolderId
+                    ? (folderById.get(selectedFolderId)?.name ?? 'Carpeta')
+                    : 'Documentos'}
+                </h2>
+                <p>{filteredDocuments.length} visibles con los filtros actuales.</p>
               </div>
+              <Button onClick={() => void loadLibrary()} size="sm" variant="ghost">
+                Actualizar
+              </Button>
+            </div>
 
-              <dl className="documents-metadata">
-                <div>
-                  <dt>Visibilidad</dt>
-                  <dd>{audienceLabels[selectedDocument.audience]}</dd>
-                </div>
-                <div>
-                  <dt>Retención</dt>
-                  <dd>
-                    {selectedDocument.retention_days
-                      ? `${selectedDocument.retention_days} días`
-                      : 'Sin política específica'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Última versión</dt>
-                  <dd>v{selectedDocument.latest_version_number}</dd>
-                </div>
-                <div>
-                  <dt>Actualizado</dt>
-                  <dd>{formatDate(selectedDocument.updated_at)}</dd>
-                </div>
-              </dl>
+            <div className="documents-filters">
+              <label className="documents-search">
+                <span className="sr-only">Buscar documentos</span>
+                <input
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar por título, carpeta o categoría…"
+                  type="search"
+                  value={search}
+                />
+              </label>
+              <Select
+                aria-label="Filtrar por visibilidad"
+                onChange={(event) => setAudienceFilter(event.target.value as AudienceFilter)}
+                value={audienceFilter}
+              >
+                <option value="">Toda visibilidad</option>
+                {Object.entries(audienceLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+              {canManageDocuments ? (
+                <Select
+                  aria-label="Filtrar por estado"
+                  onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                  value={statusFilter}
+                >
+                  <option value="">Activos y archivados</option>
+                  <option value="active">Activos</option>
+                  <option value="archived">Archivados</option>
+                </Select>
+              ) : null}
+            </div>
 
-              <section className="documents-detail-section">
-                <div className="documents-subheading">
-                  <div>
-                    <h3>Versiones</h3>
-                    <p>El historial es inmutable; una corrección crea una versión nueva.</p>
-                  </div>
-                  <Badge tone="neutral">{versions.length}</Badge>
-                </div>
-
-                {canManageDocuments && selectedDocument.status === 'active' ? (
-                  <form className="documents-version-form" onSubmit={uploadVersion}>
-                    <Field hint="PDF, JPG o PNG · máximo 10 MB." label="Nueva versión">
-                      <input
-                        accept={COMMUNITY_DOCUMENT_ACCEPT}
-                        onChange={onVersionFile}
-                        type="file"
-                      />
-                    </Field>
-                    <Field label="Nota del cambio">
-                      <input
-                        maxLength={1000}
-                        onChange={(event) => setVersionNote(event.target.value)}
-                        placeholder="Ej. Acta corregida y aprobada"
-                        value={versionNote}
-                      />
-                    </Field>
-                    <Button disabled={saving || !versionFile} size="sm" type="submit">
-                      {saving ? 'Subiendo…' : 'Guardar versión'}
-                    </Button>
-                  </form>
-                ) : null}
-
-                {versions.length ? (
-                  <div className="documents-history-list">
-                    {versions.map((version) => (
-                      <article key={version.id}>
-                        <div>
-                          <strong>Versión {version.version_number}</strong>
-                          <span>{version.original_filename}</span>
-                          <small>
-                            {formatBytes(version.size_bytes)} · {formatDate(version.created_at)}
-                          </small>
-                          {version.change_note ? <p>{version.change_note}</p> : null}
-                        </div>
-                        <Button
-                          onClick={() => void downloadVersion(version)}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          Descargar
-                        </Button>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="documents-muted">
-                    Este documento todavía no tiene un archivo cargado.
-                  </p>
-                )}
-              </section>
-
-              <section className="documents-detail-section">
-                <div className="documents-subheading">
-                  <div>
-                    <h3>Registros relacionados</h3>
-                    <p>Conecta el archivo con el contexto operativo que lo originó.</p>
-                  </div>
-                  <Badge tone="neutral">{links.length}</Badge>
-                </div>
-
-                {canManageDocuments ? (
-                  <form className="documents-link-form" onSubmit={saveLink}>
-                    <Select
-                      aria-label="Tipo de registro relacionado"
-                      onChange={(event) =>
-                        setLinkType(event.target.value as CommunityDocumentLinkType)
-                      }
-                      value={linkType}
+            {filteredDocuments.length ? (
+              <div className="documents-list">
+                {filteredDocuments.map((document) => {
+                  const selected = selectedDocumentId === document.id;
+                  const category = document.category_id
+                    ? categoryById.get(document.category_id)
+                    : undefined;
+                  const folder = document.folder_id ? folderById.get(document.folder_id) : undefined;
+                  return (
+                    <button
+                      aria-pressed={selected}
+                      className={selected ? 'documents-row is-selected' : 'documents-row'}
+                      key={document.id}
+                      onClick={() => setSelectedDocumentId(document.id)}
+                      type="button"
                     >
-                      {Object.entries(linkLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </Select>
-                    <input
-                      aria-label="UUID del registro relacionado"
-                      onChange={(event) => setLinkTargetId(event.target.value)}
-                      placeholder="UUID del registro"
-                      value={linkTargetId}
-                    />
-                    <Button disabled={saving || !linkTargetId.trim()} size="sm" type="submit">
-                      Vincular
-                    </Button>
-                  </form>
-                ) : null}
+                      <span className="documents-file-mark" aria-hidden="true">
+                        <ReportsIcon size={19} />
+                      </span>
+                      <span className="documents-row__copy">
+                        <strong>{document.title}</strong>
+                        <small>
+                          {[folder?.name, category?.name].filter(Boolean).join(' · ') ||
+                            'Sin clasificación'}
+                        </small>
+                      </span>
+                      <span className="documents-row__meta">
+                        <Badge tone={document.status === 'active' ? 'success' : 'neutral'}>
+                          {document.status === 'active' ? 'Activo' : 'Archivado'}
+                        </Badge>
+                        <Badge tone="info">{audienceLabels[document.audience]}</Badge>
+                        <small>v{document.latest_version_number}</small>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState
+                actionLabel={canManageDocuments ? 'Crear documento' : undefined}
+                description="Ajusta los filtros o agrega el primer archivo de esta sección."
+                icon={<CommunityIcon size={28} />}
+                onAction={canManageDocuments ? () => openComposer('document') : undefined}
+                title="No hay documentos para mostrar"
+              />
+            )}
+          </Surface>
 
-                {links.length ? (
-                  <div className="documents-links-list">
-                    {links.map((link) => (
-                      <a
-                        href={`${linkRoutes[link.target_type]}?focus=${encodeURIComponent(link.target_id)}`}
-                        key={link.id}
-                      >
-                        <span>
-                          <strong>{linkLabels[link.target_type]}</strong>
-                          <small>{shortId(link.target_id)}</small>
-                        </span>
-                        <ArrowRightIcon size={16} />
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="documents-muted">No hay registros relacionados todavía.</p>
-                )}
-              </section>
-
-              <section className="documents-detail-section">
-                <div className="documents-subheading">
+          <Surface className="documents-detail-panel">
+            {!selectedDocument ? (
+              <EmptyState
+                description="Selecciona un documento para consultar versiones, descargas y registros relacionados."
+                icon={<ReportsIcon size={28} />}
+                title="Selecciona un documento"
+              />
+            ) : detailLoading ? (
+              <div aria-label="Cargando detalle" className="documents-detail-loading">
+                <Skeleton className="skeleton--title" />
+                <Skeleton className="skeleton--card" />
+                <Skeleton className="skeleton--card" />
+              </div>
+            ) : (
+              <>
+                <div className="documents-detail-heading">
                   <div>
-                    <h3>Historial de descargas</h3>
-                    <p>
-                      {canManageDocuments
-                        ? 'Actividad visible para administración y junta.'
-                        : 'Tu actividad de descarga para este documento.'}
-                    </p>
+                    <span className="documents-kicker">Detalle del documento</span>
+                    <h2>{selectedDocument.title}</h2>
+                    <p>{selectedDocument.description || 'Sin descripción.'}</p>
                   </div>
-                  <Badge tone="neutral">{downloadEvents.length}</Badge>
+                  {canManageDocuments && selectedDocument.status === 'active' ? (
+                    <Button
+                      disabled={saving}
+                      onClick={() => setArchiveDialogOpen(true)}
+                      size="sm"
+                      variant="danger"
+                    >
+                      Archivar
+                    </Button>
+                  ) : null}
                 </div>
-                {downloadEvents.length ? (
-                  <div className="documents-download-list">
-                    {downloadEvents.map((downloadEvent) => {
-                      const version = versions.find((item) => item.id === downloadEvent.version_id);
-                      return (
-                        <article key={downloadEvent.id}>
-                          <div>
-                            <strong>
-                              {version ? `Versión ${version.version_number}` : 'Versión histórica'}
-                            </strong>
-                            <span>{formatDate(downloadEvent.occurred_at)}</span>
-                          </div>
-                          <small>Usuario {shortId(downloadEvent.actor_user_id)}</small>
-                        </article>
-                      );
-                    })}
+
+                <dl className="documents-metadata">
+                  <div>
+                    <dt>Visibilidad</dt>
+                    <dd>{audienceLabels[selectedDocument.audience]}</dd>
                   </div>
-                ) : (
-                  <p className="documents-muted">Aún no hay descargas registradas.</p>
-                )}
-              </section>
-            </>
-          )}
-        </Surface>
+                  <div>
+                    <dt>Retención</dt>
+                    <dd>
+                      {selectedDocument.retention_days
+                        ? `${selectedDocument.retention_days} días`
+                        : 'Sin política específica'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Última versión</dt>
+                    <dd>v{selectedDocument.latest_version_number}</dd>
+                  </div>
+                  <div>
+                    <dt>Actualizado</dt>
+                    <dd>{formatDate(selectedDocument.updated_at)}</dd>
+                  </div>
+                </dl>
+
+                <section className="documents-detail-section">
+                  <div className="documents-subheading">
+                    <div>
+                      <h3>Versiones</h3>
+                      <p>El historial es inmutable; una corrección crea una versión nueva.</p>
+                    </div>
+                    <Badge tone="neutral">{versions.length}</Badge>
+                  </div>
+
+                  {canManageDocuments && selectedDocument.status === 'active' ? (
+                    <form className="documents-version-form" onSubmit={uploadVersion}>
+                      <Field hint="PDF, JPG o PNG · máximo 10 MB." label="Nueva versión">
+                        <input
+                          accept={COMMUNITY_DOCUMENT_ACCEPT}
+                          onChange={onVersionFile}
+                          type="file"
+                        />
+                      </Field>
+                      <Field label="Nota del cambio">
+                        <input
+                          maxLength={1000}
+                          onChange={(event) => setVersionNote(event.target.value)}
+                          placeholder="Ej. Acta corregida y aprobada"
+                          value={versionNote}
+                        />
+                      </Field>
+                      <Button disabled={saving || !versionFile} size="sm" type="submit">
+                        {saving ? 'Subiendo…' : 'Guardar versión'}
+                      </Button>
+                    </form>
+                  ) : null}
+
+                  {versions.length ? (
+                    <div className="documents-history-list">
+                      {versions.map((version) => (
+                        <article key={version.id}>
+                          <div>
+                            <strong>Versión {version.version_number}</strong>
+                            <span>{version.original_filename}</span>
+                            <small>
+                              {formatBytes(version.size_bytes)} · {formatDate(version.created_at)}
+                            </small>
+                            {version.change_note ? <p>{version.change_note}</p> : null}
+                          </div>
+                          <Button
+                            onClick={() => void downloadVersion(version)}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            Descargar
+                          </Button>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="documents-muted">
+                      Este documento todavía no tiene un archivo cargado.
+                    </p>
+                  )}
+                </section>
+
+                <section className="documents-detail-section">
+                  <div className="documents-subheading">
+                    <div>
+                      <h3>Registros relacionados</h3>
+                      <p>Conecta el archivo con el contexto operativo que lo originó.</p>
+                    </div>
+                    <Badge tone="neutral">{links.length}</Badge>
+                  </div>
+
+                  {canManageDocuments ? (
+                    <form className="documents-link-form" onSubmit={saveLink}>
+                      <Select
+                        aria-label="Tipo de registro relacionado"
+                        onChange={(event) =>
+                          setLinkType(event.target.value as CommunityDocumentLinkType)
+                        }
+                        value={linkType}
+                      >
+                        {Object.entries(linkLabels).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </Select>
+                      <input
+                        aria-label="UUID del registro relacionado"
+                        onChange={(event) => setLinkTargetId(event.target.value)}
+                        placeholder="UUID del registro"
+                        value={linkTargetId}
+                      />
+                      <Button disabled={saving || !linkTargetId.trim()} size="sm" type="submit">
+                        Vincular
+                      </Button>
+                    </form>
+                  ) : null}
+
+                  {links.length ? (
+                    <div className="documents-links-list">
+                      {links.map((link) => (
+                        <a
+                          href={`${linkRoutes[link.target_type]}?focus=${encodeURIComponent(link.target_id)}`}
+                          key={link.id}
+                        >
+                          <span>
+                            <strong>{linkLabels[link.target_type]}</strong>
+                            <small>{shortId(link.target_id)}</small>
+                          </span>
+                          <ArrowRightIcon size={16} />
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="documents-muted">No hay registros relacionados todavía.</p>
+                  )}
+                </section>
+
+                <section className="documents-detail-section">
+                  <div className="documents-subheading">
+                    <div>
+                      <h3>Historial de descargas</h3>
+                      <p>
+                        {canManageDocuments
+                          ? 'Actividad visible para administración y junta.'
+                          : 'Tu actividad de descarga para este documento.'}
+                      </p>
+                    </div>
+                    <Badge tone="neutral">{downloadEvents.length}</Badge>
+                  </div>
+                  {downloadEvents.length ? (
+                    <div className="documents-download-list">
+                      {downloadEvents.map((downloadEvent) => {
+                        const version = versions.find((item) => item.id === downloadEvent.version_id);
+                        return (
+                          <article key={downloadEvent.id}>
+                            <div>
+                              <strong>
+                                {version ? `Versión ${version.version_number}` : 'Versión histórica'}
+                              </strong>
+                              <span>{formatDate(downloadEvent.occurred_at)}</span>
+                            </div>
+                            <small>Usuario {shortId(downloadEvent.actor_user_id)}</small>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="documents-muted">Aún no hay descargas registradas.</p>
+                  )}
+                </section>
+              </>
+            )}
+          </Surface>
+        </div>
       </div>
-    </div>
+
+      {archiveDialogOpen && selectedDocument ? (
+        <ConfirmDialog
+          busy={saving}
+          busyLabel="Archivando…"
+          confirmLabel="Archivar documento"
+          description={`“${selectedDocument.title}” dejará de aparecer como documento activo. Sus versiones, archivos, vínculos y auditoría se conservarán.`}
+          onCancel={() => !saving && setArchiveDialogOpen(false)}
+          onConfirm={() => void archiveSelectedDocument()}
+          title="Archivar documento"
+        />
+      ) : null}
+    </>
   );
 }
