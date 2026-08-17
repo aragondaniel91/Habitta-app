@@ -5,7 +5,7 @@ const source = () => readFile(new URL('./pages/TeamAccessPage.tsx', import.meta.
 
 describe('administrator invitation email UX', () => {
   it('tells the administrator that production sends a real transactional email', async () => {
-    const page = await source();
+    const page = (await source()).replace(/\s+/g, ' ');
 
     expect(page).toContain('En producción, al enviar esta invitación');
     expect(page).toContain('correo transaccional real');
