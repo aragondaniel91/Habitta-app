@@ -110,9 +110,7 @@ function BudgetEditor({
     editor.lines.length > 0 &&
     editor.lines.every(
       (line) =>
-        line.categoryId &&
-        /^[A-Za-z]{3}$/.test(line.currencyCode) &&
-        Number(line.amount) > 0,
+        line.categoryId && /^[A-Za-z]{3}$/.test(line.currencyCode) && Number(line.amount) > 0,
     );
 
   return (
@@ -175,7 +173,9 @@ function BudgetEditor({
         <div className="budgets-editor__heading">
           <div>
             <strong>Líneas presupuestarias</strong>
-            <span>Cada categoría puede presupuestarse por moneda sin conversiones automáticas.</span>
+            <span>
+              Cada categoría puede presupuestarse por moneda sin conversiones automáticas.
+            </span>
           </div>
           <Button
             onClick={() =>
@@ -341,7 +341,13 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
   const currencies = useMemo(() => {
     if (!workspace) return [];
     const currentIds = new Set(currentVersions.map((version) => version.id));
-    return [...new Set(workspace.lines.filter((line) => currentIds.has(line.budget_version_id)).map((line) => line.currency_code))].sort();
+    return [
+      ...new Set(
+        workspace.lines
+          .filter((line) => currentIds.has(line.budget_version_id))
+          .map((line) => line.currency_code),
+      ),
+    ].sort();
   }, [currentVersions, workspace]);
 
   const openCreate = () => {
@@ -568,10 +574,13 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
                   <div>
                     <div className="budgets-card__title-row">
                       <h2>{period.name}</h2>
-                      <Badge tone={statusTone(version.status)}>{budgetStatusLabels[version.status]}</Badge>
+                      <Badge tone={statusTone(version.status)}>
+                        {budgetStatusLabels[version.status]}
+                      </Badge>
                     </div>
                     <p>
-                      {formatBudgetDate(period.starts_on)} — {formatBudgetDate(period.ends_on)} · versión {version.version_number}
+                      {formatBudgetDate(period.starts_on)} — {formatBudgetDate(period.ends_on)} ·
+                      versión {version.version_number}
                     </p>
                   </div>
                   <div className="budgets-card__actions">
@@ -612,11 +621,7 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
                       </Button>
                     ) : null}
                     {period.approved_version_id ? (
-                      <Button
-                        onClick={() => void loadReport(period)}
-                        size="sm"
-                        variant="ghost"
-                      >
+                      <Button onClick={() => void loadReport(period)} size="sm" variant="ghost">
                         Ver ejecución
                       </Button>
                     ) : null}
@@ -646,8 +651,8 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
                       {lines.map((line) => (
                         <tr key={line.id}>
                           <td>
-                            {categories.find((category) => category.id === line.category_id)?.name ??
-                              'Categoría'}
+                            {categories.find((category) => category.id === line.category_id)
+                              ?.name ?? 'Categoría'}
                           </td>
                           <td>{line.currency_code}</td>
                           <td>{formatBudgetMoney(line.amount, line.currency_code)}</td>
