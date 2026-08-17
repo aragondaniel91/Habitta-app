@@ -82,9 +82,7 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
       window.location.assign('/app');
     } catch (requestError) {
       setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudo eliminar la residencia.',
+        requestError instanceof Error ? requestError.message : 'No se pudo eliminar la residencia.',
       );
     } finally {
       setDeleting(false);
@@ -173,7 +171,11 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
         </div>
       ) : null}
 
-      {error ? <div className="danger-zone__error" role="alert">{error}</div> : null}
+      {error ? (
+        <div className="danger-zone__error" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {databaseDeleted && cleanupPending ? (
         <div className="danger-zone__cleanup" role="status">
