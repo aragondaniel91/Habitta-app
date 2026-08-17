@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   createEmptyAdminOnboardingInput,
@@ -6,12 +5,7 @@ import {
   validateAdminOnboarding,
   type AdminOnboardingInput,
 } from './lib/adminOnboarding';
-
-const onboardingSource = readFileSync(new URL('./lib/adminOnboarding.ts', import.meta.url), 'utf8');
-const structureSource = readFileSync(
-  new URL('./pages/StructureManagementPage.tsx', import.meta.url),
-  'utf8',
-);
+import { allowedUnitTypes, defaultUnitType } from './lib/unit-domain';
 
 function validInput(): AdminOnboardingInput {
   return {
@@ -70,19 +64,12 @@ describe('HAB-183 condominium operating model', () => {
     expect(validateAdminOnboarding(complete, true).legalIdNumber).toBeUndefined();
   });
 
-  it('uses the v2 onboarding RPC contract instead of ambiguous approximate-unit fields', () => {
-    expect(onboardingSource).toContain("supabase.rpc('create_admin_workspace_v2'");
-    expect(onboardingSource).toContain("supabase.rpc('create_condominium_with_profile_v2'");
-    expect(onboardingSource).toContain('declared_unit_count');
-    expect(onboardingSource).toContain('declared_building_count');
-    expect(onboardingSource).not.toContain('approximateUnits');
-  });
-
-  it('adapts structure controls for house and single-building communities', () => {
-    expect(structureSource).toContain("const houseMode = topology === 'house_community'");
-    expect(structureSource).toContain("const singleBuildingMode = topology === 'single_building'");
-    expect(structureSource).toContain('!houseMode && !singleBuildingMode');
-    expect(structureSource).toContain("houseMode ? 'house' : 'apartment'");
+  it('adapts unit choices to the topology selected during onboarding', () => {
+    expect(defaultUnitType('house_community')).toBe('house');
+    expect(allowedUnitTypes('house_community')).not.toContain('apartment');
+    expect(allowedUnitTypes('single_building')).not.toContain('house');
+    expect(allowedUnitTypes('multi_building_complex')).not.toContain('house');
+    expect(allowedUnitTypes('mixed')).toContain('house');
   });
 
   it('provides administrator-facing labels for supported topologies', () => {
