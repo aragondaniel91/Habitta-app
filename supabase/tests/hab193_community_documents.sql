@@ -45,6 +45,17 @@ values
   ('19320000-0000-4000-8000-000000000001', '19300000-0000-4000-8000-000000000005', 'payment_reviewer'),
   ('19320000-0000-4000-8000-000000000002', '19300000-0000-4000-8000-000000000007', 'condominium_admin');
 
+-- HAB-164 requires an active tenant occupancy before a tenant membership grants
+-- condominium context. Model a real resident instead of weakening that guard.
+insert into public.units(id, condominium_id, code, type, status, created_by)
+values ('19330000-0000-4000-8000-000000000001', '19320000-0000-4000-8000-000000000001', 'A-193', 'apartment', 'active', '19300000-0000-4000-8000-000000000001');
+
+insert into public.people(id, condominium_id, auth_user_id, first_name, last_name, email, status, created_by)
+values ('19340000-0000-4000-8000-000000000001', '19320000-0000-4000-8000-000000000001', '19300000-0000-4000-8000-000000000004', 'Tenant', 'HAB193', 'hab193-tenant@example.com', 'active', '19300000-0000-4000-8000-000000000001');
+
+insert into public.unit_occupancies(id, unit_id, person_id, occupancy_type, is_primary_contact, starts_at, created_by)
+values ('19350000-0000-4000-8000-000000000001', '19330000-0000-4000-8000-000000000001', '19340000-0000-4000-8000-000000000001', 'tenant', true, current_date - 30, '19300000-0000-4000-8000-000000000001');
+
 insert into public.governance_proposals(id, condominium_id, title, description, closes_at, created_by)
 values
   ('19390000-0000-4000-8000-000000000001', '19320000-0000-4000-8000-000000000001', 'HAB-193 Proposal A', 'Same condominium', now() + interval '7 days', '19300000-0000-4000-8000-000000000001'),
@@ -65,21 +76,18 @@ select set_config('request.jwt.claims', json_build_object('sub','19300000-0000-4
 select lives_ok($$select public.create_community_document_category('19320000-0000-4000-8000-000000000001','Actas','Actas formales','owners',3650)$$, 'manager creates category');
 select lives_ok($$select public.create_community_document_folder('19320000-0000-4000-8000-000000000001','2026',null,'Documentos 2026')$$, 'manager creates folder');
 select throws_ok($$select public.create_community_document_folder('19320000-0000-4000-8000-000000000001','Cross tenant','19370000-0000-4000-8000-000000000001')$$, 'P0001', 'active parent folder required', 'folder hierarchy cannot cross condominiums');
-
 select lives_ok($$select public.create_community_document('19320000-0000-4000-8000-000000000001','Documento de Administración','Solo administración',(select id from public.community_document_folders where name='2026'),(select id from public.community_document_categories where name='Actas'),'management',null)$$, 'manager creates management document');
 select lives_ok($$select public.create_community_document('19320000-0000-4000-8000-000000000001','Documento de Propietarios','Para propietarios',(select id from public.community_document_folders where name='2026'),(select id from public.community_document_categories where name='Actas'),'owners',3650)$$, 'manager creates owner document');
 select lives_ok($$select public.create_community_document('19320000-0000-4000-8000-000000000001','Documento de Residentes','Para residentes',(select id from public.community_document_folders where name='2026'),null,'residents',null)$$, 'manager creates resident document');
 select throws_ok($$select public.create_community_document('19320000-0000-4000-8000-000000000001','Documento Inválido',null,'19370000-0000-4000-8000-000000000001',null,'residents',null)$$, 'P0001', 'active folder required', 'document cannot reference another condominium folder');
 
 select set_config('hab193.owner_document_id',(select id::text from public.community_documents where title='Documento de Propietarios'),true);
-
 select lives_ok(format($q$select public.record_community_document_version('%s','19380000-0000-4000-8000-000000000001','acta-1.pdf','application/pdf',1024,'%s','community-documents/19320000-0000-4000-8000-000000000001/%s/19380000-0000-4000-8000-000000000001','Versión inicial')$q$, current_setting('hab193.owner_document_id'), repeat('a',64), current_setting('hab193.owner_document_id')), 'manager appends first immutable version');
 select is((select version_number from public.community_document_versions where id='19380000-0000-4000-8000-000000000001'),1,'first version is numbered one');
 select lives_ok(format($q$select public.record_community_document_version('%s','19380000-0000-4000-8000-000000000002','acta-2.pdf','application/pdf',2048,'%s','community-documents/19320000-0000-4000-8000-000000000001/%s/19380000-0000-4000-8000-000000000002','Corrección aprobada')$q$, current_setting('hab193.owner_document_id'), repeat('b',64), current_setting('hab193.owner_document_id')), 'manager appends second immutable version');
 select is((select latest_version_number from public.community_documents where id=current_setting('hab193.owner_document_id')::uuid),2,'logical document tracks latest version');
 select is((select count(*)::integer from public.community_document_versions where document_id=current_setting('hab193.owner_document_id')::uuid),2,'both historical versions remain');
 select ok((select storage_key from public.community_document_versions where id='19380000-0000-4000-8000-000000000001') like 'community-documents/19320000-0000-4000-8000-000000000001/%/19380000-0000-4000-8000-000000000001','version storage key is canonical and condominium scoped');
-
 select lives_ok(format($q$select public.link_community_document('%s','proposal','19390000-0000-4000-8000-000000000001')$q$,current_setting('hab193.owner_document_id')),'manager links same-condominium proposal');
 select throws_ok(format($q$select public.link_community_document('%s','proposal','19390000-0000-4000-8000-000000000002')$q$,current_setting('hab193.owner_document_id')),'P0001','related record not found in condominium','links cannot cross condominiums');
 
@@ -90,7 +98,7 @@ select lives_ok(format($q$select public.record_community_document_download('%s',
 select is((select count(*)::integer from public.community_document_download_events where actor_user_id='19300000-0000-4000-8000-000000000003'),1,'audit records authenticated owner');
 
 select set_config('request.jwt.claims', json_build_object('sub','19300000-0000-4000-8000-000000000004','role','authenticated','email','hab193-tenant@example.com')::text, true);
-select is((select count(*)::integer from public.community_documents where condominium_id='19320000-0000-4000-8000-000000000001'),1,'tenant sees resident documents only');
+select is((select count(*)::integer from public.community_documents where condominium_id='19320000-0000-4000-8000-000000000001'),1,'tenant with active occupancy sees resident documents only');
 select throws_ok(format($q$select public.record_community_document_download('%s','19380000-0000-4000-8000-000000000002')$q$,current_setting('hab193.owner_document_id')),'P0001','community document access denied','tenant with known owner document id cannot download it');
 
 select set_config('request.jwt.claims', json_build_object('sub','19300000-0000-4000-8000-000000000006','role','authenticated','email','hab193-outsider@example.com')::text, true);
