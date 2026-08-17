@@ -7,7 +7,9 @@ const wrapperUrl = new URL('./operations-routes.ts', import.meta.url);
 describe('governance approval threshold API', () => {
   it('routes threshold-aware governance creation before the legacy fallback router', async () => {
     const source = await readFile(wrapperUrl, 'utf8');
-    expect(source.indexOf("operationsRoutes.route('/', governanceThresholdRoutes)")).toBeGreaterThan(-1);
+    expect(
+      source.indexOf("operationsRoutes.route('/', governanceThresholdRoutes)"),
+    ).toBeGreaterThan(-1);
     expect(source.indexOf("operationsRoutes.route('/', baseOperationsRoutes)")).toBeGreaterThan(-1);
     expect(source.indexOf("operationsRoutes.route('/', governanceThresholdRoutes)")).toBeLessThan(
       source.indexOf("operationsRoutes.route('/', baseOperationsRoutes)"),
