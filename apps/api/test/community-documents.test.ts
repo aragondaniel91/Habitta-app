@@ -27,8 +27,7 @@ const env = (paymentProofs = bucket()) => ({
   PAYMENT_PROOFS: paymentProofs,
 });
 
-const url = (suffix = '') =>
-  `/v1/condominiums/${condominiumId}/community-documents${suffix}`;
+const url = (suffix = '') => `/v1/condominiums/${condominiumId}/community-documents${suffix}`;
 
 afterEach(() => vi.restoreAllMocks());
 
