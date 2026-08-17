@@ -6,6 +6,7 @@ import {
   directoryUnitLabel,
   occupancyLabels,
   personSearchText,
+  relationshipIsActive,
   residentAccessOptions,
   residentInvitationDisplayStatus,
   residentInvitationStatusLabels,
@@ -45,18 +46,22 @@ describe('people relationship presentation model', () => {
     ).toBe('Torre Oeste · 1A');
   });
 
-  it('keeps ended ownerships and occupancies out of active invitation choices without deleting history', () => {
+  it('keeps future-ended relationships active while excluding historical relationships', () => {
+    const today = new Date('2026-08-17T12:00:00Z');
     const ownerships = [
       { id: 'o1', ends_at: null },
-      { id: 'o2', ends_at: '2026-08-01' },
+      { id: 'o2', ends_at: '2026-08-20' },
+      { id: 'o3', ends_at: '2026-08-01' },
     ] as Ownership[];
     const occupancies = [
       { id: 't1', ends_at: null },
-      { id: 't2', ends_at: '2026-08-01' },
+      { id: 't2', ends_at: '2026-08-20' },
+      { id: 't3', ends_at: '2026-08-01' },
     ] as Occupancy[];
 
-    expect(activeOwnerships(ownerships).map((item) => item.id)).toEqual(['o1']);
-    expect(activeOccupancies(occupancies).map((item) => item.id)).toEqual(['t1']);
+    expect(relationshipIsActive({ ends_at: '2026-08-20' }, today)).toBe(true);
+    expect(activeOwnerships(ownerships, today).map((item) => item.id)).toEqual(['o1', 'o2']);
+    expect(activeOccupancies(occupancies, today).map((item) => item.id)).toEqual(['t1', 't2']);
   });
 
   it('offers resident access only from compatible active owner and tenant relationships', () => {
@@ -78,8 +83,8 @@ describe('people relationship presentation model', () => {
         id: 'owner-ended',
         person_id: 'person-1',
         unit_id: 'unit-b',
-        starts_at: '2026-01-01',
-        ends_at: '2026-06-01',
+        starts_at: '2000-01-01',
+        ends_at: '2000-06-01',
         units: unit('unit-b', '1B'),
       },
     ] as Ownership[];
