@@ -24,7 +24,8 @@ returns table (
   job_id uuid,
   deleted_condominium_id uuid,
   deleted_condominium_name text,
-  storage_object_count integer
+  storage_object_count integer,
+  storage_keys text[]
 )
 language plpgsql
 security definer
@@ -109,7 +110,7 @@ begin
   returning id into deletion_job_id;
 
   -- Financial tables intentionally use NO ACTION to prevent accidental history loss.
-  -- The dedicated owner-only deletion path must remove them from leaf to root.
+  -- The dedicated owner-only deletion path removes them from leaf to root.
   delete from public.receivable_ledger_entries where condominium_id = target_condominium_id;
   delete from public.payment_allocations where condominium_id = target_condominium_id;
   delete from public.payment_events where condominium_id = target_condominium_id;
@@ -124,7 +125,7 @@ begin
   delete from public.opening_balance_imports where condominium_id = target_condominium_id;
   delete from public.people_imports where condominium_id = target_condominium_id;
 
-  -- Notification history also uses NO ACTION so normal tenant deletion cannot erase it by accident.
+  -- Notification history also uses NO ACTION so ordinary tenant deletion cannot erase it.
   delete from public.notification_deliveries where condominium_id = target_condominium_id;
   delete from public.notifications where condominium_id = target_condominium_id;
   delete from public.notification_events where condominium_id = target_condominium_id;
@@ -147,7 +148,8 @@ begin
     deletion_job_id,
     target_condominium_id,
     target_condominium_name,
-    coalesce(array_length(object_keys, 1), 0);
+    coalesce(array_length(object_keys, 1), 0),
+    object_keys;
 end;
 $$;
 
@@ -163,19 +165,20 @@ as $$
   select j.storage_keys
   from public.condominium_deletion_jobs j
   where j.id = target_job_id
+    and j.requested_by = auth.uid()
     and j.database_deleted_at is not null
     and j.storage_cleanup_status <> 'completed';
 $$;
 
-revoke execute on function public.get_condominium_deletion_storage_keys(uuid) from public, anon, authenticated;
-grant execute on function public.get_condominium_deletion_storage_keys(uuid) to service_role;
+revoke execute on function public.get_condominium_deletion_storage_keys(uuid) from public, anon;
+grant execute on function public.get_condominium_deletion_storage_keys(uuid) to authenticated;
 
 create or replace function public.finish_condominium_deletion_storage_cleanup(
   target_job_id uuid,
   cleanup_succeeded boolean,
   cleanup_error text default null
 )
-returns void
+returns boolean
 language plpgsql
 security definer
 set search_path = ''
@@ -190,11 +193,14 @@ begin
          storage_cleanup_completed_at = case when cleanup_succeeded then now() else null end,
          storage_keys = case when cleanup_succeeded then '{}'::text[] else storage_keys end
    where id = target_job_id
+     and requested_by = auth.uid()
      and database_deleted_at is not null;
+
+  return found;
 end;
 $$;
 
 revoke execute on function public.finish_condominium_deletion_storage_cleanup(uuid, boolean, text)
-  from public, anon, authenticated;
+  from public, anon;
 grant execute on function public.finish_condominium_deletion_storage_cleanup(uuid, boolean, text)
-  to service_role;
+  to authenticated;
