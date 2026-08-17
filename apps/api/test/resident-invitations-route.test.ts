@@ -72,7 +72,8 @@ describe('resident invitation transactional email route', () => {
         if (url.endsWith('/rest/v1/rpc/create_resident_invitation')) {
           return jsonResponse(invitationPayload);
         }
-        if (url.includes('/rest/v1/condominiums?')) return jsonResponse([{ name: 'Residencias 216' }]);
+        if (url.includes('/rest/v1/condominiums?'))
+          return jsonResponse([{ name: 'Residencias 216' }]);
         if (url.includes('/rest/v1/units?')) {
           return jsonResponse([{ code: 'A-12', buildings: { name: 'Torre Norte' } }]);
         }
@@ -101,7 +102,9 @@ describe('resident invitation transactional email route', () => {
       auditPersisted: true,
     });
 
-    const rpcCall = calls.find(([input]) => String(input).endsWith('/rpc/create_resident_invitation'));
+    const rpcCall = calls.find(([input]) =>
+      String(input).endsWith('/rpc/create_resident_invitation'),
+    );
     expect(rpcCall).toBeDefined();
     expect(new Headers(rpcCall?.[1]?.headers).get('Authorization')).toBe('Bearer test-token');
     expect(JSON.parse(String(rpcCall?.[1]?.body))).toEqual({
@@ -143,8 +146,10 @@ describe('resident invitation transactional email route', () => {
         if (url.endsWith('/rest/v1/rpc/create_resident_invitation')) {
           return jsonResponse(invitationPayload);
         }
-        if (url.includes('/rest/v1/condominiums?')) return jsonResponse([{ name: 'Residencias 216' }]);
-        if (url.includes('/rest/v1/units?')) return jsonResponse([{ code: 'A-12', buildings: null }]);
+        if (url.includes('/rest/v1/condominiums?'))
+          return jsonResponse([{ name: 'Residencias 216' }]);
+        if (url.includes('/rest/v1/units?'))
+          return jsonResponse([{ code: 'A-12', buildings: null }]);
         if (url === 'https://api.zeptomail.com/v1.1/email') {
           providerBodies.push(JSON.parse(String(init?.body)));
           return jsonResponse({ request_id: 'live-request-216' }, 201);
@@ -222,8 +227,10 @@ describe('resident invitation transactional email route', () => {
         if (url.endsWith('/rest/v1/rpc/create_resident_invitation')) {
           return jsonResponse(invitationPayload);
         }
-        if (url.includes('/rest/v1/condominiums?')) return jsonResponse([{ name: 'Residencias 216' }]);
-        if (url.includes('/rest/v1/units?')) return jsonResponse([{ code: 'A-12', buildings: null }]);
+        if (url.includes('/rest/v1/condominiums?'))
+          return jsonResponse([{ name: 'Residencias 216' }]);
+        if (url.includes('/rest/v1/units?'))
+          return jsonResponse([{ code: 'A-12', buildings: null }]);
         if (url.endsWith('/rest/v1/rpc/record_resident_invitation_delivery')) {
           return jsonResponse({ id: 'delivery-config-216' });
         }
@@ -249,7 +256,9 @@ describe('resident invitation transactional email route', () => {
     });
     expect(body.auditPersisted).toBe(true);
 
-    for (const [, init] of calls.filter(([input]) => String(input).includes('example.supabase.co'))) {
+    for (const [, init] of calls.filter(([input]) =>
+      String(input).includes('example.supabase.co'),
+    )) {
       const authorization = new Headers(init?.headers).get('Authorization');
       expect(authorization).not.toContain('service');
       expect(String(init?.body ?? '')).not.toContain('raw-token-216');

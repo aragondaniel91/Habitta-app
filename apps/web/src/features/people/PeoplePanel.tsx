@@ -8,10 +8,14 @@ import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../
 import { PageHeader } from '../../components/PageHeader';
 import {
   createResidentInvitation,
+  listResidentInvitationDeliveryEvents,
   listResidentInvitations,
+  residentDeliveryLabel,
   residentRoleLabel,
   revokeResidentInvitation,
   type ResidentInvitation,
+  type ResidentInvitationDelivery,
+  type ResidentInvitationDeliveryEvent,
   type ResidentRole,
 } from '../../lib/residentAccess';
 import { peopleApi } from './api';
@@ -64,6 +68,7 @@ type LatestInvitation = {
   url: string;
   role: ResidentRole;
   unitLabel: string;
+  delivery: ResidentInvitationDelivery;
 };
 
 const emptyPersonDraft: PersonDraft = {
@@ -106,6 +111,12 @@ function invitationTone(status: ResidentInvitation['status']) {
   return 'neutral' as const;
 }
 
+function deliveryTone(event?: ResidentInvitationDeliveryEvent) {
+  if (event?.event_type === 'email_sent') return 'success' as const;
+  if (event?.event_type === 'email_failed') return 'warning' as const;
+  return 'neutral' as const;
+}
+
 export function PeoplePanel({ condominiumId, condominiumName, session }: Props) {
   const [people, setPeople] = useState<Person[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -117,6 +128,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     CondominiumRelationship[]
   >([]);
   const [invitations, setInvitations] = useState<ResidentInvitation[]>([]);
+  const [deliveryEvents, setDeliveryEvents] = useState<ResidentInvitationDeliveryEvent[]>([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
@@ -170,18 +182,20 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
 
   const loadPersonContext = useCallback(
     async (personId: string) => {
-      const [view, invitationItems] = await Promise.all([
+      const [view, invitationItems, deliveryItems] = await Promise.all([
         peopleApi<PersonRelationshipView>(
           `/v1/condominiums/${condominiumId}/people/${personId}/relationships`,
           session,
         ),
         listResidentInvitations(condominiumId, personId),
+        listResidentInvitationDeliveryEvents(condominiumId, personId),
       ]);
       setSelected(view.person);
       setOwnerships(view.ownerships);
       setOccupancies(view.occupancies);
       setCondominiumRelationships(view.condominiumRelationships);
       setInvitations(invitationItems);
+      setDeliveryEvents(deliveryItems);
     },
     [condominiumId, session],
   );
@@ -196,6 +210,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     setOccupancies([]);
     setCondominiumRelationships([]);
     setInvitations([]);
+    setDeliveryEvents([]);
     setLatestInvitation(null);
     setPendingClose(null);
     setPendingRevoke(null);
@@ -214,6 +229,13 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     () => residentAccessOptions(ownerships, occupancies),
     [ownerships, occupancies],
   );
+  const deliveryByInvitationId = useMemo(() => {
+    const latest = new Map<string, ResidentInvitationDeliveryEvent>();
+    for (const event of deliveryEvents) {
+      if (!latest.has(event.invitation_id)) latest.set(event.invitation_id, event);
+    }
+    return latest;
+  }, [deliveryEvents]);
   const inviteUnits = accessOptions.filter((option) => option.role === inviteRole);
 
   useEffect(() => {
@@ -456,12 +478,40 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
         personId: selected.id,
         unitId,
         role,
+        session,
       });
-      setLatestInvitation({ url: result.invitationUrl, role, unitLabel: option.unitLabel });
-      setInvitations(await listResidentInvitations(condominiumId, selected.id));
-      setMessage(
-        'Invitación lista. Puedes copiar el enlace seguro o abrir tu correo para compartirlo.',
-      );
+      setLatestInvitation({
+        url: result.invitationUrl,
+        role,
+        unitLabel: option.unitLabel,
+        delivery: result.emailDelivery,
+      });
+      const [nextInvitations, nextDeliveryEvents] = await Promise.all([
+        listResidentInvitations(condominiumId, selected.id),
+        listResidentInvitationDeliveryEvents(condominiumId, selected.id),
+      ]);
+      setInvitations(nextInvitations);
+      setDeliveryEvents(nextDeliveryEvents);
+      if (result.emailDelivery.status === 'sent') {
+        setMessage(
+          result.emailDelivery.mode === 'sandbox'
+            ? 'Invitación creada y correo transaccional enviado al buzón de pruebas de este ambiente.'
+            : 'Invitación creada y correo transaccional enviado al residente.',
+        );
+      } else if (result.emailDelivery.status === 'failed') {
+        setMessage(
+          'Invitación creada, pero el correo no pudo enviarse. Usa el enlace seguro de respaldo.',
+        );
+      } else {
+        setMessage(
+          'Invitación creada. El envío automático está desactivado; usa el enlace seguro de respaldo.',
+        );
+      }
+      if (!result.auditPersisted) {
+        setError(
+          'El resultado del correo no pudo guardarse en la auditoría. Conserva el enlace y revisa la integración antes de reenviar.',
+        );
+      }
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo crear la invitación.',
@@ -503,18 +553,6 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     } catch {
       setError('No se pudo copiar automáticamente. Selecciona el enlace y cópialo manualmente.');
     }
-  };
-
-  const openInvitationEmail = () => {
-    if (!latestInvitation || !selected?.email) return;
-    const subject = encodeURIComponent(`Invitación a ${condominiumName} en Habitta`);
-    const body = encodeURIComponent(
-      `Hola ${selected.first_name},\n\nTienes una invitación a ${condominiumName} en Habitta como ${residentRoleLabel(latestInvitation.role).toLowerCase()} de ${latestInvitation.unitLabel}.\n\nAbre este enlace seguro para aceptar el acceso:\n${latestInvitation.url}\n\nEl enlace es personal y temporal.`,
-    );
-    window.location.href = `mailto:${encodeURIComponent(selected.email)}?subject=${subject}&body=${body}`;
-    setMessage(
-      'Abrimos tu cliente de correo. Habitta no marcará el mensaje como enviado hasta tener entrega transaccional para residentes.',
-    );
   };
 
   const previewCsv = async () => {
@@ -1101,9 +1139,24 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                         <strong>
                           {residentRoleLabel(latestInvitation.role)} · {latestInvitation.unitLabel}
                         </strong>
+                        <Badge
+                          tone={
+                            latestInvitation.delivery.status === 'sent'
+                              ? 'success'
+                              : latestInvitation.delivery.status === 'failed'
+                                ? 'warning'
+                                : 'neutral'
+                          }
+                        >
+                          {latestInvitation.delivery.status === 'sent'
+                            ? 'Correo enviado'
+                            : latestInvitation.delivery.status === 'failed'
+                              ? 'Error de envío'
+                              : 'Envío desactivado'}
+                        </Badge>
                         <small>
-                          Habitta almacena solo el hash del token. Este enlace se muestra para que
-                          puedas compartirlo sin administrar tokens manualmente.
+                          Habitta almacena solo el hash del token. El enlace seguro queda disponible
+                          como respaldo aunque el correo transaccional falle o esté desactivado.
                         </small>
                       </div>
                       <input
@@ -1114,15 +1167,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                       />
                       <div>
                         <Button onClick={() => void copyLatestInvitation()} size="sm" type="button">
-                          Copiar enlace
-                        </Button>
-                        <Button
-                          onClick={openInvitationEmail}
-                          size="sm"
-                          type="button"
-                          variant="secondary"
-                        >
-                          Abrir correo
+                          Copiar enlace seguro
                         </Button>
                       </div>
                     </div>
@@ -1136,6 +1181,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     {invitations.length ? (
                       invitations.map((invitation) => {
                         const displayStatus = residentInvitationDisplayStatus(invitation);
+                        const deliveryEvent = deliveryByInvitationId.get(invitation.id);
                         const eligible = accessOptions.some(
                           (option) =>
                             option.role === invitation.intended_role &&
@@ -1155,6 +1201,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                             </div>
                             <Badge tone={invitationTone(displayStatus)}>
                               {residentInvitationStatusLabels[displayStatus]}
+                            </Badge>
+                            <Badge tone={deliveryTone(deliveryEvent)}>
+                              {residentDeliveryLabel(deliveryEvent)}
                             </Badge>
                             <div className="people-invitation-history__actions">
                               {displayStatus === 'pending' && eligible ? (
