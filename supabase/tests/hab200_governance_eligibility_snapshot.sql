@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(21);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, raw_user_meta_data, created_at, updated_at
@@ -70,7 +70,7 @@ select public.create_governance_proposal(
   'La elegibilidad debe permanecer estable aunque cambie la propiedad.',
   'improvement', 'one_per_unit', 50, 1000, 'USD', null,
   now() + interval '7 days',
-  '[{"label":"Aprobar"},{"label":"Rechazar"}]'::jsonb,
+  '[{"label":"Aprobar","sortOrder":1},{"label":"Rechazar","sortOrder":2}]'::jsonb,
   '[]'::jsonb
 ) as proposal;
 
@@ -197,6 +197,15 @@ select is(
   ) ->> 'quorum_met')::boolean,
   true,
   'quorum uses the frozen denominator after ownership transfer'
+);
+
+select is(
+  public.get_governance_decision(
+    (select (payload #>> '{condominium,id}')::uuid from hab200_workspace),
+    (select (proposal).id from hab200_proposal)
+  ) ->> 'decision',
+  'approve',
+  'decision remains based on the frozen electorate after ownership transfer'
 );
 
 reset role;
