@@ -65,12 +65,17 @@ export function personSearchText(person: Person) {
     .toLowerCase();
 }
 
-export function activeOwnerships(items: Ownership[]) {
-  return items.filter((item) => !item.ends_at);
+export function relationshipIsActive(item: { ends_at?: string | null }, today = new Date()) {
+  if (!item.ends_at) return true;
+  return item.ends_at >= today.toISOString().slice(0, 10);
 }
 
-export function activeOccupancies(items: Occupancy[]) {
-  return items.filter((item) => !item.ends_at);
+export function activeOwnerships(items: Ownership[], today?: Date) {
+  return items.filter((item) => relationshipIsActive(item, today));
+}
+
+export function activeOccupancies(items: Occupancy[], today?: Date) {
+  return items.filter((item) => relationshipIsActive(item, today));
 }
 
 export function residentAccessOptions(ownerships: Ownership[], occupancies: Occupancy[]) {
