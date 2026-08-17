@@ -782,7 +782,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                 <b>{documents.length}</b>
               </button>
               {folderRows.map(({ folder, depth }) => {
-                const count = documents.filter((document) => document.folder_id === folder.id).length;
+                const count = documents.filter(
+                  (document) => document.folder_id === folder.id,
+                ).length;
                 return (
                   <button
                     className={selectedFolderId === folder.id ? 'is-active' : ''}
@@ -878,7 +880,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                   const category = document.category_id
                     ? categoryById.get(document.category_id)
                     : undefined;
-                  const folder = document.folder_id ? folderById.get(document.folder_id) : undefined;
+                  const folder = document.folder_id
+                    ? folderById.get(document.folder_id)
+                    : undefined;
                   return (
                     <button
                       aria-pressed={selected}
@@ -1107,12 +1111,16 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                   {downloadEvents.length ? (
                     <div className="documents-download-list">
                       {downloadEvents.map((downloadEvent) => {
-                        const version = versions.find((item) => item.id === downloadEvent.version_id);
+                        const version = versions.find(
+                          (item) => item.id === downloadEvent.version_id,
+                        );
                         return (
                           <article key={downloadEvent.id}>
                             <div>
                               <strong>
-                                {version ? `Versión ${version.version_number}` : 'Versión histórica'}
+                                {version
+                                  ? `Versión ${version.version_number}`
+                                  : 'Versión histórica'}
                               </strong>
                               <span>{formatDate(downloadEvent.occurred_at)}</span>
                             </div>
