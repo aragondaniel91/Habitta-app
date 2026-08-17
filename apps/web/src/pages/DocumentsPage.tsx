@@ -65,6 +65,7 @@ const linkLabels: Record<CommunityDocumentLinkType, string> = {
   expense: 'Gasto',
   assembly: 'Asamblea',
   proposal: 'Propuesta',
+  budget: 'Presupuesto',
 };
 
 const linkRoutes: Record<CommunityDocumentLinkType, string> = {
@@ -73,6 +74,7 @@ const linkRoutes: Record<CommunityDocumentLinkType, string> = {
   expense: '/app/expenses',
   assembly: '/app/governance',
   proposal: '/app/governance',
+  budget: '/app/budgets',
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
