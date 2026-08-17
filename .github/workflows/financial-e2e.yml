@@ -7,6 +7,10 @@ on:
       - 'supabase/**'
       - 'apps/api/**'
       - 'packages/**'
+      - 'apps/web/src/features/payments/**'
+      - 'apps/web/src/features/receivables/**'
+      - 'apps/web/src/pages/ExpensesPage.tsx'
+      - 'apps/web/src/components/Dialog.tsx'
       - '.github/workflows/financial-e2e.yml'
   push:
     branches: [main]
@@ -15,6 +19,10 @@ on:
       - 'supabase/**'
       - 'apps/api/**'
       - 'packages/**'
+      - 'apps/web/src/features/payments/**'
+      - 'apps/web/src/features/receivables/**'
+      - 'apps/web/src/pages/ExpensesPage.tsx'
+      - 'apps/web/src/components/Dialog.tsx'
       - '.github/workflows/financial-e2e.yml'
 
 permissions:
