@@ -12,6 +12,7 @@ const optionalUuid = uuid.nullable().optional();
 const optionalText = (maximum: number) => z.string().trim().max(maximum).nullable().optional();
 const votingBasis = z.enum(['one_per_owner', 'one_per_unit']);
 const attendanceMode = z.enum(['in_person', 'remote', 'proxy']);
+const actionItemStatus = z.enum(['open', 'in_progress', 'completed', 'cancelled']);
 
 const createSchema = z.object({
   title: z.string().trim().min(2).max(180),
@@ -52,6 +53,25 @@ const resolutionSchema = z.object({
   body: z.string().trim().min(2).max(20000),
   agendaItemId: optionalUuid,
   proposalId: optionalUuid,
+});
+
+const actionItemCreateSchema = z.object({
+  title: z.string().trim().min(3).max(180),
+  description: optionalText(4000),
+  resolutionId: optionalUuid,
+  assigneeUserId: optionalUuid,
+  dueOn: z.string().date().nullable().optional(),
+  serviceRequestId: optionalUuid,
+  maintenanceWorkOrderId: optionalUuid,
+});
+
+const actionItemUpdateSchema = actionItemCreateSchema.extend({
+  expectedVersion: z.number().int().positive(),
+});
+
+const actionItemTransitionSchema = z.object({
+  status: actionItemStatus,
+  expectedVersion: z.number().int().positive(),
 });
 
 const body = async <T>(c: AppContext, schema: z.ZodType<T>) => {
@@ -269,6 +289,65 @@ assembliesRoutes.post(
       target_condominium_id: uuid.parse(c.req.param('id')),
       target_assembly_id: uuid.parse(c.req.param('assemblyId')),
       target_resolution_id: uuid.parse(c.req.param('resolutionId')),
+    });
+    return responseJson(c, response);
+  },
+);
+
+assembliesRoutes.get('/:id/assemblies/:assemblyId/action-items', async (c) => {
+  const condominiumId = uuid.parse(c.req.param('id'));
+  const assemblyId = uuid.parse(c.req.param('assemblyId'));
+  const response = await rest(
+    c,
+    `assembly_action_items?condominium_id=eq.${condominiumId}&assembly_id=eq.${assemblyId}&select=*&order=due_on.asc.nullslast,created_at.asc`,
+  );
+  return responseJson(c, response);
+});
+
+assembliesRoutes.post('/:id/assemblies/:assemblyId/action-items', async (c) => {
+  const parsed = await body(c, actionItemCreateSchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'create_assembly_action_item', {
+    target_condominium: uuid.parse(c.req.param('id')),
+    target_assembly: uuid.parse(c.req.param('assemblyId')),
+    item_title: parsed.title,
+    item_description: parsed.description ?? null,
+    target_resolution: parsed.resolutionId ?? null,
+    target_assignee: parsed.assigneeUserId ?? null,
+    target_due_on: parsed.dueOn ?? null,
+    target_service_request: parsed.serviceRequestId ?? null,
+    target_work_order: parsed.maintenanceWorkOrderId ?? null,
+  });
+  return responseJson(c, response, 201);
+});
+
+assembliesRoutes.patch('/:id/assemblies/:assemblyId/action-items/:actionItemId', async (c) => {
+  const parsed = await body(c, actionItemUpdateSchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'update_assembly_action_item', {
+    target_condominium: uuid.parse(c.req.param('id')),
+    target_action_item: uuid.parse(c.req.param('actionItemId')),
+    expected_version: parsed.expectedVersion,
+    item_title: parsed.title,
+    item_description: parsed.description ?? null,
+    target_assignee: parsed.assigneeUserId ?? null,
+    target_due_on: parsed.dueOn ?? null,
+    target_service_request: parsed.serviceRequestId ?? null,
+    target_work_order: parsed.maintenanceWorkOrderId ?? null,
+  });
+  return responseJson(c, response);
+});
+
+assembliesRoutes.post(
+  '/:id/assemblies/:assemblyId/action-items/:actionItemId/transition',
+  async (c) => {
+    const parsed = await body(c, actionItemTransitionSchema);
+    if (parsed instanceof Response) return parsed;
+    const response = await rpc(c, 'transition_assembly_action_item', {
+      target_condominium: uuid.parse(c.req.param('id')),
+      target_action_item: uuid.parse(c.req.param('actionItemId')),
+      expected_version: parsed.expectedVersion,
+      next_status: parsed.status,
     });
     return responseJson(c, response);
   },
