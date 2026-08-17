@@ -1,0 +1,356 @@
+name: HAB-216 One-shot People Wiring
+
+on:
+  push:
+    branches: [feat/hab-216-resident-invitation-email]
+
+permissions:
+  contents: write
+
+jobs:
+  wire-and-format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/hab-216-resident-invitation-email
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wire persistent resident delivery state into People
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/src/features/people/PeoplePanel.tsx')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match, got {count}: {old[:90]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+          """  createResidentInvitation,
+            listResidentInvitations,
+            residentRoleLabel,
+            revokeResidentInvitation,
+            type ResidentInvitation,
+            type ResidentRole,
+          """,
+          """  createResidentInvitation,
+            listResidentInvitationDeliveryEvents,
+            listResidentInvitations,
+            residentDeliveryLabel,
+            residentRoleLabel,
+            revokeResidentInvitation,
+            type ResidentInvitation,
+            type ResidentInvitationDelivery,
+            type ResidentInvitationDeliveryEvent,
+            type ResidentRole,
+          """,
+          )
+
+          replace_once(
+          """type LatestInvitation = {
+            url: string;
+            role: ResidentRole;
+            unitLabel: string;
+          };
+          """,
+          """type LatestInvitation = {
+            url: string;
+            role: ResidentRole;
+            unitLabel: string;
+            delivery: ResidentInvitationDelivery;
+          };
+          """,
+          )
+
+          replace_once(
+          """function invitationTone(status: ResidentInvitation['status']) {
+            if (status === 'accepted') return 'success' as const;
+            if (status === 'pending') return 'info' as const;
+            if (status === 'expired') return 'warning' as const;
+            return 'neutral' as const;
+          }
+          """,
+          """function invitationTone(status: ResidentInvitation['status']) {
+            if (status === 'accepted') return 'success' as const;
+            if (status === 'pending') return 'info' as const;
+            if (status === 'expired') return 'warning' as const;
+            return 'neutral' as const;
+          }
+
+          function deliveryTone(event?: ResidentInvitationDeliveryEvent) {
+            if (event?.event_type === 'email_sent') return 'success' as const;
+            if (event?.event_type === 'email_failed') return 'warning' as const;
+            return 'neutral' as const;
+          }
+          """,
+          )
+
+          replace_once(
+          """  const [invitations, setInvitations] = useState<ResidentInvitation[]>([]);
+          """,
+          """  const [invitations, setInvitations] = useState<ResidentInvitation[]>([]);
+            const [deliveryEvents, setDeliveryEvents] = useState<ResidentInvitationDeliveryEvent[]>([]);
+          """,
+          )
+
+          replace_once(
+          """      const [view, invitationItems] = await Promise.all([
+                peopleApi<PersonRelationshipView>(
+                  `/v1/condominiums/${condominiumId}/people/${personId}/relationships`,
+                  session,
+                ),
+                listResidentInvitations(condominiumId, personId),
+              ]);
+              setSelected(view.person);
+              setOwnerships(view.ownerships);
+              setOccupancies(view.occupancies);
+              setCondominiumRelationships(view.condominiumRelationships);
+              setInvitations(invitationItems);
+          """,
+          """      const [view, invitationItems, deliveryItems] = await Promise.all([
+                peopleApi<PersonRelationshipView>(
+                  `/v1/condominiums/${condominiumId}/people/${personId}/relationships`,
+                  session,
+                ),
+                listResidentInvitations(condominiumId, personId),
+                listResidentInvitationDeliveryEvents(condominiumId, personId),
+              ]);
+              setSelected(view.person);
+              setOwnerships(view.ownerships);
+              setOccupancies(view.occupancies);
+              setCondominiumRelationships(view.condominiumRelationships);
+              setInvitations(invitationItems);
+              setDeliveryEvents(deliveryItems);
+          """,
+          )
+
+          replace_once(
+          """    setInvitations([]);
+              setLatestInvitation(null);
+          """,
+          """    setInvitations([]);
+              setDeliveryEvents([]);
+              setLatestInvitation(null);
+          """,
+          )
+
+          replace_once(
+          """  const accessOptions = useMemo(
+              () => residentAccessOptions(ownerships, occupancies),
+              [ownerships, occupancies],
+            );
+            const inviteUnits = accessOptions.filter((option) => option.role === inviteRole);
+          """,
+          """  const accessOptions = useMemo(
+              () => residentAccessOptions(ownerships, occupancies),
+              [ownerships, occupancies],
+            );
+            const deliveryByInvitationId = useMemo(() => {
+              const latest = new Map<string, ResidentInvitationDeliveryEvent>();
+              for (const event of deliveryEvents) {
+                if (!latest.has(event.invitation_id)) latest.set(event.invitation_id, event);
+              }
+              return latest;
+            }, [deliveryEvents]);
+            const inviteUnits = accessOptions.filter((option) => option.role === inviteRole);
+          """,
+          )
+
+          replace_once(
+          """      const result = await createResidentInvitation({
+                condominiumId,
+                personId: selected.id,
+                unitId,
+                role,
+              });
+              setLatestInvitation({ url: result.invitationUrl, role, unitLabel: option.unitLabel });
+              setInvitations(await listResidentInvitations(condominiumId, selected.id));
+              setMessage(
+                'Invitación lista. Puedes copiar el enlace seguro o abrir tu correo para compartirlo.',
+              );
+          """,
+          """      const result = await createResidentInvitation({
+                condominiumId,
+                personId: selected.id,
+                unitId,
+                role,
+                session,
+              });
+              setLatestInvitation({
+                url: result.invitationUrl,
+                role,
+                unitLabel: option.unitLabel,
+                delivery: result.emailDelivery,
+              });
+              const [nextInvitations, nextDeliveryEvents] = await Promise.all([
+                listResidentInvitations(condominiumId, selected.id),
+                listResidentInvitationDeliveryEvents(condominiumId, selected.id),
+              ]);
+              setInvitations(nextInvitations);
+              setDeliveryEvents(nextDeliveryEvents);
+              if (result.emailDelivery.status === 'sent') {
+                setMessage(
+                  result.emailDelivery.mode === 'sandbox'
+                    ? 'Invitación creada y correo transaccional enviado al buzón de pruebas de este ambiente.'
+                    : 'Invitación creada y correo transaccional enviado al residente.',
+                );
+              } else if (result.emailDelivery.status === 'failed') {
+                setMessage(
+                  'Invitación creada, pero el correo no pudo enviarse. Usa el enlace seguro de respaldo.',
+                );
+              } else {
+                setMessage(
+                  'Invitación creada. El envío automático está desactivado; usa el enlace seguro de respaldo.',
+                );
+              }
+              if (!result.auditPersisted) {
+                setError(
+                  'El resultado del correo no pudo guardarse en la auditoría. Conserva el enlace y revisa la integración antes de reenviar.',
+                );
+              }
+          """,
+          )
+
+          old_email = """  const openInvitationEmail = () => {
+              if (!latestInvitation || !selected?.email) return;
+              const subject = encodeURIComponent(`Invitación a ${condominiumName} en Habitta`);
+              const body = encodeURIComponent(
+                `Hola ${selected.first_name},\\n\\nTienes una invitación a ${condominiumName} en Habitta como ${residentRoleLabel(latestInvitation.role).toLowerCase()} de ${latestInvitation.unitLabel}.\\n\\nAbre este enlace seguro para aceptar el acceso:\\n${latestInvitation.url}\\n\\nEl enlace es personal y temporal.`,
+              );
+              window.location.href = `mailto:${encodeURIComponent(selected.email)}?subject=${subject}&body=${body}`;
+              setMessage(
+                'Abrimos tu cliente de correo. Habitta no marcará el mensaje como enviado hasta tener entrega transaccional para residentes.',
+              );
+            };
+
+          """
+          replace_once(old_email, '')
+
+          replace_once(
+          """                        <strong>
+                            {residentRoleLabel(latestInvitation.role)} · {latestInvitation.unitLabel}
+                          </strong>
+                          <small>
+                            Habitta almacena solo el hash del token. Este enlace se muestra para que
+                            puedas compartirlo sin administrar tokens manualmente.
+                          </small>
+          """,
+          """                        <strong>
+                            {residentRoleLabel(latestInvitation.role)} · {latestInvitation.unitLabel}
+                          </strong>
+                          <Badge
+                            tone={
+                              latestInvitation.delivery.status === 'sent'
+                                ? 'success'
+                                : latestInvitation.delivery.status === 'failed'
+                                  ? 'warning'
+                                  : 'neutral'
+                            }
+                          >
+                            {latestInvitation.delivery.status === 'sent'
+                              ? 'Correo enviado'
+                              : latestInvitation.delivery.status === 'failed'
+                                ? 'Error de envío'
+                                : 'Envío desactivado'}
+                          </Badge>
+                          <small>
+                            Habitta almacena solo el hash del token. El enlace seguro queda disponible
+                            como respaldo aunque el correo transaccional falle o esté desactivado.
+                          </small>
+          """,
+          )
+
+          replace_once(
+          """                      <div>
+                            <Button onClick={() => void copyLatestInvitation()} size="sm" type="button">
+                              Copiar enlace
+                            </Button>
+                            <Button
+                              onClick={openInvitationEmail}
+                              size="sm"
+                              type="button"
+                              variant="secondary"
+                            >
+                              Abrir correo
+                            </Button>
+                          </div>
+          """,
+          """                      <div>
+                            <Button onClick={() => void copyLatestInvitation()} size="sm" type="button">
+                              Copiar enlace seguro
+                            </Button>
+                          </div>
+          """,
+          )
+
+          replace_once(
+          """                      invitations.map((invitation) => {
+                            const displayStatus = residentInvitationDisplayStatus(invitation);
+                            const eligible = accessOptions.some(
+          """,
+          """                      invitations.map((invitation) => {
+                            const displayStatus = residentInvitationDisplayStatus(invitation);
+                            const deliveryEvent = deliveryByInvitationId.get(invitation.id);
+                            const eligible = accessOptions.some(
+          """,
+          )
+
+          replace_once(
+          """                          <Badge tone={invitationTone(displayStatus)}>
+                              {residentInvitationStatusLabels[displayStatus]}
+                            </Badge>
+                            <div className="people-invitation-history__actions">
+          """,
+          """                          <Badge tone={invitationTone(displayStatus)}>
+                              {residentInvitationStatusLabels[displayStatus]}
+                            </Badge>
+                            <Badge tone={deliveryTone(deliveryEvent)}>
+                              {residentDeliveryLabel(deliveryEvent)}
+                            </Badge>
+                            <div className="people-invitation-history__actions">
+          """,
+          )
+
+          path.write_text(text)
+
+          css_path = Path('apps/web/src/features/people/people-workspace.css')
+          css = css_path.read_text()
+          old = ".people-invitation-history article {\n  grid-template-columns: minmax(0, 1fr) auto auto;\n}"
+          new = ".people-invitation-history article {\n  grid-template-columns: minmax(0, 1fr) auto auto auto;\n}"
+          if css.count(old) != 1:
+              raise SystemExit('Expected invitation history grid rule exactly once')
+          css_path.write_text(css.replace(old, new, 1))
+          PY
+      - run: pnpm format
+      - name: Commit wired and formatted files if needed
+        run: |
+          if git diff --quiet; then
+            echo "No changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/api/src/operations-routes.ts \
+            apps/api/src/resident-invitations.ts \
+            apps/api/test/resident-invitations-route.test.ts \
+            apps/web/src/features/people/PeoplePanel.tsx \
+            apps/web/src/features/people/people-workspace.css \
+            apps/web/src/lib/residentAccess.ts \
+            supabase/migrations/20260817232500_hab216_resident_invitation_delivery.sql \
+            supabase/tests/hab216_resident_invitation_delivery.sql
+          git commit -m "feat(hab216): wire factual resident email delivery state"
+          git push origin HEAD:feat/hab-216-resident-invitation-email
