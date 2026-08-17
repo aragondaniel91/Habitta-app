@@ -25,7 +25,10 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Revisa primero las tarjetas de alerta.',
       'Abre el módulo relacionado para completar la acción.',
     ],
-    tips: ['El dashboard no reemplaza los reportes contables.', 'Los totales nunca mezclan monedas.'],
+    tips: [
+      'El dashboard no reemplaza los reportes contables.',
+      'Los totales nunca mezclan monedas.',
+    ],
     permissions: 'Cada persona ve únicamente la información permitida por su rol.',
   },
   units: {
@@ -162,7 +165,10 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Registra el gasto con monto, moneda y soporte.',
       'Envía a aprobación y completa el pago.',
     ],
-    tips: ['Adjunta siempre factura, recibo o cotización.', 'No combines monedas en un mismo gasto.'],
+    tips: [
+      'Adjunta siempre factura, recibo o cotización.',
+      'No combines monedas en un mismo gasto.',
+    ],
     permissions:
       'Contadores pueden preparar borradores; administradores autorizados aprueban o anulan.',
   },
@@ -306,7 +312,11 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
   team: {
     purpose:
       'Controla quién administra el condominio y qué funciones puede utilizar cada integrante.',
-    actions: ['Invitar administradores.', 'Asignar roles.', 'Revisar invitaciones pendientes o vencidas.'],
+    actions: [
+      'Invitar administradores.',
+      'Asignar roles.',
+      'Revisar invitaciones pendientes o vencidas.',
+    ],
     steps: [
       'Selecciona el rol mínimo necesario.',
       'Envía la invitación al correo correcto.',
