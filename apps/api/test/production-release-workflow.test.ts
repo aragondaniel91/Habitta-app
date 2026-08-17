@@ -18,12 +18,17 @@ describe('production release workflow hardening', () => {
     expect(workflow).toContain('habitta-integrations-dlq-prod');
     expect(workflow).toContain('habitta-database-backups-prod');
     expect(workflow).toContain('if ! grep -R -F "$SUPABASE_URL" apps/web/dist >/dev/null; then');
+    expect(workflow).toContain('Smoke production Pages deployment and API wiring');
+    expect(workflow).toContain(
+      'node scripts/release/verify-production-pages-control-plane.mjs',
+    );
     expect(workflow).toContain('/deployments/$PREVIOUS_PAGES_DEPLOYMENT/rollback');
     expect(workflow).toContain(
       'wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env prod',
     );
     expect(workflow).not.toContain('canonical_domain_runner_403');
     expect(workflow).not.toContain('browser verification required');
+    expect(workflow).not.toContain('fetch(`${canonicalUrl}/app/dashboard`');
     expect(workflow).not.toContain('HABITTA_DEV_PROJECT_REF');
   });
 
