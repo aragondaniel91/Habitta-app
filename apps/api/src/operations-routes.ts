@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { adminAuditRoutes } from './admin-audit-routes';
 import { assembliesRoutes } from './assemblies-routes';
 import { budgetRoutes } from './budget-routes';
+import { condominiumDeletionRoutes } from './condominium-deletion-routes';
 import { governanceThresholdRoutes } from './governance-threshold-routes';
 import { operationsRoutes as baseOperationsRoutes } from './operations-routes-base';
 import { maintenanceFinancialRoutes } from './maintenance-financial-routes';
@@ -14,6 +15,7 @@ baseOperationsRoutes.route('/', maintenanceFinancialRoutes);
 baseOperationsRoutes.route('/', assembliesRoutes);
 baseOperationsRoutes.route('/', adminAuditRoutes);
 baseOperationsRoutes.route('/', budgetRoutes);
+baseOperationsRoutes.route('/', condominiumDeletionRoutes);
 
 export const operationsRoutes = new Hono<AppEnvironment>();
 operationsRoutes.route('/', governanceThresholdRoutes);
