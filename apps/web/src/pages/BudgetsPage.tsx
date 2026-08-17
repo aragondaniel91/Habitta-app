@@ -17,7 +17,6 @@ import {
 } from '../lib/budgets';
 import type {
   BudgetActualRow,
-  BudgetLine,
   BudgetPeriod,
   BudgetVersion,
   BudgetWorkspace,
