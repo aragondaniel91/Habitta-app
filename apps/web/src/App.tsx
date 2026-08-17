@@ -36,6 +36,9 @@ const AnnouncementsPage = lazy(() =>
 const AuditLogPage = lazy(() =>
   import('./pages/AuditLogPage').then((module) => ({ default: module.AuditLogPage })),
 );
+const BudgetsPage = lazy(() =>
+  import('./pages/BudgetsPage').then((module) => ({ default: module.BudgetsPage })),
+);
 const CommunityDirectoryPage = lazy(() =>
   import('./pages/CommunityDirectoryPage').then((module) => ({
     default: module.CommunityDirectoryPage,
@@ -365,6 +368,14 @@ export default function App() {
   } else if (activeRoute.key === 'expenses') {
     page = (
       <ExpensesPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    );
+  } else if (activeRoute.key === 'budgets') {
+    page = (
+      <BudgetsPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         session={session}
