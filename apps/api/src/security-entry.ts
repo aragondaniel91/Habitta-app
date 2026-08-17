@@ -142,6 +142,7 @@ app.use(
       'X-Visibility',
       'X-Comment-Id',
       'X-Quote-Id',
+      'X-Change-Note',
     ],
   }),
 );
