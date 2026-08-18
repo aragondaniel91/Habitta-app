@@ -6,6 +6,7 @@ import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../compone
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { canManage, useCondominiumRoles } from '../lib/roles';
+import { unitReferenceLabel } from '../lib/unit-domain';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import type { ReceivableAging, ReceivableSummary } from '../lib/dashboard';
 import {
@@ -18,7 +19,6 @@ import {
   getReceivableDueState,
   getReceivableStatusCounts,
   getSummaryForCurrency,
-  getUnitCode,
   receivableStatusLabels,
   sortReceivables,
 } from '../lib/receivables';
@@ -40,11 +40,13 @@ import '../recurring-dues.css';
 
 type ReceivablesData = {
   units: ReceivableUnit[];
+  buildings: Building[];
   concepts: ChargeConcept[];
   items: ReceivableItem[];
   summaries: ReceivableSummary[];
   aging: ReceivableAging[];
 };
+type Building = { id: string; name: string };
 
 type Props = {
   condominiumId: string;
@@ -156,8 +158,9 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       if (!background) setLoading(true);
       setError('');
       try {
-        const [units, concepts, items, summaries, aging] = await Promise.all([
+        const [units, buildings, concepts, items, summaries, aging] = await Promise.all([
           apiRequest<ReceivableUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
+          apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
           apiRequest<ChargeConcept[]>(`/v1/condominiums/${condominiumId}/charge-concepts`, session),
           apiRequest<ReceivableItem[]>(`/v1/condominiums/${condominiumId}/receivables`, session),
           apiRequest<ReceivableSummary[]>(
@@ -169,7 +172,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             session,
           ),
         ]);
-        setData({ units, concepts, items, summaries, aging });
+        setData({ units, buildings, concepts, items, summaries, aging });
       } catch (requestError) {
         setError(
           requestError instanceof Error
@@ -197,6 +200,23 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
   const currencies = useMemo(
     () => (data ? getReceivableCurrencies(data.summaries, data.aging, data.items) : []),
     [data],
+  );
+  const buildingNameById = useMemo(
+    () =>
+      Object.fromEntries((data?.buildings ?? []).map((building) => [building.id, building.name])),
+    [data?.buildings],
+  );
+  const unitLabel = useCallback(
+    (unitId: string) => {
+      const unit = data?.units.find((item) => item.id === unitId);
+      return unit
+        ? unitReferenceLabel({
+            code: unit.code,
+            buildingName: unit.building_id ? (buildingNameById[unit.building_id] ?? null) : null,
+          })
+        : unitId;
+    },
+    [buildingNameById, data?.units],
   );
 
   useEffect(() => {
@@ -467,7 +487,12 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
               <option value="">Todas</option>
               {data.units.map((unit) => (
                 <option key={unit.id} value={unit.id}>
-                  {unit.code}
+                  {unitReferenceLabel({
+                    code: unit.code,
+                    buildingName: unit.building_id
+                      ? (buildingNameById[unit.building_id] ?? null)
+                      : null,
+                  })}
                 </option>
               ))}
             </Select>
@@ -554,7 +579,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
                         </div>
                       </td>
                       <td data-label="Unidad">
-                        <strong>{getUnitCode(item.unit_id, data.units)}</strong>
+                        <strong>{unitLabel(item.unit_id)}</strong>
                       </td>
                       <td data-label="Emisión">
                         {item.issue_date ? formatDashboardDate(item.issue_date) : '—'}
@@ -617,6 +642,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       ) : null}
 
       <ReceivablesDrawerHost
+        buildingNameById={buildingNameById}
         concepts={data.concepts}
         condominiumId={condominiumId}
         mode={drawer}

@@ -3,6 +3,7 @@ import type { DashboardReceivable, ReceivableAging, ReceivableSummary } from './
 export type ReceivableUnit = {
   id: string;
   code: string;
+  building_id: string | null;
   status?: string;
 };
 

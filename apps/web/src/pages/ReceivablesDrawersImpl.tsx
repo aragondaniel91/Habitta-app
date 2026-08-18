@@ -7,10 +7,10 @@ import { apiRequest } from '../lib/api';
 import { csvFileName, downloadCsv } from '../lib/csv-export';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import { createStatementCsv } from '../lib/reports';
+import { unitReferenceLabel } from '../lib/unit-domain';
 import {
   conceptCategoryLabels,
   getConceptName,
-  getUnitCode,
   isSettledReceivable,
   parseOpeningBalancesCsv,
   receivableStatusLabels,
@@ -61,6 +61,7 @@ type Props = {
   selectedCurrency: string;
   selectedReceivable?: ReceivableItem;
   units: ReceivableUnit[];
+  buildingNameById: Record<string, string>;
   concepts: ChargeConcept[];
   onClose: () => void;
   onRefresh: () => Promise<void>;
@@ -127,6 +128,7 @@ export function ReceivablesDrawerHost({
   selectedCurrency,
   selectedReceivable,
   units,
+  buildingNameById,
   concepts,
   onClose,
   onRefresh,
@@ -164,6 +166,15 @@ export function ReceivablesDrawerHost({
 
   const activeUnits = units.filter((unit) => unit.status !== 'inactive');
   const activeConcepts = concepts.filter((concept) => concept.is_active !== false);
+  const unitLabel = (unitId: string) => {
+    const unit = units.find((item) => item.id === unitId);
+    return unit
+      ? unitReferenceLabel({
+          code: unit.code,
+          buildingName: unit.building_id ? (buildingNameById[unit.building_id] ?? null) : null,
+        })
+      : unitId;
+  };
 
   const runAction = async (action: () => Promise<unknown>) => {
     setLoading(true);
@@ -361,7 +372,7 @@ export function ReceivablesDrawerHost({
         <dl className="receivables-detail-list">
           <div>
             <dt>Unidad</dt>
-            <dd>{getUnitCode(selectedReceivable.unit_id, units)}</dd>
+            <dd>{unitLabel(selectedReceivable.unit_id)}</dd>
           </div>
           <div>
             <dt>Concepto</dt>
@@ -449,7 +460,12 @@ export function ReceivablesDrawerHost({
               <option value="">Selecciona una unidad</option>
               {activeUnits.map((unit) => (
                 <option key={unit.id} value={unit.id}>
-                  {unit.code}
+                  {unitReferenceLabel({
+                    code: unit.code,
+                    buildingName: unit.building_id
+                      ? (buildingNameById[unit.building_id] ?? null)
+                      : null,
+                  })}
                 </option>
               ))}
             </Select>

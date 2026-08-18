@@ -8,6 +8,7 @@ import { csvFileName, downloadCsv, toCsv } from '../../lib/csv-export';
 import { formatDashboardAmount, formatDashboardDate } from '../../lib/dashboard';
 import type { ReceivableUnit } from '../../lib/receivables';
 import { canManage, useCondominiumRoles } from '../../lib/roles';
+import { unitReferenceLabel } from '../../lib/unit-domain';
 import { FinancialIntegrityPanel } from './FinancialIntegrityPanel';
 import { OwnershipTransferPanel } from './OwnershipTransferPanel';
 
@@ -82,6 +83,7 @@ type Props = {
   condominiumId: string;
   session: Session;
   units: ReceivableUnit[];
+  buildingNameById: Record<string, string>;
   onClose: () => void;
 };
 
@@ -122,7 +124,13 @@ function BalanceCards({ title, balances }: { title: string; balances: Balance[] 
   );
 }
 
-export function AccountStatementDrawer({ condominiumId, session, units, onClose }: Props) {
+export function AccountStatementDrawer({
+  condominiumId,
+  session,
+  units,
+  buildingNameById,
+  onClose,
+}: Props) {
   const roles = useCondominiumRoles();
   const manage = canManage(roles);
   const activeUnits = units.filter((unit) => unit.status !== 'inactive');
@@ -137,6 +145,14 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
   const [message, setMessage] = useState('');
 
   const selectedUnit = useMemo(() => units.find((unit) => unit.id === unitId), [unitId, units]);
+  const selectedUnitLabel = selectedUnit
+    ? unitReferenceLabel({
+        code: selectedUnit.code,
+        buildingName: selectedUnit.building_id
+          ? (buildingNameById[selectedUnit.building_id] ?? null)
+          : null,
+      })
+    : null;
   const latestCertificate = certificates[0] ?? null;
 
   const load = async (nextUnitId = unitId) => {
@@ -238,7 +254,12 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
               <option value="">Selecciona una unidad</option>
               {activeUnits.map((unit) => (
                 <option key={unit.id} value={unit.id}>
-                  {unit.code}
+                  {unitReferenceLabel({
+                    code: unit.code,
+                    buildingName: unit.building_id
+                      ? (buildingNameById[unit.building_id] ?? null)
+                      : null,
+                  })}
                 </option>
               ))}
             </Select>
@@ -271,7 +292,7 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
             <section className="account-statement-identity">
               <div>
                 <span>Cuenta de la unidad</span>
-                <strong>{statement.account.unit_code}</strong>
+                <strong>{selectedUnitLabel ?? statement.account.unit_code}</strong>
                 <small>{statement.account.condominium_name}</small>
               </div>
               <div className="account-statement-actions">
@@ -362,8 +383,8 @@ export function AccountStatementDrawer({ condominiumId, session, units, onClose 
                 currentOwners={statement.owners}
                 onTransferred={() => void load()}
                 session={session}
-                unitCode={selectedUnit.code}
                 unitId={selectedUnit.id}
+                unitLabel={selectedUnitLabel ?? selectedUnit.code}
               />
             ) : null}
 

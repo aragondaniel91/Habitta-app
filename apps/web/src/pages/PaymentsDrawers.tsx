@@ -18,6 +18,7 @@ import type {
 import type { TreasuryAccount } from '../features/treasury/types';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import { paymentStatusLabels, paymentStatusTone } from '../lib/payments';
+import { unitReferenceLabel } from '../lib/unit-domain';
 
 export type PaymentsDrawerMode =
   | { type: 'create' }
@@ -27,12 +28,13 @@ export type PaymentsDrawerMode =
   | { type: 'methods' }
   | null;
 
-type Unit = { id: string; code: string };
+type Unit = { id: string; code: string; building_id: string | null };
 
 type Props = {
   condominiumId: string;
   session: Session;
   units: Unit[];
+  buildingNameById: Record<string, string>;
   methods: PaymentMethod[];
   receivables: Receivable[];
   drawer: PaymentsDrawerMode;
@@ -101,6 +103,7 @@ function PaymentForm({
   condominiumId,
   session,
   units,
+  buildingNameById,
   methods,
   payment,
   onChanged,
@@ -108,6 +111,7 @@ function PaymentForm({
   condominiumId: string;
   session: Session;
   units: Unit[];
+  buildingNameById: Record<string, string>;
   methods: PaymentMethod[];
   payment?: Payment;
   onChanged: (message: string) => Promise<void>;
@@ -160,7 +164,12 @@ function PaymentForm({
             <option value="">Seleccionar unidad</option>
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
-                {unit.code}
+                {unitReferenceLabel({
+                  code: unit.code,
+                  buildingName: unit.building_id
+                    ? (buildingNameById[unit.building_id] ?? null)
+                    : null,
+                })}
               </option>
             ))}
           </Select>
@@ -693,6 +702,7 @@ export function PaymentsDrawerHost({
   condominiumId,
   session,
   units,
+  buildingNameById,
   methods,
   receivables,
   drawer,
@@ -769,6 +779,7 @@ export function PaymentsDrawerHost({
     >
       <PaymentForm
         {...(payment ? { payment } : {})}
+        buildingNameById={buildingNameById}
         condominiumId={condominiumId}
         methods={methods}
         onChanged={onChanged}
