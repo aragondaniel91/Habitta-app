@@ -1,3 +1,5 @@
+import { unitReferenceLabel } from './unit-domain';
+
 export type AnnouncementPriority = 'normal' | 'important' | 'urgent';
 export type AnnouncementStatus = 'draft' | 'scheduled' | 'published' | 'archived';
 export type AnnouncementAudience =
@@ -155,7 +157,8 @@ export const filterAnnouncements = (
       if (!query) return true;
       const building = buildings.find((candidate) => candidate.id === item.building_id);
       const unit = units.find((candidate) => candidate.id === item.unit_id);
-      return [item.title, item.summary, item.body, building?.name, unit?.code]
+      const unitBuilding = buildings.find((candidate) => candidate.id === unit?.building_id);
+      return [item.title, item.summary, item.body, building?.name, unit?.code, unitBuilding?.name]
         .filter(Boolean)
         .join(' ')
         .toLocaleLowerCase('es')
@@ -191,7 +194,10 @@ export const getAudienceDetail = (
   }
   if (announcement.audience === 'unit') {
     const unit = units.find((item) => item.id === announcement.unit_id);
-    return unit ? `Unidad ${unit.code}` : 'Unidad';
+    const building = buildings.find((item) => item.id === unit?.building_id);
+    return unit
+      ? unitReferenceLabel({ code: unit.code, buildingName: building?.name ?? null })
+      : 'Unidad';
   }
   return audienceLabels[announcement.audience];
 };

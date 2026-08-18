@@ -73,7 +73,7 @@ describe('announcement workspace helpers', () => {
         [],
         [{ id: 'unit-1', code: '4B', building_id: null, status: 'active' }],
       ),
-    ).toBe('Unidad 4B');
+    ).toBe('4B');
     expect(
       getRecipientStats([
         {
