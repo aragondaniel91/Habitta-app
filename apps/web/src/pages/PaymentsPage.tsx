@@ -616,6 +616,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
         receivables={data.receivables}
         session={session}
         units={data.units}
+        buildingNameById={buildingNameById}
       />
     </div>
   );
