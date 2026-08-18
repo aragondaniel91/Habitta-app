@@ -13,14 +13,26 @@ const policySource = readFileSync(
   new URL('./features/receivables/FinancialIntegrityPanel.tsx', import.meta.url),
   'utf8',
 );
+const administrationSource = readFileSync(
+  new URL('./features/receivables/FinancialAdministrationDrawer.tsx', import.meta.url),
+  'utf8',
+);
 const wrapperSource = readFileSync(
   new URL('./pages/ReceivablesDrawers.tsx', import.meta.url),
   'utf8',
 );
 
 describe('HAB-186 unit financial account UI contract', () => {
-  it('replaces the legacy statement drawer with the authoritative unit account', () => {
-    expect(wrapperSource).toContain('AccountStatementDrawer');
+  it('routes the receivables entry point through a discoverable financial administration hub', () => {
+    expect(wrapperSource).toContain('FinancialAdministrationDrawer');
+    expect(administrationSource).toContain('Estado de cuenta, solvencia y propiedad');
+    expect(administrationSource).toContain('Política de moneda y solvencia');
+    expect(administrationSource).toContain('Configurar política financiera');
+    expect(administrationSource).toContain('Sin FX automático');
+  });
+
+  it('keeps the authoritative unit account available from the administration hub', () => {
+    expect(administrationSource).toContain('AccountStatementDrawer');
     expect(statementSource).toContain('/account-statement');
     expect(statementSource).toContain('/solvency?asOf=');
     expect(statementSource).toContain('/solvency-certificates');
@@ -36,6 +48,7 @@ describe('HAB-186 unit financial account UI contract', () => {
 
   it('makes property transfer an explicit effective-dated workflow', () => {
     expect(statementSource).toContain('<OwnershipTransferPanel');
+    expect(administrationSource).toMatch(/transferencia de\s+propiedad con fecha efectiva/);
     expect(transferSource).toContain('/ownership-transfers');
     expect(transferSource).toContain(
       'Las alícuotas de los nuevos propietarios deben sumar exactamente 100%.',
@@ -45,13 +58,19 @@ describe('HAB-186 unit financial account UI contract', () => {
   });
 
   it('keeps Venezuela currency policy provider-neutral and approval based', () => {
-    expect(statementSource).toContain('<FinancialIntegrityPanel');
+    expect(administrationSource).toContain('<FinancialIntegrityPanel');
     expect(policySource).toContain("'approved_rates_only'");
     expect(policySource).toContain("useState('BCV')");
     expect(policySource).toContain('el backend es neutral');
     expect(policySource).toContain('/exchange-rates');
     expect(policySource).not.toContain("fetch('https://");
     expect(policySource).not.toContain('/rest/v1/');
+  });
+
+  it('does not expose condominium policy mutation UI to non-managing roles', () => {
+    expect(administrationSource).toContain('const manage = canManage(roles)');
+    expect(administrationSource).toContain('{manage ? (');
+    expect(administrationSource).toContain('Configuración protegida');
   });
 
   it('exposes solvency issuance only after an eligible evaluation', () => {

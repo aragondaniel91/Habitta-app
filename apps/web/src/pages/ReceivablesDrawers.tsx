@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { AccountStatementDrawer } from '../features/receivables/AccountStatementDrawer';
+import { FinancialAdministrationDrawer } from '../features/receivables/FinancialAdministrationDrawer';
 import { ReceivablesDrawerHost as ReceivablesDrawerHostImpl } from './ReceivablesDrawersImpl';
 
 export type { ReceivablesDrawerMode } from './ReceivablesDrawersImpl';
@@ -19,7 +19,7 @@ export function ReceivablesDrawerHost({
 }: Props) {
   if (mode === 'statement') {
     return (
-      <AccountStatementDrawer
+      <FinancialAdministrationDrawer
         condominiumId={condominiumId}
         onClose={onClose}
         session={session}
