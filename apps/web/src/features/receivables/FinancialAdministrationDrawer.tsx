@@ -7,6 +7,8 @@ import type { ReceivableUnit } from '../../lib/receivables';
 import { canManage, useCondominiumRoles } from '../../lib/roles';
 import { AccountStatementDrawer } from './AccountStatementDrawer';
 import { FinancialIntegrityPanel } from './FinancialIntegrityPanel';
+import '../../account-statement.css';
+import '../../hab186-financial-integrity.css';
 
 type Props = {
   condominiumId: string;
