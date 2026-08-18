@@ -48,7 +48,7 @@ describe('HAB-186 unit financial account UI contract', () => {
 
   it('makes property transfer an explicit effective-dated workflow', () => {
     expect(statementSource).toContain('<OwnershipTransferPanel');
-    expect(administrationSource).toContain('transferencia de propiedad con fecha efectiva');
+    expect(administrationSource).toMatch(/transferencia de\s+propiedad con fecha efectiva/);
     expect(transferSource).toContain('/ownership-transfers');
     expect(transferSource).toContain(
       'Las alícuotas de los nuevos propietarios deben sumar exactamente 100%.',
