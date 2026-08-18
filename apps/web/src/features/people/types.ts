@@ -51,7 +51,11 @@ export type Occupancy = {
 };
 
 export type CondominiumRelationshipType =
-  'board_member' | 'administrator_contact' | 'representative' | 'emergency_contact' | 'other';
+  | 'board_member'
+  | 'administrator_contact'
+  | 'representative'
+  | 'emergency_contact'
+  | 'other';
 
 export type CondominiumRelationship = {
   id: string;
@@ -68,6 +72,19 @@ export type PersonRelationshipView = {
   ownerships: Ownership[];
   occupancies: Occupancy[];
   condominiumRelationships: CondominiumRelationship[];
+};
+
+export type PersonAdminNoteRevision = {
+  id: number;
+  action: 'saved' | 'cleared';
+  content: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type PersonAdminNotesView = {
+  authorized: boolean;
+  revisions: PersonAdminNoteRevision[];
 };
 
 export type Preview = { valid: unknown[]; errors: { row: number; error: string }[] };
