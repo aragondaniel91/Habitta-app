@@ -201,19 +201,27 @@ export const approvePaymentSchema = z
 export const openingBalancesSchema = z.object({
   rows: z
     .array(
-      z.object({
-        unit_code: z.string().trim().min(1),
-        unit_id: z.string().uuid().optional(),
-        building_name: z.string().trim().min(1).optional(),
-        balance_type: z.enum(['debit', 'credit']),
-        amount: money,
-        currency_code: z
-          .string()
-          .regex(/^[A-Za-z]{3}$/)
-          .transform((x) => x.toUpperCase()),
-        effective_date: z.string().date(),
-        description: z.string().optional(),
-      }),
+      z
+        .object({
+          unit_code: z.string().trim().min(1).optional(),
+          unit_id: z.string().uuid().optional(),
+          building_name: z.string().trim().min(1).optional(),
+          balance_type: z.enum(['debit', 'credit']),
+          amount: money,
+          currency_code: z
+            .string()
+            .regex(/^[A-Za-z]{3}$/)
+            .transform((x) => x.toUpperCase()),
+          effective_date: z.string().date(),
+          description: z.string().optional(),
+        })
+        .superRefine((row, context) => {
+          if (!row.unit_id && !row.unit_code)
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'unit_id or unit_code is required',
+            });
+        }),
     )
     .min(1),
   idempotencyKey: z.string().trim().min(1),
