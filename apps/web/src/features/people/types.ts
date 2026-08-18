@@ -70,4 +70,17 @@ export type PersonRelationshipView = {
   condominiumRelationships: CondominiumRelationship[];
 };
 
+export type PersonAdminNoteRevision = {
+  id: number;
+  action: 'saved' | 'cleared';
+  content: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type PersonAdminNotesView = {
+  authorized: boolean;
+  revisions: PersonAdminNoteRevision[];
+};
+
 export type Preview = { valid: unknown[]; errors: { row: number; error: string }[] };

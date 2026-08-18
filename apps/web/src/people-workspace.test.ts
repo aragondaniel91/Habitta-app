@@ -38,6 +38,14 @@ describe('HAB-211 live People workspace contract', () => {
     expect(workspaceSource).toContain('Se concederá acceso a');
   });
 
+  it('keeps administrative notes private and revision based in the live People profile', () => {
+    expect(workspaceSource).toContain('/admin-notes`');
+    expect(workspaceSource).toContain('/admin-notes/clear`');
+    expect(workspaceSource).toContain('Administración · privado');
+    expect(workspaceSource).toContain('Cada guardado crea una nueva revisión auditable');
+    expect(workspaceSource).toContain('Nunca guardes contraseñas, tokens, datos de tarjeta');
+  });
+
   it('uses shared confirmation dialogs for relationship and invitation lifecycle actions', () => {
     expect(workspaceSource).toContain('<ConfirmDialog');
     expect(workspaceSource).toContain('Cerrar relación activa');

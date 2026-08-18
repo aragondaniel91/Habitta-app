@@ -36,6 +36,8 @@ import type {
   Occupancy,
   Ownership,
   Person,
+  PersonAdminNoteRevision,
+  PersonAdminNotesView,
   PersonRelationshipView,
   Preview,
   Unit,
@@ -129,6 +131,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
   >([]);
   const [invitations, setInvitations] = useState<ResidentInvitation[]>([]);
   const [deliveryEvents, setDeliveryEvents] = useState<ResidentInvitationDeliveryEvent[]>([]);
+  const [adminNoteRevisions, setAdminNoteRevisions] = useState<PersonAdminNoteRevision[]>([]);
+  const [adminNotesAuthorized, setAdminNotesAuthorized] = useState(false);
+  const [adminNoteDraft, setAdminNoteDraft] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
@@ -182,13 +187,17 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
 
   const loadPersonContext = useCallback(
     async (personId: string) => {
-      const [view, invitationItems, deliveryItems] = await Promise.all([
+      const [view, invitationItems, deliveryItems, notesView] = await Promise.all([
         peopleApi<PersonRelationshipView>(
           `/v1/condominiums/${condominiumId}/people/${personId}/relationships`,
           session,
         ),
         listResidentInvitations(condominiumId, personId),
         listResidentInvitationDeliveryEvents(condominiumId, personId),
+        peopleApi<PersonAdminNotesView>(
+          `/v1/condominiums/${condominiumId}/people/${personId}/admin-notes`,
+          session,
+        ),
       ]);
       setSelected(view.person);
       setOwnerships(view.ownerships);
@@ -196,6 +205,12 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
       setCondominiumRelationships(view.condominiumRelationships);
       setInvitations(invitationItems);
       setDeliveryEvents(deliveryItems);
+      setAdminNotesAuthorized(notesView.authorized);
+      setAdminNoteRevisions(notesView.revisions);
+      const currentNote = notesView.revisions[0];
+      setAdminNoteDraft(
+        currentNote?.action === 'saved' && currentNote.content ? currentNote.content : '',
+      );
     },
     [condominiumId, session],
   );
@@ -211,6 +226,9 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     setCondominiumRelationships([]);
     setInvitations([]);
     setDeliveryEvents([]);
+    setAdminNoteRevisions([]);
+    setAdminNotesAuthorized(false);
+    setAdminNoteDraft('');
     setLatestInvitation(null);
     setPendingClose(null);
     setPendingRevoke(null);
@@ -524,6 +542,60 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
   const createInvitation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await issueInvitation(inviteRole, inviteUnitId);
+  };
+
+  const saveAdminNote = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selected || !adminNotesAuthorized) return;
+    const content = adminNoteDraft.trim();
+    if (!content) {
+      setError('Escribe una nota o usa “Limpiar nota” para conservar el cambio en el historial.');
+      return;
+    }
+    setBusyAction('admin-note');
+    setError('');
+    setMessage('');
+    try {
+      await peopleApi(
+        `/v1/condominiums/${condominiumId}/people/${selected.id}/admin-notes`,
+        session,
+        { method: 'POST', body: JSON.stringify({ content }) },
+      );
+      await loadPersonContext(selected.id);
+      setMessage('Nota administrativa guardada. La revisión anterior permanece en el historial.');
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo guardar la nota administrativa.',
+      );
+    } finally {
+      setBusyAction('');
+    }
+  };
+
+  const clearAdminNote = async () => {
+    if (!selected || !adminNotesAuthorized) return;
+    setBusyAction('clear-admin-note');
+    setError('');
+    setMessage('');
+    try {
+      await peopleApi(
+        `/v1/condominiums/${condominiumId}/people/${selected.id}/admin-notes/clear`,
+        session,
+        { method: 'POST' },
+      );
+      await loadPersonContext(selected.id);
+      setMessage('Nota administrativa limpiada. El historial anterior se conserva.');
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo limpiar la nota administrativa.',
+      );
+    } finally {
+      setBusyAction('');
+    }
   };
 
   const confirmRevokeInvitation = async () => {
@@ -1060,6 +1132,64 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     ) : null}
                   </div>
                 </section>
+
+                {adminNotesAuthorized ? (
+                  <section className="people-section">
+                    <div className="people-section__heading">
+                      <div>
+                        <span className="people-kicker">Administración · privado</span>
+                        <h3>Notas internas</h3>
+                        <p>
+                          Solo personal autorizado para gestionar Personas puede ver estas notas.
+                          Nunca guardes contraseñas, tokens, datos de tarjeta ni otros secretos.
+                        </p>
+                      </div>
+                      <Badge tone="warning">Privado</Badge>
+                    </div>
+                    <form
+                      className="people-invitation-form"
+                      onSubmit={(event) => void saveAdminNote(event)}
+                    >
+                      <Field
+                        hint="Máximo 4.000 caracteres. Cada guardado crea una nueva revisión auditable."
+                        label="Nota administrativa"
+                      >
+                        <textarea
+                          className="input"
+                          maxLength={4000}
+                          onChange={(event) => setAdminNoteDraft(event.target.value)}
+                          placeholder="Ej. Preferencia de contacto, seguimiento administrativo o contexto operativo…"
+                          rows={5}
+                          value={adminNoteDraft}
+                        />
+                      </Field>
+                      <div className="people-access-summary" role="note">
+                        <span>Historial protegido</span>
+                        <strong>{adminNoteRevisions.length} revisiones</strong>
+                        <span>
+                          {adminNoteRevisions[0]
+                            ? `Último cambio ${formatDate(adminNoteRevisions[0].created_at)}`
+                            : 'Sin notas administrativas registradas'}
+                        </span>
+                      </div>
+                      <div className="people-invitation-history__actions">
+                        <Button disabled={busyAction === 'admin-note'} type="submit">
+                          {busyAction === 'admin-note' ? 'Guardando…' : 'Guardar nota'}
+                        </Button>
+                        {adminNoteRevisions[0]?.action === 'saved' ? (
+                          <Button
+                            disabled={busyAction === 'clear-admin-note'}
+                            onClick={() => void clearAdminNote()}
+                            type="button"
+                            variant="ghost"
+                          >
+                            {busyAction === 'clear-admin-note' ? 'Limpiando…' : 'Limpiar nota'}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </form>
+                  </section>
+                ) : null}
 
                 <section className="people-section people-access-section">
                   <div className="people-section__heading">
