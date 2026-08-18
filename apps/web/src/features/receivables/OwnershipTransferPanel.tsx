@@ -38,7 +38,7 @@ type Props = {
   currentOwners: OwnerSnapshot[];
   onTransferred: () => void;
   session: Session;
-  unitCode: string;
+  unitLabel: string;
   unitId: string;
 };
 
@@ -50,7 +50,7 @@ export function OwnershipTransferPanel({
   currentOwners,
   onTransferred,
   session,
-  unitCode,
+  unitLabel,
   unitId,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -165,7 +165,7 @@ export function OwnershipTransferPanel({
     <section className="ownership-transfer-panel">
       <div className="account-statement-section-heading">
         <div>
-          <strong>Propiedad de {unitCode}</strong>
+          <strong>Propiedad de {unitLabel}</strong>
           <span>
             La transferencia cambia propietarios y acceso, nunca mueve la deuda de la unidad.
           </span>
