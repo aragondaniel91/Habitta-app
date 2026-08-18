@@ -51,4 +51,25 @@ describe('receivables validation', () => {
         ],
       }).rows[0]!.currency_code,
     ).toBe('USD'));
+  it('accepts topology-safe opening-balance evidence', () =>
+    expect(
+      openingBalancesSchema.parse({
+        idempotencyKey: 'x',
+        rows: [
+          {
+            unit_id: '00000000-0000-0000-0000-000000000001',
+            building_name: 'Torre II',
+            unit_code: '1-A',
+            balance_type: 'debit',
+            amount: '1.20',
+            currency_code: 'usd',
+            effective_date: '2026-07-01',
+          },
+        ],
+      }).rows[0],
+    ).toMatchObject({
+      unit_id: '00000000-0000-0000-0000-000000000001',
+      building_name: 'Torre II',
+      currency_code: 'USD',
+    }));
 });

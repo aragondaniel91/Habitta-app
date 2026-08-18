@@ -206,7 +206,7 @@ export function sortReceivables(items: ReceivableItem[]) {
 export function parseOpeningBalancesCsv(csv: string) {
   const [headerLine, ...lines] = csv.trim().split(/\r?\n/);
   const headers = headerLine?.split(',').map((value) => value.trim()) ?? [];
-  const expected = [
+  const legacy = [
     'unit_code',
     'balance_type',
     'amount',
@@ -215,8 +215,11 @@ export function parseOpeningBalancesCsv(csv: string) {
     'description',
   ];
 
-  if (headers.join(',') !== expected.join(',')) {
-    throw new Error(`El archivo debe usar estos encabezados: ${expected.join(',')}`);
+  const topologySafe = ['building_name', ...legacy];
+  if (![legacy, topologySafe].some((expected) => headers.join(',') === expected.join(','))) {
+    throw new Error(
+      `El archivo debe usar estos encabezados: ${legacy.join(',')} o ${topologySafe.join(',')}`,
+    );
   }
 
   return lines

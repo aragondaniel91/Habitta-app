@@ -203,6 +203,8 @@ export const openingBalancesSchema = z.object({
     .array(
       z.object({
         unit_code: z.string().trim().min(1),
+        unit_id: z.string().uuid().optional(),
+        building_name: z.string().trim().min(1).optional(),
         balance_type: z.enum(['debit', 'credit']),
         amount: money,
         currency_code: z

@@ -712,8 +712,8 @@ export function ReceivablesDrawerHost({
         <div>
           <strong>Archivo CSV controlado</strong>
           <p>
-            Usa los encabezados: unit_code, balance_type, amount, currency_code, effective_date,
-            description.
+            Usa unit_code, balance_type, amount, currency_code, effective_date, description. Si el
+            código se repite entre edificios, usa building_name antes de unit_code.
           </p>
         </div>
       </div>
