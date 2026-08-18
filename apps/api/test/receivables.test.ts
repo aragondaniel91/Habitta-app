@@ -51,4 +51,70 @@ describe('receivables validation', () => {
         ],
       }).rows[0]!.currency_code,
     ).toBe('USD'));
+  it('accepts topology-safe opening-balance evidence', () =>
+    expect(
+      openingBalancesSchema.parse({
+        idempotencyKey: 'x',
+        rows: [
+          {
+            unit_id: '00000000-0000-0000-0000-000000000001',
+            building_name: 'Torre II',
+            unit_code: '1-A',
+            balance_type: 'debit',
+            amount: '1.20',
+            currency_code: 'usd',
+            effective_date: '2026-07-01',
+          },
+        ],
+      }).rows[0],
+    ).toMatchObject({
+      unit_id: '00000000-0000-0000-0000-000000000001',
+      building_name: 'Torre II',
+      currency_code: 'USD',
+    }));
+  it('accepts unit_id-only opening balances', () =>
+    expect(
+      openingBalancesSchema.safeParse({
+        idempotencyKey: 'x',
+        rows: [
+          {
+            unit_id: '00000000-0000-0000-0000-000000000001',
+            balance_type: 'debit',
+            amount: '1.20',
+            currency_code: 'USD',
+            effective_date: '2026-07-01',
+          },
+        ],
+      }).success,
+    ).toBe(true));
+  it('rejects rows without a resolvable unit identity', () =>
+    expect(
+      openingBalancesSchema.safeParse({
+        idempotencyKey: 'x',
+        rows: [
+          {
+            building_name: 'Torre II',
+            balance_type: 'debit',
+            amount: '1.20',
+            currency_code: 'USD',
+            effective_date: '2026-07-01',
+          },
+        ],
+      }).success,
+    ).toBe(false));
+  it('continues to accept legacy unit_code-only rows', () =>
+    expect(
+      openingBalancesSchema.safeParse({
+        idempotencyKey: 'x',
+        rows: [
+          {
+            unit_code: 'A-1',
+            balance_type: 'debit',
+            amount: '1.20',
+            currency_code: 'USD',
+            effective_date: '2026-07-01',
+          },
+        ],
+      }).success,
+    ).toBe(true));
 });

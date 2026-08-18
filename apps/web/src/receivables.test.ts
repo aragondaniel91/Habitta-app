@@ -147,4 +147,10 @@ describe('receivables helpers', () => {
       },
     ]);
   });
+  it('preserves building context in topology-safe CSVs', () =>
+    expect(
+      parseOpeningBalancesCsv(
+        'building_name,unit_code,balance_type,amount,currency_code,effective_date,description\nTorre II,1-A,debit,25.00,USD,2026-01-01,Saldo anterior',
+      )[0],
+    ).toMatchObject({ building_name: 'Torre II', unit_code: '1-A' }));
 });
