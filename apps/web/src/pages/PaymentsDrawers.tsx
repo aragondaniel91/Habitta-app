@@ -34,6 +34,7 @@ type Props = {
   condominiumId: string;
   session: Session;
   units: Unit[];
+  buildingNameById: Record<string, string>;
   methods: PaymentMethod[];
   receivables: Receivable[];
   drawer: PaymentsDrawerMode;
@@ -111,7 +112,6 @@ function PaymentForm({
   session: Session;
   units: Unit[];
   buildingNameById: Record<string, string>;
-  buildingNameById: Record<string, string>;
   methods: PaymentMethod[];
   payment?: Payment;
   onChanged: (message: string) => Promise<void>;
@@ -166,7 +166,9 @@ function PaymentForm({
               <option key={unit.id} value={unit.id}>
                 {unitReferenceLabel({
                   code: unit.code,
-                  buildingName: unit.building_id ? buildingNameById[unit.building_id] : null,
+                  buildingName: unit.building_id
+                    ? (buildingNameById[unit.building_id] ?? null)
+                    : null,
                 })}
               </option>
             ))}

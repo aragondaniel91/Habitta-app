@@ -88,7 +88,9 @@ export function PaymentCaptureDrawer({
                 <option key={unit.id} value={unit.id}>
                   {unitReferenceLabel({
                     code: unit.code,
-                    buildingName: unit.building_id ? buildingNameById[unit.building_id] : null,
+                    buildingName: unit.building_id
+                      ? (buildingNameById[unit.building_id] ?? null)
+                      : null,
                   })}
                 </option>
               ))}

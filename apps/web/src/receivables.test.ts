@@ -16,8 +16,8 @@ import type {
 } from './lib/receivables';
 
 const units: ReceivableUnit[] = [
-  { id: 'unit-a', code: 'A-101', status: 'active' },
-  { id: 'unit-b', code: 'B-202', status: 'active' },
+  { id: 'unit-a', code: 'A-101', building_id: null, status: 'active' },
+  { id: 'unit-b', code: 'B-202', building_id: null, status: 'active' },
 ];
 
 const concepts: ChargeConcept[] = [
