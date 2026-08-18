@@ -1,3 +1,5 @@
+import { unitReferenceLabel } from './unit-domain';
+
 export type MaintenanceAssetStatus = 'active' | 'out_of_service' | 'retired';
 export type MaintenancePlanKind = 'preventive' | 'inspection';
 export type MaintenanceFrequencyUnit = 'days' | 'weeks' | 'months' | 'years';
@@ -85,7 +87,12 @@ export type MaintenanceServiceLog = {
   created_at: string;
 };
 
-export type MaintenanceLocation = { id: string; name?: string; code?: string };
+export type MaintenanceLocation = {
+  id: string;
+  name?: string;
+  code?: string;
+  building_id?: string | null;
+};
 export type MaintenanceVendor = { id: string; name: string; is_active: boolean };
 
 export const assetStatusLabels: Record<MaintenanceAssetStatus, string> = {
@@ -151,7 +158,10 @@ export function maintenanceLocationLabel(
   }
   if (asset.unit_id) {
     const unit = units.find((item) => item.id === asset.unit_id);
-    return unit?.code ?? unit?.name ?? 'Unidad asignada';
+    const building = buildings.find((item) => item.id === unit?.building_id);
+    return unit?.code
+      ? unitReferenceLabel({ code: unit.code, buildingName: building?.name ?? null })
+      : (unit?.name ?? 'Unidad asignada');
   }
   return asset.location_notes || 'Área común';
 }

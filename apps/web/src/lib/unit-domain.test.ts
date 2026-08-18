@@ -3,6 +3,7 @@ import {
   allowedUnitTypes,
   defaultUnitType,
   isUnitTypeAllowed,
+  supportsBuildingStructure,
   unitReferenceLabel,
   unitTypeOptions,
 } from './unit-domain';
@@ -34,6 +35,14 @@ describe('HAB-209 topology-aware unit domain', () => {
     expect(allowedUnitTypes('mixed')).toHaveLength(5);
     expect(allowedUnitTypes('unspecified')).toHaveLength(5);
     expect(unitTypeOptions('mixed').map(([value]) => value)).toContain('house');
+  });
+
+  it('only hides building structure for house communities', () => {
+    expect(supportsBuildingStructure('house_community')).toBe(false);
+    expect(supportsBuildingStructure('unspecified')).toBe(true);
+    expect(supportsBuildingStructure('single_building')).toBe(true);
+    expect(supportsBuildingStructure('multi_building_complex')).toBe(true);
+    expect(supportsBuildingStructure('mixed')).toBe(true);
   });
 
   it('disambiguates repeated human unit codes with building context', () => {

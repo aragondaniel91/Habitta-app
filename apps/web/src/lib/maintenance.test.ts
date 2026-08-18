@@ -131,8 +131,12 @@ describe('maintenance workspace helpers', () => {
       ),
     ).toBe('Torre A');
     expect(
-      maintenanceLocationLabel(asset({ unit_id: 'unit-1' }), [], [{ id: 'unit-1', code: 'A-101' }]),
-    ).toBe('A-101');
+      maintenanceLocationLabel(
+        asset({ unit_id: 'unit-1' }),
+        [{ id: 'building-1', name: 'Torre A' }],
+        [{ id: 'unit-1', code: 'A-101', building_id: 'building-1' }],
+      ),
+    ).toBe('Torre A · A-101');
     expect(maintenanceLocationLabel(asset(), [], [])).toBe('Cuarto de bombas');
   });
 });
