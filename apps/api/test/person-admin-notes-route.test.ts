@@ -128,7 +128,8 @@ describe('HAB-217 private person notes API', () => {
       if (url.endsWith('/auth/v1/user')) return authenticatedUser();
       if (url.endsWith('/rest/v1/rpc/can_manage_people')) return Response.json(true);
       if (url.includes('/rest/v1/people?')) return Response.json([{ id: personId }]);
-      if (url.includes('/rest/v1/person_admin_note_revisions?')) return Response.json([noteRevision()]);
+      if (url.includes('/rest/v1/person_admin_note_revisions?'))
+        return Response.json([noteRevision()]);
       if (url.endsWith('/rest/v1/person_admin_note_revisions') && init?.method === 'POST') {
         postedBodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
         return Response.json([noteRevision('cleared')], { status: 201 });
