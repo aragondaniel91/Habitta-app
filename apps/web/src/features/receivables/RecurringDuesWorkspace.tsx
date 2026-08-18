@@ -7,6 +7,7 @@ import { Badge, Button, EmptyState, Field, Select, Surface } from '../../compone
 import { FeesIcon } from '../../components/icons';
 import { apiRequest } from '../../lib/api';
 import type { ChargeConcept } from '../../lib/receivables';
+import { unitReferenceLabel } from '../../lib/unit-domain';
 
 type Props = {
   condominiumId: string;
@@ -239,6 +240,11 @@ export function RecurringDuesWorkspace({
 
   const planById = useMemo(() => new Map(plans.map((plan) => [plan.id, plan])), [plans]);
   const scopeById = useMemo(() => new Map(scopes.map((scope) => [scope.id, scope])), [scopes]);
+  const buildingNameById = useMemo(
+    () => Object.fromEntries(buildings.map((building) => [building.id, building.name])),
+    [buildings],
+  );
+  const unitById = useMemo(() => new Map(units.map((unit) => [unit.id, unit])), [units]);
 
   const openPlanDrawer = () => {
     setPlanForm(initialPlanForm(concepts, activeScopes));
@@ -481,17 +487,29 @@ export function RecurringDuesWorkspace({
                       </div>
                       {expanded ? (
                         <div className="recurring-dues-allocation">
-                          {(run.distribution_snapshot ?? []).map((row) => (
-                            <div key={row.unit_id}>
-                              <span>{row.unit_code}</span>
-                              {row.participation_percentage ? (
-                                <small>Alícuota {row.participation_percentage}%</small>
-                              ) : (
-                                <small>Monto fijo</small>
-                              )}
-                              <strong>{money(row.amount, run.currency_code)}</strong>
-                            </div>
-                          ))}
+                          {(run.distribution_snapshot ?? []).map((row) => {
+                            const currentUnit = unitById.get(row.unit_id);
+                            const unitLabel = currentUnit
+                              ? unitReferenceLabel({
+                                  code: currentUnit.code,
+                                  buildingName: currentUnit.building_id
+                                    ? (buildingNameById[currentUnit.building_id] ?? null)
+                                    : null,
+                                })
+                              : row.unit_code || row.unit_id;
+
+                            return (
+                              <div key={row.unit_id}>
+                                <span>{unitLabel}</span>
+                                {row.participation_percentage ? (
+                                  <small>Alícuota {row.participation_percentage}%</small>
+                                ) : (
+                                  <small>Monto fijo</small>
+                                )}
+                                <strong>{money(row.amount, run.currency_code)}</strong>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : null}
                     </article>
@@ -718,7 +736,14 @@ export function RecurringDuesWorkspace({
                         }
                         type="checkbox"
                       />
-                      <span>{unit.code}</span>
+                      <span>
+                        {unitReferenceLabel({
+                          code: unit.code,
+                          buildingName: unit.building_id
+                            ? (buildingNameById[unit.building_id] ?? null)
+                            : null,
+                        })}
+                      </span>
                       <small>
                         {unit.ownership_percentage
                           ? `Alícuota ${unit.ownership_percentage}%`
