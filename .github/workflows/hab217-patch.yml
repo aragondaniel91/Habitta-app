@@ -25,11 +25,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: python scripts/hab217_patch_people.py
       - run: pnpm format
-      - name: Commit wiring
+      - name: Commit wiring and formatting
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/web/src/features/people/PeoplePanel.tsx apps/web/src/people-workspace.test.ts
+          git add \
+            apps/api/src/operations-routes.ts \
+            apps/api/src/person-admin-note-routes.ts \
+            apps/api/test/person-admin-notes-route.test.ts \
+            apps/web/src/features/people/PeoplePanel.tsx \
+            apps/web/src/features/people/admin-notes.ts \
+            apps/web/src/features/people/admin-notes.test.ts \
+            apps/web/src/features/people/types.ts \
+            apps/web/src/people-workspace.test.ts
           if git diff --cached --quiet; then
             echo "No changes required."
             exit 0
