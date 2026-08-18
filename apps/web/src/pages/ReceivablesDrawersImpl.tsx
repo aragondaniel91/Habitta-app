@@ -61,6 +61,7 @@ type Props = {
   selectedCurrency: string;
   selectedReceivable?: ReceivableItem;
   units: ReceivableUnit[];
+  buildingNameById: Record<string, string>;
   concepts: ChargeConcept[];
   onClose: () => void;
   onRefresh: () => Promise<void>;

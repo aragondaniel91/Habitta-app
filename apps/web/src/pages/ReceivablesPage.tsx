@@ -642,6 +642,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       ) : null}
 
       <ReceivablesDrawerHost
+        buildingNameById={buildingNameById}
         concepts={data.concepts}
         condominiumId={condominiumId}
         mode={drawer}
