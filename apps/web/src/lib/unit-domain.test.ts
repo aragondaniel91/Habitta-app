@@ -37,7 +37,8 @@ describe('HAB-209 topology-aware unit domain', () => {
   });
 
   it('disambiguates repeated human unit codes with building context', () => {
+    expect(unitReferenceLabel({ code: '1-A', buildingName: 'Torre I' })).toBe('Torre I · 1-A');
     expect(unitReferenceLabel({ code: '1-A', buildingName: 'Torre II' })).toBe('Torre II · 1-A');
-    expect(unitReferenceLabel({ code: '1-A' })).toBe('1-A');
+    expect(unitReferenceLabel({ code: 'PH-1', buildingName: null })).toBe('PH-1');
   });
 });
