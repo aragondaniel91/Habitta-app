@@ -66,8 +66,8 @@ export function FinancialAdministrationDrawer({ condominiumId, session, units, o
               <div>
                 <strong>¿Qué necesitas administrar?</strong>
                 <span>
-                  Los saldos permanecen separados por moneda y la cuenta financiera siempre pertenece
-                  a la unidad, incluso cuando cambia de propietario.
+                  Los saldos permanecen separados por moneda y la cuenta financiera siempre
+                  pertenece a la unidad, incluso cuando cambia de propietario.
                 </span>
               </div>
             </div>
@@ -90,9 +90,7 @@ export function FinancialAdministrationDrawer({ condominiumId, session, units, o
                   </div>
                   <ReportsIcon size={22} />
                 </div>
-                <Button onClick={() => setView('statement')}>
-                  Consultar unidad
-                </Button>
+                <Button onClick={() => setView('statement')}>Consultar unidad</Button>
               </Surface>
 
               {manage ? (
@@ -122,14 +120,16 @@ export function FinancialAdministrationDrawer({ condominiumId, session, units, o
                     <span className="receivables-kicker">Política financiera</span>
                     <h2>Configuración protegida</h2>
                     <p>
-                      Tu rol puede consultar la cuenta de las unidades habilitadas, pero no modificar
-                      monedas, tasas aprobadas ni criterios de solvencia.
+                      Tu rol puede consultar la cuenta de las unidades habilitadas, pero no
+                      modificar monedas, tasas aprobadas ni criterios de solvencia.
                     </p>
                   </div>
                   <div className="account-statement-section-heading">
                     <div>
                       <strong>Solo roles de gestión</strong>
-                      <span>Los permisos del backend y RLS siguen siendo la frontera efectiva.</span>
+                      <span>
+                        Los permisos del backend y RLS siguen siendo la frontera efectiva.
+                      </span>
                     </div>
                     <FeesIcon size={22} />
                   </div>
