@@ -1,15 +1,15 @@
 name: HAB-217 Wire People Once
 
 on:
-  push:
-    branches: [feat/hab-217-private-person-notes]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   wire:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'feat/hab-217-private-person-notes' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
