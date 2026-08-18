@@ -14,12 +14,19 @@ type Props = {
   condominiumId: string;
   session: Session;
   units: ReceivableUnit[];
+  buildingNameById: Record<string, string>;
   onClose: () => void;
 };
 
 type AdministrationView = 'overview' | 'statement' | 'policy';
 
-export function FinancialAdministrationDrawer({ condominiumId, session, units, onClose }: Props) {
+export function FinancialAdministrationDrawer({
+  condominiumId,
+  session,
+  units,
+  buildingNameById,
+  onClose,
+}: Props) {
   const roles = useCondominiumRoles();
   const manage = canManage(roles);
   const [view, setView] = useState<AdministrationView>('overview');
@@ -27,6 +34,7 @@ export function FinancialAdministrationDrawer({ condominiumId, session, units, o
   if (view === 'statement') {
     return (
       <AccountStatementDrawer
+        buildingNameById={buildingNameById}
         condominiumId={condominiumId}
         onClose={() => setView('overview')}
         session={session}

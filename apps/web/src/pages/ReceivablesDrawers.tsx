@@ -20,6 +20,7 @@ export function ReceivablesDrawerHost({
   if (mode === 'statement') {
     return (
       <FinancialAdministrationDrawer
+        buildingNameById={props.buildingNameById}
         condominiumId={condominiumId}
         onClose={onClose}
         session={session}

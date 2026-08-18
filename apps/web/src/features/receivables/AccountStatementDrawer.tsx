@@ -82,6 +82,7 @@ type Props = {
   condominiumId: string;
   session: Session;
   units: ReceivableUnit[];
+  buildingNameById: Record<string, string>;
   onClose: () => void;
 };
 
