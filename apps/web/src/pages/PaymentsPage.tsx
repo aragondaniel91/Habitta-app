@@ -33,10 +33,12 @@ import type { PaymentFilters } from '../lib/payments';
 import { PaymentsDrawerHost, type PaymentsDrawerMode } from './PaymentsDrawers';
 import '../payments.css';
 
-type Unit = { id: string; code: string; status?: string };
+type Unit = { id: string; code: string; building_id: string | null; status?: string };
+type Building = { id: string; name: string };
 
 type PaymentsData = {
   units: Unit[];
+  buildings: Building[];
   methods: PaymentMethod[];
   payments: Payment[];
   receivables: Receivable[];
@@ -152,17 +154,24 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
             }
             throw requestError;
           });
-        const [units, methods, payments, receivables, reviewQueueResult] = await Promise.all([
-          apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-          apiRequest<PaymentMethod[]>(`/v1/condominiums/${condominiumId}/payment-methods`, session),
-          apiRequest<Payment[]>(`/v1/condominiums/${condominiumId}/payments`, session),
-          apiRequest<Receivable[]>(`/v1/condominiums/${condominiumId}/receivables`, session).catch(
-            () => [],
-          ),
-          reviewQueuePromise,
-        ]);
+        const [units, buildings, methods, payments, receivables, reviewQueueResult] =
+          await Promise.all([
+            apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
+            apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+            apiRequest<PaymentMethod[]>(
+              `/v1/condominiums/${condominiumId}/payment-methods`,
+              session,
+            ),
+            apiRequest<Payment[]>(`/v1/condominiums/${condominiumId}/payments`, session),
+            apiRequest<Receivable[]>(
+              `/v1/condominiums/${condominiumId}/receivables`,
+              session,
+            ).catch(() => []),
+            reviewQueuePromise,
+          ]);
         setData({
           units,
+          buildings,
           methods,
           payments,
           receivables,
@@ -193,6 +202,11 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   const currencies = useMemo(
     () => (data ? getPaymentCurrencies(data.payments, data.methods) : []),
     [data],
+  );
+  const buildingNameById = useMemo(
+    () =>
+      Object.fromEntries((data?.buildings ?? []).map((building) => [building.id, building.name])),
+    [data?.buildings],
   );
 
   useEffect(() => {
@@ -589,6 +603,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           onDraftCreated={() => load(true)}
           session={session}
           units={data.units}
+          buildingNameById={buildingNameById}
         />
       ) : null}
 

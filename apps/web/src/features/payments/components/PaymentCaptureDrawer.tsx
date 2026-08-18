@@ -5,6 +5,7 @@ import { Drawer } from '../../../components/Drawer';
 import { Button, Field, Select } from '../../../components/ui';
 import '../../../financial-capture.css';
 import { paymentApi } from '../api';
+import { unitReferenceLabel } from '../../../lib/unit-domain';
 import type { Payment, PaymentMethod } from '../types';
 import { PaymentProofUploader } from './PaymentProofUploader';
 
@@ -12,6 +13,7 @@ export function PaymentCaptureDrawer({
   condominiumId,
   session,
   units,
+  buildingNameById,
   methods,
   onClose,
   onDraftCreated,
@@ -19,7 +21,8 @@ export function PaymentCaptureDrawer({
 }: {
   condominiumId: string;
   session: Session;
-  units: { id: string; code: string }[];
+  units: { id: string; code: string; building_id?: string | null }[];
+  buildingNameById: Record<string, string>;
   methods: PaymentMethod[];
   onClose: () => void;
   onDraftCreated: () => Promise<void>;
@@ -83,7 +86,10 @@ export function PaymentCaptureDrawer({
               <option value="">Seleccionar unidad</option>
               {units.map((unit) => (
                 <option key={unit.id} value={unit.id}>
-                  {unit.code}
+                  {unitReferenceLabel({
+                    code: unit.code,
+                    buildingName: unit.building_id ? buildingNameById[unit.building_id] : null,
+                  })}
                 </option>
               ))}
             </Select>
