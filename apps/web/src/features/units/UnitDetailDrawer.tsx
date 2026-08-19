@@ -1,5 +1,5 @@
 import { Drawer } from '../../components/Drawer';
-import { Badge } from '../../components/ui';
+import { Badge, Button } from '../../components/ui';
 import { UNIT_TYPE_LABELS, unitReferenceLabel } from '../../lib/unit-domain';
 import type { DirectoryOccupancy, DirectoryOwner, DirectoryUnit } from './types';
 
@@ -16,13 +16,41 @@ const personName = (person: { firstName: string; lastName: string }) =>
 const percentage = (value: DirectoryOwner['ownershipPercentage']) =>
   value === null || value === '' ? 'No definida' : `${Number(value).toLocaleString('es-VE')}%`;
 
-export function UnitDetailDrawer({ unit, onClose }: { unit: DirectoryUnit; onClose: () => void }) {
+export function UnitDetailDrawer({
+  unit,
+  onClose,
+  canMutate,
+  onEdit,
+  onArchive,
+}: {
+  unit: DirectoryUnit;
+  onClose: () => void;
+  canMutate: boolean;
+  onEdit: () => void;
+  onArchive: () => void;
+}) {
   return (
     <Drawer
       eyebrow="Unidad"
       onClose={onClose}
       prefix="units-v2"
       title={unitReferenceLabel({ code: unit.code, buildingName: unit.building?.name ?? null })}
+      headerActions={
+        canMutate ? (
+          <>
+            <Button onClick={onEdit} size="sm" variant="secondary">
+              Editar
+            </Button>
+            <Button
+              onClick={onArchive}
+              size="sm"
+              variant={unit.status === 'active' ? 'danger' : 'secondary'}
+            >
+              {unit.status === 'active' ? 'Archivar' : 'Reactivar'}
+            </Button>
+          </>
+        ) : undefined
+      }
     >
       <div className="units-v2-detail">
         <section>

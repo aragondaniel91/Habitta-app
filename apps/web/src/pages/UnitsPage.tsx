@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { ConfirmDialog } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
 import { UnitDetailDrawer } from '../features/units/UnitDetailDrawer';
+import { UnitEditor } from '../features/units/UnitEditor';
+import type { UnitEditorInput } from '../features/units/UnitEditor';
 import type { CondominiumProfile, DirectoryUnit, UnitsDirectory } from '../features/units/types';
 import { apiRequest } from '../lib/api';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import {
   supportsBuildingStructure,
   UNIT_TYPE_LABELS,
@@ -14,7 +18,12 @@ import {
 import type { PropertyTopology, UnitType } from '../lib/unit-domain';
 import '../units-v2.css';
 
-type Props = { condominiumId: string; condominiumName: string; session: Session };
+type Props = {
+  condominiumId: string;
+  condominiumName: string;
+  session: Session;
+  onConfigureStructure?: () => void;
+};
 type StatusFilter = 'all' | 'active' | 'inactive';
 type BuildingFilter = 'all' | string;
 
@@ -32,7 +41,13 @@ const topologyGuidance: Record<PropertyTopology, string | null> = {
   mixed: null,
 };
 
-export function UnitsPage({ condominiumId, condominiumName, session }: Props) {
+export function UnitsPage({
+  condominiumId,
+  condominiumName,
+  session,
+  onConfigureStructure,
+}: Props) {
+  const canMutate = canManage(useCondominiumRoles());
   const [profile, setProfile] = useState<CondominiumProfile | null>(null);
   const [units, setUnits] = useState<DirectoryUnit[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +57,12 @@ export function UnitsPage({ condominiumId, condominiumName, session }: Props) {
   const [type, setType] = useState<'all' | UnitType>('all');
   const [building, setBuilding] = useState<BuildingFilter>('all');
   const [selectedUnit, setSelectedUnit] = useState<DirectoryUnit | null>(null);
+  const [editor, setEditor] = useState<{
+    mode: 'create' | 'edit';
+    unit: DirectoryUnit | null;
+  } | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<DirectoryUnit | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -110,16 +131,70 @@ export function UnitsPage({ condominiumId, condominiumName, session }: Props) {
     });
   }, [building, search, status, type, units]);
   const activeUnits = units.filter((unit) => unit.status === 'active').length;
+  const buildings = buildingOptions.map(([id, name]) => ({ id, name }));
+  const singleBuildingReady = topology !== 'single_building' || buildings.length === 1;
+  const canCreate = canMutate && topology !== 'unspecified' && singleBuildingReady;
+  const refreshDirectory = async () => {
+    const directory = await apiRequest<UnitsDirectory>(
+      `/v1/condominiums/${condominiumId}/units-directory`,
+      session,
+    );
+    setUnits(directory.units);
+  };
+  const saveUnit = async (input: UnitEditorInput) => {
+    if (!editor) return;
+    setSaving(true);
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/units${editor.mode === 'edit' ? `/${editor.unit?.id}` : ''}`,
+        session,
+        { method: editor.mode === 'edit' ? 'PATCH' : 'POST', body: JSON.stringify(input) },
+      );
+      await refreshDirectory();
+      setEditor(null);
+      setSelectedUnit(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se pudo guardar la unidad.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const setUnitStatus = async (unit: DirectoryUnit, status: 'active' | 'inactive') => {
+    setSaving(true);
+    try {
+      await apiRequest(`/v1/condominiums/${condominiumId}/units/${unit.id}`, session, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      await refreshDirectory();
+      setArchiveTarget(null);
+      setSelectedUnit(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se pudo actualizar el estado.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="units-v2-page">
       <PageHeader
         actions={
           <>
-            <Button disabled title="El editor canónico se incorpora en el siguiente hito">
+            <Button
+              disabled={!canCreate}
+              onClick={() => setEditor({ mode: 'create', unit: null })}
+              title={
+                !singleBuildingReady
+                  ? 'Configura exactamente un edificio antes de registrar unidades.'
+                  : undefined
+              }
+            >
               {topology === 'house_community' ? 'Nueva casa' : 'Nueva unidad'}
             </Button>
-            <Button variant="secondary">Configurar estructura</Button>
+            <Button onClick={onConfigureStructure} variant="secondary">
+              {topology === 'unspecified' ? 'Definir tipo de propiedad' : 'Configurar estructura'}
+            </Button>
           </>
         }
         description={`Inventario físico, propiedad y ocupación de ${condominiumName}.`}
@@ -129,6 +204,12 @@ export function UnitsPage({ condominiumId, condominiumName, session }: Props) {
       {topologyGuidance[topology] ? (
         <Surface className="units-v2-guidance">
           <strong>Estructura pendiente de definir.</strong> {topologyGuidance[topology]}
+        </Surface>
+      ) : null}
+      {topology === 'single_building' && !singleBuildingReady ? (
+        <Surface className="units-v2-guidance">
+          <strong>Edificio pendiente.</strong> Un edificio residencial requiere exactamente un
+          edificio configurado antes de crear unidades.
         </Surface>
       ) : null}
       {loading ? (
@@ -246,7 +327,40 @@ export function UnitsPage({ condominiumId, condominiumName, session }: Props) {
         ) : null}
       </Surface>
       {selectedUnit ? (
-        <UnitDetailDrawer onClose={() => setSelectedUnit(null)} unit={selectedUnit} />
+        <UnitDetailDrawer
+          canMutate={canMutate}
+          onArchive={() =>
+            selectedUnit.status === 'active'
+              ? setArchiveTarget(selectedUnit)
+              : void setUnitStatus(selectedUnit, 'active')
+          }
+          onClose={() => setSelectedUnit(null)}
+          onEdit={() => setEditor({ mode: 'edit', unit: selectedUnit })}
+          unit={selectedUnit}
+        />
+      ) : null}
+      {editor ? (
+        <UnitEditor
+          buildings={buildings}
+          key={`${editor.mode}-${editor.unit?.id ?? 'new'}-${topology}`}
+          mode={editor.mode}
+          onClose={() => setEditor(null)}
+          onSave={saveUnit}
+          saving={saving}
+          topology={topology}
+          unit={editor.unit}
+        />
+      ) : null}
+      {archiveTarget ? (
+        <ConfirmDialog
+          busy={saving}
+          busyLabel="Archivando…"
+          confirmLabel="Archivar unidad"
+          description="Archivar esta unidad no elimina su historial. Habitta conservará pagos, cuotas, propietarios, ocupaciones y movimientos asociados."
+          onCancel={() => setArchiveTarget(null)}
+          onConfirm={() => void setUnitStatus(archiveTarget, 'inactive')}
+          title="¿Archivar esta unidad?"
+        />
       ) : null}
     </div>
   );

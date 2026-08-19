@@ -220,6 +220,26 @@ app.post('/v1/condominiums/:id/units', async (c) => {
   });
   return c.json(await r.json(), r.ok ? 201 : 400);
 });
+app.patch('/v1/condominiums/:id/units/:unitId', async (c) => {
+  const p = await body(c, unitInputSchema.partial());
+  if (p instanceof Response) return p;
+  const r = await rest(
+    c,
+    `units?id=eq.${uuidSchema.parse(c.req.param('unitId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        building_id: p.buildingId,
+        code: p.code,
+        type: p.type,
+        floor: p.floor,
+        ownership_percentage: p.ownershipPercentage,
+        status: p.status,
+      }),
+    },
+  );
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
 const list =
   (table: string, filter: string) =>
   async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
