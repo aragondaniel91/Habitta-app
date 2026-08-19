@@ -6,6 +6,8 @@ import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import { supportsBuildingStructure, unitReferenceLabel } from '../lib/unit-domain';
+import type { PropertyTopology } from '../lib/unit-domain';
 import {
   assetStatusLabels,
   filterMaintenanceAssets,
@@ -48,7 +50,9 @@ type WorkspaceData = {
   vendors: MaintenanceVendor[];
   buildings: MaintenanceLocation[];
   units: MaintenanceLocation[];
+  propertyTopology: PropertyTopology;
 };
+type CondominiumProfile = { property_topology?: PropertyTopology };
 
 const emptyData: WorkspaceData = {
   assets: [],
@@ -57,6 +61,7 @@ const emptyData: WorkspaceData = {
   vendors: [],
   buildings: [],
   units: [],
+  propertyTopology: 'unspecified',
 };
 
 const assetTone = (status: MaintenanceAssetStatus) => {
@@ -136,14 +141,21 @@ function AssetForm({
   session,
   buildings,
   units,
+  propertyTopology,
   onCreated,
 }: {
   condominiumId: string;
   session: Session;
   buildings: MaintenanceLocation[];
   units: MaintenanceLocation[];
+  propertyTopology: PropertyTopology;
   onCreated: (asset: MaintenanceAsset) => void;
 }) {
+  const buildingStructure = supportsBuildingStructure(propertyTopology);
+  const buildingNameById = useMemo(
+    () => Object.fromEntries(buildings.map((building) => [building.id, building.name])),
+    [buildings],
+  );
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
@@ -174,7 +186,7 @@ function AssetForm({
             code,
             name,
             category,
-            buildingId: locationType === 'building' ? buildingId : undefined,
+            buildingId: buildingStructure && locationType === 'building' ? buildingId : undefined,
             unitId: locationType === 'unit' ? unitId : undefined,
             locationNotes: locationNotes || undefined,
             manufacturer: manufacturer || undefined,
@@ -237,11 +249,11 @@ function AssetForm({
             value={locationType}
           >
             <option value="common">Área común</option>
-            <option value="building">Edificio o torre</option>
+            {buildingStructure ? <option value="building">Edificio o torre</option> : null}
             <option value="unit">Unidad</option>
           </Select>
         </Field>
-        {locationType === 'building' ? (
+        {buildingStructure && locationType === 'building' ? (
           <Field label="Edificio o torre">
             <Select
               onChange={(event) => setBuildingId(event.target.value)}
@@ -263,7 +275,14 @@ function AssetForm({
               <option value="">Selecciona</option>
               {units.map((unit) => (
                 <option key={unit.id} value={unit.id}>
-                  {unit.code ?? unit.name}
+                  {unit.code
+                    ? unitReferenceLabel({
+                        code: unit.code,
+                        buildingName: unit.building_id
+                          ? (buildingNameById[unit.building_id] ?? null)
+                          : null,
+                      })
+                    : unit.name}
                 </option>
               ))}
             </Select>
@@ -970,24 +989,37 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
     setLoading(true);
     setError('');
     try {
-      const [assets, plans, workOrders, vendors, buildings, units] = await Promise.all([
-        apiRequest<MaintenanceAsset[]>(
-          `/v1/condominiums/${condominiumId}/maintenance/assets`,
-          session,
-        ),
-        apiRequest<MaintenancePlan[]>(
-          `/v1/condominiums/${condominiumId}/maintenance/plans`,
-          session,
-        ),
-        apiRequest<MaintenanceWorkOrder[]>(
-          `/v1/condominiums/${condominiumId}/maintenance/work-orders`,
-          session,
-        ),
-        apiRequest<MaintenanceVendor[]>(`/v1/condominiums/${condominiumId}/vendors`, session),
-        apiRequest<MaintenanceLocation[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-        apiRequest<MaintenanceLocation[]>(`/v1/condominiums/${condominiumId}/units`, session),
-      ]);
-      setData({ assets, plans, workOrders, vendors, buildings, units });
+      const [assets, plans, workOrders, vendors, buildings, units, profileRows] = await Promise.all(
+        [
+          apiRequest<MaintenanceAsset[]>(
+            `/v1/condominiums/${condominiumId}/maintenance/assets`,
+            session,
+          ),
+          apiRequest<MaintenancePlan[]>(
+            `/v1/condominiums/${condominiumId}/maintenance/plans`,
+            session,
+          ),
+          apiRequest<MaintenanceWorkOrder[]>(
+            `/v1/condominiums/${condominiumId}/maintenance/work-orders`,
+            session,
+          ),
+          apiRequest<MaintenanceVendor[]>(`/v1/condominiums/${condominiumId}/vendors`, session),
+          apiRequest<MaintenanceLocation[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+          apiRequest<MaintenanceLocation[]>(`/v1/condominiums/${condominiumId}/units`, session),
+          apiRequest<CondominiumProfile[]>(`/v1/condominiums/${condominiumId}`, session).catch(
+            () => [],
+          ),
+        ],
+      );
+      setData({
+        assets,
+        plans,
+        workOrders,
+        vendors,
+        buildings,
+        units,
+        propertyTopology: profileRows[0]?.property_topology ?? 'unspecified',
+      });
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -1471,6 +1503,7 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
               setDrawer(null);
               setTab('assets');
             }}
+            propertyTopology={data.propertyTopology}
             session={session}
             units={data.units}
           />

@@ -35,6 +35,10 @@ export function isUnitTypeAllowed(topology: PropertyTopology, type: UnitType): b
   return allowedUnitTypes(topology).includes(type);
 }
 
+export function supportsBuildingStructure(topology: PropertyTopology): boolean {
+  return topology !== 'house_community';
+}
+
 export function unitReferenceLabel({
   code,
   buildingName,

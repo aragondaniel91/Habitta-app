@@ -12,6 +12,8 @@ import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import { supportsBuildingStructure, unitReferenceLabel } from '../lib/unit-domain';
+import type { PropertyTopology } from '../lib/unit-domain';
 import { canManage, useCondominiumRoles } from '../lib/roles';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
@@ -57,7 +59,9 @@ type WorkspaceData = {
   announcements: AnnouncementRecord[];
   buildings: AnnouncementBuilding[];
   units: AnnouncementUnit[];
+  propertyTopology: PropertyTopology;
 };
+type CondominiumProfile = { property_topology?: PropertyTopology };
 type DetailData = {
   recipients: AnnouncementRecipient[];
   events: AnnouncementEvent[];
@@ -196,6 +200,7 @@ function AudienceFields({
   setUnitId,
   buildings,
   units,
+  propertyTopology,
 }: {
   audience: AnnouncementAudience;
   setAudience: (value: AnnouncementAudience) => void;
@@ -205,7 +210,15 @@ function AudienceFields({
   setUnitId: (value: string) => void;
   buildings: AnnouncementBuilding[];
   units: AnnouncementUnit[];
+  propertyTopology: PropertyTopology;
 }) {
+  const buildingNameById = Object.fromEntries(
+    buildings.map((building) => [building.id, building.name]),
+  );
+  const availableAudiences = audiences.filter(
+    (item) =>
+      item !== 'building' || supportsBuildingStructure(propertyTopology) || audience === 'building',
+  );
   return (
     <>
       <Field label="Audiencia">
@@ -218,7 +231,7 @@ function AudienceFields({
           }}
           value={audience}
         >
-          {audiences.map((item) => (
+          {availableAudiences.map((item) => (
             <option key={item} value={item}>
               {audienceLabels[item]}
             </option>
@@ -249,7 +262,12 @@ function AudienceFields({
               .filter((item) => item.status === 'active')
               .map((item) => (
                 <option key={item.id} value={item.id}>
-                  Unidad {item.code}
+                  {unitReferenceLabel({
+                    code: item.code,
+                    buildingName: item.building_id
+                      ? (buildingNameById[item.building_id] ?? null)
+                      : null,
+                  })}
                 </option>
               ))}
           </Select>
@@ -264,6 +282,7 @@ function CreateAnnouncementDrawer({
   session,
   buildings,
   units,
+  propertyTopology,
   onClose,
   onCreated,
 }: {
@@ -271,6 +290,7 @@ function CreateAnnouncementDrawer({
   session: Session;
   buildings: AnnouncementBuilding[];
   units: AnnouncementUnit[];
+  propertyTopology: PropertyTopology;
   onClose: () => void;
   onCreated: (announcement: AnnouncementRecord) => void;
 }) {
@@ -378,6 +398,7 @@ function CreateAnnouncementDrawer({
             setUnitId={setUnitId}
             unitId={unitId}
             units={units}
+            propertyTopology={propertyTopology}
           />
           <Field label="Vence el" hint="Opcional. Debe ser posterior a la publicación.">
             <input
@@ -444,6 +465,7 @@ function AnnouncementDetailDrawer({
   session,
   buildings,
   units,
+  propertyTopology,
   onClose,
   onChanged,
 }: {
@@ -452,6 +474,7 @@ function AnnouncementDetailDrawer({
   session: Session;
   buildings: AnnouncementBuilding[];
   units: AnnouncementUnit[];
+  propertyTopology: PropertyTopology;
   onClose: () => void;
   onChanged: (announcement?: AnnouncementRecord) => Promise<void>;
 }) {
@@ -694,6 +717,7 @@ function AnnouncementDetailDrawer({
                 setUnitId={setUnitId}
                 unitId={unitId}
                 units={units}
+                propertyTopology={propertyTopology}
               />
               <Field label="Vence el">
                 <input
@@ -907,10 +931,11 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
     setError('');
     setWarning('');
     const base = `/v1/condominiums/${condominiumId}`;
-    const [announcements, buildings, units] = await Promise.allSettled([
+    const [announcements, buildings, units, profile] = await Promise.allSettled([
       apiRequest<AnnouncementRecord[]>(`${base}/announcements`, session),
       apiRequest<AnnouncementBuilding[]>(`${base}/buildings`, session),
       apiRequest<AnnouncementUnit[]>(`${base}/units`, session),
+      apiRequest<CondominiumProfile[]>(base, session),
     ]);
     if (announcements.status === 'rejected') {
       setError(
@@ -924,11 +949,16 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
     const degraded = [
       buildings.status === 'rejected' ? 'edificios' : '',
       units.status === 'rejected' ? 'unidades' : '',
+      profile.status === 'rejected' ? 'perfil del condominio' : '',
     ].filter(Boolean);
     setData({
       announcements: announcements.value,
       buildings: buildings.status === 'fulfilled' ? buildings.value : [],
       units: units.status === 'fulfilled' ? units.value : [],
+      propertyTopology:
+        profile.status === 'fulfilled'
+          ? (profile.value[0]?.property_topology ?? 'unspecified')
+          : 'unspecified',
     });
     if (degraded.length) setWarning(`No se pudieron actualizar: ${degraded.join(' y ')}.`);
     setLoading(false);
@@ -1142,6 +1172,7 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
           }}
           session={session}
           units={data.units}
+          propertyTopology={data.propertyTopology}
         />
       ) : null}
       {drawer === 'detail' && selected ? (
@@ -1153,6 +1184,7 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
           onClose={() => setDrawer(null)}
           session={session}
           units={data.units}
+          propertyTopology={data.propertyTopology}
         />
       ) : null}
     </div>
