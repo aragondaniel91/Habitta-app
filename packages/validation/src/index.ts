@@ -1,6 +1,56 @@
 import { z } from 'zod';
 
 export const uuidSchema = z.string().uuid();
+export const condominiumTopologyRemediationSchema = z
+  .object({
+    propertyTopology: z.enum([
+      'house_community',
+      'single_building',
+      'multi_building_complex',
+      'mixed',
+    ]),
+    declaredUnitCount: z.number().int().min(1).max(100000).nullable().optional(),
+    declaredBuildingCount: z.number().int().min(1).max(10000).nullable().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.propertyTopology === 'house_community') {
+      if (value.declaredUnitCount == null)
+        context.addIssue({
+          code: 'custom',
+          path: ['declaredUnitCount'],
+          message: 'Required for house communities',
+        });
+      if (value.declaredBuildingCount != null)
+        context.addIssue({
+          code: 'custom',
+          path: ['declaredBuildingCount'],
+          message: 'Not allowed for house communities',
+        });
+    }
+    if (value.propertyTopology === 'single_building') {
+      if (value.declaredUnitCount == null)
+        context.addIssue({
+          code: 'custom',
+          path: ['declaredUnitCount'],
+          message: 'Required for single buildings',
+        });
+      if (value.declaredBuildingCount != null && value.declaredBuildingCount !== 1)
+        context.addIssue({
+          code: 'custom',
+          path: ['declaredBuildingCount'],
+          message: 'Must be one when provided',
+        });
+    }
+    if (
+      value.propertyTopology === 'multi_building_complex' &&
+      (value.declaredBuildingCount == null || value.declaredBuildingCount < 2)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['declaredBuildingCount'],
+        message: 'At least two are required',
+      });
+  });
 export const tenantContextSchema = z.object({
   organizationId: uuidSchema,
   condominiumId: uuidSchema,
