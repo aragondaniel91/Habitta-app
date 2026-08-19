@@ -6,6 +6,7 @@ import { CheckCircleIcon, SettingsIcon, UnitsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
+import { useCondominiumRoles } from '../lib/roles';
 import {
   defaultUnitType,
   type PropertyTopology,
@@ -81,6 +82,7 @@ function StructureSkeleton() {
 }
 
 export function StructureManagementPage({ condominiumId, condominiumName, session }: Props) {
+  const roles = useCondominiumRoles();
   const [profile, setProfile] = useState<CondominiumProfile | null>(null);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -89,6 +91,12 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editor, setEditor] = useState<EditorState>(null);
+  const [remediating, setRemediating] = useState(false);
+  const [remediationTopology, setRemediationTopology] =
+    useState<Exclude<PropertyTopology, 'unspecified'>>('house_community');
+  const [remediationUnitCount, setRemediationUnitCount] = useState('');
+  const [remediationBuildingCount, setRemediationBuildingCount] = useState('');
+  const [remediationError, setRemediationError] = useState('');
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
   const topology = profile?.property_topology ?? 'unspecified';
@@ -98,6 +106,7 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
   const showBuildings = !houseMode;
   const canCreateBuilding = showBuildings && (!singleBuildingMode || buildings.length === 0);
   const availableUnitTypes = useMemo(() => unitTypeOptions(topology), [topology]);
+  const canRemediate = roles.includes('condominium_admin');
 
   const loadStructure = useCallback(async () => {
     setLoading(true);
@@ -244,6 +253,33 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
     }
   }
 
+  async function remediateTopology(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setRemediationError('');
+    const unitCount = remediationUnitCount ? Number(remediationUnitCount) : null;
+    const buildingCount = remediationBuildingCount ? Number(remediationBuildingCount) : null;
+    setSaving(true);
+    try {
+      await apiRequest(`/v1/condominiums/${condominiumId}/topology-remediation`, session, {
+        method: 'POST',
+        body: JSON.stringify({
+          propertyTopology: remediationTopology,
+          declaredUnitCount: unitCount,
+          declaredBuildingCount: buildingCount,
+        }),
+      });
+      await loadStructure();
+      setRemediating(false);
+      setMessage({ tone: 'success', text: 'El tipo de propiedad fue definido.' });
+    } catch (error) {
+      setRemediationError(
+        error instanceof Error ? error.message : 'No se pudo definir el tipo de propiedad.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading && !units.length && !buildings.length) return <StructureSkeleton />;
 
   const pageTitle = houseMode
@@ -293,6 +329,11 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
             >
               {newUnitLabel}
             </Button>
+            {topology === 'unspecified' && canRemediate ? (
+              <Button variant="secondary" onClick={() => setRemediating(true)}>
+                Definir tipo de propiedad
+              </Button>
+            ) : null}
           </>
         }
         description={`Organiza la estructura física de ${condominiumName}. Habitta adapta las opciones al tipo de propiedad definido durante el onboarding.`}
@@ -675,6 +716,93 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
               </DialogFooter>
             </form>
           )}
+        </Dialog>
+      ) : null}
+      {remediating ? (
+        <Dialog
+          closeDisabled={saving}
+          eyebrow="Remediación legacy"
+          onClose={() => setRemediating(false)}
+          size="md"
+          title="Definir tipo de propiedad"
+        >
+          <form onSubmit={(event) => void remediateTopology(event)}>
+            <DialogBody>
+              <Field label="Tipo de propiedad">
+                <Select
+                  value={remediationTopology}
+                  onChange={(event) =>
+                    setRemediationTopology(
+                      event.target.value as Exclude<PropertyTopology, 'unspecified'>,
+                    )
+                  }
+                >
+                  <option value="house_community">Conjunto de casas</option>
+                  <option value="single_building">Edificio residencial</option>
+                  <option value="multi_building_complex">Conjunto residencial</option>
+                  <option value="mixed">Estructura mixta</option>
+                </Select>
+              </Field>
+              {remediationTopology === 'house_community' ||
+              remediationTopology === 'single_building' ||
+              remediationTopology === 'mixed' ? (
+                <Field
+                  label={
+                    remediationTopology === 'house_community'
+                      ? 'Cantidad declarada de casas'
+                      : 'Cantidad declarada de unidades'
+                  }
+                >
+                  <input
+                    min={Math.max(1, units.length)}
+                    onChange={(event) => setRemediationUnitCount(event.target.value)}
+                    type="number"
+                    value={remediationUnitCount}
+                    required={remediationTopology !== 'mixed'}
+                  />
+                </Field>
+              ) : null}
+              {remediationTopology === 'multi_building_complex' ||
+              remediationTopology === 'mixed' ? (
+                <Field label="Cantidad declarada de edificios o torres">
+                  <input
+                    min={Math.max(2, buildings.length)}
+                    onChange={(event) => setRemediationBuildingCount(event.target.value)}
+                    type="number"
+                    value={remediationBuildingCount}
+                    required={remediationTopology === 'multi_building_complex'}
+                  />
+                </Field>
+              ) : null}
+              {remediationTopology === 'single_building' ? (
+                <div className="structure-form-note">
+                  {buildings.length === 0
+                    ? 'Después de guardar, configura el único edificio.'
+                    : buildings.length === 1
+                      ? 'Se conservará el edificio existente.'
+                      : 'La estructura actual es incompatible y no se modificará.'}
+                </div>
+              ) : null}
+              {remediationError ? (
+                <div className="structure-message" data-tone="error">
+                  {remediationError}
+                </div>
+              ) : null}
+            </DialogBody>
+            <DialogFooter>
+              <Button
+                disabled={saving}
+                onClick={() => setRemediating(false)}
+                type="button"
+                variant="secondary"
+              >
+                Cancelar
+              </Button>
+              <Button disabled={saving} type="submit">
+                {saving ? 'Guardando…' : 'Guardar tipo de propiedad'}
+              </Button>
+            </DialogFooter>
+          </form>
         </Dialog>
       ) : null}
     </div>
