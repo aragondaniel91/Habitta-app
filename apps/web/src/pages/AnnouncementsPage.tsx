@@ -935,7 +935,7 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
       apiRequest<AnnouncementRecord[]>(`${base}/announcements`, session),
       apiRequest<AnnouncementBuilding[]>(`${base}/buildings`, session),
       apiRequest<AnnouncementUnit[]>(`${base}/units`, session),
-      apiRequest<CondominiumProfile>(base, session),
+      apiRequest<CondominiumProfile[]>(base, session),
     ]);
     if (announcements.status === 'rejected') {
       setError(
@@ -957,7 +957,7 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
       units: units.status === 'fulfilled' ? units.value : [],
       propertyTopology:
         profile.status === 'fulfilled'
-          ? (profile.value.property_topology ?? 'unspecified')
+          ? (profile.value[0]?.property_topology ?? 'unspecified')
           : 'unspecified',
     });
     if (degraded.length) setWarning(`No se pudieron actualizar: ${degraded.join(' y ')}.`);

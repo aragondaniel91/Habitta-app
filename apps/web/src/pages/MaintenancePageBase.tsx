@@ -989,26 +989,28 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
     setLoading(true);
     setError('');
     try {
-      const [assets, plans, workOrders, vendors, buildings, units, profile] = await Promise.all([
-        apiRequest<MaintenanceAsset[]>(
-          `/v1/condominiums/${condominiumId}/maintenance/assets`,
-          session,
-        ),
-        apiRequest<MaintenancePlan[]>(
-          `/v1/condominiums/${condominiumId}/maintenance/plans`,
-          session,
-        ),
-        apiRequest<MaintenanceWorkOrder[]>(
-          `/v1/condominiums/${condominiumId}/maintenance/work-orders`,
-          session,
-        ),
-        apiRequest<MaintenanceVendor[]>(`/v1/condominiums/${condominiumId}/vendors`, session),
-        apiRequest<MaintenanceLocation[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-        apiRequest<MaintenanceLocation[]>(`/v1/condominiums/${condominiumId}/units`, session),
-        apiRequest<CondominiumProfile>(`/v1/condominiums/${condominiumId}`, session).catch(
-          () => null,
-        ),
-      ]);
+      const [assets, plans, workOrders, vendors, buildings, units, profileRows] = await Promise.all(
+        [
+          apiRequest<MaintenanceAsset[]>(
+            `/v1/condominiums/${condominiumId}/maintenance/assets`,
+            session,
+          ),
+          apiRequest<MaintenancePlan[]>(
+            `/v1/condominiums/${condominiumId}/maintenance/plans`,
+            session,
+          ),
+          apiRequest<MaintenanceWorkOrder[]>(
+            `/v1/condominiums/${condominiumId}/maintenance/work-orders`,
+            session,
+          ),
+          apiRequest<MaintenanceVendor[]>(`/v1/condominiums/${condominiumId}/vendors`, session),
+          apiRequest<MaintenanceLocation[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+          apiRequest<MaintenanceLocation[]>(`/v1/condominiums/${condominiumId}/units`, session),
+          apiRequest<CondominiumProfile[]>(`/v1/condominiums/${condominiumId}`, session).catch(
+            () => [],
+          ),
+        ],
+      );
       setData({
         assets,
         plans,
@@ -1016,7 +1018,7 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
         vendors,
         buildings,
         units,
-        propertyTopology: profile?.property_topology ?? 'unspecified',
+        propertyTopology: profileRows[0]?.property_topology ?? 'unspecified',
       });
     } catch (requestError) {
       setError(

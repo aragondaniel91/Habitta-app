@@ -40,4 +40,11 @@ describe('HAB-223 topology-aware selectors', () => {
     );
     expect(announcementHelpers).not.toContain('unitLabel');
   });
+
+  it('reads the condominium profile array before applying topology selectors', () => {
+    expect(maintenance).toContain('apiRequest<CondominiumProfile[]>(');
+    expect(maintenance).toContain('profileRows[0]?.property_topology');
+    expect(announcements).toContain('apiRequest<CondominiumProfile[]>(base, session)');
+    expect(announcements).toContain('profile.value[0]?.property_topology');
+  });
 });
