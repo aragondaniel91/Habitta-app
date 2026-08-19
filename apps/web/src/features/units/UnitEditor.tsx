@@ -2,12 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Dialog, DialogBody, DialogFooter } from '../../components/Dialog';
 import { Button, Field, Select } from '../../components/ui';
-import {
-  defaultUnitType,
-  isUnitTypeAllowed,
-  supportsBuildingStructure,
-  unitTypeOptions,
-} from '../../lib/unit-domain';
+import { defaultUnitType, isUnitTypeAllowed, unitTypeOptions } from '../../lib/unit-domain';
 import type { PropertyTopology, UnitType } from '../../lib/unit-domain';
 import type { DirectoryUnit } from './types';
 
@@ -68,7 +63,8 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
       return setError('Ese tipo no corresponde a la estructura definida.');
     if (
       rawPercentage &&
-      (!Number.isFinite(ownershipPercentage) ||
+      (ownershipPercentage === undefined ||
+        !Number.isFinite(ownershipPercentage) ||
         ownershipPercentage <= 0 ||
         ownershipPercentage > 100)
     )
@@ -86,8 +82,8 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
         code: String(form.get('code') ?? ''),
         buildingId,
         type: selectedType,
-        floor: houseCommunity ? undefined : String(form.get('floor') ?? ''),
-        ownershipPercentage,
+        ...(!houseCommunity ? { floor: String(form.get('floor') ?? '') } : {}),
+        ...(ownershipPercentage === undefined ? {} : { ownershipPercentage }),
         status: String(form.get('status')) as 'active' | 'inactive',
       }),
     );

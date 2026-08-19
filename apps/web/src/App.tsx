@@ -81,6 +81,9 @@ const StructureManagementPage = lazy(() =>
     default: module.StructureManagementPage,
   })),
 );
+const UnitsPage = lazy(() =>
+  import('./pages/UnitsPage').then((module) => ({ default: module.UnitsPage })),
+);
 const TeamAccessPage = lazy(() =>
   import('./pages/TeamAccessPage').then((module) => ({ default: module.TeamAccessPage })),
 );
@@ -120,6 +123,9 @@ export default function App() {
     getRouteFromPath(window.location.pathname),
   );
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [unitStructureView, setUnitStructureView] = useState(
+    () => window.location.pathname === '/app/units/structure',
+  );
 
   useEffect(() => {
     if (!supabase) {
@@ -188,6 +194,7 @@ export default function App() {
     const onPopState = () => {
       setAdminInvitationToken(invitationTokenFromPath(window.location.pathname));
       setCurrentRoute(getRouteFromPath(window.location.pathname));
+      setUnitStructureView(window.location.pathname === '/app/units/structure');
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -196,8 +203,10 @@ export default function App() {
   useEffect(() => {
     if (!session || passwordRecoveryMode || adminInvitationToken) return;
     const resolved = getRouteFromPath(window.location.pathname);
-    if (window.location.pathname !== resolved.path) {
-      window.history.replaceState({}, '', resolved.path);
+    const expectedPath =
+      window.location.pathname === '/app/units/structure' ? '/app/units/structure' : resolved.path;
+    if (window.location.pathname !== expectedPath) {
+      window.history.replaceState({}, '', expectedPath);
       setCurrentRoute(resolved);
     }
   }, [session, passwordRecoveryMode, adminInvitationToken]);
@@ -206,6 +215,7 @@ export default function App() {
     setAddingCondominium(false);
     window.history.pushState({}, '', route.path);
     setCurrentRoute(route);
+    setUnitStructureView(false);
   };
 
   const signOut = () => void supabase?.auth.signOut();
@@ -317,11 +327,26 @@ export default function App() {
       />
     );
   } else if (activeRoute.key === 'units') {
-    page = (
+    page = unitStructureView ? (
       <StructureManagementPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         session={session}
+        showUnitManagement={false}
+        onBackToUnits={() => {
+          window.history.pushState({}, '', '/app/units');
+          setUnitStructureView(false);
+        }}
+      />
+    ) : (
+      <UnitsPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+        onConfigureStructure={() => {
+          window.history.pushState({}, '', '/app/units/structure');
+          setUnitStructureView(true);
+        }}
       />
     );
   } else if (activeRoute.key === 'people') {

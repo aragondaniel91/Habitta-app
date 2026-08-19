@@ -51,6 +51,8 @@ type Props = {
   condominiumId: string;
   condominiumName: string;
   session: Session;
+  showUnitManagement?: boolean;
+  onBackToUnits?: () => void;
 };
 
 export function topologyRemediationPayload(
@@ -101,12 +103,20 @@ function StructureSkeleton() {
   );
 }
 
-export function StructureManagementPage({ condominiumId, condominiumName, session }: Props) {
+export function StructureManagementPage({
+  condominiumId,
+  condominiumName,
+  session,
+  showUnitManagement = true,
+  onBackToUnits,
+}: Props) {
   const roles = useCondominiumRoles();
   const [profile, setProfile] = useState<CondominiumProfile | null>(null);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
-  const [activeView, setActiveView] = useState<'units' | 'buildings'>('units');
+  const [activeView, setActiveView] = useState<'units' | 'buildings'>(
+    showUnitManagement ? 'units' : 'buildings',
+  );
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -341,15 +351,22 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
                 {singleBuildingMode ? 'Crear edificio' : 'Nueva torre o edificio'}
               </Button>
             ) : null}
-            <Button
-              disabled={singleBuildingMode && buildings.length !== 1}
-              onClick={() => setEditor({ kind: 'unit', unit: null })}
-            >
-              {newUnitLabel}
-            </Button>
+            {showUnitManagement ? (
+              <Button
+                disabled={singleBuildingMode && buildings.length !== 1}
+                onClick={() => setEditor({ kind: 'unit', unit: null })}
+              >
+                {newUnitLabel}
+              </Button>
+            ) : null}
             {topology === 'unspecified' && canRemediate ? (
               <Button variant="secondary" onClick={() => setRemediating(true)}>
                 Definir tipo de propiedad
+              </Button>
+            ) : null}
+            {onBackToUnits ? (
+              <Button onClick={onBackToUnits} variant="ghost">
+                Volver a Unidades
               </Button>
             ) : null}
           </>
@@ -416,15 +433,17 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
       <Surface className="structure-workspace">
         <div className="structure-toolbar">
           <div className="structure-tabs" aria-label="Vista de estructura" role="tablist">
-            <button
-              aria-selected={activeView === 'units'}
-              data-active={activeView === 'units'}
-              onClick={() => setActiveView('units')}
-              role="tab"
-              type="button"
-            >
-              {houseMode ? 'Casas' : 'Unidades'} <span>{units.length}</span>
-            </button>
+            {showUnitManagement ? (
+              <button
+                aria-selected={activeView === 'units'}
+                data-active={activeView === 'units'}
+                onClick={() => setActiveView('units')}
+                role="tab"
+                type="button"
+              >
+                {houseMode ? 'Casas' : 'Unidades'} <span>{units.length}</span>
+              </button>
+            ) : null}
             {showBuildings ? (
               <button
                 aria-selected={activeView === 'buildings'}
@@ -455,7 +474,7 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
           </label>
         </div>
 
-        {activeView === 'units' ? (
+        {showUnitManagement && activeView === 'units' ? (
           filteredUnits.length ? (
             <div className="structure-unit-list">
               <div className="structure-unit-list__head" aria-hidden="true">

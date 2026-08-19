@@ -1,21 +1,34 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { allowedUnitTypes, defaultUnitType } from './lib/unit-domain';
+import { getRouteFromPath } from './navigation';
 
 const appUrl = new URL('./App.tsx', import.meta.url);
 const pageUrl = new URL('./pages/StructureManagementPage.tsx', import.meta.url);
 const mainUrl = new URL('./main.tsx', import.meta.url);
 
 describe('physical structure management workspace', () => {
-  it('routes Units to the dedicated structure workspace and loads its styles', async () => {
+  it('routes Units to V2 while retaining an authenticated secondary structure workspace', async () => {
     const [app, main] = await Promise.all([readFile(appUrl, 'utf8'), readFile(mainUrl, 'utf8')]);
 
     expect(app).toContain("activeRoute.key === 'units'");
-    expect(app).toContain('<StructureManagementPage');
+    expect(app).toContain('<UnitsPage');
+    expect(app).toContain("'/app/units/structure'");
+    expect(app).toContain('showUnitManagement={false}');
+    expect(getRouteFromPath('/app/units').key).toBe('units');
+    expect(getRouteFromPath('/app/units/structure').key).toBe('units');
     // The stylesheet ships inside the Units chunk rather than the initial bundle, since a resident
     // who never opens that module should not download its CSS either.
     expect(await readFile(pageUrl, 'utf8')).toContain("import '../structure-management.css'");
     expect(main).not.toContain("import './structure-management.css'");
+  });
+
+  it('keeps the secondary workspace focused on topology and buildings', async () => {
+    const source = await readFile(pageUrl, 'utf8');
+    expect(source).toContain('showUnitManagement = true');
+    expect(source).toContain('Volver a Unidades');
+    expect(source).toContain('showUnitManagement ? (');
+    expect(source).toContain("{showUnitManagement && activeView === 'units'");
   });
 
   it('supports topology-aware building administration and non-destructive unit editing', async () => {
