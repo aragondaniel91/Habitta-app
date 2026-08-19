@@ -53,6 +53,26 @@ type Props = {
   session: Session;
 };
 
+export function topologyRemediationPayload(
+  propertyTopology: Exclude<PropertyTopology, 'unspecified'>,
+  declaredUnitCount: number | null,
+  declaredBuildingCount: number | null,
+) {
+  return {
+    propertyTopology,
+    declaredUnitCount:
+      propertyTopology === 'house_community' ||
+      propertyTopology === 'single_building' ||
+      propertyTopology === 'mixed'
+        ? declaredUnitCount
+        : null,
+    declaredBuildingCount:
+      propertyTopology === 'multi_building_complex' || propertyTopology === 'mixed'
+        ? declaredBuildingCount
+        : null,
+  };
+}
+
 const topologyLabels: Record<PropertyTopology, string> = {
   unspecified: 'Estructura pendiente de definir',
   house_community: 'Conjunto de casas',
@@ -262,11 +282,9 @@ export function StructureManagementPage({ condominiumId, condominiumName, sessio
     try {
       await apiRequest(`/v1/condominiums/${condominiumId}/topology-remediation`, session, {
         method: 'POST',
-        body: JSON.stringify({
-          propertyTopology: remediationTopology,
-          declaredUnitCount: unitCount,
-          declaredBuildingCount: buildingCount,
-        }),
+        body: JSON.stringify(
+          topologyRemediationPayload(remediationTopology, unitCount, buildingCount),
+        ),
       });
       await loadStructure();
       setRemediating(false);

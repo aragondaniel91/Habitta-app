@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { topologyRemediationPayload } from './pages/StructureManagementPage';
 const source = readFileSync(
   new URL('./pages/StructureManagementPage.tsx', import.meta.url),
   'utf8',
@@ -21,5 +22,23 @@ describe('HAB-230 topology remediation UI contract', () => {
     expect(source).toContain('Cantidad declarada de casas');
     expect(source).toContain('Cantidad declarada de edificios o torres');
     expect(source).not.toContain("method: 'DELETE'");
+  });
+  it('does not submit stale hidden counts', () => {
+    expect(topologyRemediationPayload('house_community', 4, 3)).toEqual({
+      propertyTopology: 'house_community',
+      declaredUnitCount: 4,
+      declaredBuildingCount: null,
+    });
+    expect(topologyRemediationPayload('multi_building_complex', 4, 3)).toEqual({
+      propertyTopology: 'multi_building_complex',
+      declaredUnitCount: null,
+      declaredBuildingCount: 3,
+    });
+    expect(topologyRemediationPayload('single_building', 4, 3).declaredBuildingCount).toBeNull();
+    expect(topologyRemediationPayload('mixed', 4, 3)).toEqual({
+      propertyTopology: 'mixed',
+      declaredUnitCount: 4,
+      declaredBuildingCount: 3,
+    });
   });
 });

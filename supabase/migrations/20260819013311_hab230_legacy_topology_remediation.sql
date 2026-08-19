@@ -38,6 +38,9 @@ begin
     raise exception 'invalid property topology';
   end if;
 
+  perform 1 from public.buildings b where b.condominium_id = target for update;
+  perform 1 from public.units u where u.condominium_id = target for update;
+
   select count(*) into existing_unit_count from public.units u where u.condominium_id = target;
   select count(*) into existing_building_count from public.buildings b where b.condominium_id = target;
 
