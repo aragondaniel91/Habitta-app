@@ -1,0 +1,16 @@
+begin;
+select plan(12);
+select has_function('public','remediate_condominium_topology',array['uuid','condominium_property_topology','integer','integer']);
+select function_privs_are('public','remediate_condominium_topology',array['uuid','condominium_property_topology','integer','integer'],'anon',array[]::text[]);
+select function_privs_are('public','remediate_condominium_topology',array['uuid','condominium_property_topology','integer','integer'],'authenticated',array['EXECUTE']);
+select like(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%can_manage_condominium_structure(target)%','authorizes condominium admins and organization owners');
+select like(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%pg_advisory_xact_lock%','serializes concurrent remediation');
+select like(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%for update%','locks target condominium');
+select like(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%property topology already resolved%','already-resolved topology is rejected');
+select like(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%house community%','house buildings, apartments and building ids fail closed');
+select like(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%single building%','single topology validates existing buildings and houses without rewriting units');
+select like(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%multi building complex%','multi requires two declared buildings and rejects houses');
+select like(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%declared structure cannot be smaller%','mixed and declared counts preserve existing structure');
+select unlike(pg_get_functiondef('public.remediate_condominium_topology(uuid,public.condominium_property_topology,integer,integer)'::regprocedure),'%update public.units%','never rewrites unit UUID, code, type or building id');
+select * from finish();
+rollback;
