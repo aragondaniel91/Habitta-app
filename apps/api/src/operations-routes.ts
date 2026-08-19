@@ -9,6 +9,7 @@ import type { NotificationBindings } from './notifications/types';
 import { operationsRoutes as baseOperationsRoutes } from './operations-routes-base';
 import { personAdminNoteRoutes } from './person-admin-note-routes';
 import { residentInvitationRoutes } from './resident-invitations';
+import { topologyRemediationRoutes } from './topology-remediation-routes';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
@@ -20,6 +21,7 @@ baseOperationsRoutes.route('/', budgetRoutes);
 baseOperationsRoutes.route('/', condominiumDeletionRoutes);
 baseOperationsRoutes.route('/', residentInvitationRoutes);
 baseOperationsRoutes.route('/', personAdminNoteRoutes);
+baseOperationsRoutes.route('/', topologyRemediationRoutes);
 
 export const operationsRoutes = new Hono<AppEnvironment>();
 operationsRoutes.route('/', governanceThresholdRoutes);
