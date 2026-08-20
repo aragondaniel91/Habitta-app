@@ -1,5 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { allocationPreviewFingerprint } from '../allocation-preview';
 import type { AllocationInput, AllocationPreview, Receivable } from '../types';
+
+type PreviewSnapshot = {
+  fingerprint: string;
+  value: AllocationPreview;
+};
 
 export function PaymentAllocationEditor({
   receivables,
@@ -13,7 +19,15 @@ export function PaymentAllocationEditor({
   onApprove: (allocations: AllocationInput[]) => Promise<void>;
 }) {
   const [allocations, setAllocations] = useState<AllocationInput[]>([]);
-  const [preview, setPreview] = useState<AllocationPreview>();
+  const [previewSnapshot, setPreviewSnapshot] = useState<PreviewSnapshot>();
+  const currentFingerprint = useMemo(
+    () => allocationPreviewFingerprint(allocations, paymentCurrency),
+    [allocations, paymentCurrency],
+  );
+  const previewIsCurrent = previewSnapshot?.fingerprint === currentFingerprint;
+  const preview = previewIsCurrent ? previewSnapshot.value : undefined;
+  const previewIsStale = Boolean(previewSnapshot && !previewIsCurrent);
+
   const add = (receivable: Receivable) =>
     setAllocations((current) => [
       ...current,
@@ -25,6 +39,14 @@ export function PaymentAllocationEditor({
         receivableCurrencyCode: receivable.currency_code,
       },
     ]);
+
+  const runPreview = async () => {
+    const requestedAllocations = allocations.map((allocation) => ({ ...allocation }));
+    const requestedFingerprint = allocationPreviewFingerprint(requestedAllocations, paymentCurrency);
+    const value = await onPreview(requestedAllocations);
+    setPreviewSnapshot({ fingerprint: requestedFingerprint, value });
+  };
+
   return (
     <div>
       <label>
@@ -86,7 +108,12 @@ export function PaymentAllocationEditor({
           )}
         </fieldset>
       ))}
-      <button onClick={() => void onPreview(allocations).then(setPreview)}>Ejecutar preview</button>
+      <button disabled={allocations.length === 0} onClick={() => void runPreview()}>
+        Ejecutar preview
+      </button>
+      {previewIsStale ? (
+        <p role="status">Los cambios requieren una nueva previsualización antes de aprobar.</p>
+      ) : null}
       {preview && (
         <div>
           <p>Usado: {preview.total_used}</p>
