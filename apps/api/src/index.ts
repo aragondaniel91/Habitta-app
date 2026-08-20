@@ -44,6 +44,7 @@ import { privateDocumentRoutes } from './private-document-routes';
 import { treasuryRoutes } from './treasury-routes';
 import { peopleRelationshipRoutes } from './people-relationships-routes';
 import { recurringDuesRoutes } from './recurring-dues-routes';
+import { unitsDirectoryRoutes } from './units-directory-routes';
 import { withinRateLimit } from './http-security';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
@@ -85,6 +86,7 @@ app.route('/v1/condominiums', privateDocumentRoutes);
 app.route('/v1/condominiums', treasuryRoutes);
 app.route('/v1/condominiums', peopleRelationshipRoutes);
 app.route('/v1/condominiums', recurringDuesRoutes);
+app.route('/v1/condominiums', unitsDirectoryRoutes);
 const rest = (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   path: string,
@@ -217,6 +219,26 @@ app.post('/v1/condominiums/:id/units', async (c) => {
     }),
   });
   return c.json(await r.json(), r.ok ? 201 : 400);
+});
+app.patch('/v1/condominiums/:id/units/:unitId', async (c) => {
+  const p = await body(c, unitInputSchema.partial());
+  if (p instanceof Response) return p;
+  const r = await rest(
+    c,
+    `units?id=eq.${uuidSchema.parse(c.req.param('unitId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        building_id: p.buildingId,
+        code: p.code,
+        type: p.type,
+        floor: p.floor,
+        ownership_percentage: p.ownershipPercentage,
+        status: p.status,
+      }),
+    },
+  );
+  return c.json(await r.json(), r.ok ? 200 : 400);
 });
 const list =
   (table: string, filter: string) =>

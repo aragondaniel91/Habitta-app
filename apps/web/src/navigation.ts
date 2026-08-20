@@ -361,5 +361,7 @@ const normalizePath = (pathname: string) => {
 
 export function getRouteFromPath(pathname: string): AppRoute {
   const normalized = normalizePath(pathname);
+  if (normalized === '/app/units/structure')
+    return APP_ROUTES.find((route) => route.key === 'units') ?? DEFAULT_ROUTE;
   return APP_ROUTES.find((route) => route.path === normalized) ?? DEFAULT_ROUTE;
 }
