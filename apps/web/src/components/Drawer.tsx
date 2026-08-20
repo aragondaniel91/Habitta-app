@@ -30,6 +30,12 @@ export function useDialogBehavior(
   panel: { current: HTMLElement | null },
   onClose: () => void,
 ): void {
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const autoFocusTarget = panel.current?.querySelector<HTMLElement>('[autofocus]');
@@ -38,7 +44,7 @@ export function useDialogBehavior(
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panel.current) return;
@@ -69,7 +75,7 @@ export function useDialogBehavior(
       document.removeEventListener('keydown', onKeyDown, true);
       previouslyFocused?.focus?.();
     };
-  }, [panel, onClose]);
+  }, [panel]);
 }
 
 export function Drawer({

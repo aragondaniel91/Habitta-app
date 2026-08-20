@@ -55,7 +55,16 @@ describe('Drawer', () => {
 
   it('closes on Escape and restores focus to whatever opened it', () => {
     expect(drawerSource).toContain("event.key === 'Escape'");
+    expect(drawerSource).toContain('onCloseRef.current();');
     expect(drawerSource).toContain('previouslyFocused?.focus?.()');
     expect(drawerSource).toContain("event.key !== 'Tab'");
+  });
+
+  it('does not rerun initial focus when a consumer passes a new onClose callback', () => {
+    expect(drawerSource).toContain('const onCloseRef = useRef(onClose);');
+    expect(drawerSource).toContain('onCloseRef.current = onClose;');
+    expect(drawerSource).toContain('}, [onClose]);');
+    expect(drawerSource).toContain('}, [panel]);');
+    expect(drawerSource).not.toContain('}, [panel, onClose]);');
   });
 });
