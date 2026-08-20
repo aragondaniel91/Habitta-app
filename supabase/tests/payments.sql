@@ -1,5 +1,5 @@
 begin;
-select plan(72);
+select plan(85);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('80000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@pay.test','x',now(),now()),
@@ -127,6 +127,14 @@ select is((select count(*) from public.payment_receipts where payment_id=(select
 select is((select count(distinct sequence_number) from public.payment_receipts),1::bigint,'receipt sequence number is unique');
 select is((select snapshot->'condominium'->>'name' from public.payment_receipts limit 1),'Condo Pay A','snapshot preserves condominium');
 select is((select (snapshot->'unit'->>'code')||':'||(snapshot->'method'->>'display_name') from public.payment_receipts limit 1),'A-1:Bank USD','snapshot preserves unit and method');
+select is((select status::text from public.payments where idempotency_key='owner-proof'),'approved','partial payment stays approved before reversal attempts');
+select is((select count(*) from public.receivable_ledger_entries e where e.payment_id=(select id from public.payments where idempotency_key='owner-proof') and e.receivable_item_id=(select id from public.receivable_items where description='USD due') and e.entry_type='payment_credit' and not exists(select 1 from public.receivable_ledger_entries r where r.reversal_of_entry_id=e.id)),1::bigint,'allocated payment credit is active before receivable reversal');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000001',true);
+select throws_ok($$select public.reverse_receivable_item('81100000-0000-0000-0000-000000000001',(select id from public.receivable_items where description='USD due'),'charge correction')$$,'P0001','receivable_has_active_payment_credit','partial allocated payment blocks receivable reversal');
+select is((select lifecycle_status::text from public.receivable_items where description='USD due'),'active','blocked receivable stays active');
+select is((select status::text from public.payments where idempotency_key='owner-proof'),'approved','blocked receivable reversal does not change payment');
+select is((select count(*) from public.receivable_ledger_entries e where e.payment_id=(select id from public.payments where idempotency_key='owner-proof') and e.receivable_item_id=(select id from public.receivable_items where description='USD due') and e.entry_type='payment_credit' and not exists(select 1 from public.receivable_ledger_entries r where r.reversal_of_entry_id=e.id)),1::bigint,'blocked receivable reversal does not reverse payment credit');
+select is((select count(*) from public.receivable_ledger_entries e where e.receivable_item_id=(select id from public.receivable_items where description='USD due') and e.entry_type='reversal' and e.payment_id is null),0::bigint,'blocked receivable reversal creates no charge reversal');
 
 reset role;
 select throws_ok($$update public.payment_allocations set payment_amount=1$$,null,'payment allocations are immutable','approved allocations are immutable');
@@ -138,6 +146,13 @@ select lives_ok($$select public.reverse_payment('81100000-0000-0000-0000-0000000
 select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='owner-proof') and entry_type='reversal'),2::bigint,'reversal creates one opposite entry per credit');
 select is((select count(*) from public.payment_allocations)+(select count(*) from public.payment_receipts),2::bigint,'reversal preserves allocation and receipt');
 select throws_ok($$select public.reverse_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'again')$$,null,null,'second reversal is rejected');
+select is((select status::text from public.payments where idempotency_key='owner-proof'),'reversed','payment reverses before receivable can reverse');
+select is((select count(*) from public.receivable_ledger_entries e where e.payment_id=(select id from public.payments where idempotency_key='owner-proof') and e.receivable_item_id=(select id from public.receivable_items where description='USD due') and e.entry_type='payment_credit' and (select count(*) from public.receivable_ledger_entries r where r.reversal_of_entry_id=e.id)=1),1::bigint,'allocated payment credit has exactly one reversal');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000001',true);
+select lives_ok($$select public.reverse_receivable_item('81100000-0000-0000-0000-000000000001',(select id from public.receivable_items where description='USD due'),'charge correction')$$,'receivable reverses after payment reversal');
+select is((select lifecycle_status::text from public.receivable_items where description='USD due'),'reversed','receivable becomes reversed after payment reversal');
+select is((select count(*) from public.receivable_ledger_entries e where e.receivable_item_id=(select id from public.receivable_items where description='USD due') and e.entry_type='charge' and (select count(*) from public.receivable_ledger_entries r where r.reversal_of_entry_id=e.id)=1),1::bigint,'charge has exactly one reversal');
+select ok(not exists(select reversal_of_entry_id from public.receivable_ledger_entries where reversal_of_entry_id is not null group by reversal_of_entry_id having count(*)>1),'each ledger entry has at most one reversal');
 
 select is((select array_agg(event_type order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof')),'{created,updated,submitted,under_review,approved,reversed}','payment trail records every transition in order');
 select is((select array_agg(coalesce(previous_status::text,'-') order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof')),'{-,draft,draft,submitted,under_review,approved}','payment trail records the previous state of each transition');

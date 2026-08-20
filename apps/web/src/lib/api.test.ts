@@ -34,6 +34,32 @@ describe('apiRequest safe error messages', () => {
     });
   });
 
+  it('propagates the safe receivable payment conflict message', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: 'receivable_payment_conflict',
+              publicMessage:
+                'Este cargo tiene un pago aprobado aplicado. Reversa primero el pago y luego intenta nuevamente.',
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/json' } },
+          ),
+      ),
+    );
+
+    await expect(
+      apiRequest('/v1/condominiums/condo/receivables/item/reverse', session),
+    ).rejects.toMatchObject({
+      name: 'ApiRequestError',
+      status: 409,
+      message:
+        'Este cargo tiene un pago aprobado aplicado. Reversa primero el pago y luego intenta nuevamente.',
+    });
+  });
+
   it('does not expose arbitrary upstream error messages', async () => {
     vi.stubGlobal(
       'fetch',
