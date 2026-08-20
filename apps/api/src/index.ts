@@ -558,7 +558,24 @@ app.post('/v1/condominiums/:id/receivables/:receivableId/reverse', async (c) => 
       reason: p.reason,
     }),
   });
-  return c.json(await r.json(), r.ok ? 200 : 403);
+  const result: unknown = await r.json().catch(() => null);
+  if (
+    !r.ok &&
+    typeof result === 'object' &&
+    result !== null &&
+    'message' in result &&
+    result.message === 'receivable_has_active_payment_credit'
+  ) {
+    return c.json(
+      {
+        error: 'receivable_payment_conflict',
+        publicMessage:
+          'Este cargo tiene un pago aprobado aplicado. Reversa primero el pago y luego intenta nuevamente.',
+      },
+      409,
+    );
+  }
+  return c.json(result, r.ok ? 200 : 403);
 });
 app.get('/v1/condominiums/:id/charge-batches', financeList('charge_batches'));
 app.post('/v1/condominiums/:id/charge-batches/preview', async (c) => {
