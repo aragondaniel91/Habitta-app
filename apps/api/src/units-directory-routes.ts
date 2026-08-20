@@ -131,15 +131,20 @@ unitsDirectoryRoutes.get('/:id/units-directory', async (c) => {
     ),
     directoryRequest(
       c,
-      `unit_owners?ends_at=is.null&units!inner(condominium_id=eq.${condominiumId})&select=id,unit_id,ownership_percentage,is_primary_contact,starts_at,ends_at,people!inner(id,first_name,last_name)&order=starts_at.desc`,
+      `unit_owners?ends_at=is.null&units.condominium_id=eq.${condominiumId}&select=id,unit_id,ownership_percentage,is_primary_contact,starts_at,ends_at,people!inner(id,first_name,last_name),units!inner()&order=starts_at.desc`,
     ),
     directoryRequest(
       c,
-      `unit_occupancies?ends_at=is.null&units!inner(condominium_id=eq.${condominiumId})&select=id,unit_id,occupancy_type,is_primary_contact,starts_at,ends_at,people!inner(id,first_name,last_name)&order=starts_at.desc`,
+      `unit_occupancies?ends_at=is.null&units.condominium_id=eq.${condominiumId}&select=id,unit_id,occupancy_type,is_primary_contact,starts_at,ends_at,people!inner(id,first_name,last_name),units!inner()&order=starts_at.desc`,
     ),
   ]);
-  if (!unitsResponse.ok || !ownersResponse.ok || !occupanciesResponse.ok)
-    return c.json({ error: 'Units directory is unavailable' }, 403);
+  const failedResponse = [unitsResponse, ownersResponse, occupanciesResponse].find(
+    (response) => !response.ok,
+  );
+  if (failedResponse) {
+    const status = failedResponse.status === 401 ? 401 : failedResponse.status === 403 ? 403 : 502;
+    return c.json({ error: 'Units directory is unavailable' }, status);
+  }
 
   const [units, owners, occupancies] = await Promise.all([
     unitsResponse.json() as Promise<UnitRow[]>,

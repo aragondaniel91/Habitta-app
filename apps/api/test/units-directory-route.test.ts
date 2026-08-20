@@ -52,7 +52,7 @@ const occupancy = {
   people: { id: personA, first_name: 'Ana', last_name: 'Pérez' },
 };
 
-const withDirectoryResponses = (failure = false) => {
+const withDirectoryResponses = (failureStatus?: number) => {
   const requests: string[] = [];
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
@@ -60,7 +60,7 @@ const withDirectoryResponses = (failure = false) => {
     if (url.includes('/auth/v1/user')) return json({ id: personA });
     if (url.includes('/rest/v1/units?')) return json([unit(unitA, condominiumA, 'Torre A')]);
     if (url.includes('/rest/v1/unit_owners?'))
-      return json(failure ? { error: 'denied' } : [owner], failure ? 403 : 200);
+      return json(failureStatus ? { error: 'denied' } : [owner], failureStatus ?? 200);
     return json([occupancy]);
   });
   return { fetchMock, requests };
@@ -111,10 +111,10 @@ describe('units directory aggregate', () => {
         restRequests.some((url) => url.includes(`units?condominium_id=eq.${condominiumA}`)),
       ).toBe(true);
       expect(
-        restRequests.filter((url) =>
-          url.includes(`units!inner(condominium_id=eq.${condominiumA})`),
-        ),
+        restRequests.filter((url) => url.includes(`units.condominium_id=eq.${condominiumA}`)),
       ).toHaveLength(2);
+      expect(restRequests.filter((url) => url.includes('units!inner()'))).toHaveLength(2);
+      expect(restRequests.join('\n')).not.toContain('units!inner(condominium_id=');
       expect(restRequests.join('\n')).not.toContain(condominiumB);
       expect(restRequests.join('\n')).not.toContain(unitB);
       expect(restRequests.join('\n')).not.toContain(personB);
@@ -124,7 +124,7 @@ describe('units directory aggregate', () => {
   });
 
   it('fails closed instead of serializing a partial directory', async () => {
-    const { fetchMock } = withDirectoryResponses(true);
+    const { fetchMock } = withDirectoryResponses(403);
     try {
       const response = await app.request(
         `/v1/condominiums/${condominiumA}/units-directory`,
@@ -138,6 +138,21 @@ describe('units directory aggregate', () => {
     }
   });
 
+  it('does not mislabel an upstream query failure as an authorization denial', async () => {
+    const { fetchMock } = withDirectoryResponses(500);
+    try {
+      const response = await app.request(
+        `/v1/condominiums/${condominiumA}/units-directory`,
+        { headers: { Authorization: 'Bearer caller-token' } },
+        environment,
+      );
+      expect(response.status).toBe(502);
+      await expect(response.json()).resolves.toEqual({ error: 'Units directory is unavailable' });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   it('requires active, tenant-scoped joins and does not request private fields', async () => {
     const source = await readFile(
       new URL('../src/units-directory-routes.ts', import.meta.url),
@@ -145,7 +160,9 @@ describe('units directory aggregate', () => {
     );
     expect(source).toContain("uuidSchema.parse(c.req.param('id'))");
     expect(source.match(/ends_at=is.null/g)).toHaveLength(2);
-    expect(source.match(/units!inner\(condominium_id=eq\.\$\{condominiumId\}\)/g)).toHaveLength(2);
+    expect(source.match(/units\.condominium_id=eq\.\$\{condominiumId\}/g)).toHaveLength(2);
+    expect(source.match(/units!inner\(\)/g)).toHaveLength(2);
+    expect(source).not.toContain('units!inner(condominium_id=');
     expect(source).toContain('SUPABASE_ANON_KEY');
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(source).not.toContain('admin_note');

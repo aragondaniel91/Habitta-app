@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { apiBaseUrl } from '../../lib/api';
 type Unit = { id: string; code: string };
 type Concept = { id: string; code: string; name: string };
 type Item = {
@@ -36,17 +37,14 @@ type Statement = {
   entry_type: string;
 };
 const api = async <T,>(path: string, session: Session, init?: RequestInit) => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}${path}`,
-    {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-        ...(init?.headers ?? {}),
-      },
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
     },
-  );
+  });
   const data = await response.json();
   if (!response.ok)
     throw new Error(
