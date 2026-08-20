@@ -48,7 +48,9 @@ describe('payment allocation preview fingerprint', () => {
     const editor = await source('./features/payments/components/PaymentAllocationEditor.tsx');
 
     expect(editor).toContain('previewSnapshot?.fingerprint === currentFingerprint');
-    expect(editor).toContain('const preview = previewIsCurrent ? previewSnapshot?.value : undefined');
+    expect(editor).toContain(
+      'const preview = previewIsCurrent ? previewSnapshot?.value : undefined',
+    );
     expect(editor).toContain('Los cambios requieren una nueva previsualización antes de aprobar.');
     expect(editor).toContain('const requestedAllocations = allocations.map');
     expect(editor).toContain('setPreviewSnapshot({ fingerprint: requestedFingerprint, value })');
