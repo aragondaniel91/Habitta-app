@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
-const base = import.meta.env.VITE_API_URL ?? 'http://localhost:8787';
+import { apiBaseUrl } from '../../lib/api';
 export async function peopleApi<T>(path: string, session: Session, init?: RequestInit) {
-  const r = await fetch(`${base}${path}`, {
+  const r = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${session.access_token}`,

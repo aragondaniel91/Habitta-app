@@ -244,8 +244,8 @@ const list =
   (table: string, filter: string) =>
   async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
     const resolved = filter
-      .replace(':unitId', uuidSchema.parse(c.req.param('unitId')))
-      .replace(':id', uuidSchema.parse(c.req.param('id')));
+      .replace(':unitId', filter.includes(':unitId') ? uuidSchema.parse(c.req.param('unitId')) : '')
+      .replace(':id', filter.includes(':id') ? uuidSchema.parse(c.req.param('id')) : '');
     const r = await rest(c, `${table}?${resolved}&select=*`);
     const value = await r.json();
     return c.json(value, r.ok ? 200 : 400);
