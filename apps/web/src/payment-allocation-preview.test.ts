@@ -48,9 +48,16 @@ describe('payment allocation preview fingerprint', () => {
     const editor = await source('./features/payments/components/PaymentAllocationEditor.tsx');
 
     expect(editor).toContain('previewSnapshot?.fingerprint === currentFingerprint');
-    expect(editor).toContain('const preview = previewIsCurrent ? previewSnapshot.value : undefined');
+    expect(editor).toContain('const preview = previewIsCurrent ? previewSnapshot?.value : undefined');
     expect(editor).toContain('Los cambios requieren una nueva previsualización antes de aprobar.');
     expect(editor).toContain('const requestedAllocations = allocations.map');
     expect(editor).toContain('setPreviewSnapshot({ fingerprint: requestedFingerprint, value })');
+  });
+
+  it('ignores an older preview response after a newer preview request starts', async () => {
+    const editor = await source('./features/payments/components/PaymentAllocationEditor.tsx');
+
+    expect(editor).toContain('const requestId = ++latestPreviewRequest.current');
+    expect(editor).toContain('if (requestId !== latestPreviewRequest.current) return;');
   });
 });
