@@ -44,7 +44,10 @@ export function PaymentAllocationEditor({
   const runPreview = async () => {
     const requestId = ++latestPreviewRequest.current;
     const requestedAllocations = allocations.map((allocation) => ({ ...allocation }));
-    const requestedFingerprint = allocationPreviewFingerprint(requestedAllocations, paymentCurrency);
+    const requestedFingerprint = allocationPreviewFingerprint(
+      requestedAllocations,
+      paymentCurrency,
+    );
     const value = await onPreview(requestedAllocations);
     if (requestId !== latestPreviewRequest.current) return;
     setPreviewSnapshot({ fingerprint: requestedFingerprint, value });
