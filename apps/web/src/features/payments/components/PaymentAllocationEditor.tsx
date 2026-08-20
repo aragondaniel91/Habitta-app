@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { allocationPreviewFingerprint } from '../allocation-preview';
 import type { AllocationInput, AllocationPreview, Receivable } from '../types';
 
@@ -20,12 +20,13 @@ export function PaymentAllocationEditor({
 }) {
   const [allocations, setAllocations] = useState<AllocationInput[]>([]);
   const [previewSnapshot, setPreviewSnapshot] = useState<PreviewSnapshot>();
+  const latestPreviewRequest = useRef(0);
   const currentFingerprint = useMemo(
     () => allocationPreviewFingerprint(allocations, paymentCurrency),
     [allocations, paymentCurrency],
   );
   const previewIsCurrent = previewSnapshot?.fingerprint === currentFingerprint;
-  const preview = previewIsCurrent ? previewSnapshot.value : undefined;
+  const preview = previewIsCurrent ? previewSnapshot?.value : undefined;
   const previewIsStale = Boolean(previewSnapshot && !previewIsCurrent);
 
   const add = (receivable: Receivable) =>
@@ -41,9 +42,11 @@ export function PaymentAllocationEditor({
     ]);
 
   const runPreview = async () => {
+    const requestId = ++latestPreviewRequest.current;
     const requestedAllocations = allocations.map((allocation) => ({ ...allocation }));
     const requestedFingerprint = allocationPreviewFingerprint(requestedAllocations, paymentCurrency);
     const value = await onPreview(requestedAllocations);
+    if (requestId !== latestPreviewRequest.current) return;
     setPreviewSnapshot({ fingerprint: requestedFingerprint, value });
   };
 
