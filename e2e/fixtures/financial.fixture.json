@@ -54,6 +54,19 @@
       "unitCode": "E2E-A101"
     },
     {
+      "key": "additionalRecipient",
+      "email": "habitta-e2e-additional@example.invalid",
+      "role": "owner",
+      "condominium": "primary",
+      "unitCode": "E2E-A101"
+    },
+    {
+      "key": "unrelatedRecipient",
+      "email": "habitta-e2e-unrelated@example.invalid",
+      "role": "owner",
+      "condominium": "primary"
+    },
+    {
       "key": "isolationUser",
       "email": "habitta-e2e-isolation@example.invalid",
       "role": "administrator",
