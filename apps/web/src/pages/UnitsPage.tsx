@@ -26,6 +26,7 @@ type Props = {
 };
 type StatusFilter = 'all' | 'active' | 'inactive';
 type BuildingFilter = 'all' | string;
+type Building = { id: string; condominium_id: string; name: string };
 
 const personSummary = (people: Array<{ firstName: string; lastName: string }>) =>
   people.length
@@ -50,6 +51,7 @@ export function UnitsPage({
   const canMutate = canManage(useCondominiumRoles());
   const [profile, setProfile] = useState<CondominiumProfile | null>(null);
   const [units, setUnits] = useState<DirectoryUnit[]>([]);
+  const [configuredBuildings, setConfiguredBuildings] = useState<Building[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -71,11 +73,13 @@ export function UnitsPage({
     void Promise.all([
       apiRequest<CondominiumProfile[]>(`/v1/condominiums/${condominiumId}`, session),
       apiRequest<UnitsDirectory>(`/v1/condominiums/${condominiumId}/units-directory`, session),
+      apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
     ])
-      .then(([profileRows, directory]) => {
+      .then(([profileRows, directory, buildingItems]) => {
         if (!active) return;
         setProfile(profileRows[0] ?? null);
         setUnits(directory.units);
+        setConfiguredBuildings(buildingItems);
       })
       .catch((reason: unknown) => {
         if (active)
@@ -92,16 +96,7 @@ export function UnitsPage({
   }, [condominiumId, session]);
 
   const topology = profile?.property_topology ?? 'unspecified';
-  const buildingOptions = useMemo(
-    () => [
-      ...new Map(
-        units.flatMap((unit) =>
-          unit.building ? [[unit.building.id, unit.building.name] as const] : [],
-        ),
-      ).entries(),
-    ],
-    [units],
-  );
+  const buildingOptions = configuredBuildings.map(({ id, name }) => [id, name] as const);
   const filteredUnits = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('es-VE');
     return units.filter((unit) => {
@@ -131,7 +126,7 @@ export function UnitsPage({
     });
   }, [building, search, status, type, units]);
   const activeUnits = units.filter((unit) => unit.status === 'active').length;
-  const buildings = buildingOptions.map(([id, name]) => ({ id, name }));
+  const buildings = configuredBuildings.map(({ id, name }) => ({ id, name }));
   const singleBuildingReady = topology !== 'single_building' || buildings.length === 1;
   const canCreate = canMutate && topology !== 'unspecified' && singleBuildingReady;
   const refreshDirectory = async () => {

@@ -11,6 +11,9 @@ describe('Units V2 workspace', () => {
     expect(source).toContain('apiRequest<CondominiumProfile[]>');
     expect(source).toContain('profileRows[0] ?? null');
     expect(source).toContain('/units-directory');
+    expect(source).toContain('apiRequest<Building[]>');
+    expect(source).toContain('/buildings');
+    expect(source).toContain('setConfiguredBuildings(buildingItems)');
     expect(source).toContain('UnitDetailDrawer');
     expect(source).not.toContain('window.confirm');
     expect(source).not.toContain('window.alert');
@@ -31,5 +34,15 @@ describe('Units V2 workspace', () => {
     expect(allowedUnitTypes('single_building')).not.toContain('house');
     expect(allowedUnitTypes('multi_building_complex')).not.toContain('house');
     expect(unitReferenceLabel({ buildingName: 'Torre II', code: '1-A' })).toBe('Torre II · 1-A');
+  });
+
+  it('uses configured buildings even before a first unit exists', async () => {
+    const source = await readFile(pageUrl, 'utf8');
+    expect(source).toContain('configuredBuildings.map(({ id, name }) => [id, name] as const)');
+    expect(source).toContain(
+      "const singleBuildingReady = topology !== 'single_building' || buildings.length === 1",
+    );
+    expect(source).toContain('buildings={buildings}');
+    expect(source).not.toContain('units.flatMap((unit)');
   });
 });
