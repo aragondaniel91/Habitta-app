@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Dialog, DialogBody, DialogFooter } from '../../components/Dialog';
+import { FormGrid } from '../../components/FormLayout';
 import { Button, Field, Select } from '../../components/ui';
 import { defaultUnitType, isUnitTypeAllowed, unitTypeOptions } from '../../lib/unit-domain';
 import type { PropertyTopology, UnitType } from '../../lib/unit-domain';
@@ -98,68 +99,70 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
       title={mode === 'create' ? (houseCommunity ? 'Nueva casa' : 'Nueva unidad') : 'Editar unidad'}
     >
       <form onSubmit={(event) => void save(event)}>
-        <DialogBody className="structure-form-grid">
-          <Field label={houseCommunity ? 'Código o número de casa' : 'Código o número de unidad'}>
-            <input autoFocus defaultValue={unit?.code ?? ''} maxLength={40} name="code" required />
-          </Field>
-          {!houseCommunity && !singleBuilding ? (
-            <Field label="Torre o edificio">
-              <Select
-                defaultValue={unit?.buildingId ?? ''}
-                name="buildingId"
-                required={buildingRequired}
-              >
-                <option value="">
-                  {buildingRequired ? 'Selecciona un edificio' : 'Sin edificio / área común'}
-                </option>
-                {buildings.map((building) => (
-                  <option key={building.id} value={building.id}>
-                    {building.name}
+        <DialogBody>
+          <FormGrid>
+            <Field label={houseCommunity ? 'Código o número de casa' : 'Código o número de unidad'}>
+              <input autoFocus defaultValue={unit?.code ?? ''} maxLength={40} name="code" required />
+            </Field>
+            {!houseCommunity && !singleBuilding ? (
+              <Field label="Torre o edificio">
+                <Select
+                  defaultValue={unit?.buildingId ?? ''}
+                  name="buildingId"
+                  required={buildingRequired}
+                >
+                  <option value="">
+                    {buildingRequired ? 'Selecciona un edificio' : 'Sin edificio / área común'}
+                  </option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>
+                      {building.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
+            {singleBuilding ? (
+              <div className="structure-form-note" data-span="full">
+                Edificio: <strong>{buildings[0]?.name}</strong>
+              </div>
+            ) : null}
+            <Field label="Tipo">
+              <Select defaultValue={unit?.type ?? defaultUnitType(topology)} name="type">
+                {unitTypeOptions(topology).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </Select>
             </Field>
-          ) : null}
-          {singleBuilding ? (
-            <div className="structure-form-note">
-              Edificio: <strong>{buildings[0]?.name}</strong>
-            </div>
-          ) : null}
-          <Field label="Tipo">
-            <Select defaultValue={unit?.type ?? defaultUnitType(topology)} name="type">
-              {unitTypeOptions(topology).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          {!houseCommunity ? (
-            <Field hint="Número, PB, PH o nivel descriptivo." label="Piso o nivel">
-              <input defaultValue={unit?.floor ?? ''} maxLength={20} name="floor" />
+            {!houseCommunity ? (
+              <Field hint="Número, PB, PH o nivel descriptivo." label="Piso o nivel">
+                <input defaultValue={unit?.floor ?? ''} maxLength={20} name="floor" />
+              </Field>
+            ) : null}
+            <Field hint="Mayor que 0 y hasta 100." label="Alícuota (%)">
+              <input
+                defaultValue={unit?.ownershipPercentage ?? ''}
+                max="100"
+                min="0.0001"
+                name="ownershipPercentage"
+                step="0.0001"
+                type="number"
+              />
             </Field>
-          ) : null}
-          <Field hint="Mayor que 0 y hasta 100." label="Alícuota (%)">
-            <input
-              defaultValue={unit?.ownershipPercentage ?? ''}
-              max="100"
-              min="0.0001"
-              name="ownershipPercentage"
-              step="0.0001"
-              type="number"
-            />
-          </Field>
-          <Field hint="Archivar conserva pagos, cuotas y relaciones históricas." label="Estado">
-            <Select defaultValue={unit?.status ?? 'active'} name="status">
-              <option value="active">Activa</option>
-              <option value="inactive">Inactiva / archivada</option>
-            </Select>
-          </Field>
-          {error ? (
-            <div className="structure-message" data-tone="error">
-              {error}
-            </div>
-          ) : null}
+            <Field hint="Archivar conserva pagos, cuotas y relaciones históricas." label="Estado">
+              <Select defaultValue={unit?.status ?? 'active'} name="status">
+                <option value="active">Activa</option>
+                <option value="inactive">Inactiva / archivada</option>
+              </Select>
+            </Field>
+            {error ? (
+              <div className="structure-message" data-span="full" data-tone="error">
+                {error}
+              </div>
+            ) : null}
+          </FormGrid>
         </DialogBody>
         <DialogFooter>
           <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
