@@ -9,8 +9,7 @@
 .expenses-currency-strip,
 .expenses-metric__top,
 .expenses-detail__amount,
-.expenses-drawer__header,
-.expenses-form__actions {
+.expenses-drawer__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -223,6 +222,8 @@
   backdrop-filter: blur(12px);
 }
 .expenses-drawer__body {
+  --form-actions-bottom-padding: 22px;
+  --form-actions-inline-padding: 22px;
   padding: 22px;
 }
 
@@ -230,19 +231,6 @@
   display: grid;
   gap: 16px;
 }
-.expenses-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-.expenses-form-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.expenses-form__actions {
-  justify-content: flex-end;
-  padding-top: 8px;
-}
-
 .expenses-inline-alert {
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--red) 35%, var(--border));
@@ -390,8 +378,6 @@
   }
 
   .expenses-metrics-grid,
-  .expenses-form-grid,
-  .expenses-form-grid--three,
   .expenses-detail-list {
     grid-template-columns: 1fr;
   }
@@ -434,12 +420,12 @@
   .expenses-toolbar .select {
     width: 100%;
   }
-  .expenses-form-grid,
-  .expenses-form-grid--three,
   .expenses-detail-list {
     grid-template-columns: 1fr;
   }
   .expenses-drawer__body {
+    --form-actions-bottom-padding: 18px;
+    --form-actions-inline-padding: 18px;
     padding: 18px;
   }
   .expenses-detail__amount {

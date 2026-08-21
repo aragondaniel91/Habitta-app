@@ -39,7 +39,7 @@ describe('HAB-235 People V2 atomic create', () => {
       /\[\s*'owner',\s*'owner_occupant',\s*'tenant',\s*'family_member',\s*'authorized_occupant',?\s*\]\.includes\(initialContextDraft\.kind\)/,
     );
     expect(source).toContain("['owner', 'owner_occupant'].includes(initialContextDraft.kind)");
-    expect(source).toMatch(/initialContextDraft\.unitId \?\s*\(\s*<>/);
+    expect(source).toMatch(/initialContextDraft\.unitId \?\s*\(\s*<FormSection/);
     expect(source).toContain('directoryUnitLabel(unit, buildings)');
     expect(source).toContain('El saldo y los cargos siguen perteneciendo a la unidad.');
     expect(source).not.toContain('canSubmitPayment');
@@ -63,5 +63,15 @@ describe('HAB-235 People V2 atomic create', () => {
     expect(source).not.toContain('window.alert');
     expect(source).not.toContain('window.confirm');
     expect(source).not.toContain('window.prompt');
+  });
+
+  it('uses shared sections, grids and a non-submitting sticky action footer', () => {
+    expect(source).toContain('import { FormActions, FormGrid, FormSection }');
+    expect(source).toContain('<FormSection title="Identidad y contacto">');
+    expect(source).toContain('title="Relación con la comunidad"');
+    expect(source).toContain('title="Comunicaciones de esta unidad"');
+    expect(source).toContain('<FormActions sticky>');
+    expect(source).toContain('onClick={() => setPersonEditorOpen(false)}');
+    expect(source).toContain('type="button"');
   });
 });

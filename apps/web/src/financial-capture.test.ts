@@ -15,11 +15,25 @@ describe('financial capture orchestration', () => {
   it('creates a payment once and uploads proof against the returned draft id', async () => {
     const capture = await source('./features/payments/components/PaymentCaptureDrawer.tsx');
 
+    expect(capture).toContain('import { FormActions, FormGrid }');
+    for (const name of [
+      'unitId',
+      'paymentMethodId',
+      'paymentDate',
+      'originalCurrencyCode',
+      'originalAmount',
+      'payerName',
+      'reference',
+      'notes',
+    ]) {
+      expect(capture).toContain(`name="${name}"`);
+    }
     expect(capture).toContain('const idempotencyKey = useRef(crypto.randomUUID())');
     expect(capture).toContain('idempotencyKey: idempotencyKey.current');
     expect(capture).toContain('setCreatedPayment(payment)');
     expect(capture).toContain('paymentId={createdPayment.id}');
     expect(capture).toContain('requiresProof && !proofSaved');
+    expect(capture).toContain('<FormActions className="financial-capture-footer" sticky>');
   });
 
   it('keeps expense proof upload on the expense draft returned by creation', async () => {
@@ -31,6 +45,23 @@ describe('financial capture orchestration', () => {
     expect(capture).toContain('/expenses/${createdExpense.id}/attachments');
     expect(capture).toContain('setProofSaved(true)');
     expect(capture).toContain('JPEG, PNG, WebP o PDF');
+    for (const key of [
+      'categoryId',
+      'vendorId',
+      'description',
+      'invoiceNumber',
+      'expenseDate',
+      'dueDate',
+      'amount',
+      'currencyCode',
+      'paymentMethod',
+      'paymentReference',
+      'notes',
+    ]) {
+      expect(capture).toContain(`${key},`);
+    }
+    expect(capture).toContain('<FormGrid columns={3}>');
+    expect(capture).toContain('<FormActions className="financial-capture-footer" sticky>');
   });
 
   it('never submits, approves or posts to treasury from capture', async () => {

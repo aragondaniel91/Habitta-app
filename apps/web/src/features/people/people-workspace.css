@@ -547,29 +547,6 @@
   line-height: 1.55;
 }
 
-.people-editor__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.people-editor__grid .input,
-.people-editor__grid .select {
-  width: 100%;
-}
-
-.people-editor__footer {
-  position: sticky;
-  bottom: -1.15rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.55rem;
-  margin: 0 -1.15rem -1.15rem;
-  border-top: 1px solid var(--border);
-  padding: 0.8rem 1.15rem;
-  background: var(--surface);
-}
-
 @media (max-width: 1100px) {
   .people-workspace__layout {
     grid-template-columns: minmax(230px, 0.65fr) minmax(0, 1.35fr);
@@ -614,7 +591,6 @@
   .people-inline-form,
   .people-invitation-form,
   .people-import__controls,
-  .people-editor__grid,
   .people-workspace__loading-grid {
     grid-template-columns: 1fr;
   }
