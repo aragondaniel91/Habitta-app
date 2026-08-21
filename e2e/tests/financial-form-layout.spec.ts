@@ -57,7 +57,7 @@ test.describe('Formularios administrativos autenticados', () => {
     const { button: opener, dialog } = await openAtMobileSize(page, '/app/people', 'Nueva persona');
 
     await expect(dialog).toHaveAccessibleName('Agregar persona');
-    const firstInput = dialog.locator('input[autofocus]');
+    const firstInput = dialog.getByLabel('Nombres');
     await expect(firstInput).toBeFocused();
     await expect(dialog.locator('.form-section')).toHaveCount(2);
     await expect(dialog.locator('.form-grid')).toHaveCount(2);
