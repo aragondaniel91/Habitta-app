@@ -13,13 +13,24 @@ const startLocalWorker =
   Boolean(process.env.E2E_SUPABASE_URL) &&
   Boolean(process.env.E2E_SUPABASE_ANON_KEY);
 
+const localWebEnvironment: Record<string, string> = {
+  VITE_APP_ENV: 'e2e',
+  VITE_API_URL: workerBaseUrl,
+  ...(startLocalWorker
+    ? {
+        VITE_SUPABASE_URL: process.env.E2E_SUPABASE_URL ?? '',
+        VITE_SUPABASE_ANON_KEY: process.env.E2E_SUPABASE_ANON_KEY ?? '',
+      }
+    : {}),
+};
+
 const webServers = [
   ...(useLocalWebServer
     ? [
         {
           command: 'pnpm --filter @habitta/web exec vite --host 127.0.0.1 --port 4173',
           cwd: '..',
-          env: { VITE_APP_ENV: 'e2e', VITE_API_URL: workerBaseUrl },
+          env: localWebEnvironment,
           url: localBaseUrl,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
