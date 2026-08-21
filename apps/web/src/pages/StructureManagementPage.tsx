@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogBody, DialogFooter } from '../components/Dialog';
+import { FormGrid } from '../components/FormLayout';
 import { CheckCircleIcon, SettingsIcon, UnitsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
@@ -652,91 +653,95 @@ export function StructureManagementPage({
             </form>
           ) : (
             <form onSubmit={(event) => void saveUnit(event, editor.unit)}>
-              <DialogBody className="structure-form-grid">
-                <Field label={houseMode ? 'Código o número de casa' : 'Código o número de unidad'}>
-                  <input
-                    autoFocus
-                    defaultValue={editor.unit?.code ?? ''}
-                    maxLength={40}
-                    name="code"
-                    required
-                  />
-                </Field>
+              <DialogBody>
+                <FormGrid>
+                  <Field
+                    label={houseMode ? 'Código o número de casa' : 'Código o número de unidad'}
+                  >
+                    <input
+                      autoFocus
+                      defaultValue={editor.unit?.code ?? ''}
+                      maxLength={40}
+                      name="code"
+                      required
+                    />
+                  </Field>
 
-                {!houseMode && !singleBuildingMode ? (
+                  {!houseMode && !singleBuildingMode ? (
+                    <Field
+                      hint={
+                        multiBuildingMode ? 'El mismo código puede existir en otra torre.' : undefined
+                      }
+                      label="Torre o edificio"
+                    >
+                      <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
+                        <option value="">Sin edificio / área común</option>
+                        {buildings.map((building) => (
+                          <option key={building.id} value={building.id}>
+                            {building.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  ) : null}
+
+                  {singleBuildingMode ? (
+                    <div className="structure-form-note" data-span="full">
+                      Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>. La
+                      unidad se asociará automáticamente y su código será único dentro de este
+                      edificio.
+                    </div>
+                  ) : null}
+
                   <Field
                     hint={
-                      multiBuildingMode ? 'El mismo código puede existir en otra torre.' : undefined
+                      houseMode
+                        ? 'Habitta oculta Apartamento porque este condominio fue definido como conjunto de casas.'
+                        : singleBuildingMode || multiBuildingMode
+                          ? 'Habitta oculta Casa porque la estructura fue definida por edificios.'
+                          : undefined
                     }
-                    label="Torre o edificio"
+                    label="Tipo"
                   >
-                    <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
-                      <option value="">Sin edificio / área común</option>
-                      {buildings.map((building) => (
-                        <option key={building.id} value={building.id}>
-                          {building.name}
+                    <Select defaultValue={editor.unit?.type ?? defaultUnitType(topology)} name="type">
+                      {availableUnitTypes.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
                         </option>
                       ))}
                     </Select>
                   </Field>
-                ) : null}
 
-                {singleBuildingMode ? (
-                  <div className="structure-form-note">
-                    Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>. La
-                    unidad se asociará automáticamente y su código será único dentro de este
-                    edificio.
-                  </div>
-                ) : null}
+                  {!houseMode ? (
+                    <Field
+                      hint="Puede ser un número, PB, PH o nivel descriptivo."
+                      label="Piso o nivel"
+                    >
+                      <input defaultValue={editor.unit?.floor ?? ''} maxLength={20} name="floor" />
+                    </Field>
+                  ) : null}
 
-                <Field
-                  hint={
-                    houseMode
-                      ? 'Habitta oculta Apartamento porque este condominio fue definido como conjunto de casas.'
-                      : singleBuildingMode || multiBuildingMode
-                        ? 'Habitta oculta Casa porque la estructura fue definida por edificios.'
-                        : undefined
-                  }
-                  label="Tipo"
-                >
-                  <Select defaultValue={editor.unit?.type ?? defaultUnitType(topology)} name="type">
-                    {availableUnitTypes.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-
-                {!houseMode ? (
-                  <Field
-                    hint="Puede ser un número, PB, PH o nivel descriptivo."
-                    label="Piso o nivel"
-                  >
-                    <input defaultValue={editor.unit?.floor ?? ''} maxLength={20} name="floor" />
+                  <Field hint="Porcentaje de participación entre 0 y 100." label="Alícuota (%)">
+                    <input
+                      defaultValue={normalizePercentage(editor.unit?.ownership_percentage ?? null)}
+                      max="100"
+                      min="0.0001"
+                      name="ownershipPercentage"
+                      step="0.0001"
+                      type="number"
+                    />
                   </Field>
-                ) : null}
 
-                <Field hint="Porcentaje de participación entre 0 y 100." label="Alícuota (%)">
-                  <input
-                    defaultValue={normalizePercentage(editor.unit?.ownership_percentage ?? null)}
-                    max="100"
-                    min="0.0001"
-                    name="ownershipPercentage"
-                    step="0.0001"
-                    type="number"
-                  />
-                </Field>
-
-                <Field
-                  hint="Inactiva conserva pagos, cuotas, propietarios y ocupaciones históricas."
-                  label="Estado"
-                >
-                  <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
-                    <option value="active">Activa</option>
-                    <option value="inactive">Inactiva / archivada</option>
-                  </Select>
-                </Field>
+                  <Field
+                    hint="Inactiva conserva pagos, cuotas, propietarios y ocupaciones históricas."
+                    label="Estado"
+                  >
+                    <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
+                      <option value="active">Activa</option>
+                      <option value="inactive">Inactiva / archivada</option>
+                    </Select>
+                  </Field>
+                </FormGrid>
               </DialogBody>
               <DialogFooter>
                 <Button
