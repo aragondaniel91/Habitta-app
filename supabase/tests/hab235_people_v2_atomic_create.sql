@@ -1,5 +1,5 @@
 begin;
-select plan(50);
+select plan(58);
 
 insert into auth.users(id, instance_id, aud, role, email, encrypted_password, created_at, updated_at) values
   ('23500000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@235.test', 'x', now(), now()),
@@ -93,6 +93,11 @@ select throws_ok($$select public.create_person_with_initial_context(
   '23520000-0000-0000-0000-000000000001', 'Clara', 'No Primary', 'Cédula V', '23523', 'no-primary@235.test', null, 'active', 'tenant', '23530000-0000-0000-0000-000000000002', null, null, null, 'additional', false
 )$$, 'P0001', 'financial_primary_required', 'additional without a primary rolls back the entire create');
 
+select set_config('request.jwt.claim.sub', '23500000-0000-0000-0000-000000000002', true);
+select throws_ok($$select public.create_person_with_initial_context(
+  '23520000-0000-0000-0000-000000000001', 'Unauthorized', 'Create', 'Cédula V', '23524', 'unauthorized@235.test', null, 'active', 'owner_occupant', '23530000-0000-0000-0000-000000000001', 100, null, null, 'primary', true
+)$$, 'P0001', 'person_create_not_authorized', 'authenticated caller without people-management authority fails closed');
+
 reset role;
 select is((select count(*) from public.people where condominium_id = '23520000-0000-0000-0000-000000000001' and email = 'solo-activo@235.test'), 1::bigint, 'person-only active creates one person');
 select is((select count(*) from public.people where condominium_id = '23520000-0000-0000-0000-000000000001' and email = 'solo-inactivo@235.test' and status = 'inactive'), 1::bigint, 'person-only inactive remains inactive');
@@ -107,6 +112,13 @@ select is((select count(*) from public.unit_owners o join public.people p on p.i
 select is((select count(*) from public.unit_occupancies o join public.people p on p.id = o.person_id where p.email in ('no-primary@235.test', 'cross@235.test')), 0::bigint, 'failed occupancy paths leave no occupancy');
 select is((select count(*) from public.condominium_person_relationships r join public.people p on p.id = r.person_id where p.email = 'bad-general@235.test'), 0::bigint, 'failed community relationship rolls back');
 select is((select count(*) from public.unit_communication_assignments a join public.people p on p.id = a.person_id where p.email = 'no-primary@235.test'), 0::bigint, 'failed additional recipient leaves no assignment');
+select is((select count(*) from public.people where email = 'unauthorized@235.test'), 0::bigint, 'unauthorized caller creates no person');
+select is((select count(*) from public.unit_owners o join public.people p on p.id = o.person_id where p.email = 'unauthorized@235.test'), 0::bigint, 'unauthorized caller creates no ownership');
+select is((select count(*) from public.unit_occupancies o join public.people p on p.id = o.person_id where p.email = 'unauthorized@235.test'), 0::bigint, 'unauthorized caller creates no occupancy');
+select is((select count(*) from public.condominium_person_relationships r join public.people p on p.id = r.person_id where p.email = 'unauthorized@235.test'), 0::bigint, 'unauthorized caller creates no condominium relationship');
+select is((select count(*) from public.unit_communication_assignments a join public.people p on p.id = a.person_id where p.email = 'unauthorized@235.test'), 0::bigint, 'unauthorized caller creates no communication assignment');
+select ok(not has_function_privilege('anon', 'public.create_person_with_initial_context(uuid,text,text,text,text,text,text,public.person_status,text,uuid,numeric,date,text,text,boolean)', 'execute'), 'anon cannot execute atomic person creation');
+select ok(has_function_privilege('authenticated', 'public.create_person_with_initial_context(uuid,text,text,text,text,text,text,public.person_status,text,uuid,numeric,date,text,text,boolean)', 'execute'), 'authenticated can execute atomic person creation');
 select is((select count(*) from public.unit_owners o join public.people p on p.id = o.person_id where p.email = 'owner@235.test'), 1::bigint, 'owner creates one ownership');
 select is((select count(*) from public.unit_owners o join public.people p on p.id = o.person_id where p.email = 'owner-occupant@235.test' and o.unit_id = '23530000-0000-0000-0000-000000000001'), 1::bigint, 'owner occupant creates one ownership for its unit');
 select is((select count(*) from public.unit_occupancies o join public.people p on p.id = o.person_id where p.email = 'owner-occupant@235.test' and o.unit_id = '23530000-0000-0000-0000-000000000001' and o.occupancy_type = 'owner_occupant'), 1::bigint, 'owner occupant creates one matching occupancy');

@@ -1677,6 +1677,10 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                           ...current,
                           kind: event.target.value as InitialRelationshipKind,
                           unitId: '',
+                          ownershipPercentage: '',
+                          title: '',
+                          financialRole: 'none',
+                          generalRecipient: false,
                         }))
                       }
                     >

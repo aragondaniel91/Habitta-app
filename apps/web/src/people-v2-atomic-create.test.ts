@@ -45,6 +45,14 @@ describe('HAB-235 People V2 atomic create', () => {
     expect(source).not.toContain('canSubmitPayment');
   });
 
+  it('clears hidden relationship and communication state when the relationship kind changes', () => {
+    expect(source).toMatch(
+      /kind: event\.target\.value as InitialRelationshipKind,\s+unitId: '',\s+ownershipPercentage: '',\s+title: '',\s+financialRole: 'none',\s+generalRecipient: false,/,
+    );
+    expect(createSaveFlow).toContain('...(initialContextDraft.ownershipPercentage');
+    expect(createSaveFlow).toContain('initialRelationship && initialContextDraft.unitId');
+  });
+
   it('keeps validation and completion feedback inside the shared Drawer flow', () => {
     expect(source).toContain('required');
     expect(source).toContain('min="0.0001"');
