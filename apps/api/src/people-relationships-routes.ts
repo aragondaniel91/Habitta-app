@@ -41,6 +41,11 @@ const personOccupancyInputSchema = z.object({
   endsAt: z.string().date().optional(),
 });
 
+const communicationResponsibilitySchema = z.object({
+  financialRole: z.enum(['none', 'primary', 'additional']),
+  generalRecipient: z.boolean(),
+});
+
 function rest(c: PeopleContext, path: string, init: RequestInit = {}) {
   return fetch(`${c.env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -80,6 +85,79 @@ async function ensurePersonAndUnit(
   ]);
   return personExists && unitExists;
 }
+
+function communicationAssignmentQuery(condominiumId: string, filter: string) {
+  return `unit_communication_assignments?condominium_id=eq.${condominiumId}&${filter}&select=id,condominium_id,unit_id,person_id,financial_role,general_recipient,effective_from,effective_to,created_at,ended_at,units!inner(id,code,condominium_id,building_id,buildings(id,name))&order=effective_from.desc`;
+}
+
+peopleRelationshipRoutes.get('/:id/people/:personId/communication-responsibilities', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const personId = uuidSchema.parse(c.req.param('personId'));
+  const [personResponse, assignmentsResponse] = await Promise.all([
+    rest(c, `people?id=eq.${personId}&condominium_id=eq.${condominiumId}&select=id`),
+    rest(c, communicationAssignmentQuery(condominiumId, `person_id=eq.${personId}`)),
+  ]);
+  if (!personResponse.ok || !assignmentsResponse.ok)
+    return c.json({ error: 'Request failed' }, 403);
+  if (!((await personResponse.json()) as unknown[])[0])
+    return c.json({ error: 'Person not found' }, 404);
+  return c.json({ assignments: await assignmentsResponse.json() });
+});
+
+peopleRelationshipRoutes.get('/:id/units/:unitId/communication-responsibilities', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const unitId = uuidSchema.parse(c.req.param('unitId'));
+  const [unitResponse, assignmentsResponse] = await Promise.all([
+    rest(c, `units?id=eq.${unitId}&condominium_id=eq.${condominiumId}&select=id`),
+    rest(c, communicationAssignmentQuery(condominiumId, `unit_id=eq.${unitId}`)),
+  ]);
+  if (!unitResponse.ok || !assignmentsResponse.ok) return c.json({ error: 'Request failed' }, 403);
+  if (!((await unitResponse.json()) as unknown[])[0])
+    return c.json({ error: 'Unit not found' }, 404);
+  return c.json({ assignments: await assignmentsResponse.json() });
+});
+
+peopleRelationshipRoutes.patch(
+  '/:id/people/:personId/communication-responsibilities/:unitId',
+  async (c) => {
+    const condominiumId = uuidSchema.parse(c.req.param('id'));
+    const personId = uuidSchema.parse(c.req.param('personId'));
+    const unitId = uuidSchema.parse(c.req.param('unitId'));
+    const parsed = await parseBody(c, communicationResponsibilitySchema);
+    if (parsed instanceof Response) return parsed;
+    if (!(await ensurePersonAndUnit(c, condominiumId, personId, unitId)))
+      return c.json({ error: 'Person or unit not found in condominium' }, 404);
+    const response = await rest(c, 'rpc/set_unit_communication_assignment', {
+      method: 'POST',
+      body: JSON.stringify({
+        target_condominium: condominiumId,
+        target_unit: unitId,
+        target_person: personId,
+        target_financial_role: parsed.financialRole,
+        target_general_recipient: parsed.generalRecipient,
+      }),
+    });
+    const result: unknown = await response.json().catch(() => null);
+    if (
+      !response.ok &&
+      typeof result === 'object' &&
+      result !== null &&
+      'message' in result &&
+      result.message === 'financial_primary_required'
+    ) {
+      return c.json(
+        {
+          error: 'financial_primary_required',
+          publicMessage:
+            'Esta unidad necesita un responsable financiero principal antes de agregar otros destinatarios financieros.',
+        },
+        409,
+      );
+    }
+    if (!response.ok) return c.json({ error: 'Communication responsibility unavailable' }, 403);
+    return c.json(result);
+  },
+);
 
 peopleRelationshipRoutes.get('/:id/people/:personId/relationships', async (c) => {
   const condominiumId = uuidSchema.parse(c.req.param('id'));

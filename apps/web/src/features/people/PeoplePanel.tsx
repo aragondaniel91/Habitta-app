@@ -19,6 +19,7 @@ import {
   type ResidentRole,
 } from '../../lib/residentAccess';
 import { peopleApi } from './api';
+import { CommunicationResponsibilities } from './CommunicationResponsibilities';
 import {
   condominiumRelationshipLabels,
   directoryUnitLabel,
@@ -935,6 +936,14 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     ) : null}
                   </div>
                 </section>
+
+                <CommunicationResponsibilities
+                  buildings={buildings}
+                  condominiumId={condominiumId}
+                  person={selected}
+                  session={session}
+                  units={units}
+                />
 
                 <section className="people-section">
                   <div className="people-section__heading">

@@ -33,6 +33,8 @@ const ids = {
   primaryUnitA102: '33333333-3333-4333-8333-333333333332',
   isolationUnitB201: '33333333-3333-4333-8333-333333333333',
   payerPerson: '44444444-4444-4444-8444-444444444441',
+  additionalRecipientPerson: '44444444-4444-4444-8444-444444444442',
+  unrelatedRecipientPerson: '44444444-4444-4444-8444-444444444443',
   payerOwnership: '55555555-5555-4555-8555-555555555551',
   chargeConcept: '66666666-6666-4666-8666-666666666661',
   paymentMethod: '77777777-7777-4777-8777-777777777771',
@@ -92,8 +94,19 @@ for (const user of fixture.users) {
 const adminId = usersByKey.get('administrator')?.id;
 const reviewerId = usersByKey.get('reviewer')?.id;
 const payerId = usersByKey.get('payer')?.id;
+const additionalRecipientId = usersByKey.get('additionalRecipient')?.id;
+const unrelatedRecipientId = usersByKey.get('unrelatedRecipient')?.id;
 const isolationUserId = usersByKey.get('isolationUser')?.id;
-if (![adminId, reviewerId, payerId, isolationUserId].every(Boolean)) {
+if (
+  ![
+    adminId,
+    reviewerId,
+    payerId,
+    additionalRecipientId,
+    unrelatedRecipientId,
+    isolationUserId,
+  ].every(Boolean)
+) {
   fail('Supabase did not return every required auth user id');
 }
 
@@ -122,6 +135,8 @@ await insert('condominium_memberships', [
   { condominium_id: ids.primaryCondominium, user_id: adminId, role: 'condominium_admin' },
   { condominium_id: ids.primaryCondominium, user_id: reviewerId, role: 'payment_reviewer' },
   { condominium_id: ids.primaryCondominium, user_id: payerId, role: 'owner' },
+  { condominium_id: ids.primaryCondominium, user_id: additionalRecipientId, role: 'owner' },
+  { condominium_id: ids.primaryCondominium, user_id: unrelatedRecipientId, role: 'owner' },
   {
     condominium_id: ids.isolationCondominium,
     user_id: isolationUserId,
@@ -153,15 +168,35 @@ await insert('units', [
   },
 ]);
 
-await insert('people', {
-  id: ids.payerPerson,
-  condominium_id: ids.primaryCondominium,
-  auth_user_id: payerId,
-  first_name: 'Habitta',
-  last_name: 'E2E Payer',
-  email: fixture.users.find(({ key }) => key === 'payer').email,
-  created_by: adminId,
-});
+await insert('people', [
+  {
+    id: ids.payerPerson,
+    condominium_id: ids.primaryCondominium,
+    auth_user_id: payerId,
+    first_name: 'Habitta',
+    last_name: 'E2E Payer',
+    email: fixture.users.find(({ key }) => key === 'payer').email,
+    created_by: adminId,
+  },
+  {
+    id: ids.additionalRecipientPerson,
+    condominium_id: ids.primaryCondominium,
+    auth_user_id: additionalRecipientId,
+    first_name: 'Habitta',
+    last_name: 'E2E Additional',
+    email: fixture.users.find(({ key }) => key === 'additionalRecipient').email,
+    created_by: adminId,
+  },
+  {
+    id: ids.unrelatedRecipientPerson,
+    condominium_id: ids.primaryCondominium,
+    auth_user_id: unrelatedRecipientId,
+    first_name: 'Habitta',
+    last_name: 'E2E Unrelated',
+    email: fixture.users.find(({ key }) => key === 'unrelatedRecipient').email,
+    created_by: adminId,
+  },
+]);
 
 await insert('unit_owners', {
   id: ids.payerOwnership,
@@ -169,6 +204,16 @@ await insert('unit_owners', {
   person_id: ids.payerPerson,
   ownership_percentage: 100,
   is_primary_contact: true,
+  starts_at: '2020-01-01',
+  created_by: adminId,
+});
+
+await insert('unit_occupancies', {
+  unit_id: ids.primaryUnitA101,
+  person_id: ids.additionalRecipientPerson,
+  occupancy_type: 'tenant',
+  is_primary_contact: false,
+  starts_at: '2020-01-01',
   created_by: adminId,
 });
 

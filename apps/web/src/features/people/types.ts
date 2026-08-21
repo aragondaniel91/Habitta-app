@@ -70,6 +70,26 @@ export type PersonRelationshipView = {
   condominiumRelationships: CondominiumRelationship[];
 };
 
+export type FinancialRecipientRole = 'primary' | 'additional' | 'none';
+
+export type CommunicationAssignment = {
+  id: string;
+  condominium_id: string;
+  unit_id: string;
+  person_id: string;
+  financial_role: Exclude<FinancialRecipientRole, 'none'> | null;
+  general_recipient: boolean;
+  effective_from: string;
+  effective_to?: string | null;
+  created_at: string;
+  ended_at?: string | null;
+  units: UnitContext;
+};
+
+export type CommunicationResponsibilitiesView = {
+  assignments: CommunicationAssignment[];
+};
+
 export type PersonAdminNoteRevision = {
   id: number;
   action: 'saved' | 'cleared';
