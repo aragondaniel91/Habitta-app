@@ -22,12 +22,8 @@ describe('HAB-242 one-time bulk charge guardrails', () => {
 
   it('warns when a regular-dues concept is selected without blocking legitimate ad-hoc batches', () => {
     expect(drawerSource).toContain("selected?.category === 'regular_dues'");
-    expect(drawerSource).toContain(
-      'Para cuotas mensuales o periódicas usa Cuotas recurrentes',
-    );
-    expect(drawerSource).toContain(
-      'crear otro lote equivalente será una operación nueva',
-    );
+    expect(drawerSource).toContain('Para cuotas mensuales o periódicas usa Cuotas recurrentes');
+    expect(drawerSource).toContain('crear otro lote equivalente será una operación nueva');
     expect(drawerSource).toContain('<option key={concept.id} value={concept.id}>');
     expect(drawerSource).not.toContain("concept.category !== 'regular_dues'");
   });
