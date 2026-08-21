@@ -37,14 +37,14 @@ export function ChargeCreationChooser({ onClose, onOrdinary, onExtraordinary, on
 
         <section style={optionStyle}>
           <div>
-            <strong>Extraordinaria</strong>
+            <strong>Extraordinaria de una sola vez</strong>
             <p style={{ color: 'var(--text-secondary)', lineHeight: 1.45, margin: '4px 0 0' }}>
-              Derramas, proyectos o gastos excepcionales que deben distribuirse entre varias
-              unidades con trazabilidad de lote.
+              Derramas, proyectos o gastos excepcionales distribuidos entre varias unidades. Se
+              publica como un lote único y no sustituye un plan de cuotas recurrentes.
             </p>
           </div>
           <Button onClick={onExtraordinary} variant="secondary">
-            Crear cuota extraordinaria
+            Crear lote extraordinario
           </Button>
         </section>
 
