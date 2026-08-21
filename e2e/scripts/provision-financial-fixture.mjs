@@ -204,6 +204,7 @@ await insert('unit_owners', {
   person_id: ids.payerPerson,
   ownership_percentage: 100,
   is_primary_contact: true,
+  starts_at: '2020-01-01',
   created_by: adminId,
 });
 
@@ -212,6 +213,7 @@ await insert('unit_occupancies', {
   person_id: ids.additionalRecipientPerson,
   occupancy_type: 'tenant',
   is_primary_contact: false,
+  starts_at: '2020-01-01',
   created_by: adminId,
 });
 

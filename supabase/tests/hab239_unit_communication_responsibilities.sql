@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(42);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('23900000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@239.test','x',now(),now()),
@@ -56,6 +56,7 @@ select lives_ok($$select public.expand_notification_event(id) from public.notifi
 select ok(exists(select 1 from public.notifications n join public.notification_events e on e.id=n.event_id where e.condominium_id='23920000-0000-0000-0000-000000000001' and e.event_type='receivable_created' and n.recipient_user_id='23900000-0000-0000-0000-000000000002'),'primary receives the explicit receivable notification');
 select ok(exists(select 1 from public.notifications n join public.notification_events e on e.id=n.event_id where e.condominium_id='23920000-0000-0000-0000-000000000001' and e.event_type='receivable_created' and n.recipient_user_id='23900000-0000-0000-0000-000000000003'),'additional receives the explicit receivable notification');
 select is((select count(*) from public.notifications n join public.notification_events e on e.id=n.event_id where e.condominium_id='23920000-0000-0000-0000-000000000001' and e.event_type='receivable_created' and n.recipient_user_id='23900000-0000-0000-0000-000000000004'),0::bigint,'unrelated authorized occupant does not receive explicit financial event');
+select ok(exists(select 1 from public.notifications n join public.notification_events e on e.id=n.event_id where e.condominium_id='23920000-0000-0000-0000-000000000001' and e.event_type='receivable_created' and n.recipient_user_id='23900000-0000-0000-0000-000000000002' and n.metadata @> jsonb_build_object('unit_id','23930000-0000-0000-0000-000000000001'::uuid,'amount','1.00','currency_code','USD')),'in-app notification metadata preserves unit, amount and currency');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','23900000-0000-0000-0000-000000000001',true);
@@ -65,6 +66,35 @@ reset role;
 select is((select array_agg(person_id order by person_id)::text from public.resolve_unit_financial_recipients('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000001','2026-08-21 02:30:00+00')),'{23940000-0000-0000-0000-000000000002,23940000-0000-0000-0000-000000000003}','general-only never enables explicit-financial mode and Caracas local date excludes the next-day occupant');
 select is((select count(*) from public.unit_communication_assignments where unit_id='23930000-0000-0000-0000-000000000001' and effective_to is null and financial_role is not null),0::bigint,'only historical financial assignments remain after operational removal');
 select ok(position('delete from public.unit_communication_assignments' in lower(pg_get_functiondef('public.set_unit_communication_assignment(uuid,uuid,uuid,text,boolean)'::regprocedure)))=0,'assignment history is never deleted by the setter');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','23900000-0000-0000-0000-000000000001',true);
+select lives_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000002','23940000-0000-0000-0000-000000000002','primary',true)$$,'A can become primary before inactive cleanup');
+reset role;
+update public.people set status='inactive' where id='23940000-0000-0000-0000-000000000002';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','23900000-0000-0000-0000-000000000001',true);
+select lives_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000002','23940000-0000-0000-0000-000000000002','none',false)$$,'inactive person assignment can be closed');
+reset role;
+select is((select count(*) from public.unit_communication_assignments where unit_id='23930000-0000-0000-0000-000000000002' and person_id='23940000-0000-0000-0000-000000000002' and effective_to is null),0::bigint,'inactive cleanup leaves no active assignment');
+select ok(exists(select 1 from public.unit_communication_assignments where unit_id='23930000-0000-0000-0000-000000000002' and person_id='23940000-0000-0000-0000-000000000002' and effective_to is not null and ended_at is not null and ended_by='23900000-0000-0000-0000-000000000001'),'inactive cleanup closes the historical snapshot with the administrator');
+
+update public.people set status='active' where id='23940000-0000-0000-0000-000000000002';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','23900000-0000-0000-0000-000000000001',true);
+select lives_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000002','23940000-0000-0000-0000-000000000002','primary',true)$$,'A can become primary before inactive replacement');
+select lives_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000002','23940000-0000-0000-0000-000000000003','additional',false)$$,'B can become additional before inactive replacement');
+reset role;
+update public.people set status='inactive' where id='23940000-0000-0000-0000-000000000002';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','23900000-0000-0000-0000-000000000001',true);
+select lives_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000002','23940000-0000-0000-0000-000000000003','primary',false)$$,'active B replaces inactive A as primary');
+reset role;
+select is((select financial_role::text from public.unit_communication_assignments where unit_id='23930000-0000-0000-0000-000000000002' and person_id='23940000-0000-0000-0000-000000000003' and effective_to is null),'primary','B is active primary after inactive replacement');
+select is((select count(*) from public.unit_communication_assignments where unit_id='23930000-0000-0000-0000-000000000002' and person_id='23940000-0000-0000-0000-000000000002' and effective_to is null),0::bigint,'inactive displaced A has no active additional assignment');
+select ok(exists(select 1 from public.unit_communication_assignments where unit_id='23930000-0000-0000-0000-000000000002' and person_id='23940000-0000-0000-0000-000000000002' and financial_role='primary' and effective_to is not null),'inactive displaced A primary snapshot is preserved and closed');
+select is((select count(*) from public.unit_communication_assignments where unit_id='23930000-0000-0000-0000-000000000002' and financial_role='primary' and effective_to is null),1::bigint,'inactive replacement leaves exactly one active primary');
+update public.people set status='active' where id='23940000-0000-0000-0000-000000000002';
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','23900000-0000-0000-0000-000000000001',true);

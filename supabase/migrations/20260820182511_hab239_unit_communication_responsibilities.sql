@@ -95,6 +95,7 @@ declare
   person_row public.people;
   current_assignment public.unit_communication_assignments;
   displaced_primary public.unit_communication_assignments;
+  displaced_primary_status public.person_status;
   result public.unit_communication_assignments;
   now_value timestamptz := now();
 begin
@@ -114,10 +115,6 @@ begin
   if unit_row.id is null or person_row.id is null then
     raise exception using errcode = 'P0001', message = 'communication_assignment_not_found';
   end if;
-  if person_row.status <> 'active' then
-    raise exception using errcode = 'P0001', message = 'communication_assignment_person_inactive';
-  end if;
-
   select * into current_assignment from public.unit_communication_assignments
   where unit_id = target_unit and person_id = target_person and effective_to is null
   for update;
@@ -150,6 +147,10 @@ begin
     return null;
   end if;
 
+  if person_row.status <> 'active' then
+    raise exception using errcode = 'P0001', message = 'communication_assignment_person_inactive';
+  end if;
+
   if current_assignment.id is not null
     and current_assignment.financial_role is not distinct from target_role
     and current_assignment.general_recipient = target_general_recipient then
@@ -170,12 +171,16 @@ begin
       update public.unit_communication_assignments
       set effective_to = now_value, ended_at = now_value, ended_by = auth.uid()
       where id = displaced_primary.id;
-      insert into public.unit_communication_assignments(
-        condominium_id, unit_id, person_id, financial_role, general_recipient, effective_from, created_by
-      ) values (
-        target_condominium, target_unit, displaced_primary.person_id, 'additional',
-        displaced_primary.general_recipient, now_value, auth.uid()
-      );
+      select status into displaced_primary_status
+      from public.people where id = displaced_primary.person_id;
+      if displaced_primary_status = 'active' then
+        insert into public.unit_communication_assignments(
+          condominium_id, unit_id, person_id, financial_role, general_recipient, effective_from, created_by
+        ) values (
+          target_condominium, target_unit, displaced_primary.person_id, 'additional',
+          displaced_primary.general_recipient, now_value, auth.uid()
+        );
+      end if;
     end if;
   elsif target_role = 'additional' and not exists (
     select 1 from public.unit_communication_assignments
@@ -287,7 +292,7 @@ begin
   loop
     if recipient.auth_user_id is not null then
       select coalesce(p.in_app_enabled,true),coalesce(p.email_enabled,true),lower(coalesce(nullif(trim(u.email),''),nullif(trim(person.email),''))) into in_app_allowed,email_allowed,email_value from auth.users u left join lateral(select p.email from public.people p where p.auth_user_id=u.id and p.condominium_id=e.condominium_id order by p.created_at limit 1) person on true left join public.notification_preferences p on p.condominium_id=e.condominium_id and p.user_id=recipient.auth_user_id and p.notification_type=e.event_type where u.id=recipient.auth_user_id;
-      if e.event_type in ('payment_correction_requested','payment_rejected','payment_approved','payment_reversed','payment_receipt_issued') or in_app_allowed then insert into public.notifications(condominium_id,recipient_user_id,event_id,notification_type,title,body,action_url,metadata) values(e.condominium_id,recipient.auth_user_id,e.id,e.event_type,title_value,body_value,action_value,jsonb_build_object('unit_id',e.unit_id)) on conflict(event_id,recipient_user_id) do nothing; end if;
+      if e.event_type in ('payment_correction_requested','payment_rejected','payment_approved','payment_reversed','payment_receipt_issued') or in_app_allowed then insert into public.notifications(condominium_id,recipient_user_id,event_id,notification_type,title,body,action_url,metadata) values(e.condominium_id,recipient.auth_user_id,e.id,e.event_type,title_value,body_value,action_value,jsonb_strip_nulls(jsonb_build_object('unit_id',e.unit_id,'amount',e.payload->>'amount','currency_code',e.payload->>'currency_code'))) on conflict(event_id,recipient_user_id) do nothing; end if;
     else email_allowed:=true; email_value:=recipient.email; end if;
     if not condominium_email_allowed then skip_code:='condominium_email_disabled'; elsif not email_allowed then skip_code:='user_email_disabled'; elsif email_value is null or email_value !~ '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$' then skip_code:='recipient_email_unavailable'; else skip_code:=null; end if;
     insert into public.notification_deliveries(condominium_id,event_id,recipient_user_id,recipient_email,channel,template_key,payload,status,deduplication_key,last_error_code) values(e.condominium_id,e.id,recipient.auth_user_id,email_value,'email',template_value,safe_payload,case when skip_code is null then 'pending'::public.notification_delivery_status else 'skipped'::public.notification_delivery_status end,case when recipient.auth_user_id is null then 'delivery:'||e.id::text||':person:'||recipient.person_id::text||':email' else 'delivery:'||e.id::text||':'||recipient.auth_user_id::text||':email' end,skip_code) on conflict(deduplication_key) do nothing returning id into inserted_delivery;
