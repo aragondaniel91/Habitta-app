@@ -518,16 +518,29 @@ export function ReceivablesDrawerHost({
 
   if (mode === 'batch') {
     return (
-      <Drawer eyebrow="Cobranza masiva" onClose={onClose} title="Crear lote de cuotas">
+      <Drawer eyebrow="Cargo masivo único" onClose={onClose} title="Crear lote de una sola vez">
         <Feedback message={message} />
         <p className="receivables-drawer-intro">
-          Genera el mismo cargo para todas las unidades activas. Habitta exige una previsualización
-          antes de publicarlo.
+          Este flujo crea un cargo ad-hoc una sola vez para todas las unidades activas. No programa
+          ciclos futuros ni sustituye Cuotas recurrentes.
         </p>
         {!batchPreview ? (
           <form className="receivables-form" onSubmit={(event) => void previewBatch(event)}>
             <Field label="Concepto">
-              <Select name="conceptId" required>
+              <Select
+                name="conceptId"
+                onChange={(event) => {
+                  const selected = activeConcepts.find(
+                    (concept) => concept.id === event.target.value,
+                  );
+                  setMessage(
+                    selected?.category === 'regular_dues'
+                      ? 'Este concepto está marcado como cuota regular. Para cuotas mensuales o periódicas usa Cuotas recurrentes. Este lote es una operación única y crear otro lote equivalente será una operación nueva.'
+                      : '',
+                  );
+                }}
+                required
+              >
                 <option value="">Selecciona un concepto</option>
                 {activeConcepts.map((concept) => (
                   <option key={concept.id} value={concept.id}>
@@ -537,7 +550,7 @@ export function ReceivablesDrawerHost({
               </Select>
             </Field>
             <Field label="Nombre del lote">
-              <input name="name" placeholder="Ej. Cuotas agosto 2026" required />
+              <input name="name" placeholder="Ej. Fondo extraordinario ascensores" required />
             </Field>
             <div className="receivables-form-grid">
               <Field label="Monto por unidad">
@@ -562,11 +575,11 @@ export function ReceivablesDrawerHost({
               <UnitsIcon size={20} />
               <div>
                 <strong>{activeUnits.length} unidades activas</strong>
-                <span>El lote se aplicará una vez a cada unidad.</span>
+                <span>Se aplicará una sola vez a cada unidad activa.</span>
               </div>
             </div>
             <Button disabled={loading || !activeUnits.length} type="submit">
-              {loading ? 'Calculando…' : 'Previsualizar lote'}
+              {loading ? 'Calculando…' : 'Previsualizar cargo único'}
             </Button>
           </form>
         ) : (
@@ -575,7 +588,7 @@ export function ReceivablesDrawerHost({
               <CheckCircleIcon size={24} />
             </span>
             <div>
-              <small>Previsualización lista</small>
+              <small>Previsualización de cargo único</small>
               <strong>{batchPreview.result.count} cuotas</strong>
               <b>
                 {formatDashboardAmount(batchPreview.result.total, batchPreview.result.currencyCode)}
@@ -587,7 +600,7 @@ export function ReceivablesDrawerHost({
                 Editar
               </Button>
               <Button disabled={loading} onClick={commitBatch} size="sm">
-                {loading ? 'Publicando…' : 'Publicar lote'}
+                {loading ? 'Publicando…' : 'Publicar cargo único'}
               </Button>
             </div>
           </div>
