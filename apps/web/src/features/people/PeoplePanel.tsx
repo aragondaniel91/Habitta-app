@@ -55,10 +55,30 @@ type PersonDraft = {
   firstName: string;
   lastName: string;
   documentType: string;
+  customDocumentType: string;
   documentNumber: string;
   email: string;
   phone: string;
   status: 'active' | 'inactive';
+};
+
+type InitialRelationshipKind =
+  | 'none'
+  | 'owner'
+  | 'owner_occupant'
+  | 'tenant'
+  | 'family_member'
+  | 'authorized_occupant'
+  | CondominiumRelationshipType;
+
+type InitialContextDraft = {
+  kind: InitialRelationshipKind;
+  unitId: string;
+  ownershipPercentage: string;
+  startsAt: string;
+  title: string;
+  financialRole: 'none' | 'primary' | 'additional';
+  generalRecipient: boolean;
 };
 
 type PendingClose =
@@ -78,10 +98,20 @@ const emptyPersonDraft: PersonDraft = {
   firstName: '',
   lastName: '',
   documentType: '',
+  customDocumentType: '',
   documentNumber: '',
   email: '',
   phone: '',
   status: 'active',
+};
+const emptyInitialContextDraft: InitialContextDraft = {
+  kind: 'none',
+  unitId: '',
+  ownershipPercentage: '',
+  startsAt: '',
+  title: '',
+  financialRole: 'none',
+  generalRecipient: false,
 };
 
 const occupancyTypeOptions = Object.entries(occupancyLabels) as [
@@ -145,6 +175,8 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
   const [personEditorOpen, setPersonEditorOpen] = useState(false);
   const [personDraft, setPersonDraft] = useState<PersonDraft>(emptyPersonDraft);
   const [editingPersonId, setEditingPersonId] = useState('');
+  const [initialContextDraft, setInitialContextDraft] =
+    useState<InitialContextDraft>(emptyInitialContextDraft);
   const [ownershipDraft, setOwnershipDraft] = useState({ unitId: '', percentage: '' });
   const [occupancyDraft, setOccupancyDraft] = useState({
     unitId: '',
@@ -292,16 +324,22 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
   const openNewPerson = () => {
     setEditingPersonId('');
     setPersonDraft(emptyPersonDraft);
+    setInitialContextDraft(emptyInitialContextDraft);
     setPersonEditorOpen(true);
   };
 
   const openEditPerson = () => {
     if (!selected) return;
+    const savedDocumentType = selected.document_type ?? '';
+    const isPresetDocumentType = ['', 'Cédula V', 'Cédula E', 'RIF', 'Pasaporte'].includes(
+      savedDocumentType,
+    );
     setEditingPersonId(selected.id);
     setPersonDraft({
       firstName: selected.first_name,
       lastName: selected.last_name,
-      documentType: selected.document_type ?? '',
+      documentType: isPresetDocumentType ? savedDocumentType : 'Otro',
+      customDocumentType: isPresetDocumentType ? '' : savedDocumentType,
       documentNumber: selected.document_number ?? '',
       email: selected.email ?? '',
       phone: selected.phone ?? '',
@@ -317,25 +355,70 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
     setMessage('');
     const path = editingPersonId
       ? `/v1/condominiums/${condominiumId}/people/${editingPersonId}`
-      : `/v1/condominiums/${condominiumId}/people`;
+      : `/v1/condominiums/${condominiumId}/people/create-with-context`;
     try {
-      const result = await peopleApi<Person[]>(path, session, {
+      const initialRelationship =
+        initialContextDraft.kind === 'none'
+          ? null
+          : {
+              kind: initialContextDraft.kind,
+              ...(initialContextDraft.unitId ? { unitId: initialContextDraft.unitId } : {}),
+              ...(initialContextDraft.ownershipPercentage
+                ? { ownershipPercentage: Number(initialContextDraft.ownershipPercentage) }
+                : {}),
+              ...(initialContextDraft.startsAt ? { startsAt: initialContextDraft.startsAt } : {}),
+              ...(initialContextDraft.title ? { title: initialContextDraft.title } : {}),
+            };
+      const requestBody = editingPersonId
+        ? {
+            firstName: personDraft.firstName,
+            lastName: personDraft.lastName,
+            documentType:
+              personDraft.documentType === 'Otro'
+                ? personDraft.customDocumentType
+                : personDraft.documentType,
+            documentNumber: personDraft.documentNumber,
+            ...(personDraft.email ? { email: personDraft.email } : {}),
+            ...(personDraft.phone ? { phone: personDraft.phone } : {}),
+            status: personDraft.status,
+          }
+        : {
+            person: {
+              firstName: personDraft.firstName,
+              lastName: personDraft.lastName,
+              documentType:
+                personDraft.documentType === 'Otro'
+                  ? personDraft.customDocumentType
+                  : personDraft.documentType,
+              documentNumber: personDraft.documentNumber,
+              ...(personDraft.email ? { email: personDraft.email } : {}),
+              ...(personDraft.phone ? { phone: personDraft.phone } : {}),
+              status: personDraft.status,
+            },
+            initialRelationship,
+            communication:
+              initialRelationship && initialContextDraft.unitId
+                ? {
+                    financialRole: initialContextDraft.financialRole,
+                    generalRecipient: initialContextDraft.generalRecipient,
+                  }
+                : null,
+          };
+      const result = await peopleApi<Person[] | Person>(path, session, {
         method: editingPersonId ? 'PATCH' : 'POST',
-        body: JSON.stringify({
-          firstName: personDraft.firstName,
-          lastName: personDraft.lastName,
-          documentType: personDraft.documentType,
-          documentNumber: personDraft.documentNumber,
-          ...(personDraft.email ? { email: personDraft.email } : {}),
-          ...(personDraft.phone ? { phone: personDraft.phone } : {}),
-          status: personDraft.status,
-        }),
+        body: JSON.stringify(requestBody),
       });
-      const savedPerson = result[0];
+      const savedPerson = Array.isArray(result) ? result[0] : result;
       setPersonEditorOpen(false);
       await loadDirectory();
       if (savedPerson) await loadPersonContext(savedPerson.id);
-      setMessage(editingPersonId ? 'Perfil actualizado.' : 'Persona creada y lista para vincular.');
+      setMessage(
+        editingPersonId
+          ? 'Perfil actualizado.'
+          : initialRelationship
+            ? 'Persona y relación creadas correctamente.'
+            : 'Persona creada.',
+      );
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo guardar la persona.',
@@ -1478,6 +1561,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
               La identidad se registra una sola vez. Después podrás asociarla a varias unidades y
               responsabilidades sin duplicar la persona.
             </p>
+            <h3 className="people-section__title">Identidad y contacto</h3>
             <div className="people-editor__grid">
               <Field label="Nombre">
                 <input
@@ -1500,21 +1584,37 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                   value={personDraft.lastName}
                 />
               </Field>
-              <Field hint="Cédula, RIF, pasaporte u otro identificador." label="Tipo de documento">
-                <input
-                  className="input"
-                  list="habitta-person-document-types"
+              <Field hint="Opcional" label="Tipo de documento">
+                <Select
                   onChange={(event) =>
                     setPersonDraft((current) => ({ ...current, documentType: event.target.value }))
                   }
                   value={personDraft.documentType}
-                />
-                <datalist id="habitta-person-document-types">
-                  <option value="Cédula" />
-                  <option value="RIF" />
-                  <option value="Pasaporte" />
-                </datalist>
+                >
+                  <option value="">Sin especificar</option>
+                  <option value="Cédula V">Cédula V</option>
+                  <option value="Cédula E">Cédula E</option>
+                  <option value="RIF">RIF</option>
+                  <option value="Pasaporte">Pasaporte</option>
+                  <option value="Otro">Otro</option>
+                </Select>
               </Field>
+              {personDraft.documentType === 'Otro' ? (
+                <Field label="Tipo de documento personalizado">
+                  <input
+                    className="input"
+                    maxLength={80}
+                    onChange={(event) =>
+                      setPersonDraft((current) => ({
+                        ...current,
+                        customDocumentType: event.target.value,
+                      }))
+                    }
+                    required
+                    value={personDraft.customDocumentType}
+                  />
+                </Field>
+              ) : null}
               <Field label="Número de documento">
                 <input
                   className="input"
@@ -1561,6 +1661,151 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                 </Select>
               </Field>
             </div>
+            {!editingPersonId ? (
+              <>
+                <h3 className="people-section__title">Relación con la comunidad</h3>
+                <p className="people-muted">
+                  Puedes guardar sólo la persona o asociarla ahora con su primera unidad o
+                  responsabilidad.
+                </p>
+                <div className="people-editor__grid">
+                  <Field label="Relación inicial">
+                    <Select
+                      value={initialContextDraft.kind}
+                      onChange={(event) =>
+                        setInitialContextDraft((current) => ({
+                          ...current,
+                          kind: event.target.value as InitialRelationshipKind,
+                          unitId: '',
+                          ownershipPercentage: '',
+                          title: '',
+                          financialRole: 'none',
+                          generalRecipient: false,
+                        }))
+                      }
+                    >
+                      <option value="none">Sin relación por ahora</option>
+                      <option value="owner">Propietario</option>
+                      <option value="owner_occupant">Propietario ocupante</option>
+                      <option value="tenant">Inquilino</option>
+                      <option value="family_member">Familiar</option>
+                      <option value="authorized_occupant">Ocupante autorizado</option>
+                      <option value="board_member">Junta de condominio</option>
+                      <option value="administrator_contact">Contacto de administración</option>
+                      <option value="representative">Representante legal</option>
+                      <option value="emergency_contact">Contacto de emergencia</option>
+                      <option value="other">Otra relación</option>
+                    </Select>
+                  </Field>
+                  {[
+                    'owner',
+                    'owner_occupant',
+                    'tenant',
+                    'family_member',
+                    'authorized_occupant',
+                  ].includes(initialContextDraft.kind) ? (
+                    <Field label="Unidad">
+                      <Select
+                        required
+                        value={initialContextDraft.unitId}
+                        onChange={(event) =>
+                          setInitialContextDraft((current) => ({
+                            ...current,
+                            unitId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Selecciona una unidad</option>
+                        {units.map((unit) => (
+                          <option key={unit.id} value={unit.id}>
+                            {directoryUnitLabel(unit, buildings)}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  ) : null}
+                  {['owner', 'owner_occupant'].includes(initialContextDraft.kind) ? (
+                    <Field hint="Opcional" label="Porcentaje de propiedad">
+                      <input
+                        className="input"
+                        min="0.0001"
+                        max="100"
+                        onChange={(event) =>
+                          setInitialContextDraft((current) => ({
+                            ...current,
+                            ownershipPercentage: event.target.value,
+                          }))
+                        }
+                        type="number"
+                        value={initialContextDraft.ownershipPercentage}
+                      />
+                    </Field>
+                  ) : null}
+                  {[
+                    'board_member',
+                    'administrator_contact',
+                    'representative',
+                    'emergency_contact',
+                    'other',
+                  ].includes(initialContextDraft.kind) ? (
+                    <Field hint="Opcional" label="Título o cargo">
+                      <input
+                        className="input"
+                        maxLength={120}
+                        onChange={(event) =>
+                          setInitialContextDraft((current) => ({
+                            ...current,
+                            title: event.target.value,
+                          }))
+                        }
+                        value={initialContextDraft.title}
+                      />
+                    </Field>
+                  ) : null}
+                </div>
+                {initialContextDraft.unitId ? (
+                  <>
+                    <h3 className="people-section__title">Comunicaciones de esta unidad</h3>
+                    <p className="people-muted">
+                      El saldo y los cargos siguen perteneciendo a la unidad. Esta configuración
+                      controla quién recibe comunicaciones. El permiso para registrar pagos depende
+                      de la relación activa de la persona con la unidad.
+                    </p>
+                    <div className="people-editor__grid">
+                      <Field label="Información financiera">
+                        <Select
+                          value={initialContextDraft.financialRole}
+                          onChange={(event) =>
+                            setInitialContextDraft((current) => ({
+                              ...current,
+                              financialRole: event.target
+                                .value as InitialContextDraft['financialRole'],
+                            }))
+                          }
+                        >
+                          <option value="none">No recibe información financiera</option>
+                          <option value="primary">Responsable financiero principal</option>
+                          <option value="additional">Destinatario financiero adicional</option>
+                        </Select>
+                      </Field>
+                      <label className="people-toggle">
+                        <input
+                          checked={initialContextDraft.generalRecipient}
+                          onChange={(event) =>
+                            setInitialContextDraft((current) => ({
+                              ...current,
+                              generalRecipient: event.target.checked,
+                            }))
+                          }
+                          type="checkbox"
+                        />{' '}
+                        Recibir comunicaciones generales
+                      </label>
+                    </div>
+                  </>
+                ) : null}
+              </>
+            ) : null}
             <div className="people-editor__footer">
               <Button
                 disabled={busyAction === 'person'}

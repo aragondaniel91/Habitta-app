@@ -46,6 +46,41 @@ const communicationResponsibilitySchema = z.object({
   generalRecipient: z.boolean(),
 });
 
+const createWithContextSchema = z.object({
+  person: z.object({
+    firstName: z.string().trim().min(1).max(120),
+    lastName: z.string().trim().min(1).max(120),
+    documentType: z.string().trim().max(80).optional(),
+    documentNumber: z.string().trim().max(80).optional(),
+    email: z.string().trim().email().max(254).optional(),
+    phone: z.string().trim().max(80).optional(),
+    status: z.enum(['active', 'inactive']).default('active'),
+  }),
+  initialRelationship: z
+    .object({
+      kind: z.enum([
+        'none',
+        'owner',
+        'owner_occupant',
+        'tenant',
+        'family_member',
+        'authorized_occupant',
+        'board_member',
+        'administrator_contact',
+        'representative',
+        'emergency_contact',
+        'other',
+      ]),
+      unitId: uuidSchema.optional(),
+      ownershipPercentage: z.number().positive().max(100).optional(),
+      startsAt: z.string().date().optional(),
+      title: z.string().trim().max(120).optional(),
+    })
+    .nullable()
+    .optional(),
+  communication: communicationResponsibilitySchema.nullable().optional(),
+});
+
 function rest(c: PeopleContext, path: string, init: RequestInit = {}) {
   return fetch(`${c.env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -89,6 +124,67 @@ async function ensurePersonAndUnit(
 function communicationAssignmentQuery(condominiumId: string, filter: string) {
   return `unit_communication_assignments?condominium_id=eq.${condominiumId}&${filter}&select=id,condominium_id,unit_id,person_id,financial_role,general_recipient,effective_from,effective_to,created_at,ended_at,units!inner(id,code,condominium_id,building_id,buildings(id,name))&order=effective_from.desc`;
 }
+
+peopleRelationshipRoutes.post('/:id/people/create-with-context', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const parsed = await parseBody(c, createWithContextSchema);
+  if (parsed instanceof Response) return parsed;
+  const relationship = parsed.initialRelationship;
+  const response = await rest(c, 'rpc/create_person_with_initial_context', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_condominium: condominiumId,
+      target_first_name: parsed.person.firstName,
+      target_last_name: parsed.person.lastName,
+      target_document_type: parsed.person.documentType ?? null,
+      target_document_number: parsed.person.documentNumber ?? null,
+      target_email: parsed.person.email ?? null,
+      target_phone: parsed.person.phone ?? null,
+      target_status: parsed.person.status,
+      target_relationship: relationship?.kind ?? 'none',
+      target_unit: relationship?.unitId ?? null,
+      target_ownership_percentage: relationship?.ownershipPercentage ?? null,
+      target_starts_at: relationship?.startsAt ?? null,
+      target_relationship_title: relationship?.title ?? null,
+      target_financial_role: parsed.communication?.financialRole ?? null,
+      target_general_recipient: parsed.communication?.generalRecipient ?? false,
+    }),
+  });
+  const result: unknown = await response.json().catch(() => null);
+  const error =
+    typeof result === 'object' && result !== null && 'message' in result
+      ? String(result.message)
+      : '';
+  if (error === 'financial_primary_required') {
+    return c.json(
+      {
+        error,
+        publicMessage:
+          'Esta unidad necesita un responsable financiero principal antes de agregar otros destinatarios financieros.',
+      },
+      409,
+    );
+  }
+  if (error === 'inactive_person_initial_relationship_forbidden') {
+    return c.json(
+      { error, publicMessage: 'Una persona inactiva no puede iniciar una relación activa.' },
+      409,
+    );
+  }
+  if (error === 'communication_unit_required') {
+    return c.json(
+      { error, publicMessage: 'Selecciona una unidad antes de configurar comunicaciones.' },
+      409,
+    );
+  }
+  if (error.includes('unit_not_found') || error === 'initial_relationship_unit_unavailable')
+    return c.json({ error: 'Initial relationship unit not found' }, 404);
+  if (!response.ok) return c.json({ error: 'Person could not be created with this context' }, 400);
+  const person = Array.isArray(result) ? result[0] : result;
+  if (typeof person !== 'object' || person === null)
+    return c.json({ error: 'Person could not be created with this context' }, 400);
+  return c.json(person, 201);
+});
 
 peopleRelationshipRoutes.get('/:id/people/:personId/communication-responsibilities', async (c) => {
   const condominiumId = uuidSchema.parse(c.req.param('id'));
