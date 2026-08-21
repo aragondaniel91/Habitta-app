@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
+import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Button, Field, Select } from '../../components/ui';
 import { PrivateDocumentUploader } from '../documents/PrivateDocumentUploader';
 import { apiRequest } from '../../lib/api';
@@ -101,7 +102,7 @@ export function ExpenseCaptureDrawer({
               value={description}
             />
           </Field>
-          <div className="expenses-form-grid">
+          <FormGrid>
             <Field label="Categoría">
               <Select
                 onChange={(event) => setCategoryId(event.target.value)}
@@ -130,8 +131,8 @@ export function ExpenseCaptureDrawer({
                   ))}
               </Select>
             </Field>
-          </div>
-          <div className="expenses-form-grid expenses-form-grid--three">
+          </FormGrid>
+          <FormGrid columns={3}>
             <Field label="Fecha del gasto">
               <input
                 className="input"
@@ -157,8 +158,8 @@ export function ExpenseCaptureDrawer({
                 value={invoiceNumber}
               />
             </Field>
-          </div>
-          <div className="expenses-form-grid">
+          </FormGrid>
+          <FormGrid>
             <Field label="Monto">
               <input
                 className="input"
@@ -181,8 +182,8 @@ export function ExpenseCaptureDrawer({
                 <option value="EUR">EUR</option>
               </Select>
             </Field>
-          </div>
-          <div className="expenses-form-grid">
+          </FormGrid>
+          <FormGrid>
             <Field hint="Puede completarse luego" label="Método de pago">
               <input
                 className="input"
@@ -198,7 +199,7 @@ export function ExpenseCaptureDrawer({
                 value={paymentReference}
               />
             </Field>
-          </div>
+          </FormGrid>
           <Field hint="Opcional" label="Notas">
             <textarea
               className="textarea"
@@ -207,11 +208,14 @@ export function ExpenseCaptureDrawer({
               value={notes}
             />
           </Field>
-          <div className="expenses-form__actions financial-capture-footer">
+          <FormActions className="financial-capture-footer" sticky>
+            <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
+              Cancelar
+            </Button>
             <Button disabled={saving || !categoryId || !description || !amount} type="submit">
               {saving ? 'Guardando…' : 'Continuar al comprobante'}
             </Button>
-          </div>
+          </FormActions>
         </form>
       ) : (
         <div className="expenses-form financial-capture-proof-step">
@@ -246,7 +250,7 @@ export function ExpenseCaptureDrawer({
             session={session}
             title="Adjuntar comprobante"
           />
-          <div className="expenses-form__actions financial-capture-footer">
+          <FormActions className="financial-capture-footer" sticky>
             <Button
               onClick={() =>
                 void onComplete(
@@ -257,7 +261,7 @@ export function ExpenseCaptureDrawer({
             >
               Finalizar registro
             </Button>
-          </div>
+          </FormActions>
         </div>
       )}
     </Drawer>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Button, Field, Select } from '../../components/ui';
 import { Drawer } from '../../components/Drawer';
 import {
@@ -92,7 +93,7 @@ export function AccountDrawer({
             value={name}
           />
         </Field>
-        <div className="treasury-form-grid">
+        <FormGrid>
           <Field label="Tipo">
             <Select onChange={(event) => setAccountType(event.target.value)} value={accountType}>
               {Object.entries(accountTypeLabels).map(([value, label]) => (
@@ -109,7 +110,7 @@ export function AccountDrawer({
               <option value="EUR">EUR</option>
             </Select>
           </Field>
-        </div>
+        </FormGrid>
         {accountType === 'bank' ? (
           <Field label="Institución financiera">
             <input
@@ -120,9 +121,14 @@ export function AccountDrawer({
             />
           </Field>
         ) : null}
-        <Button disabled={saving} type="submit">
-          {saving ? 'Guardando…' : 'Crear cuenta'}
-        </Button>
+        <FormActions sticky>
+          <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
+            Cancelar
+          </Button>
+          <Button disabled={saving} type="submit">
+            {saving ? 'Guardando…' : 'Crear cuenta'}
+          </Button>
+        </FormActions>
       </form>
     </DrawerShell>
   );
@@ -189,7 +195,7 @@ export function MovementDrawer({
             ))}
           </Select>
         </Field>
-        <div className="treasury-form-grid">
+        <FormGrid>
           <Field
             hint={
               movementKind === 'opening_balance'
@@ -221,7 +227,7 @@ export function MovementDrawer({
               value={occurredOn}
             />
           </Field>
-        </div>
+        </FormGrid>
         <Field label="Monto">
           <input
             className="input"
@@ -277,14 +283,19 @@ export function MovementDrawer({
           </div>
         ) : null}
 
-        <Button
-          disabled={
-            saving || (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
-          }
-          type="submit"
-        >
-          {saving ? 'Registrando…' : overdraft ? 'Confirmar y registrar' : 'Registrar movimiento'}
-        </Button>
+        <FormActions sticky>
+          <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
+            Cancelar
+          </Button>
+          <Button
+            disabled={
+              saving || (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
+            }
+            type="submit"
+          >
+            {saving ? 'Registrando…' : overdraft ? 'Confirmar y registrar' : 'Registrar movimiento'}
+          </Button>
+        </FormActions>
       </form>
     </DrawerShell>
   );
@@ -371,7 +382,7 @@ export function TransferDrawer({
             ))}
           </Select>
         </Field>
-        <div className="treasury-form-grid">
+        <FormGrid>
           <Field label="Monto">
             <input
               className="input"
@@ -394,7 +405,7 @@ export function TransferDrawer({
               value={occurredOn}
             />
           </Field>
-        </div>
+        </FormGrid>
         <Field label="Descripción">
           <input
             className="input"
@@ -437,20 +448,25 @@ export function TransferDrawer({
           </div>
         ) : null}
 
-        <Button
-          disabled={
-            saving ||
-            !toAccountId ||
-            (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
-          }
-          type="submit"
-        >
-          {saving
-            ? 'Transfiriendo…'
-            : overdraft
-              ? 'Confirmar transferencia'
-              : 'Registrar transferencia'}
-        </Button>
+        <FormActions sticky>
+          <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
+            Cancelar
+          </Button>
+          <Button
+            disabled={
+              saving ||
+              !toAccountId ||
+              (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
+            }
+            type="submit"
+          >
+            {saving
+              ? 'Transfiriendo…'
+              : overdraft
+                ? 'Confirmar transferencia'
+                : 'Registrar transferencia'}
+          </Button>
+        </FormActions>
       </form>
     </DrawerShell>
   );
@@ -493,7 +509,7 @@ export function ReconciliationDrawer({
             ))}
           </Select>
         </Field>
-        <div className="treasury-form-grid">
+        <FormGrid>
           <Field label="Desde">
             <input
               className="input"
@@ -512,8 +528,8 @@ export function ReconciliationDrawer({
               value={endsOn}
             />
           </Field>
-        </div>
-        <div className="treasury-form-grid">
+        </FormGrid>
+        <FormGrid>
           <Field label="Saldo inicial del estado">
             <input
               className="input"
@@ -534,10 +550,15 @@ export function ReconciliationDrawer({
               value={statementClosingBalance}
             />
           </Field>
-        </div>
-        <Button disabled={saving} type="submit">
-          {saving ? 'Creando…' : 'Crear conciliación'}
-        </Button>
+        </FormGrid>
+        <FormActions sticky>
+          <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
+            Cancelar
+          </Button>
+          <Button disabled={saving} type="submit">
+            {saving ? 'Creando…' : 'Crear conciliación'}
+          </Button>
+        </FormActions>
       </form>
     </DrawerShell>
   );

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../../components/Drawer';
+import { FormActions, FormGrid } from '../../../components/FormLayout';
 import { Button, Field, Select } from '../../../components/ui';
 import '../../../financial-capture.css';
 import { paymentApi } from '../api';
@@ -113,7 +114,7 @@ export function PaymentCaptureDrawer({
                 ))}
             </Select>
           </Field>
-          <div className="payments-form__grid">
+          <FormGrid>
             <Field label="Fecha del pago">
               <input className="input" name="paymentDate" required type="date" />
             </Field>
@@ -125,7 +126,7 @@ export function PaymentCaptureDrawer({
                 value={selectedMethod?.currency_code ?? 'USD'}
               />
             </Field>
-          </div>
+          </FormGrid>
           <Field label="Monto">
             <input
               className="input"
@@ -158,11 +159,14 @@ export function PaymentCaptureDrawer({
               placeholder="Contexto adicional para la revisión"
             />
           </Field>
-          <footer className="payments-form__footer financial-capture-footer">
+          <FormActions className="financial-capture-footer" sticky>
+            <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
+              Cancelar
+            </Button>
             <Button disabled={saving || !selectedMethodId} type="submit">
               {saving ? 'Guardando…' : 'Continuar al comprobante'}
             </Button>
-          </footer>
+          </FormActions>
         </form>
       ) : (
         <div className="payments-form financial-capture-proof-step">
@@ -193,7 +197,7 @@ export function PaymentCaptureDrawer({
               session={session}
             />
           </div>
-          <footer className="payments-form__footer financial-capture-footer">
+          <FormActions className="financial-capture-footer" sticky>
             <Button
               disabled={requiresProof && !proofSaved}
               onClick={() =>
@@ -205,7 +209,7 @@ export function PaymentCaptureDrawer({
             >
               Finalizar registro
             </Button>
-          </footer>
+          </FormActions>
         </div>
       )}
     </Drawer>

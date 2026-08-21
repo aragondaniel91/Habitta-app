@@ -31,15 +31,28 @@ export function useDialogBehavior(
   onClose: () => void,
 ): void {
   const onCloseRef = useRef(onClose);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(
+    typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null),
+  );
+  const focusRestoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
   useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
+    if (focusRestoreTimerRef.current !== null) {
+      clearTimeout(focusRestoreTimerRef.current);
+      focusRestoreTimerRef.current = null;
+    }
+
+    const activeElement = document.activeElement as HTMLElement | null;
     const autoFocusTarget = panel.current?.querySelector<HTMLElement>('[autofocus]');
-    (autoFocusTarget ?? panel.current)?.focus();
+    if (autoFocusTarget) {
+      autoFocusTarget.focus();
+    } else if (!activeElement || !panel.current?.contains(activeElement)) {
+      panel.current?.focus();
+    }
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -73,7 +86,10 @@ export function useDialogBehavior(
     document.addEventListener('keydown', onKeyDown, true);
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
-      previouslyFocused?.focus?.();
+      focusRestoreTimerRef.current = setTimeout(() => {
+        previouslyFocusedRef.current?.focus?.();
+        focusRestoreTimerRef.current = null;
+      }, 0);
     };
   }, [panel]);
 }

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../../components/Dialog';
 import { Drawer } from '../../components/Drawer';
+import { FormActions, FormGrid, FormSection } from '../../components/FormLayout';
 import { CheckCircleIcon, PeopleIcon, UnitsIcon } from '../../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../../components/ui';
 import { PageHeader } from '../../components/PageHeader';
@@ -1561,217 +1562,218 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
               La identidad se registra una sola vez. Después podrás asociarla a varias unidades y
               responsabilidades sin duplicar la persona.
             </p>
-            <h3 className="people-section__title">Identidad y contacto</h3>
-            <div className="people-editor__grid">
-              <Field label="Nombre">
-                <input
-                  autoFocus
-                  className="input"
-                  onChange={(event) =>
-                    setPersonDraft((current) => ({ ...current, firstName: event.target.value }))
-                  }
-                  required
-                  value={personDraft.firstName}
-                />
-              </Field>
-              <Field label="Apellido">
-                <input
-                  className="input"
-                  onChange={(event) =>
-                    setPersonDraft((current) => ({ ...current, lastName: event.target.value }))
-                  }
-                  required
-                  value={personDraft.lastName}
-                />
-              </Field>
-              <Field hint="Opcional" label="Tipo de documento">
-                <Select
-                  onChange={(event) =>
-                    setPersonDraft((current) => ({ ...current, documentType: event.target.value }))
-                  }
-                  value={personDraft.documentType}
-                >
-                  <option value="">Sin especificar</option>
-                  <option value="Cédula V">Cédula V</option>
-                  <option value="Cédula E">Cédula E</option>
-                  <option value="RIF">RIF</option>
-                  <option value="Pasaporte">Pasaporte</option>
-                  <option value="Otro">Otro</option>
-                </Select>
-              </Field>
-              {personDraft.documentType === 'Otro' ? (
-                <Field label="Tipo de documento personalizado">
+            <FormSection title="Identidad y contacto">
+              <FormGrid>
+                <Field label="Nombre">
+                  <input
+                    autoFocus
+                    className="input"
+                    onChange={(event) =>
+                      setPersonDraft((current) => ({ ...current, firstName: event.target.value }))
+                    }
+                    required
+                    value={personDraft.firstName}
+                  />
+                </Field>
+                <Field label="Apellido">
                   <input
                     className="input"
-                    maxLength={80}
+                    onChange={(event) =>
+                      setPersonDraft((current) => ({ ...current, lastName: event.target.value }))
+                    }
+                    required
+                    value={personDraft.lastName}
+                  />
+                </Field>
+                <Field hint="Opcional" label="Tipo de documento">
+                  <Select
                     onChange={(event) =>
                       setPersonDraft((current) => ({
                         ...current,
-                        customDocumentType: event.target.value,
+                        documentType: event.target.value,
                       }))
                     }
-                    required
-                    value={personDraft.customDocumentType}
-                  />
+                    value={personDraft.documentType}
+                  >
+                    <option value="">Sin especificar</option>
+                    <option value="Cédula V">Cédula V</option>
+                    <option value="Cédula E">Cédula E</option>
+                    <option value="RIF">RIF</option>
+                    <option value="Pasaporte">Pasaporte</option>
+                    <option value="Otro">Otro</option>
+                  </Select>
                 </Field>
-              ) : null}
-              <Field label="Número de documento">
-                <input
-                  className="input"
-                  onChange={(event) =>
-                    setPersonDraft((current) => ({
-                      ...current,
-                      documentNumber: event.target.value,
-                    }))
-                  }
-                  value={personDraft.documentNumber}
-                />
-              </Field>
-              <Field label="Correo electrónico">
-                <input
-                  className="input"
-                  onChange={(event) =>
-                    setPersonDraft((current) => ({ ...current, email: event.target.value }))
-                  }
-                  type="email"
-                  value={personDraft.email}
-                />
-              </Field>
-              <Field label="Teléfono">
-                <input
-                  className="input"
-                  onChange={(event) =>
-                    setPersonDraft((current) => ({ ...current, phone: event.target.value }))
-                  }
-                  value={personDraft.phone}
-                />
-              </Field>
-              <Field label="Estado">
-                <Select
-                  onChange={(event) =>
-                    setPersonDraft((current) => ({
-                      ...current,
-                      status: event.target.value as PersonDraft['status'],
-                    }))
-                  }
-                  value={personDraft.status}
-                >
-                  <option value="active">Activa</option>
-                  <option value="inactive">Inactiva</option>
-                </Select>
-              </Field>
-            </div>
-            {!editingPersonId ? (
-              <>
-                <h3 className="people-section__title">Relación con la comunidad</h3>
-                <p className="people-muted">
-                  Puedes guardar sólo la persona o asociarla ahora con su primera unidad o
-                  responsabilidad.
-                </p>
-                <div className="people-editor__grid">
-                  <Field label="Relación inicial">
-                    <Select
-                      value={initialContextDraft.kind}
+                {personDraft.documentType === 'Otro' ? (
+                  <Field label="Tipo de documento personalizado">
+                    <input
+                      className="input"
+                      maxLength={80}
                       onChange={(event) =>
-                        setInitialContextDraft((current) => ({
+                        setPersonDraft((current) => ({
                           ...current,
-                          kind: event.target.value as InitialRelationshipKind,
-                          unitId: '',
-                          ownershipPercentage: '',
-                          title: '',
-                          financialRole: 'none',
-                          generalRecipient: false,
+                          customDocumentType: event.target.value,
                         }))
                       }
-                    >
-                      <option value="none">Sin relación por ahora</option>
-                      <option value="owner">Propietario</option>
-                      <option value="owner_occupant">Propietario ocupante</option>
-                      <option value="tenant">Inquilino</option>
-                      <option value="family_member">Familiar</option>
-                      <option value="authorized_occupant">Ocupante autorizado</option>
-                      <option value="board_member">Junta de condominio</option>
-                      <option value="administrator_contact">Contacto de administración</option>
-                      <option value="representative">Representante legal</option>
-                      <option value="emergency_contact">Contacto de emergencia</option>
-                      <option value="other">Otra relación</option>
-                    </Select>
+                      required
+                      value={personDraft.customDocumentType}
+                    />
                   </Field>
-                  {[
-                    'owner',
-                    'owner_occupant',
-                    'tenant',
-                    'family_member',
-                    'authorized_occupant',
-                  ].includes(initialContextDraft.kind) ? (
-                    <Field label="Unidad">
+                ) : null}
+                <Field label="Número de documento">
+                  <input
+                    className="input"
+                    onChange={(event) =>
+                      setPersonDraft((current) => ({
+                        ...current,
+                        documentNumber: event.target.value,
+                      }))
+                    }
+                    value={personDraft.documentNumber}
+                  />
+                </Field>
+                <Field label="Correo electrónico">
+                  <input
+                    className="input"
+                    onChange={(event) =>
+                      setPersonDraft((current) => ({ ...current, email: event.target.value }))
+                    }
+                    type="email"
+                    value={personDraft.email}
+                  />
+                </Field>
+                <Field label="Teléfono">
+                  <input
+                    className="input"
+                    onChange={(event) =>
+                      setPersonDraft((current) => ({ ...current, phone: event.target.value }))
+                    }
+                    value={personDraft.phone}
+                  />
+                </Field>
+                <Field label="Estado">
+                  <Select
+                    onChange={(event) =>
+                      setPersonDraft((current) => ({
+                        ...current,
+                        status: event.target.value as PersonDraft['status'],
+                      }))
+                    }
+                    value={personDraft.status}
+                  >
+                    <option value="active">Activa</option>
+                    <option value="inactive">Inactiva</option>
+                  </Select>
+                </Field>
+              </FormGrid>
+            </FormSection>
+            {!editingPersonId ? (
+              <>
+                <FormSection
+                  description="Puedes guardar sólo la persona o asociarla ahora con su primera unidad o responsabilidad."
+                  title="Relación con la comunidad"
+                >
+                  <FormGrid>
+                    <Field label="Relación inicial">
                       <Select
-                        required
-                        value={initialContextDraft.unitId}
+                        value={initialContextDraft.kind}
                         onChange={(event) =>
                           setInitialContextDraft((current) => ({
                             ...current,
-                            unitId: event.target.value,
+                            kind: event.target.value as InitialRelationshipKind,
+                            unitId: '',
+                            ownershipPercentage: '',
+                            title: '',
+                            financialRole: 'none',
+                            generalRecipient: false,
                           }))
                         }
                       >
-                        <option value="">Selecciona una unidad</option>
-                        {units.map((unit) => (
-                          <option key={unit.id} value={unit.id}>
-                            {directoryUnitLabel(unit, buildings)}
-                          </option>
-                        ))}
+                        <option value="none">Sin relación por ahora</option>
+                        <option value="owner">Propietario</option>
+                        <option value="owner_occupant">Propietario ocupante</option>
+                        <option value="tenant">Inquilino</option>
+                        <option value="family_member">Familiar</option>
+                        <option value="authorized_occupant">Ocupante autorizado</option>
+                        <option value="board_member">Junta de condominio</option>
+                        <option value="administrator_contact">Contacto de administración</option>
+                        <option value="representative">Representante legal</option>
+                        <option value="emergency_contact">Contacto de emergencia</option>
+                        <option value="other">Otra relación</option>
                       </Select>
                     </Field>
-                  ) : null}
-                  {['owner', 'owner_occupant'].includes(initialContextDraft.kind) ? (
-                    <Field hint="Opcional" label="Porcentaje de propiedad">
-                      <input
-                        className="input"
-                        min="0.0001"
-                        max="100"
-                        onChange={(event) =>
-                          setInitialContextDraft((current) => ({
-                            ...current,
-                            ownershipPercentage: event.target.value,
-                          }))
-                        }
-                        type="number"
-                        value={initialContextDraft.ownershipPercentage}
-                      />
-                    </Field>
-                  ) : null}
-                  {[
-                    'board_member',
-                    'administrator_contact',
-                    'representative',
-                    'emergency_contact',
-                    'other',
-                  ].includes(initialContextDraft.kind) ? (
-                    <Field hint="Opcional" label="Título o cargo">
-                      <input
-                        className="input"
-                        maxLength={120}
-                        onChange={(event) =>
-                          setInitialContextDraft((current) => ({
-                            ...current,
-                            title: event.target.value,
-                          }))
-                        }
-                        value={initialContextDraft.title}
-                      />
-                    </Field>
-                  ) : null}
-                </div>
+                    {[
+                      'owner',
+                      'owner_occupant',
+                      'tenant',
+                      'family_member',
+                      'authorized_occupant',
+                    ].includes(initialContextDraft.kind) ? (
+                      <Field label="Unidad">
+                        <Select
+                          required
+                          value={initialContextDraft.unitId}
+                          onChange={(event) =>
+                            setInitialContextDraft((current) => ({
+                              ...current,
+                              unitId: event.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">Selecciona una unidad</option>
+                          {units.map((unit) => (
+                            <option key={unit.id} value={unit.id}>
+                              {directoryUnitLabel(unit, buildings)}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    ) : null}
+                    {['owner', 'owner_occupant'].includes(initialContextDraft.kind) ? (
+                      <Field hint="Opcional" label="Porcentaje de propiedad">
+                        <input
+                          className="input"
+                          min="0.0001"
+                          max="100"
+                          onChange={(event) =>
+                            setInitialContextDraft((current) => ({
+                              ...current,
+                              ownershipPercentage: event.target.value,
+                            }))
+                          }
+                          type="number"
+                          value={initialContextDraft.ownershipPercentage}
+                        />
+                      </Field>
+                    ) : null}
+                    {[
+                      'board_member',
+                      'administrator_contact',
+                      'representative',
+                      'emergency_contact',
+                      'other',
+                    ].includes(initialContextDraft.kind) ? (
+                      <Field hint="Opcional" label="Título o cargo">
+                        <input
+                          className="input"
+                          maxLength={120}
+                          onChange={(event) =>
+                            setInitialContextDraft((current) => ({
+                              ...current,
+                              title: event.target.value,
+                            }))
+                          }
+                          value={initialContextDraft.title}
+                        />
+                      </Field>
+                    ) : null}
+                  </FormGrid>
+                </FormSection>
                 {initialContextDraft.unitId ? (
-                  <>
-                    <h3 className="people-section__title">Comunicaciones de esta unidad</h3>
-                    <p className="people-muted">
-                      El saldo y los cargos siguen perteneciendo a la unidad. Esta configuración
-                      controla quién recibe comunicaciones. El permiso para registrar pagos depende
-                      de la relación activa de la persona con la unidad.
-                    </p>
-                    <div className="people-editor__grid">
+                  <FormSection
+                    description="El saldo y los cargos siguen perteneciendo a la unidad. Esta configuración controla quién recibe comunicaciones. El permiso para registrar pagos depende de la relación activa de la persona con la unidad."
+                    title="Comunicaciones de esta unidad"
+                  >
+                    <FormGrid>
                       <Field label="Información financiera">
                         <Select
                           value={initialContextDraft.financialRole}
@@ -1801,12 +1803,12 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                         />{' '}
                         Recibir comunicaciones generales
                       </label>
-                    </div>
-                  </>
+                    </FormGrid>
+                  </FormSection>
                 ) : null}
               </>
             ) : null}
-            <div className="people-editor__footer">
+            <FormActions sticky>
               <Button
                 disabled={busyAction === 'person'}
                 onClick={() => setPersonEditorOpen(false)}
@@ -1822,7 +1824,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     ? 'Guardar cambios'
                     : 'Crear persona'}
               </Button>
-            </div>
+            </FormActions>
           </form>
         </Drawer>
       ) : null}
