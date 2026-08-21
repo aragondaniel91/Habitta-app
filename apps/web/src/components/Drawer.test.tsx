@@ -56,8 +56,15 @@ describe('Drawer', () => {
   it('closes on Escape and restores focus to whatever opened it', () => {
     expect(drawerSource).toContain("event.key === 'Escape'");
     expect(drawerSource).toContain('onCloseRef.current();');
-    expect(drawerSource).toContain('previouslyFocused?.focus?.()');
+    expect(drawerSource).toContain('previouslyFocusedRef.current?.focus?.()');
     expect(drawerSource).toContain("event.key !== 'Tab'");
+  });
+
+  it('preserves React autofocus inside the panel instead of stealing focus back to the dialog', () => {
+    expect(drawerSource).toContain("typeof document === 'undefined'");
+    expect(drawerSource).toContain('const activeElement = document.activeElement as HTMLElement | null;');
+    expect(drawerSource).toContain('panel.current?.contains(activeElement)');
+    expect(drawerSource).toContain('autoFocusTarget.focus();');
   });
 
   it('does not rerun initial focus when a consumer passes a new onClose callback', () => {
