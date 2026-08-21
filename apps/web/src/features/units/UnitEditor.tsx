@@ -102,7 +102,13 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
         <DialogBody>
           <FormGrid>
             <Field label={houseCommunity ? 'Código o número de casa' : 'Código o número de unidad'}>
-              <input autoFocus defaultValue={unit?.code ?? ''} maxLength={40} name="code" required />
+              <input
+                autoFocus
+                defaultValue={unit?.code ?? ''}
+                maxLength={40}
+                name="code"
+                required
+              />
             </Field>
             {!houseCommunity && !singleBuilding ? (
               <Field label="Torre o edificio">
