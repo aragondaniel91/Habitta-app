@@ -28,7 +28,7 @@ const assertNoHorizontalOverflow = async (page: Page, dialog?: Locator) => {
 const signInAsAdministrator = async (page: Page) => {
   await page.goto('/');
   await page.getByLabel('Correo electrónico').fill(administrator);
-  await page.getByLabel('Contraseña').fill(password);
+  await page.locator('input[type="password"][autocomplete="current-password"]').fill(password);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   await page.waitForURL(/\/app\/dashboard/);
 };
