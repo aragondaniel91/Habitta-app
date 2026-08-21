@@ -45,6 +45,7 @@ const webServers = [
             'pnpm --filter @habitta/api exec wrangler dev --local --port 8787',
             `--var SUPABASE_URL:${process.env.E2E_SUPABASE_URL}`,
             `--var SUPABASE_ANON_KEY:${process.env.E2E_SUPABASE_ANON_KEY}`,
+            `--var CORS_ALLOWED_ORIGINS:${localBaseUrl}`,
           ].join(' '),
           cwd: '..',
           url: `${localWorkerUrl}/health`,
