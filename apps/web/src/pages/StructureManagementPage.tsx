@@ -670,7 +670,9 @@ export function StructureManagementPage({
                   {!houseMode && !singleBuildingMode ? (
                     <Field
                       hint={
-                        multiBuildingMode ? 'El mismo código puede existir en otra torre.' : undefined
+                        multiBuildingMode
+                          ? 'El mismo código puede existir en otra torre.'
+                          : undefined
                       }
                       label="Torre o edificio"
                     >
@@ -687,8 +689,8 @@ export function StructureManagementPage({
 
                   {singleBuildingMode ? (
                     <div className="structure-form-note" data-span="full">
-                      Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>. La
-                      unidad se asociará automáticamente y su código será único dentro de este
+                      Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>.
+                      La unidad se asociará automáticamente y su código será único dentro de este
                       edificio.
                     </div>
                   ) : null}
@@ -703,7 +705,10 @@ export function StructureManagementPage({
                     }
                     label="Tipo"
                   >
-                    <Select defaultValue={editor.unit?.type ?? defaultUnitType(topology)} name="type">
+                    <Select
+                      defaultValue={editor.unit?.type ?? defaultUnitType(topology)}
+                      name="type"
+                    >
                       {availableUnitTypes.map(([value, label]) => (
                         <option key={value} value={value}>
                           {label}
