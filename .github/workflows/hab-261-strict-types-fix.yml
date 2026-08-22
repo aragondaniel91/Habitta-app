@@ -4,16 +4,13 @@ on:
   push:
     branches:
       - hab-261-people-ux-redesign
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: write
 
 jobs:
   fix:
-    if: github.event_name == 'pull_request' || github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -31,30 +28,38 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           panel = Path('apps/web/src/features/people/PeoplePanelV3.tsx')
           text = panel.read_text()
-          old = '''                onInvite={
-                  relationship.accessRoles.length
-                    ? () => openInvitationFromRelationship(relationship)
-                    : undefined
-                }
-'''
-          new = '''                {...(relationship.accessRoles.length
-                  ? { onInvite: () => openInvitationFromRelationship(relationship) }
-                  : {})}
-'''
-          if text.count(old) != 2:
-              raise SystemExit(f'expected 2 onInvite blocks, found {text.count(old)}')
-          text = text.replace(old, new)
+          pattern = re.compile(
+              r'(?P<indent>\s*)onInvite=\{\n'
+              r'(?P=indent)  relationship\.accessRoles\.length\n'
+              r'(?P=indent)    \? \(\) => openInvitationFromRelationship\(relationship\)\n'
+              r'(?P=indent)    : undefined\n'
+              r'(?P=indent)\}'
+          )
+          matches = list(pattern.finditer(text))
+          if len(matches) != 2:
+              raise SystemExit(f'expected 2 onInvite blocks, found {len(matches)}')
+
+          def replace_invite(match):
+              indent = match.group('indent')
+              return (
+                  f"{indent}{{...(relationship.accessRoles.length\n"
+                  f"{indent}  ? {{ onInvite: () => openInvitationFromRelationship(relationship) }}\n"
+                  f"{indent}  : {{}})}}"
+              )
+
+          text = pattern.sub(replace_invite, text)
           if text.count('selectedId={selected?.id}') != 1:
               raise SystemExit('selectedId contract not found exactly once')
           text = text.replace('selectedId={selected?.id}', 'selectedId={selected?.id ?? null}')
-          if text.count('          initialUnitId={relationTarget.unitId}\n') != 1:
+          if text.count('initialUnitId={relationTarget.unitId}') != 1:
               raise SystemExit('initialUnitId contract not found exactly once')
           text = text.replace(
-              '          initialUnitId={relationTarget.unitId}\n',
-              "          {...(relationTarget.unitId ? { initialUnitId: relationTarget.unitId } : {})}\n",
+              'initialUnitId={relationTarget.unitId}',
+              '{...(relationTarget.unitId ? { initialUnitId: relationTarget.unitId } : {})}',
           )
           panel.write_text(text)
 
@@ -72,6 +77,7 @@ jobs:
           if text.count(old_update) != 1:
               raise SystemExit('error clearing update contract not found exactly once')
           text = text.replace(old_update, new_update)
+
           old_relationship = '''    setErrors((current) => ({
       ...current,
       unitId: undefined,
@@ -95,17 +101,7 @@ jobs:
           pnpm exec prettier --write
           apps/web/src/features/people/PeoplePanelV3.tsx
           apps/web/src/features/people/PersonEditorDrawerV3.tsx
-      - name: Upload patched files for PR diagnostics
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: hab-261-strict-types-patched
-          path: |
-            apps/web/src/features/people/PeoplePanelV3.tsx
-            apps/web/src/features/people/PersonEditorDrawerV3.tsx
-          if-no-files-found: error
       - name: Commit fixes
-        if: github.event_name == 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
