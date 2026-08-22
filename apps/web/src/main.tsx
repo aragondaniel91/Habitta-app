@@ -14,6 +14,7 @@ import './brand-palette.css';
 import './brand-assets.css';
 import './page-header.css';
 import './print.css';
+import './ux-contract.css';
 
 function residentInvitationToken(pathname: string) {
   const prefix = '/invite/';

@@ -13,9 +13,12 @@ type Props = {
   prefix: string;
   title: string;
   eyebrow?: string;
+  description?: ReactNode;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  /** Opt-in to the shared Habitta workspace visual contract without changing legacy drawers. */
+  presentation?: 'legacy' | 'workspace';
   /** Rendered next to the close button, for actions that belong to the panel itself. */
   headerActions?: ReactNode;
 };
@@ -98,19 +101,30 @@ export function Drawer({
   prefix,
   title,
   eyebrow,
+  description,
   onClose,
   children,
   wide = false,
+  presentation = 'legacy',
   headerActions,
 }: Props) {
   const panel = useRef<HTMLElement>(null);
+  const workspace = presentation === 'workspace';
   useDialogBehavior(panel, onClose);
 
   return (
-    <div className={`${prefix}-drawer-layer`} role="presentation">
+    <div
+      className={[`${prefix}-drawer-layer`, workspace ? 'ux-drawer-layer' : '']
+        .filter(Boolean)
+        .join(' ')}
+      data-presentation={presentation}
+      role="presentation"
+    >
       <button
         aria-label="Cerrar panel"
-        className={`${prefix}-drawer-backdrop`}
+        className={[`${prefix}-drawer-backdrop`, workspace ? 'ux-drawer-backdrop' : '']
+          .filter(Boolean)
+          .join(' ')}
         onClick={onClose}
         tabIndex={-1}
         type="button"
@@ -118,16 +132,24 @@ export function Drawer({
       <aside
         aria-label={title}
         aria-modal="true"
-        className={`${prefix}-drawer`}
+        className={[`${prefix}-drawer`, workspace ? 'ux-drawer-panel' : '']
+          .filter(Boolean)
+          .join(' ')}
+        data-presentation={presentation}
         data-wide={wide || undefined}
         ref={panel}
         role="dialog"
         tabIndex={-1}
       >
-        <header className={`${prefix}-drawer__header`}>
-          <div>
+        <header
+          className={[`${prefix}-drawer__header`, workspace ? 'ux-drawer-panel__header' : '']
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <div className={workspace ? 'ux-drawer-panel__heading' : undefined}>
             {eyebrow ? <span>{eyebrow}</span> : null}
             <h2>{title}</h2>
+            {description ? <p className="ux-drawer-panel__description">{description}</p> : null}
           </div>
           <div className="drawer-header-actions">
             {headerActions}
@@ -136,7 +158,13 @@ export function Drawer({
             </Button>
           </div>
         </header>
-        <div className={`${prefix}-drawer__body`}>{children}</div>
+        <div
+          className={[`${prefix}-drawer__body`, workspace ? 'ux-drawer-panel__body' : '']
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {children}
+        </div>
       </aside>
     </div>
   );
