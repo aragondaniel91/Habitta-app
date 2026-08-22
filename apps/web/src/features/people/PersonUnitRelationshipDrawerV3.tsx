@@ -39,7 +39,7 @@ export function PersonUnitRelationshipDrawerV3({
   units: Unit[];
   buildings: Building[];
   relationship?: PersonUnitRelationshipSummary | null;
-  initialUnitId?: string;
+  initialUnitId?: string | undefined;
   onClose: () => void;
   onChanged: (message: string) => Promise<void> | void;
   onRequestClose: (target: CloseTarget) => void;
