@@ -16,11 +16,7 @@ import { occupancyLabels, residentInvitationStatusLabels } from './relationship-
 import type { Person } from './types';
 
 export type PeopleProfileTab =
-  | 'summary'
-  | 'units'
-  | 'community-roles'
-  | 'private-notes'
-  | 'digital-access';
+  'summary' | 'units' | 'community-roles' | 'private-notes' | 'digital-access';
 
 export function personDisplayName(person: Person) {
   return `${person.first_name} ${person.last_name}`.trim();
@@ -78,7 +74,10 @@ export function PeopleDirectoryView({
           />
         </Field>
         <Field label="Estado">
-          <Select onChange={(event) => onStatusFilterChange(event.target.value)} value={statusFilter}>
+          <Select
+            onChange={(event) => onStatusFilterChange(event.target.value)}
+            value={statusFilter}
+          >
             <option value="">Todos</option>
             <option value="active">Activas</option>
             <option value="inactive">Inactivas</option>
@@ -287,7 +286,9 @@ export function PersonUnitRelationshipCard({
           </span>
           <div>
             <strong>Ocupación</strong>
-            <span>{occupancy ? occupancyLabels[occupancy.occupancy_type] : 'No reside en la unidad'}</span>
+            <span>
+              {occupancy ? occupancyLabels[occupancy.occupancy_type] : 'No reside en la unidad'}
+            </span>
           </div>
         </div>
 
