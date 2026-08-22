@@ -507,17 +507,8 @@
   line-height: 1.5;
   margin: 0.2rem 0 0;
 }
-.requests-form__grid {
-  display: grid;
-  gap: 0.85rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 .requests-form__actions {
-  align-items: center;
   border-top: 1px solid var(--border-subtle);
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.6rem;
   padding-top: 1rem;
 }
 .requests-form--category {
@@ -614,8 +605,6 @@
   margin-top: 0.18rem;
 }
 .request-management-panel__actions {
-  display: flex;
-  justify-content: flex-end;
   margin-top: 0.85rem;
 }
 .request-detail-grid {
@@ -858,9 +847,6 @@
   }
   .requests-board-column {
     padding: 0.65rem;
-  }
-  .requests-form__grid {
-    grid-template-columns: 1fr;
   }
   .requests-drawer,
   .requests-drawer[data-wide] {
