@@ -440,14 +440,6 @@
   margin: 0.2rem 0 0;
 }
 
-.announcements-form__grid {
-  display: grid;
-  gap: 0.85rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.announcements-form__actions,
-.announcement-editor__actions,
 .announcement-reach-panel__actions,
 .announcement-scheduler > div:last-child {
   align-items: center;
@@ -458,7 +450,6 @@
 
 .announcements-form__actions {
   border-top: 1px solid var(--border-subtle);
-  justify-content: flex-end;
   padding-top: 0.9rem;
 }
 
@@ -551,10 +542,6 @@
   font-size: 0.72rem;
   line-height: 1.45;
   margin-top: 0.2rem;
-}
-
-.announcement-editor__actions {
-  justify-content: flex-end;
 }
 
 .announcement-scheduler > div:last-child {
@@ -759,10 +746,6 @@
   }
 
   .announcements-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .announcements-form__grid {
     grid-template-columns: 1fr;
   }
 
