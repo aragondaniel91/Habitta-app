@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { PeoplePanelV3 } from '../features/people/PeoplePanelV3';
 import { StructureManagementPage } from './StructureManagementPage';
+import { UnitsPage } from './UnitsPage';
 
 type Props = {
   condominiumId: string;
@@ -10,6 +12,12 @@ type Props = {
 };
 
 export function CommunityDirectoryPage({ condominiumId, condominiumName, mode, session }: Props) {
+  const [structureOpen, setStructureOpen] = useState(false);
+
+  useEffect(() => {
+    setStructureOpen(false);
+  }, [condominiumId, mode]);
+
   if (mode === 'people') {
     return (
       <PeoplePanelV3
@@ -20,10 +28,23 @@ export function CommunityDirectoryPage({ condominiumId, condominiumName, mode, s
     );
   }
 
+  if (structureOpen) {
+    return (
+      <StructureManagementPage
+        condominiumId={condominiumId}
+        condominiumName={condominiumName}
+        onBackToUnits={() => setStructureOpen(false)}
+        session={session}
+        showUnitManagement={false}
+      />
+    );
+  }
+
   return (
-    <StructureManagementPage
+    <UnitsPage
       condominiumId={condominiumId}
       condominiumName={condominiumName}
+      onConfigureStructure={() => setStructureOpen(true)}
       session={session}
     />
   );
