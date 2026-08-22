@@ -48,7 +48,7 @@ describe('HAB-251/HAB-262 Units shared form layout', () => {
 
   it('keeps Units compliant after the V3 workspace migration', () => {
     expect(parityMatrixSource).toContain(
-      '| Unidades | Units V3 editor + Structure Management topology/building editor | compliant | Sí | Sí | Sí | Sí |',
+      '| Unidades | Units V3 editor + detail workspace + Structure Management topology/building editor | compliant | Sí | Sí | Sí | Sí |',
     );
   });
 });

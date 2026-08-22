@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { PeoplePanelV3 } from '../features/people/PeoplePanelV3';
 import { StructureManagementPage } from './StructureManagementPage';
 import { UnitsPage } from './UnitsPage';
+import '../hab263-responsive-qa.css';
 
 type Props = {
   condominiumId: string;
