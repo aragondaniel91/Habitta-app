@@ -133,12 +133,11 @@ export function PersonEditorDrawerV3({
   const unitScoped = !editing && unitScopedKinds.includes(draft.relationshipKind);
   const ownsUnit = !editing && ownershipKinds.includes(draft.relationshipKind);
   const communityRole =
-    !editing && draft.relationshipKind !== 'none' && !unitScopedKinds.includes(draft.relationshipKind);
+    !editing &&
+    draft.relationshipKind !== 'none' &&
+    !unitScopedKinds.includes(draft.relationshipKind);
 
-  const availableUnits = useMemo(
-    () => units.filter((unit) => unit.status !== 'inactive'),
-    [units],
-  );
+  const availableUnits = useMemo(() => units.filter((unit) => unit.status !== 'inactive'), [units]);
 
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -386,7 +385,9 @@ export function PersonEditorDrawerV3({
           >
             <Field label="Relación">
               <Select
-                onChange={(event) => setRelationshipKind(event.target.value as InitialRelationshipKind)}
+                onChange={(event) =>
+                  setRelationshipKind(event.target.value as InitialRelationshipKind)
+                }
                 value={draft.relationshipKind}
               >
                 {relationshipOptions.map(([value, label]) => (
