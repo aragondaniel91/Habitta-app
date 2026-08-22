@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Dialog, DialogBody, DialogFooter } from '../../components/Dialog';
-import { FormGrid } from '../../components/FormLayout';
+import { Drawer } from '../../components/Drawer';
+import { FormActions, FormGrid, FormSection } from '../../components/FormLayout';
 import { Button, Field, Select } from '../../components/ui';
 import { defaultUnitType, isUnitTypeAllowed, unitTypeOptions } from '../../lib/unit-domain';
 import type { PropertyTopology, UnitType } from '../../lib/unit-domain';
@@ -28,6 +28,17 @@ type Props = {
   onSave: (input: UnitEditorInput) => Promise<void> | void;
 };
 
+type Draft = {
+  code: string;
+  buildingId: string;
+  type: UnitType;
+  floor: string;
+  ownershipPercentage: string;
+  status: 'active' | 'inactive';
+};
+
+type Errors = Partial<Record<'code' | 'buildingId' | 'type' | 'ownershipPercentage', string>>;
+
 export function buildUnitMutationPayload({
   code,
   buildingId,
@@ -46,95 +57,130 @@ export function buildUnitMutationPayload({
   };
 }
 
+function initialDraft(
+  unit: DirectoryUnit | null | undefined,
+  topology: PropertyTopology,
+  buildings: UnitBuilding[],
+): Draft {
+  const singleBuilding = topology === 'single_building';
+  return {
+    code: unit?.code ?? '',
+    buildingId: singleBuilding ? (buildings[0]?.id ?? '') : (unit?.buildingId ?? ''),
+    type: unit?.type ?? defaultUnitType(topology),
+    floor: unit?.floor ?? '',
+    ownershipPercentage:
+      unit?.ownershipPercentage === null || unit?.ownershipPercentage === undefined
+        ? ''
+        : String(unit.ownershipPercentage),
+    status: unit?.status ?? 'active',
+  };
+}
+
 export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, onSave }: Props) {
-  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft>(() => initialDraft(unit, topology, buildings));
+  const [errors, setErrors] = useState<Errors>({});
+
   const singleBuilding = topology === 'single_building';
   const houseCommunity = topology === 'house_community';
   const buildingRequired = topology === 'multi_building_complex';
-  const initialBuildingId = singleBuilding ? buildings[0]?.id : (unit?.buildingId ?? null);
+
+  const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    if (key in errors) {
+      setErrors((current) => {
+        const next = { ...current };
+        delete next[key as keyof Errors];
+        return next;
+      });
+    }
+  };
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const rawPercentage = String(form.get('ownershipPercentage') ?? '').trim();
+    const nextErrors: Errors = {};
+    const rawPercentage = draft.ownershipPercentage.trim();
     const ownershipPercentage = rawPercentage ? Number(rawPercentage) : undefined;
-    const selectedType = String(form.get('type')) as UnitType;
-    const selectedBuilding = String(form.get('buildingId') ?? '').trim();
-    if (!isUnitTypeAllowed(topology, selectedType))
-      return setError('Ese tipo no corresponde a la estructura definida.');
+
+    if (!draft.code.trim()) nextErrors.code = 'Escribe el código o número de la unidad.';
+    if (!isUnitTypeAllowed(topology, draft.type)) {
+      nextErrors.type = 'Ese tipo no corresponde a la estructura definida.';
+    }
     if (
       rawPercentage &&
       (ownershipPercentage === undefined ||
         !Number.isFinite(ownershipPercentage) ||
         ownershipPercentage <= 0 ||
         ownershipPercentage > 100)
-    )
-      return setError('La alícuota debe ser mayor que 0 y menor o igual a 100.');
-    if (buildingRequired && !selectedBuilding)
-      return setError('Selecciona el edificio de esta unidad.');
+    ) {
+      nextErrors.ownershipPercentage = 'La alícuota debe ser mayor que 0 y hasta 100.';
+    }
+    if (buildingRequired && !draft.buildingId) {
+      nextErrors.buildingId = 'Selecciona el edificio de esta unidad.';
+    }
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+
     const buildingId = houseCommunity
       ? null
       : singleBuilding
-        ? (initialBuildingId ?? null)
-        : selectedBuilding || null;
-    setError(null);
+        ? (buildings[0]?.id ?? null)
+        : draft.buildingId || null;
+
     await onSave(
       buildUnitMutationPayload({
-        code: String(form.get('code') ?? ''),
+        code: draft.code,
         buildingId,
-        type: selectedType,
-        ...(!houseCommunity ? { floor: String(form.get('floor') ?? '') } : {}),
+        type: draft.type,
+        ...(!houseCommunity ? { floor: draft.floor } : {}),
         ...(ownershipPercentage === undefined ? {} : { ownershipPercentage }),
-        status: String(form.get('status')) as 'active' | 'inactive',
+        status: draft.status,
       }),
     );
   };
 
   return (
-    <Dialog
-      closeDisabled={saving}
+    <Drawer
+      description={
+        mode === 'create'
+          ? 'Registra la unidad dentro de la estructura declarada del condominio.'
+          : 'Actualiza la información física sin alterar propietarios, ocupantes ni historial financiero.'
+      }
       eyebrow="Unidades"
       onClose={onClose}
-      size="md"
+      prefix="units-v3"
+      presentation="workspace"
       title={mode === 'create' ? (houseCommunity ? 'Nueva casa' : 'Nueva unidad') : 'Editar unidad'}
+      wide
     >
-      <form onSubmit={(event) => void save(event)}>
-        <DialogBody>
+      <form className="ux-form units-v3-editor" noValidate onSubmit={(event) => void save(event)}>
+        <FormSection
+          description="El código identifica la unidad en toda la operación administrativa."
+          title="Identificación"
+          variant="card"
+        >
           <FormGrid>
-            <Field label={houseCommunity ? 'Código o número de casa' : 'Código o número de unidad'}>
+            <Field
+              error={errors.code}
+              label={houseCommunity ? 'Código o número de casa' : 'Código o número de unidad'}
+              required
+            >
               <input
+                aria-invalid={Boolean(errors.code)}
                 autoFocus
-                defaultValue={unit?.code ?? ''}
+                className="input"
                 maxLength={40}
-                name="code"
-                required
+                onChange={(event) => update('code', event.target.value)}
+                placeholder={houseCommunity ? 'Ej. Casa 12' : 'Ej. A-101'}
+                value={draft.code}
               />
             </Field>
-            {!houseCommunity && !singleBuilding ? (
-              <Field label="Torre o edificio">
-                <Select
-                  defaultValue={unit?.buildingId ?? ''}
-                  name="buildingId"
-                  required={buildingRequired}
-                >
-                  <option value="">
-                    {buildingRequired ? 'Selecciona un edificio' : 'Sin edificio / área común'}
-                  </option>
-                  {buildings.map((building) => (
-                    <option key={building.id} value={building.id}>
-                      {building.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            ) : null}
-            {singleBuilding ? (
-              <div className="structure-form-note" data-span="full">
-                Edificio: <strong>{buildings[0]?.name}</strong>
-              </div>
-            ) : null}
-            <Field label="Tipo">
-              <Select defaultValue={unit?.type ?? defaultUnitType(topology)} name="type">
+            <Field error={errors.type} label="Tipo">
+              <Select
+                aria-invalid={Boolean(errors.type)}
+                onChange={(event) => update('type', event.target.value as UnitType)}
+                value={draft.type}
+              >
                 {unitTypeOptions(topology).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -142,43 +188,106 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
                 ))}
               </Select>
             </Field>
-            {!houseCommunity ? (
+          </FormGrid>
+        </FormSection>
+
+        {!houseCommunity ? (
+          <FormSection
+            description="Habitta respeta la topología declarada y mantiene los identificadores UUID internos."
+            title="Ubicación"
+            variant="card"
+          >
+            <FormGrid>
+              {!singleBuilding ? (
+                <Field
+                  error={errors.buildingId}
+                  hint={
+                    buildingRequired
+                      ? 'Obligatorio para conjuntos residenciales con múltiples edificios.'
+                      : 'Puede quedar sin edificio cuando representa un área común.'
+                  }
+                  label="Torre o edificio"
+                  required={buildingRequired}
+                >
+                  <Select
+                    aria-invalid={Boolean(errors.buildingId)}
+                    onChange={(event) => update('buildingId', event.target.value)}
+                    value={draft.buildingId}
+                  >
+                    <option value="">
+                      {buildingRequired ? 'Selecciona un edificio' : 'Sin edificio / área común'}
+                    </option>
+                    {buildings.map((building) => (
+                      <option key={building.id} value={building.id}>
+                        {building.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : (
+                <div className="units-v3-editor__fixed-context" data-span="full">
+                  <span>Edificio asignado</span>
+                  <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>
+                  <small>La asociación se resuelve automáticamente por UUID.</small>
+                </div>
+              )}
               <Field hint="Número, PB, PH o nivel descriptivo." label="Piso o nivel">
-                <input defaultValue={unit?.floor ?? ''} maxLength={20} name="floor" />
+                <input
+                  className="input"
+                  maxLength={20}
+                  onChange={(event) => update('floor', event.target.value)}
+                  placeholder="Ej. 3, PB o PH"
+                  value={draft.floor}
+                />
               </Field>
-            ) : null}
-            <Field hint="Mayor que 0 y hasta 100." label="Alícuota (%)">
+            </FormGrid>
+          </FormSection>
+        ) : null}
+
+        <FormSection
+          description="La alícuota se usa como dato estructural de participación; los saldos y movimientos existentes no se eliminan al archivar."
+          title="Participación y estado"
+          variant="card"
+        >
+          <FormGrid>
+            <Field
+              error={errors.ownershipPercentage}
+              hint="Mayor que 0 y hasta 100. Déjalo vacío si aún no está definida."
+              label="Alícuota (%)"
+            >
               <input
-                defaultValue={unit?.ownershipPercentage ?? ''}
-                max="100"
-                min="0.0001"
-                name="ownershipPercentage"
-                step="0.0001"
-                type="number"
+                aria-invalid={Boolean(errors.ownershipPercentage)}
+                className="input"
+                inputMode="decimal"
+                onChange={(event) => update('ownershipPercentage', event.target.value)}
+                placeholder="Ej. 1.2500"
+                value={draft.ownershipPercentage}
               />
             </Field>
-            <Field hint="Archivar conserva pagos, cuotas y relaciones históricas." label="Estado">
-              <Select defaultValue={unit?.status ?? 'active'} name="status">
+            <Field
+              hint="Archivar conserva pagos, cuotas, propietarios y ocupaciones históricas."
+              label="Estado"
+            >
+              <Select
+                onChange={(event) => update('status', event.target.value as Draft['status'])}
+                value={draft.status}
+              >
                 <option value="active">Activa</option>
                 <option value="inactive">Inactiva / archivada</option>
               </Select>
             </Field>
-            {error ? (
-              <div className="structure-message" data-span="full" data-tone="error">
-                {error}
-              </div>
-            ) : null}
           </FormGrid>
-        </DialogBody>
-        <DialogFooter>
+        </FormSection>
+
+        <FormActions sticky>
           <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
             Cancelar
           </Button>
           <Button disabled={saving} type="submit">
-            {saving ? 'Guardando…' : 'Guardar unidad'}
+            {saving ? 'Guardando…' : houseCommunity ? 'Guardar casa' : 'Guardar unidad'}
           </Button>
-        </DialogFooter>
+        </FormActions>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
