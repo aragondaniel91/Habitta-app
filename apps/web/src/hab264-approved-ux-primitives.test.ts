@@ -27,7 +27,7 @@ describe('HAB-264 approved UX primitives', () => {
     const ui = await read('./components/ui.tsx');
 
     expect(ui).toContain('required = false');
-    expect(ui).toContain("data-invalid={Boolean(error) || undefined}");
+    expect(ui).toContain('data-invalid={Boolean(error) || undefined}');
     expect(ui).toContain('className="field__required"');
     expect(ui).toContain('role="alert"');
   });
