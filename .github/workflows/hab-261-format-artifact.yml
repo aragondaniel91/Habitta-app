@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - hab-261-people-ux-redesign
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
