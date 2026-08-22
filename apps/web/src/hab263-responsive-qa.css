@@ -1,0 +1,143 @@
+/* HAB-263 final responsive/accessibility hardening for the approved Personas + Unidades workspaces. */
+
+.people-v3-workspace,
+.units-v3-page,
+.people-v3-layout,
+.people-v3-profile,
+.units-v3-directory {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Keep the sticky People directory below the persistent application topbar. */
+.people-v3-directory {
+  top: calc(var(--topbar-height) + 1rem);
+  max-height: calc(100dvh - var(--topbar-height) - 2rem);
+}
+
+/* The two approved workspaces have different KPI counts; keep both balanced. */
+.people-v3-workspace .ux-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.units-v3-page .ux-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.people-v3-workspace .ux-metric-card,
+.units-v3-page .ux-metric-card {
+  overflow: hidden;
+}
+
+.people-v3-workspace .ux-metric-card__content,
+.units-v3-page .ux-metric-card__content,
+.people-v3-workspace .ux-section-card__heading > div,
+.units-v3-page .ux-section-card__heading > div {
+  min-width: 0;
+}
+
+/* Long real-world names, emails and building labels must wrap instead of widening the page. */
+.people-v3-profile-header__meta span,
+.people-v3-history__list strong,
+.people-v3-history__list span,
+.people-v3-history__list small,
+.people-v3-access-summary strong,
+.people-v3-private-summary strong,
+.units-v3-detail-facts strong,
+.units-v3-detail-relations strong,
+.units-v3-history-list strong,
+.units-v3-history-list span,
+.units-v3-history-list small,
+.units-v3-editor__fixed-context strong,
+.units-v3-editor__fixed-context small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:is(.people-v3-drawer, .units-v3-drawer).ux-drawer-panel {
+  max-width: 100vw;
+}
+
+:is(.people-v3-drawer, .units-v3-drawer) .ux-drawer-panel__heading,
+:is(.people-v3-drawer, .units-v3-drawer) .ux-section-card__heading > div {
+  min-width: 0;
+}
+
+:is(.people-v3-drawer, .units-v3-drawer) .ux-drawer-panel__header h2,
+:is(.people-v3-drawer, .units-v3-drawer) .ux-drawer-panel__description,
+:is(.people-v3-drawer, .units-v3-drawer) .ux-section-card__header h3,
+:is(.people-v3-drawer, .units-v3-drawer) .ux-section-card__header p {
+  overflow-wrap: anywhere;
+}
+
+:is(.people-v3-drawer, .units-v3-drawer) .ux-tabs {
+  overscroll-behavior-inline: contain;
+}
+
+:is(.people-v3-drawer, .units-v3-drawer) .ux-tab,
+.people-v3-profile-tabs .ux-tab {
+  white-space: nowrap;
+}
+
+/* Keep keyboard focus unmistakable inside the two dense directory workspaces. */
+.people-v3-directory__item:focus-visible,
+.units-v3-row:focus-visible,
+:is(.people-v3-drawer, .units-v3-drawer) .ux-tab:focus-visible,
+.people-v3-profile-tabs .ux-tab:focus-visible {
+  outline: 3px solid rgb(35 101 142 / 0.34);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .people-v3-workspace .ux-metrics,
+  .units-v3-page .ux-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .people-v3-directory {
+    top: auto;
+    max-height: none;
+  }
+}
+
+@media (max-width: 640px) {
+  :is(.people-v3-drawer, .units-v3-drawer).ux-drawer-panel,
+  :is(.people-v3-drawer, .units-v3-drawer).ux-drawer-panel[data-wide='true'] {
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  :is(.people-v3-drawer, .units-v3-drawer) .ux-drawer-panel__body {
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 560px) {
+  .people-v3-workspace .ux-metrics,
+  .units-v3-page .ux-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .people-v3-profile-header__name {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .people-v3-profile-header__name h2,
+  .people-v3-unit-card__title h4,
+  .units-v3-row__identity strong,
+  .units-v3-row__identity small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .people-v3-directory__identity strong,
+  .people-v3-directory__identity small {
+    max-width: 100%;
+  }
+}
