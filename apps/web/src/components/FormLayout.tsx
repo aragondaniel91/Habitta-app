@@ -6,6 +6,7 @@ type FormSectionProps = HTMLAttributes<HTMLElement> & {
   eyebrow?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
+  variant?: 'plain' | 'card';
 };
 
 /** A small structural heading for administrative form groups. */
@@ -16,10 +17,15 @@ export function FormSection({
   actions,
   children,
   className,
+  variant = 'plain',
   ...props
 }: FormSectionProps) {
   return (
-    <section {...props} className={['form-section', className].filter(Boolean).join(' ')}>
+    <section
+      {...props}
+      className={['form-section', className].filter(Boolean).join(' ')}
+      data-variant={variant}
+    >
       <header className="form-section__heading">
         <div>
           {eyebrow ? <span className="form-section__eyebrow">{eyebrow}</span> : null}
