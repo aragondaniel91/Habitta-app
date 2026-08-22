@@ -10,6 +10,7 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
+import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { supportsBuildingStructure, unitReferenceLabel } from '../lib/unit-domain';
@@ -376,7 +377,7 @@ function CreateAnnouncementDrawer({
             value={body}
           />
         </Field>
-        <div className="announcements-form__grid">
+        <FormGrid>
           <Field label="Prioridad">
             <Select
               onChange={(event) => setPriority(event.target.value as AnnouncementPriority)}
@@ -407,7 +408,7 @@ function CreateAnnouncementDrawer({
               value={expiresAt}
             />
           </Field>
-        </div>
+        </FormGrid>
         <label className="announcements-check">
           <input
             checked={requiresAcknowledgement}
@@ -424,14 +425,14 @@ function CreateAnnouncementDrawer({
             {error}
           </div>
         ) : null}
-        <div className="announcements-form__actions">
+        <FormActions className="announcements-form__actions">
           <Button onClick={onClose} type="button" variant="ghost">
             Cancelar
           </Button>
           <Button disabled={saving} type="submit">
             {saving ? 'Creando…' : 'Guardar borrador'}
           </Button>
-        </div>
+        </FormActions>
       </form>
     </DrawerShell>
   );
@@ -695,7 +696,7 @@ function AnnouncementDetailDrawer({
             <Field label="Contenido">
               <textarea onChange={(event) => setBody(event.target.value)} rows={7} value={body} />
             </Field>
-            <div className="announcements-form__grid">
+            <FormGrid>
               <Field label="Prioridad">
                 <Select
                   onChange={(event) => setPriority(event.target.value as AnnouncementPriority)}
@@ -726,7 +727,7 @@ function AnnouncementDetailDrawer({
                   value={expiresAt}
                 />
               </Field>
-            </div>
+            </FormGrid>
             <label className="announcements-check">
               <input
                 checked={requiresAcknowledgement}
@@ -738,14 +739,14 @@ function AnnouncementDetailDrawer({
                 <small>Registra quién confirmó el mensaje.</small>
               </span>
             </label>
-            <div className="announcement-editor__actions">
+            <FormActions className="announcement-editor__actions">
               <Button disabled={saving} onClick={() => void save()} size="sm" variant="secondary">
                 Guardar cambios
               </Button>
               <Button disabled={saving} onClick={() => void requestAction('publish')} size="sm">
                 Publicar ahora
               </Button>
-            </div>
+            </FormActions>
           </div>
         </Surface>
       ) : (
