@@ -45,7 +45,7 @@ export function PeopleDirectoryView({
   onClearFilters,
 }: {
   people: Person[];
-  selectedId?: string | null;
+  selectedId?: string | null | undefined;
   query: string;
   statusFilter: string;
   onQueryChange: (value: string) => void;
@@ -203,7 +203,7 @@ export function PersonUnitRelationshipCard({
 }: {
   relationship: PersonUnitRelationshipSummary;
   onManage: () => void;
-  onInvite?: () => void;
+  onInvite?: (() => void) | undefined;
   onHistory?: () => void;
   onClose?: () => void;
 }) {
