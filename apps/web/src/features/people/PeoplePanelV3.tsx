@@ -157,7 +157,9 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         current ? (peopleItems.find((person) => person.id === current.id) ?? current) : current,
       );
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo cargar Personas.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo cargar Personas.',
+      );
     } finally {
       setLoading(false);
     }
@@ -496,11 +498,17 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     setError('');
     setMessage('');
     try {
-      await peopleApi(`/v1/condominiums/${condominiumId}/people/${selected.id}/admin-notes`, session, {
-        method: 'POST',
-        body: JSON.stringify({ content }),
-      });
-      await refreshSelected('Nota administrativa guardada. La revisión anterior permanece en el historial.');
+      await peopleApi(
+        `/v1/condominiums/${condominiumId}/people/${selected.id}/admin-notes`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({ content }),
+        },
+      );
+      await refreshSelected(
+        'Nota administrativa guardada. La revisión anterior permanece en el historial.',
+      );
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -673,7 +681,11 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         description="Junta, administración, representación y contactos se administran aparte de la relación con unidades."
         title="Agregar rol en la comunidad"
       >
-        <form className="people-v3-inline-form ux-form" noValidate onSubmit={(event) => void createCondominiumRelationship(event)}>
+        <form
+          className="people-v3-inline-form ux-form"
+          noValidate
+          onSubmit={(event) => void createCondominiumRelationship(event)}
+        >
           <Field label="Relación">
             <Select
               onChange={(event) =>
@@ -684,13 +696,16 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
               }
               value={relationshipDraft.relationshipType}
             >
-              {(Object.entries(condominiumRelationshipLabels) as [CondominiumRelationshipType, string][]).map(
-                ([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ),
-              )}
+              {(
+                Object.entries(condominiumRelationshipLabels) as [
+                  CondominiumRelationshipType,
+                  string,
+                ][]
+              ).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </Select>
           </Field>
           <Field label="Cargo o detalle">
@@ -710,7 +725,10 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         </form>
       </WorkspaceSection>
 
-      <WorkspaceSection title="Historial de roles" description="Cerrar un rol conserva la historia y su fecha de vigencia.">
+      <WorkspaceSection
+        title="Historial de roles"
+        description="Cerrar un rol conserva la historia y su fecha de vigencia."
+      >
         {condominiumRelationships.length ? (
           <div className="people-v3-history__list">
             {condominiumRelationships.map((relationship) => {
@@ -725,7 +743,9 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
                       {relationship.ends_at ? ` · hasta ${formatDate(relationship.ends_at)}` : ''}
                     </small>
                   </div>
-                  <Badge tone={current ? 'success' : 'neutral'}>{current ? 'Actual' : 'Histórica'}</Badge>
+                  <Badge tone={current ? 'success' : 'neutral'}>
+                    {current ? 'Actual' : 'Histórica'}
+                  </Badge>
                   {current ? (
                     <Button
                       onClick={() =>
@@ -760,7 +780,11 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       title="Notas internas"
     >
       {adminNotesAuthorized ? (
-        <form className="people-v3-notes ux-form" noValidate onSubmit={(event) => void saveAdminNote(event)}>
+        <form
+          className="people-v3-notes ux-form"
+          noValidate
+          onSubmit={(event) => void saveAdminNote(event)}
+        >
           <Field
             hint="Máximo 4.000 caracteres. Cada guardado crea una nueva revisión auditable."
             label="Nota administrativa"
@@ -813,9 +837,16 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         description="El acceso se concede sólo desde una propiedad activa o una ocupación activa como inquilino."
         title="Invitar a Habitta"
       >
-        <form className="people-v3-access-form ux-form" noValidate onSubmit={(event) => void createInvitation(event)}>
+        <form
+          className="people-v3-access-form ux-form"
+          noValidate
+          onSubmit={(event) => void createInvitation(event)}
+        >
           <Field label="Rol que recibirá">
-            <Select onChange={(event) => setInviteRole(event.target.value as ResidentRole)} value={inviteRole}>
+            <Select
+              onChange={(event) => setInviteRole(event.target.value as ResidentRole)}
+              value={inviteRole}
+            >
               <option value="owner">Propietario</option>
               <option value="tenant">Inquilino</option>
             </Select>
@@ -848,7 +879,9 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         </form>
 
         {!selected?.email ? (
-          <InlineNotice tone="info">Agrega un correo al perfil para habilitar invitaciones.</InlineNotice>
+          <InlineNotice tone="info">
+            Agrega un correo al perfil para habilitar invitaciones.
+          </InlineNotice>
         ) : null}
         {selected?.email && !accessOptions.length ? (
           <InlineNotice tone="info">
@@ -858,10 +891,15 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       </WorkspaceSection>
 
       {latestInvitation ? (
-        <WorkspaceSection title="Enlace seguro listo" description="Habitta almacena sólo el hash del token; conserva este enlace únicamente para entregarlo al residente.">
+        <WorkspaceSection
+          title="Enlace seguro listo"
+          description="Habitta almacena sólo el hash del token; conserva este enlace únicamente para entregarlo al residente."
+        >
           <div className="people-v3-invitation-link">
             <div>
-              <strong>{residentRoleLabel(latestInvitation.role)} · {latestInvitation.unitLabel}</strong>
+              <strong>
+                {residentRoleLabel(latestInvitation.role)} · {latestInvitation.unitLabel}
+              </strong>
               <Badge
                 tone={
                   latestInvitation.delivery.status === 'sent'
@@ -878,7 +916,12 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
                     : 'Envío desactivado'}
               </Badge>
             </div>
-            <input aria-label="Enlace seguro de invitación" className="input" readOnly value={latestInvitation.url} />
+            <input
+              aria-label="Enlace seguro de invitación"
+              className="input"
+              readOnly
+              value={latestInvitation.url}
+            />
             <Button onClick={() => void copyLatestInvitation()} size="sm" type="button">
               Copiar enlace seguro
             </Button>
@@ -886,31 +929,45 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         </WorkspaceSection>
       ) : null}
 
-      <WorkspaceSection title="Historial de invitaciones" description={`${invitations.length} invitaciones registradas para esta persona.`}>
+      <WorkspaceSection
+        title="Historial de invitaciones"
+        description={`${invitations.length} invitaciones registradas para esta persona.`}
+      >
         {invitations.length ? (
           <div className="people-v3-history__list">
             {invitations.map((invitation) => {
               const displayStatus = residentInvitationDisplayStatus(invitation);
               const deliveryEvent = deliveryByInvitationId.get(invitation.id);
               const eligible = accessOptions.some(
-                (option) => option.role === invitation.intended_role && option.unitId === invitation.unit_id,
+                (option) =>
+                  option.role === invitation.intended_role && option.unitId === invitation.unit_id,
               );
               return (
                 <article key={invitation.id}>
                   <div>
-                    <strong>{residentRoleLabel(invitation.intended_role)} · {invitationUnitLabel(invitation.unit_id)}</strong>
+                    <strong>
+                      {residentRoleLabel(invitation.intended_role)} ·{' '}
+                      {invitationUnitLabel(invitation.unit_id)}
+                    </strong>
                     <span>{invitation.email}</span>
                     <small>
-                      Creada {formatDate(invitation.created_at)} · vence {formatDate(invitation.expires_at)}
+                      Creada {formatDate(invitation.created_at)} · vence{' '}
+                      {formatDate(invitation.expires_at)}
                     </small>
                   </div>
-                  <Badge tone={invitationTone(displayStatus)}>{residentInvitationStatusLabels[displayStatus]}</Badge>
-                  <Badge tone={deliveryTone(deliveryEvent)}>{residentDeliveryLabel(deliveryEvent)}</Badge>
+                  <Badge tone={invitationTone(displayStatus)}>
+                    {residentInvitationStatusLabels[displayStatus]}
+                  </Badge>
+                  <Badge tone={deliveryTone(deliveryEvent)}>
+                    {residentDeliveryLabel(deliveryEvent)}
+                  </Badge>
                   <div className="people-v3-action-row">
                     {displayStatus === 'pending' && eligible ? (
                       <Button
                         disabled={busyAction === 'invitation'}
-                        onClick={() => void issueInvitation(invitation.intended_role, invitation.unit_id)}
+                        onClick={() =>
+                          void issueInvitation(invitation.intended_role, invitation.unit_id)
+                        }
                         size="sm"
                         type="button"
                         variant="secondary"
@@ -931,7 +988,9 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
                     {(displayStatus === 'expired' || displayStatus === 'revoked') && eligible ? (
                       <Button
                         disabled={busyAction === 'invitation'}
-                        onClick={() => void issueInvitation(invitation.intended_role, invitation.unit_id)}
+                        onClick={() =>
+                          void issueInvitation(invitation.intended_role, invitation.unit_id)
+                        }
                         size="sm"
                         type="button"
                         variant="secondary"
@@ -987,9 +1046,26 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         ) : null}
 
         <WorkspaceMetrics>
-          <WorkspaceMetricCard icon={<PeopleIcon size={18} />} label="Personas" value={people.length} detail="Registros únicos" />
-          <WorkspaceMetricCard icon={<CheckCircleIcon size={18} />} label="Activas" value={activePeople} detail="Vigentes en la comunidad" tone="green" />
-          <WorkspaceMetricCard icon={<BellIcon size={18} />} label="Con contacto" value={connectedPeople} detail="Correo o teléfono disponible" tone="neutral" />
+          <WorkspaceMetricCard
+            icon={<PeopleIcon size={18} />}
+            label="Personas"
+            value={people.length}
+            detail="Registros únicos"
+          />
+          <WorkspaceMetricCard
+            icon={<CheckCircleIcon size={18} />}
+            label="Activas"
+            value={activePeople}
+            detail="Vigentes en la comunidad"
+            tone="green"
+          />
+          <WorkspaceMetricCard
+            icon={<BellIcon size={18} />}
+            label="Con contacto"
+            value={connectedPeople}
+            detail="Correo o teléfono disponible"
+            tone="neutral"
+          />
         </WorkspaceMetrics>
 
         <div className="people-v3-layout">
