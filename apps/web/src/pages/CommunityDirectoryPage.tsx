@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import { PeoplePanel } from '../features/people/PeoplePanel';
+import { PeoplePanelV3 } from '../features/people/PeoplePanelV3';
 import { StructureManagementPage } from './StructureManagementPage';
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
 export function CommunityDirectoryPage({ condominiumId, condominiumName, mode, session }: Props) {
   if (mode === 'people') {
     return (
-      <PeoplePanel
+      <PeoplePanelV3
         condominiumId={condominiumId}
         condominiumName={condominiumName}
         session={session}

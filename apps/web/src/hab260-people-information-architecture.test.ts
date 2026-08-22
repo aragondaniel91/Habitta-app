@@ -53,11 +53,14 @@ describe('HAB-260 approved People information architecture', () => {
     expect(css).toContain('grid-template-columns: 1fr');
   });
 
-  it('does not switch the production route until the controller integration is ready', async () => {
+  it('switches the production route only after the V3 controller integration is present', async () => {
     const route = await read('./pages/CommunityDirectoryPage.tsx');
+    const controller = await read('./features/people/PeoplePanelV3.tsx');
 
-    expect(route).toContain("import { PeoplePanel } from '../features/people/PeoplePanel';");
-    expect(route).toContain('<PeoplePanel');
-    expect(route).not.toContain('PeoplePanelV3');
+    expect(route).toContain("import { PeoplePanelV3 } from '../features/people/PeoplePanelV3';");
+    expect(route).toContain('<PeoplePanelV3');
+    expect(controller).toContain('buildPersonUnitRelationships');
+    expect(controller).toContain('PersonEditorDrawerV3');
+    expect(controller).toContain('PersonUnitRelationshipDrawerV3');
   });
 });
