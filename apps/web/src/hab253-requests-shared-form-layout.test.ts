@@ -20,7 +20,9 @@ describe('HAB-253 Requests shared form layout', () => {
 
   it('preserves UUID-backed selector and creation payload semantics', () => {
     expect(requestsSource).toContain('if (unitId) payload.unitId = unitId');
-    expect(requestsSource).toContain('if (requesterPersonId) payload.requesterPersonId = requesterPersonId');
+    expect(requestsSource).toContain(
+      'if (requesterPersonId) payload.requesterPersonId = requesterPersonId',
+    );
     expect(requestsSource).toContain('<option key={item.id} value={item.id}>');
     expect(requestsSource).toContain('payload.categoryId = categoryId');
     expect(requestsSource).toContain('payload.assignedToUserId = assignee');
