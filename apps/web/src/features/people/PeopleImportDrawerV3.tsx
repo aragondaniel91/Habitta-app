@@ -53,7 +53,9 @@ export function PeopleImportDrawerV3({
       });
       await onImported('Importación de personas completada.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo importar el CSV.');
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo importar el CSV.',
+      );
     } finally {
       setBusy('');
     }
@@ -125,7 +127,9 @@ export function PeopleImportDrawerV3({
                 ) : null}
               </div>
             ) : (
-              <InlineNotice tone="success">No se detectaron errores en la previsualización.</InlineNotice>
+              <InlineNotice tone="success">
+                No se detectaron errores en la previsualización.
+              </InlineNotice>
             )}
           </FormSection>
         ) : null}
