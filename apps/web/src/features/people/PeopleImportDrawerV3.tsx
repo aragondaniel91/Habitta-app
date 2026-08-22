@@ -6,6 +6,7 @@ import { InlineNotice } from '../../components/WorkspaceUi';
 import { Badge, Button, Field } from '../../components/ui';
 import { peopleApi } from './api';
 import type { Preview } from './types';
+import './people-v3-controller.css';
 
 export function PeopleImportDrawerV3({
   condominiumId,
