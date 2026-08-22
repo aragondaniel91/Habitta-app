@@ -9,7 +9,7 @@ import {
   WorkspaceSection,
 } from '../components/WorkspaceUi';
 import { CheckCircleIcon, HomeIcon, PeopleIcon, UnitsIcon } from '../components/icons';
-import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, Select, Skeleton } from '../components/ui';
 import { UnitDetailDrawer } from '../features/units/UnitDetailDrawer';
 import { UnitEditor } from '../features/units/UnitEditor';
 import type { UnitEditorInput } from '../features/units/UnitEditor';
