@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
-import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import {
+  InlineNotice,
+  WorkspaceMetricCard,
+  WorkspaceMetrics,
+  WorkspaceSection,
+} from '../components/WorkspaceUi';
+import { CheckCircleIcon, HomeIcon, PeopleIcon, UnitsIcon } from '../components/icons';
+import { Badge, Button, EmptyState, Select, Skeleton } from '../components/ui';
 import { UnitDetailDrawer } from '../features/units/UnitDetailDrawer';
 import { UnitEditor } from '../features/units/UnitEditor';
 import type { UnitEditorInput } from '../features/units/UnitEditor';
@@ -16,7 +23,7 @@ import {
   unitTypeOptions,
 } from '../lib/unit-domain';
 import type { PropertyTopology, UnitType } from '../lib/unit-domain';
-import '../units-v2.css';
+import '../units-v3.css';
 
 type Props = {
   condominiumId: string;
@@ -24,14 +31,29 @@ type Props = {
   session: Session;
   onConfigureStructure?: () => void;
 };
+
 type StatusFilter = 'all' | 'active' | 'inactive';
 type BuildingFilter = 'all' | string;
 type Building = { id: string; condominium_id: string; name: string };
+type Notice = { tone: 'success' | 'error'; text: string } | null;
 
-const personSummary = (people: Array<{ firstName: string; lastName: string }>) =>
-  people.length
-    ? people.map((person) => `${person.firstName} ${person.lastName}`).join(', ')
-    : 'Sin registro activo';
+const personSummary = (people: Array<{ firstName: string; lastName: string }>) => {
+  if (!people.length) return 'Sin registro activo';
+  const names = people.map((person) => `${person.firstName} ${person.lastName}`.trim());
+  return names.length > 2
+    ? `${names.slice(0, 2).join(', ')} +${names.length - 2}`
+    : names.join(', ');
+};
+
+const participationSummary = (unit: DirectoryUnit) => {
+  if (!unit.owners.length) return 'Sin propietarios';
+  const percentages = unit.owners
+    .map((owner) => Number(owner.ownershipPercentage))
+    .filter((value) => Number.isFinite(value));
+  if (!percentages.length) return 'Participación no indicada';
+  const total = percentages.reduce((sum, value) => sum + value, 0);
+  return `${total.toLocaleString('es-VE', { maximumFractionDigits: 4 })}% asignado`;
+};
 
 const topologyGuidance: Record<PropertyTopology, string | null> = {
   unspecified:
@@ -52,7 +74,8 @@ export function UnitsPage({
   const [profile, setProfile] = useState<CondominiumProfile | null>(null);
   const [units, setUnits] = useState<DirectoryUnit[]>([]);
   const [configuredBuildings, setConfiguredBuildings] = useState<Building[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
@@ -69,7 +92,8 @@ export function UnitsPage({
   useEffect(() => {
     let active = true;
     setLoading(true);
-    setError(null);
+    setLoadError(null);
+    setNotice(null);
     void Promise.all([
       apiRequest<CondominiumProfile[]>(`/v1/condominiums/${condominiumId}`, session),
       apiRequest<UnitsDirectory>(`/v1/condominiums/${condominiumId}/units-directory`, session),
@@ -82,10 +106,10 @@ export function UnitsPage({
         setConfiguredBuildings(buildingItems);
       })
       .catch((reason: unknown) => {
-        if (active)
-          setError(
-            reason instanceof Error ? reason.message : 'No se pudieron cargar las unidades.',
-          );
+        if (!active) return;
+        setLoadError(
+          reason instanceof Error ? reason.message : 'No se pudieron cargar las unidades.',
+        );
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -94,6 +118,16 @@ export function UnitsPage({
       active = false;
     };
   }, [condominiumId, session]);
+
+  useEffect(() => {
+    setSelectedUnit(null);
+    setEditor(null);
+    setArchiveTarget(null);
+    setSearch('');
+    setStatus('all');
+    setType('all');
+    setBuilding('all');
+  }, [condominiumId]);
 
   const topology = profile?.property_topology ?? 'unspecified';
   const buildingOptions = configuredBuildings.map(({ id, name }) => [id, name] as const);
@@ -125,20 +159,37 @@ export function UnitsPage({
       );
     });
   }, [building, search, status, type, units]);
+
   const activeUnits = units.filter((unit) => unit.status === 'active').length;
+  const unitsWithOwners = units.filter((unit) => unit.owners.length > 0).length;
+  const occupiedUnits = units.filter((unit) => unit.occupancies.length > 0).length;
   const buildings = configuredBuildings.map(({ id, name }) => ({ id, name }));
   const singleBuildingReady = topology !== 'single_building' || buildings.length === 1;
   const canCreate = canMutate && topology !== 'unspecified' && singleBuildingReady;
+  const filtersActive = Boolean(
+    search.trim() || status !== 'all' || type !== 'all' || building !== 'all',
+  );
+
+  const clearFilters = () => {
+    setSearch('');
+    setStatus('all');
+    setType('all');
+    setBuilding('all');
+  };
+
   const refreshDirectory = async () => {
     const directory = await apiRequest<UnitsDirectory>(
       `/v1/condominiums/${condominiumId}/units-directory`,
       session,
     );
     setUnits(directory.units);
+    return directory.units;
   };
+
   const saveUnit = async (input: UnitEditorInput) => {
     if (!editor) return;
     setSaving(true);
+    setNotice(null);
     try {
       await apiRequest(
         `/v1/condominiums/${condominiumId}/units${editor.mode === 'edit' ? `/${editor.unit?.id}` : ''}`,
@@ -148,31 +199,55 @@ export function UnitsPage({
       await refreshDirectory();
       setEditor(null);
       setSelectedUnit(null);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo guardar la unidad.');
-    } finally {
-      setSaving(false);
-    }
-  };
-  const setUnitStatus = async (unit: DirectoryUnit, status: 'active' | 'inactive') => {
-    setSaving(true);
-    try {
-      await apiRequest(`/v1/condominiums/${condominiumId}/units/${unit.id}`, session, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
+      setNotice({
+        tone: 'success',
+        text: editor.mode === 'edit' ? 'Unidad actualizada correctamente.' : 'Unidad creada.',
       });
-      await refreshDirectory();
-      setArchiveTarget(null);
-      setSelectedUnit(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo actualizar el estado.');
+      setNotice({
+        tone: 'error',
+        text: reason instanceof Error ? reason.message : 'No se pudo guardar la unidad.',
+      });
     } finally {
       setSaving(false);
     }
   };
 
+  const setUnitStatus = async (unit: DirectoryUnit, nextStatus: 'active' | 'inactive') => {
+    setSaving(true);
+    setNotice(null);
+    try {
+      await apiRequest(`/v1/condominiums/${condominiumId}/units/${unit.id}`, session, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      await refreshDirectory();
+      setArchiveTarget(null);
+      setSelectedUnit(null);
+      setNotice({
+        tone: 'success',
+        text:
+          nextStatus === 'inactive'
+            ? 'Unidad archivada sin eliminar su historial.'
+            : 'Unidad reactivada.',
+      });
+    } catch (reason) {
+      setNotice({
+        tone: 'error',
+        text: reason instanceof Error ? reason.message : 'No se pudo actualizar el estado.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEdit = (unit: DirectoryUnit) => {
+    setSelectedUnit(null);
+    setEditor({ mode: 'edit', unit });
+  };
+
   return (
-    <div className="units-v2-page">
+    <div className="units-v3-page">
       <PageHeader
         actions={
           <>
@@ -187,55 +262,88 @@ export function UnitsPage({
             >
               {topology === 'house_community' ? 'Nueva casa' : 'Nueva unidad'}
             </Button>
-            <Button onClick={onConfigureStructure} variant="secondary">
-              {topology === 'unspecified' ? 'Definir tipo de propiedad' : 'Configurar estructura'}
-            </Button>
+            {onConfigureStructure ? (
+              <Button onClick={onConfigureStructure} variant="secondary">
+                {topology === 'unspecified' ? 'Definir tipo de propiedad' : 'Configurar estructura'}
+              </Button>
+            ) : null}
           </>
         }
         description={`Inventario físico, propiedad y ocupación de ${condominiumName}.`}
         eyebrow="Administración del condominio"
         title="Unidades"
       />
+
       {topologyGuidance[topology] ? (
-        <Surface className="units-v2-guidance">
-          <strong>Estructura pendiente de definir.</strong> {topologyGuidance[topology]}
-        </Surface>
+        <InlineNotice tone="info" title="Estructura pendiente de definir">
+          {topologyGuidance[topology]}
+        </InlineNotice>
       ) : null}
       {topology === 'single_building' && !singleBuildingReady ? (
-        <Surface className="units-v2-guidance">
-          <strong>Edificio pendiente.</strong> Un edificio residencial requiere exactamente un
-          edificio configurado antes de crear unidades.
-        </Surface>
+        <InlineNotice tone="info" title="Edificio pendiente">
+          Un edificio residencial requiere exactamente un edificio configurado antes de crear
+          unidades.
+        </InlineNotice>
       ) : null}
+      {notice ? (
+        <InlineNotice
+          tone={notice.tone}
+          title={notice.tone === 'success' ? 'Listo' : 'No se pudo completar'}
+        >
+          {notice.text}
+        </InlineNotice>
+      ) : null}
+
       {loading ? (
-        <div className="units-v2-metrics">
-          {[0, 1, 2].map((item) => (
-            <Skeleton className="units-v2-skeleton" key={item} />
+        <div className="units-v3-loading-metrics">
+          {[0, 1, 2, 3].map((item) => (
+            <Skeleton className="units-v3-skeleton" key={item} />
           ))}
         </div>
-      ) : null}
-      {!loading ? (
-        <div className="units-v2-metrics">
-          <Surface>
-            <span>Total</span>
-            <strong>{units.length}</strong>
-          </Surface>
-          <Surface>
-            <span>Activas</span>
-            <strong>{activeUnits}</strong>
-          </Surface>
-          <Surface>
-            <span>Archivadas</span>
-            <strong>{units.length - activeUnits}</strong>
-          </Surface>
-        </div>
-      ) : null}
-      <Surface className="units-v2-directory">
-        <div className="units-v2-filters">
+      ) : (
+        <WorkspaceMetrics>
+          <WorkspaceMetricCard
+            icon={<UnitsIcon size={18} />}
+            label="Unidades"
+            value={units.length}
+            detail="Inventario registrado"
+          />
+          <WorkspaceMetricCard
+            icon={<CheckCircleIcon size={18} />}
+            label="Activas"
+            value={activeUnits}
+            detail={`${units.length - activeUnits} archivadas`}
+            tone="green"
+          />
+          <WorkspaceMetricCard
+            icon={<PeopleIcon size={18} />}
+            label="Con propietarios"
+            value={unitsWithOwners}
+            detail="Relación de propiedad activa"
+          />
+          <WorkspaceMetricCard
+            icon={<HomeIcon size={18} />}
+            label="Ocupadas"
+            value={occupiedUnits}
+            detail="Ocupación activa registrada"
+            tone="neutral"
+          />
+        </WorkspaceMetrics>
+      )}
+
+      <WorkspaceSection
+        actions={<Badge tone="info">{filteredUnits.length}</Badge>}
+        className="units-v3-directory"
+        description="Selecciona una unidad para revisar su resumen e historial de propiedad y ocupación."
+        title="Directorio de unidades"
+      >
+        <div className="units-v3-filters">
           <input
             aria-label="Buscar unidades"
+            className="input"
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por unidad, edificio, piso o persona"
+            placeholder="Buscar unidad, edificio, piso o persona"
+            type="search"
             value={search}
           />
           <Select
@@ -273,64 +381,114 @@ export function UnitsPage({
               ))}
             </Select>
           ) : null}
+          {filtersActive ? (
+            <Button onClick={clearFilters} size="sm" type="button" variant="ghost">
+              Limpiar filtros
+            </Button>
+          ) : null}
         </div>
-        {error ? (
-          <EmptyState description={error} icon="!" title="No pudimos cargar las unidades" />
-        ) : null}
-        {!error && !loading && !filteredUnits.length ? (
+
+        {loadError ? (
           <EmptyState
-            description={
-              search ? 'Prueba con otra búsqueda o filtro.' : 'Aún no hay unidades registradas.'
-            }
-            icon="⌂"
-            title={search ? 'Sin coincidencias' : 'Sin unidades'}
+            description={loadError}
+            icon={<UnitsIcon size={26} />}
+            title="No pudimos cargar las unidades"
           />
         ) : null}
-        {!error && !loading && filteredUnits.length ? (
-          <div className="units-v2-list">
+        {!loadError && loading ? (
+          <div className="units-v3-list-loading">
+            <Skeleton className="skeleton--card" />
+            <Skeleton className="skeleton--card" />
+            <Skeleton className="skeleton--card" />
+          </div>
+        ) : null}
+        {!loadError && !loading && !filteredUnits.length ? (
+          <EmptyState
+            actionLabel={filtersActive ? 'Limpiar filtros' : canCreate ? 'Crear unidad' : undefined}
+            description={
+              filtersActive
+                ? 'Prueba con otra búsqueda o muestra todos los estados.'
+                : 'Aún no hay unidades registradas en este condominio.'
+            }
+            icon={<UnitsIcon size={26} />}
+            onAction={
+              filtersActive
+                ? clearFilters
+                : canCreate
+                  ? () => setEditor({ mode: 'create', unit: null })
+                  : undefined
+            }
+            title={filtersActive ? 'Sin coincidencias' : 'Sin unidades'}
+          />
+        ) : null}
+        {!loadError && !loading && filteredUnits.length ? (
+          <div className="units-v3-list">
+            <div className="units-v3-list__head" aria-hidden="true">
+              <span>Unidad</span>
+              <span>Propiedad</span>
+              <span>Participación</span>
+              <span>Ocupación</span>
+              <span>Estado</span>
+            </div>
             {filteredUnits.map((unit) => (
               <button
-                className="units-v2-card"
+                className="units-v3-row"
                 key={unit.id}
                 onClick={() => setSelectedUnit(unit)}
                 type="button"
               >
-                <div>
-                  <strong>
-                    {unitReferenceLabel({
-                      code: unit.code,
-                      buildingName: unit.building?.name ?? null,
-                    })}
-                  </strong>
-                  <span>
-                    {UNIT_TYPE_LABELS[unit.type]}
-                    {unit.floor ? ` · Piso ${unit.floor}` : ''}
+                <span className="units-v3-row__identity">
+                  <span className="units-v3-row__icon">
+                    <UnitsIcon size={18} />
                   </span>
-                </div>
-                <Badge tone={unit.status === 'active' ? 'success' : 'neutral'}>
-                  {unit.status === 'active' ? 'Activa' : 'Archivada'}
-                </Badge>
-                <p>
-                  <b>Propiedad:</b> {personSummary(unit.owners)}
-                </p>
-                <p>
-                  <b>Ocupación:</b> {personSummary(unit.occupancies)}
-                </p>
+                  <span>
+                    <strong>
+                      {unitReferenceLabel({
+                        code: unit.code,
+                        buildingName: unit.building?.name ?? null,
+                      })}
+                    </strong>
+                    <small>
+                      {UNIT_TYPE_LABELS[unit.type]}
+                      {unit.floor ? ` · Piso ${unit.floor}` : ''}
+                    </small>
+                  </span>
+                </span>
+                <span className="units-v3-row__fact" data-label="Propiedad">
+                  <small>Propiedad</small>
+                  <strong>{personSummary(unit.owners)}</strong>
+                </span>
+                <span className="units-v3-row__fact" data-label="Participación">
+                  <small>Participación</small>
+                  <strong>{participationSummary(unit)}</strong>
+                </span>
+                <span className="units-v3-row__fact" data-label="Ocupación">
+                  <small>Ocupación</small>
+                  <strong>{personSummary(unit.occupancies)}</strong>
+                </span>
+                <span className="units-v3-row__status" data-label="Estado">
+                  <Badge tone={unit.status === 'active' ? 'success' : 'neutral'}>
+                    {unit.status === 'active' ? 'Activa' : 'Archivada'}
+                  </Badge>
+                </span>
               </button>
             ))}
           </div>
         ) : null}
-      </Surface>
+      </WorkspaceSection>
+
       {selectedUnit ? (
         <UnitDetailDrawer
           canMutate={canMutate}
+          condominiumId={condominiumId}
           onArchive={() =>
             selectedUnit.status === 'active'
               ? setArchiveTarget(selectedUnit)
               : void setUnitStatus(selectedUnit, 'active')
           }
           onClose={() => setSelectedUnit(null)}
-          onEdit={() => setEditor({ mode: 'edit', unit: selectedUnit })}
+          onEdit={() => openEdit(selectedUnit)}
+          session={session}
           unit={selectedUnit}
         />
       ) : null}

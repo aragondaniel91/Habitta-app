@@ -8,9 +8,9 @@ const structureSource = source('./pages/StructureManagementPage.tsx');
 const sharedStylesSource = source('./styles.css');
 const parityMatrixSource = source('../../../docs/frontend/form-parity-matrix.md');
 
-describe('HAB-251 Units shared form layout', () => {
-  it('uses the shared FormGrid in both administrator unit editors', () => {
-    expect(unitEditorSource).toContain("import { FormGrid } from '../../components/FormLayout'");
+describe('HAB-251/HAB-262 Units shared form layout', () => {
+  it('uses the shared FormGrid in both administrator unit/structure editors', () => {
+    expect(unitEditorSource).toContain('FormActions, FormGrid, FormSection');
     expect(structureSource).toContain("import { FormGrid } from '../components/FormLayout'");
     expect(unitEditorSource).toContain('<FormGrid>');
     expect(structureSource).toContain('<FormGrid>');
@@ -18,12 +18,13 @@ describe('HAB-251 Units shared form layout', () => {
     expect(structureSource).not.toContain('className="structure-form-grid"');
   });
 
-  it('keeps shared dialog actions and full-width topology/error notes', () => {
-    expect(unitEditorSource).toContain('<DialogFooter>');
+  it('uses the shared workspace drawer and sticky action contract for the canonical unit editor', () => {
+    expect(unitEditorSource).toContain("import { Drawer } from '../../components/Drawer'");
+    expect(unitEditorSource).toContain('presentation="workspace"');
+    expect(unitEditorSource).toContain('<FormSection');
+    expect(unitEditorSource).toContain('<FormActions sticky>');
+    expect(unitEditorSource).toContain('noValidate');
     expect(structureSource).toContain('<DialogFooter>');
-    expect(unitEditorSource).toContain('className="structure-form-note" data-span="full"');
-    expect(unitEditorSource).toContain('className="structure-message" data-span="full"');
-    expect(structureSource).toContain('className="structure-form-note" data-span="full"');
   });
 
   it('inherits the shared responsive grid contract', () => {
@@ -45,9 +46,9 @@ describe('HAB-251 Units shared form layout', () => {
     expect(structureSource).toContain('<option key={building.id} value={building.id}>');
   });
 
-  it('marks Units compliant only after the shared layout migration', () => {
+  it('keeps Units compliant after the V3 workspace migration', () => {
     expect(parityMatrixSource).toContain(
-      '| Unidades | Units V2 editor + Structure Management unit editor | compliant | Sí | Sí | Sí | Sí |',
+      '| Unidades | Units V3 editor + Structure Management topology/building editor | compliant | Sí | Sí | Sí | Sí |',
     );
   });
 });
