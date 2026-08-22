@@ -10,6 +10,7 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
+import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { canManage, useCondominiumRoles } from '../lib/roles';
@@ -298,7 +299,7 @@ function CreateRequestDrawer({
             value={description}
           />
         </Field>
-        <div className="requests-form__grid">
+        <FormGrid>
           <Field label="Categoría">
             <Select
               onChange={(event) => setCategoryId(event.target.value)}
@@ -354,20 +355,20 @@ function CreateRequestDrawer({
                 ))}
             </Select>
           </Field>
-        </div>
+        </FormGrid>
         {error ? (
           <div className="requests-inline-message" data-tone="error">
             {error}
           </div>
         ) : null}
-        <div className="requests-form__actions">
+        <FormActions className="requests-form__actions">
           <Button onClick={onClose} type="button" variant="ghost">
             Cancelar
           </Button>
           <Button disabled={saving || !categoryId} type="submit">
             {saving ? 'Creando…' : 'Crear solicitud'}
           </Button>
-        </div>
+        </FormActions>
       </form>
     </DrawerShell>
   );
@@ -471,7 +472,7 @@ function CategoriesDrawer({
           <span>Agregar categoría</span>
           <p>Crea una clasificación propia del condominio.</p>
         </div>
-        <div className="requests-form__grid">
+        <FormGrid>
           <Field label="Nombre">
             <input onChange={(event) => setName(event.target.value)} required value={name} />
           </Field>
@@ -483,7 +484,7 @@ function CategoriesDrawer({
               value={code}
             />
           </Field>
-        </div>
+        </FormGrid>
         <Field label="Descripción">
           <textarea
             maxLength={500}
@@ -497,9 +498,11 @@ function CategoriesDrawer({
             {error}
           </div>
         ) : null}
-        <Button disabled={saving} type="submit">
-          {saving ? 'Creando…' : 'Agregar categoría'}
-        </Button>
+        <FormActions>
+          <Button disabled={saving} type="submit">
+            {saving ? 'Creando…' : 'Agregar categoría'}
+          </Button>
+        </FormActions>
       </form>
     </DrawerShell>
   );
@@ -743,7 +746,7 @@ function RequestDetailDrawer({
             <span>Gestión operativa</span>
             <p>Actualiza el flujo, responsable y fecha objetivo.</p>
           </div>
-          <div className="requests-form__grid">
+          <FormGrid>
             <Field label="Estado">
               <Select
                 onChange={(event) => setStatus(event.target.value as ServiceRequestStatus)}
@@ -807,12 +810,12 @@ function RequestDetailDrawer({
                 value={resolution}
               />
             </Field>
-          </div>
-          <div className="request-management-panel__actions">
+          </FormGrid>
+          <FormActions className="request-management-panel__actions">
             <Button disabled={saving} onClick={() => void save()} size="sm">
               {saving ? 'Guardando…' : 'Guardar cambios'}
             </Button>
-          </div>
+          </FormActions>
         </Surface>
       ) : null}
 
