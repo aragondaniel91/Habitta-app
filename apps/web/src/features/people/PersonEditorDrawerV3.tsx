@@ -39,7 +39,10 @@ type Draft = {
 };
 
 type Errors = Partial<
-  Record<'firstName' | 'lastName' | 'customDocumentType' | 'unitId' | 'ownershipPercentage', string>
+  Record<
+    'firstName' | 'lastName' | 'customDocumentType' | 'unitId' | 'ownershipPercentage',
+    string | undefined
+  >
 >;
 
 const unitScopedKinds: InitialRelationshipKind[] = [
