@@ -38,9 +38,7 @@ type BuildPersonUnitRelationshipsInput = {
 };
 
 function newestBy<T>(items: T[], value: (item: T) => string): T | null {
-  return (
-    [...items].sort((left, right) => value(right).localeCompare(value(left)))[0] ?? null
-  );
+  return [...items].sort((left, right) => value(right).localeCompare(value(left)))[0] ?? null;
 }
 
 function embeddedUnitContext(
