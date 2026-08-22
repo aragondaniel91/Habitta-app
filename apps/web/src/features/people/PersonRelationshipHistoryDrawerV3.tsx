@@ -28,7 +28,10 @@ export function PersonRelationshipHistoryDrawerV3({
       wide
     >
       <div className="people-v3-history">
-        <WorkspaceSection title="Propiedad" description="Asignaciones patrimoniales registradas para esta persona.">
+        <WorkspaceSection
+          title="Propiedad"
+          description="Asignaciones patrimoniales registradas para esta persona."
+        >
           {relationship.ownershipHistory.length ? (
             <div className="people-v3-history__list">
               {relationship.ownershipHistory.map((item) => (
@@ -41,7 +44,8 @@ export function PersonRelationshipHistoryDrawerV3({
                         : 'Participación no indicada'}
                     </span>
                     <small>
-                      Desde {formatDate(item.starts_at)} · {item.ends_at ? `hasta ${formatDate(item.ends_at)}` : 'actual'}
+                      Desde {formatDate(item.starts_at)} ·{' '}
+                      {item.ends_at ? `hasta ${formatDate(item.ends_at)}` : 'actual'}
                     </small>
                   </div>
                   <Badge tone={item.ends_at ? 'neutral' : 'success'}>
@@ -55,7 +59,10 @@ export function PersonRelationshipHistoryDrawerV3({
           )}
         </WorkspaceSection>
 
-        <WorkspaceSection title="Ocupación" description="Residencia efectiva registrada independientemente de la propiedad.">
+        <WorkspaceSection
+          title="Ocupación"
+          description="Residencia efectiva registrada independientemente de la propiedad."
+        >
           {relationship.occupancyHistory.length ? (
             <div className="people-v3-history__list">
               {relationship.occupancyHistory.map((item) => (
@@ -63,7 +70,8 @@ export function PersonRelationshipHistoryDrawerV3({
                   <div>
                     <strong>{occupancyLabels[item.occupancy_type]}</strong>
                     <small>
-                      Desde {formatDate(item.starts_at)} · {item.ends_at ? `hasta ${formatDate(item.ends_at)}` : 'actual'}
+                      Desde {formatDate(item.starts_at)} ·{' '}
+                      {item.ends_at ? `hasta ${formatDate(item.ends_at)}` : 'actual'}
                     </small>
                   </div>
                   <Badge tone={item.ends_at ? 'neutral' : 'success'}>
@@ -77,7 +85,10 @@ export function PersonRelationshipHistoryDrawerV3({
           )}
         </WorkspaceSection>
 
-        <WorkspaceSection title="Comunicaciones" description="Responsabilidades financieras y generales por ciclo de vigencia.">
+        <WorkspaceSection
+          title="Comunicaciones"
+          description="Responsabilidades financieras y generales por ciclo de vigencia."
+        >
           {relationship.communicationHistory.length ? (
             <div className="people-v3-history__list">
               {relationship.communicationHistory.map((item) => (
@@ -90,9 +101,14 @@ export function PersonRelationshipHistoryDrawerV3({
                           ? 'Destinatario financiero adicional'
                           : 'Sin responsabilidad financiera'}
                     </strong>
-                    <span>{item.general_recipient ? 'Recibe comunicaciones generales' : 'No recibe comunicaciones generales'}</span>
+                    <span>
+                      {item.general_recipient
+                        ? 'Recibe comunicaciones generales'
+                        : 'No recibe comunicaciones generales'}
+                    </span>
                     <small>
-                      Desde {formatDate(item.effective_from)} · {item.effective_to ? `hasta ${formatDate(item.effective_to)}` : 'actual'}
+                      Desde {formatDate(item.effective_from)} ·{' '}
+                      {item.effective_to ? `hasta ${formatDate(item.effective_to)}` : 'actual'}
                     </small>
                   </div>
                   <Badge tone={item.effective_to ? 'neutral' : 'success'}>
@@ -106,7 +122,10 @@ export function PersonRelationshipHistoryDrawerV3({
           )}
         </WorkspaceSection>
 
-        <WorkspaceSection title="Acceso digital" description="Invitaciones emitidas para esta persona y unidad.">
+        <WorkspaceSection
+          title="Acceso digital"
+          description="Invitaciones emitidas para esta persona y unidad."
+        >
           {relationship.invitations.length ? (
             <div className="people-v3-history__list">
               {relationship.invitations.map((invitation) => (
@@ -115,10 +134,19 @@ export function PersonRelationshipHistoryDrawerV3({
                     <strong>{residentRoleLabel(invitation.intended_role)}</strong>
                     <span>{invitation.email}</span>
                     <small>
-                      Creada {formatDate(invitation.created_at)} · vence {formatDate(invitation.expires_at)}
+                      Creada {formatDate(invitation.created_at)} · vence{' '}
+                      {formatDate(invitation.expires_at)}
                     </small>
                   </div>
-                  <Badge tone={invitation.status === 'accepted' ? 'success' : invitation.status === 'pending' ? 'info' : 'neutral'}>
+                  <Badge
+                    tone={
+                      invitation.status === 'accepted'
+                        ? 'success'
+                        : invitation.status === 'pending'
+                          ? 'info'
+                          : 'neutral'
+                    }
+                  >
                     {residentInvitationStatusLabels[invitation.status]}
                   </Badge>
                 </article>
