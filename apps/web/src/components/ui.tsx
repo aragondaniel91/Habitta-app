@@ -1,4 +1,9 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+} from 'react';
 import { ArrowRightIcon } from './icons';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -35,18 +40,37 @@ export function Field({
   label,
   hint,
   error,
+  required = false,
+  className,
   children,
 }: {
   label: string;
   hint?: string | undefined;
   error?: string | undefined;
+  required?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <label className="field">
-      <span className="field__label">{label}</span>
+    <label
+      className={['field', className].filter(Boolean).join(' ')}
+      data-invalid={Boolean(error) || undefined}
+    >
+      <span className="field__label">
+        {label}
+        {required ? (
+          <span aria-hidden="true" className="field__required">
+            {' '}
+            *
+          </span>
+        ) : null}
+      </span>
       {children}
-      {error ? <span className="field__error">{error}</span> : null}
+      {error ? (
+        <span className="field__error" role="alert">
+          {error}
+        </span>
+      ) : null}
       {!error && hint ? <span className="field__hint">{hint}</span> : null}
     </label>
   );
