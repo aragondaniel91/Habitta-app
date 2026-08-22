@@ -1,21 +1,21 @@
-name: HAB-261 Format Artifact
+name: HAB-261 Apply Formatter
 
 on:
   push:
     branches:
       - hab-261-people-ux-redesign
-  pull_request:
-    branches:
-      - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: hab-261-people-ux-redesign
       - uses: pnpm/action-setup@v4
         with:
           version: 10.12.1
@@ -32,13 +32,14 @@ jobs:
           apps/web/src/features/people/PersonEditorDrawerV3.tsx
           apps/web/src/features/people/PersonRelationshipHistoryDrawerV3.tsx
           apps/web/src/features/people/PersonUnitRelationshipDrawerV3.tsx
-      - uses: actions/upload-artifact@v4
-        with:
-          name: hab-261-formatted-files
-          path: |
-            apps/web/src/features/people/PeopleImportDrawerV3.tsx
-            apps/web/src/features/people/PeoplePanelV3.tsx
-            apps/web/src/features/people/PersonEditorDrawerV3.tsx
-            apps/web/src/features/people/PersonRelationshipHistoryDrawerV3.tsx
-            apps/web/src/features/people/PersonUnitRelationshipDrawerV3.tsx
-          if-no-files-found: error
+      - name: Commit exact formatter output
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/features/people/*.tsx
+          git commit -m "chore(HAB-261): apply exact Prettier output"
+          git push origin HEAD:hab-261-people-ux-redesign
