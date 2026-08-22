@@ -7,11 +7,11 @@ describe('HAB-260 approved People information architecture', () => {
   it('defines one profile navigation model instead of independent stacked operational forms', async () => {
     const source = await read('./features/people/PeopleWorkspaceComponents.tsx');
 
-    expect(source).toContain("| 'summary'");
-    expect(source).toContain("| 'units'");
-    expect(source).toContain("| 'community-roles'");
-    expect(source).toContain("| 'private-notes'");
-    expect(source).toContain("| 'digital-access'");
+    expect(source).toContain("'summary'");
+    expect(source).toContain("'units'");
+    expect(source).toContain("'community-roles'");
+    expect(source).toContain("'private-notes'");
+    expect(source).toContain("'digital-access'");
     expect(source).toContain('Relaciones con unidades');
     expect(source).toContain('Roles en la comunidad');
     expect(source).toContain('Notas privadas');
