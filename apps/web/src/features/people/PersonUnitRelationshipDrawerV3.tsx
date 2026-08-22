@@ -7,13 +7,7 @@ import { Badge, Button, Field, Select } from '../../components/ui';
 import type { PersonUnitRelationshipSummary } from './person-unit-relationships';
 import { directoryUnitLabel, occupancyLabels } from './relationship-model';
 import { peopleApi } from './api';
-import type {
-  Building,
-  FinancialRecipientRole,
-  Occupancy,
-  Person,
-  Unit,
-} from './types';
+import type { Building, FinancialRecipientRole, Occupancy, Person, Unit } from './types';
 
 type CloseTarget = {
   kind: 'ownership' | 'occupancy';
@@ -58,10 +52,7 @@ export function PersonUnitRelationshipDrawerV3({
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
 
-  const availableUnits = useMemo(
-    () => units.filter((unit) => unit.status !== 'inactive'),
-    [units],
-  );
+  const availableUnits = useMemo(() => units.filter((unit) => unit.status !== 'inactive'), [units]);
   const selectedRelationship = relationship?.unitId === unitId ? relationship : null;
   const unit = units.find((item) => item.id === unitId);
   const unitLabel =
@@ -116,10 +107,14 @@ export function PersonUnitRelationshipDrawerV3({
     setBusy('occupancy');
     setError('');
     try {
-      await peopleApi(`/v1/condominiums/${condominiumId}/people/${person.id}/occupancies`, session, {
-        method: 'POST',
-        body: JSON.stringify({ unitId, occupancyType, isPrimaryContact: true }),
-      });
+      await peopleApi(
+        `/v1/condominiums/${condominiumId}/people/${person.id}/occupancies`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({ unitId, occupancyType, isPrimaryContact: true }),
+        },
+      );
       await onChanged('Ocupación asociada correctamente.');
     } catch (requestError) {
       setError(
@@ -239,7 +234,11 @@ export function PersonUnitRelationshipDrawerV3({
                   </div>
                 </div>
               ) : (
-                <form className="ux-form" noValidate onSubmit={(event) => void createOwnership(event)}>
+                <form
+                  className="ux-form"
+                  noValidate
+                  onSubmit={(event) => void createOwnership(event)}
+                >
                   <FormGrid>
                     <Field hint="Opcional. Mayor que 0 y hasta 100." label="Participación (%)">
                       <input
@@ -310,13 +309,13 @@ export function PersonUnitRelationshipDrawerV3({
                         }
                         value={occupancyType}
                       >
-                        {(Object.entries(occupancyLabels) as [Occupancy['occupancy_type'], string][]).map(
-                          ([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ),
-                        )}
+                        {(
+                          Object.entries(occupancyLabels) as [Occupancy['occupancy_type'], string][]
+                        ).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
                       </Select>
                     </Field>
                     <div className="people-v3-inline-submit">
