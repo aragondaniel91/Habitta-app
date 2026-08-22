@@ -40,7 +40,9 @@ type Notice = { tone: 'success' | 'error'; text: string } | null;
 const personSummary = (people: Array<{ firstName: string; lastName: string }>) => {
   if (!people.length) return 'Sin registro activo';
   const names = people.map((person) => `${person.firstName} ${person.lastName}`.trim());
-  return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
+  return names.length > 2
+    ? `${names.slice(0, 2).join(', ')} +${names.length - 2}`
+    : names.join(', ');
 };
 
 const participationSummary = (unit: DirectoryUnit) => {
@@ -224,7 +226,10 @@ export function UnitsPage({
       setSelectedUnit(null);
       setNotice({
         tone: 'success',
-        text: nextStatus === 'inactive' ? 'Unidad archivada sin eliminar su historial.' : 'Unidad reactivada.',
+        text:
+          nextStatus === 'inactive'
+            ? 'Unidad archivada sin eliminar su historial.'
+            : 'Unidad reactivada.',
       });
     } catch (reason) {
       setNotice({
@@ -281,7 +286,10 @@ export function UnitsPage({
         </InlineNotice>
       ) : null}
       {notice ? (
-        <InlineNotice tone={notice.tone} title={notice.tone === 'success' ? 'Listo' : 'No se pudo completar'}>
+        <InlineNotice
+          tone={notice.tone}
+          title={notice.tone === 'success' ? 'Listo' : 'No se pudo completar'}
+        >
           {notice.text}
         </InlineNotice>
       ) : null}

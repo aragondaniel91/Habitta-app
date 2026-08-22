@@ -330,7 +330,10 @@
 
   .units-v3-list__head,
   .units-v3-row {
-    grid-template-columns: minmax(13rem, 1.3fr) minmax(11rem, 1fr) minmax(10rem, 0.9fr) minmax(6.5rem, 0.55fr);
+    grid-template-columns: minmax(13rem, 1.3fr) minmax(11rem, 1fr) minmax(10rem, 0.9fr) minmax(
+        6.5rem,
+        0.55fr
+      );
   }
 
   .units-v3-list__head > :nth-child(3),

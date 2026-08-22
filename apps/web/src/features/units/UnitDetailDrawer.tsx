@@ -73,7 +73,9 @@ function RelationshipPeople({
         </span>
         <div>
           <small>Propiedad actual</small>
-          <strong>{owners.length ? owners.map(personName).join(', ') : 'Sin propietarios activos'}</strong>
+          <strong>
+            {owners.length ? owners.map(personName).join(', ') : 'Sin propietarios activos'}
+          </strong>
         </div>
       </div>
       <div>
@@ -221,7 +223,9 @@ export function UnitDetailDrawer({
       title="Historial de propiedad"
     >
       {historyLoading ? renderHistoryLoading() : null}
-      {!historyLoading && historyError ? <InlineNotice tone="error">{historyError}</InlineNotice> : null}
+      {!historyLoading && historyError ? (
+        <InlineNotice tone="error">{historyError}</InlineNotice>
+      ) : null}
       {!historyLoading && !historyError && ownersHistory.length ? (
         <div className="units-v3-history-list">
           {ownersHistory.map((owner) => {
@@ -263,7 +267,9 @@ export function UnitDetailDrawer({
       title="Historial de ocupación"
     >
       {historyLoading ? renderHistoryLoading() : null}
-      {!historyLoading && historyError ? <InlineNotice tone="error">{historyError}</InlineNotice> : null}
+      {!historyLoading && historyError ? (
+        <InlineNotice tone="error">{historyError}</InlineNotice>
+      ) : null}
       {!historyLoading && !historyError && occupanciesHistory.length ? (
         <div className="units-v3-history-list">
           {occupanciesHistory.map((occupancy) => {
