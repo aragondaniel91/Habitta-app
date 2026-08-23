@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, MaintenanceIcon, RequestsIcon, SettingsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
+import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { supportsBuildingStructure, unitReferenceLabel } from '../lib/unit-domain';
@@ -211,7 +212,7 @@ function AssetForm({
   return (
     <form className="maintenance-form" onSubmit={(event) => void submit(event)}>
       {error ? <div className="maintenance-inline-alert">{error}</div> : null}
-      <div className="maintenance-form-grid maintenance-form-grid--three">
+      <FormGrid columns={3}>
         <Field label="Código">
           <input
             className="input"
@@ -239,8 +240,8 @@ function AssetForm({
             value={category}
           />
         </Field>
-      </div>
-      <div className="maintenance-form-grid">
+      </FormGrid>
+      <FormGrid>
         <Field label="Tipo de ubicación">
           <Select
             onChange={(event) =>
@@ -298,8 +299,8 @@ function AssetForm({
             />
           </Field>
         ) : null}
-      </div>
-      <div className="maintenance-form-grid maintenance-form-grid--three">
+      </FormGrid>
+      <FormGrid columns={3}>
         <Field label="Fabricante" hint="Opcional">
           <input
             className="input"
@@ -321,8 +322,8 @@ function AssetForm({
             value={serialNumber}
           />
         </Field>
-      </div>
-      <div className="maintenance-form-grid">
+      </FormGrid>
+      <FormGrid>
         <Field label="Fecha de instalación" hint="Opcional">
           <input
             className="input"
@@ -340,7 +341,7 @@ function AssetForm({
             value={warrantyExpiresOn}
           />
         </Field>
-      </div>
+      </FormGrid>
       <Field label="Notas" hint="Opcional">
         <textarea
           className="textarea"
@@ -349,11 +350,11 @@ function AssetForm({
           value={notes}
         />
       </Field>
-      <div className="maintenance-form__actions">
+      <FormActions>
         <Button disabled={saving || !code || !name || !category} type="submit">
           {saving ? 'Guardando…' : 'Crear activo'}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }
@@ -433,7 +434,7 @@ function PlanForm({
             ))}
         </Select>
       </Field>
-      <div className="maintenance-form-grid">
+      <FormGrid>
         <Field label="Nombre del plan">
           <input
             className="input"
@@ -448,7 +449,7 @@ function PlanForm({
             <option value="inspection">Inspección</option>
           </Select>
         </Field>
-      </div>
+      </FormGrid>
       <Field label="Instrucciones">
         <textarea
           className="textarea"
@@ -458,7 +459,7 @@ function PlanForm({
           value={instructions}
         />
       </Field>
-      <div className="maintenance-form-grid maintenance-form-grid--three">
+      <FormGrid columns={3}>
         <Field label="Frecuencia">
           <input
             className="input"
@@ -489,8 +490,8 @@ function PlanForm({
             value={nextDueOn}
           />
         </Field>
-      </div>
-      <div className="maintenance-form-grid">
+      </FormGrid>
+      <FormGrid>
         <Field label="Proveedor predeterminado" hint="Opcional">
           <Select onChange={(event) => setVendorId(event.target.value)} value={vendorId}>
             <option value="">Sin proveedor</option>
@@ -512,12 +513,12 @@ function PlanForm({
             value={duration}
           />
         </Field>
-      </div>
-      <div className="maintenance-form__actions">
+      </FormGrid>
+      <FormActions>
         <Button disabled={saving || !assetId || !name || !instructions} type="submit">
           {saving ? 'Guardando…' : 'Crear plan'}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }
@@ -581,7 +582,7 @@ function WorkOrderForm({
   return (
     <form className="maintenance-form" onSubmit={(event) => void submit(event)}>
       {error ? <div className="maintenance-inline-alert">{error}</div> : null}
-      <div className="maintenance-form-grid">
+      <FormGrid>
         <Field label="Activo" hint="Opcional para trabajos generales">
           <Select onChange={(event) => setAssetId(event.target.value)} value={assetId}>
             <option value="">Sin activo específico</option>
@@ -606,8 +607,8 @@ function WorkOrderForm({
               ))}
           </Select>
         </Field>
-      </div>
-      <div className="maintenance-form-grid">
+      </FormGrid>
+      <FormGrid>
         <Field label="Tipo">
           <Select onChange={(event) => setKind(event.target.value as typeof kind)} value={kind}>
             <option value="corrective">Correctiva</option>
@@ -627,7 +628,7 @@ function WorkOrderForm({
             <option value="urgent">Urgente</option>
           </Select>
         </Field>
-      </div>
+      </FormGrid>
       <Field label="Título">
         <input
           className="input"
@@ -645,7 +646,7 @@ function WorkOrderForm({
           value={description}
         />
       </Field>
-      <div className="maintenance-form-grid">
+      <FormGrid>
         <Field label="Programar para" hint="Opcional">
           <input
             className="input"
@@ -662,12 +663,12 @@ function WorkOrderForm({
             value={dueOn}
           />
         </Field>
-      </div>
-      <div className="maintenance-form__actions">
+      </FormGrid>
+      <FormActions>
         <Button disabled={saving || !title || !description} type="submit">
           {saving ? 'Guardando…' : 'Crear orden'}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }
@@ -878,7 +879,7 @@ function WorkOrderDetail({
         <section className="maintenance-detail__section">
           <h3>Registrar servicio</h3>
           <form className="maintenance-form" onSubmit={(event) => void addLog(event)}>
-            <div className="maintenance-form-grid">
+            <FormGrid>
               <Field label="Fecha">
                 <input
                   className="input"
@@ -896,7 +897,7 @@ function WorkOrderDetail({
                   value={technician}
                 />
               </Field>
-            </div>
+            </FormGrid>
             <Field label="Trabajo realizado">
               <textarea
                 className="textarea"
@@ -906,7 +907,7 @@ function WorkOrderDetail({
                 value={summary}
               />
             </Field>
-            <div className="maintenance-form-grid">
+            <FormGrid>
               <Field label="Costo" hint="Opcional">
                 <input
                   className="input"
@@ -928,12 +929,12 @@ function WorkOrderDetail({
                   <option value="EUR">EUR</option>
                 </Select>
               </Field>
-            </div>
-            <div className="maintenance-form__actions">
+            </FormGrid>
+            <FormActions>
               <Button disabled={busy || !technician || !summary} size="sm" type="submit">
                 Agregar al historial
               </Button>
-            </div>
+            </FormActions>
           </form>
         </section>
       ) : null}
