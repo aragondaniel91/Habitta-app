@@ -1,0 +1,416 @@
+name: HAB-275 apply Governance shared form migration
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'hab-275-governance-shared-form-layout'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-275-governance-shared-form-layout
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply deterministic HAB-275 migration
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          governance_path = Path('apps/web/src/pages/GovernancePage.tsx')
+          rules_path = Path('apps/web/src/features/governance/GovernanceVotingRulesPanel.tsx')
+          assemblies_path = Path('apps/web/src/features/governance/AssembliesWorkspace.tsx')
+          action_items_path = Path('apps/web/src/features/governance/AssemblyActionItemsWorkspace.tsx')
+          governance_css_path = Path('apps/web/src/governance.css')
+          rules_css_path = Path('apps/web/src/features/governance/governance-voting-rules-panel.css')
+          assemblies_css_path = Path('apps/web/src/features/governance/assemblies-workspace.css')
+          action_items_css_path = Path('apps/web/src/features/governance/assembly-action-items-workspace.css')
+          matrix_path = Path('docs/frontend/form-parity-matrix.md')
+          test_path = Path('apps/web/src/hab275-governance-shared-form-layout.test.ts')
+
+          def add_layout_import(source: str, anchor: str, names: str) -> str:
+              import_line = f"import {{ {names} }} from '../../components/FormLayout';\n" if anchor.startswith("import { Drawer } from '../../") else f"import {{ {names} }} from '../components/FormLayout';\n"
+              assert source.count(anchor) == 1
+              assert import_line not in source
+              return source.replace(anchor, anchor + import_line, 1)
+
+          # Governance proposal form: 2 grids + 1 submit footer.
+          governance = governance_path.read_text()
+          original_governance = governance
+          governance = add_layout_import(
+              governance,
+              "import { Drawer } from '../components/Drawer';\n",
+              'FormActions, FormGrid',
+          )
+          grid_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)<div className="governance-form-grid(?P<three> governance-form-grid--three)?">\n(?P<body>.*?)(?P=indent)</div>',
+              re.MULTILINE | re.DOTALL,
+          )
+          matches = list(grid_pattern.finditer(governance))
+          assert len(matches) == 2
+          assert sum(1 for match in matches if match.group('three')) == 1
+          governance = grid_pattern.sub(
+              lambda match: f"{match.group('indent')}{'<FormGrid columns={3}>' if match.group('three') else '<FormGrid>'}\n{match.group('body')}{match.group('indent')}</FormGrid>",
+              governance,
+          )
+          action_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)<div className="governance-form__actions">\n(?P<body>.*?)(?P=indent)</div>',
+              re.MULTILINE | re.DOTALL,
+          )
+          assert len(list(action_pattern.finditer(governance))) == 1
+          governance = action_pattern.sub(
+              lambda match: f"{match.group('indent')}<FormActions>\n{match.group('body')}{match.group('indent')}</FormActions>",
+              governance,
+          )
+          for invariant in [
+              'budgetAmount: budgetAmount || undefined',
+              'currencyCode: budgetAmount ? currencyCode : undefined',
+              'quorumPercentage: Number(quorumPercentage)',
+              'closesAt: new Date(closesAt).toISOString()',
+              'nextGovernanceActions',
+              'governance-detail__actions',
+          ]:
+              assert invariant in original_governance and invariant in governance, invariant
+          assert 'governance-form-grid' not in governance
+          assert 'governance-form__actions' not in governance
+          governance_path.write_text(governance)
+
+          # Draft-only voting rules: one two-column grid; save semantics stay local.
+          rules = rules_path.read_text()
+          original_rules = rules
+          ui_anchor = "import { Button, Field, Surface } from '../../components/ui';\n"
+          layout_import = "import { FormGrid } from '../../components/FormLayout';\n"
+          assert rules.count(ui_anchor) == 1 and layout_import not in rules
+          rules = rules.replace(ui_anchor, ui_anchor + layout_import, 1)
+          rule_grid_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)<div className="governance-voting-rule__fields">\n(?P<body>.*?)(?P=indent)</div>',
+              re.MULTILINE | re.DOTALL,
+          )
+          assert len(list(rule_grid_pattern.finditer(rules))) == 1
+          rules = rule_grid_pattern.sub(
+              lambda match: f"{match.group('indent')}<FormGrid>\n{match.group('body')}{match.group('indent')}</FormGrid>",
+              rules,
+          )
+          for invariant in [
+              "editable = manage && proposal.status === 'draft'",
+              'quorumPercentage: Number(values.quorum)',
+              'approvalThresholdPercentage: Number(values.threshold)',
+              'expectedVersion: proposal.version',
+          ]:
+              assert invariant in original_rules and invariant in rules, invariant
+          assert 'governance-voting-rule__fields' not in rules
+          rules_path.write_text(rules)
+
+          # New Assembly drawer: 2 grids + one create footer. Lifecycle actions remain untouched.
+          assemblies = assemblies_path.read_text()
+          original_assemblies = assemblies
+          drawer_anchor = "import { Drawer } from '../../components/Drawer';\n"
+          layout_import = "import { FormActions, FormGrid } from '../../components/FormLayout';\n"
+          assert assemblies.count(drawer_anchor) == 1 and layout_import not in assemblies
+          assemblies = assemblies.replace(drawer_anchor, drawer_anchor + layout_import, 1)
+          assembly_grid_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)<div className="assemblies-form__grid">\n(?P<body>.*?)(?P=indent)</div>',
+              re.MULTILINE | re.DOTALL,
+          )
+          assert len(list(assembly_grid_pattern.finditer(assemblies))) == 2
+          assemblies = assembly_grid_pattern.sub(
+              lambda match: f"{match.group('indent')}<FormGrid>\n{match.group('body')}{match.group('indent')}</FormGrid>",
+              assemblies,
+          )
+          old_create_button = """        <Button disabled={saving || title.trim().length < 2} type="submit">
+          {saving ? 'Creando…' : 'Crear borrador'}
+        </Button>"""
+          new_create_button = """        <FormActions>
+          <Button disabled={saving || title.trim().length < 2} type="submit">
+            {saving ? 'Creando…' : 'Crear borrador'}
+          </Button>
+        </FormActions>"""
+          assert assemblies.count(old_create_button) == 1
+          assemblies = assemblies.replace(old_create_button, new_create_button, 1)
+          for invariant in [
+              "body: JSON.stringify({ action, expectedVersion: selected.version })",
+              'body: JSON.stringify({ minutes, expectedVersion: selected.version })',
+              'votingBasis: basis',
+              'quorumPercentage: Number(quorum)',
+              'scheduledAt: new Date(scheduledAt).toISOString()',
+              'Iniciar y congelar elegibilidad',
+              '/minutes/publish',
+              '/publish`',
+          ]:
+              assert invariant in original_assemblies and invariant in assemblies, invariant
+          assert 'assemblies-form__grid' not in assemblies
+          assert 'className="assemblies-actions"' in assemblies
+          assemblies_path.write_text(assemblies)
+
+          # Action Item editor: one two-column grid + one submit footer.
+          action_items = action_items_path.read_text()
+          original_action_items = action_items
+          drawer_anchor = "import { Drawer } from '../../components/Drawer';\n"
+          layout_import = "import { FormActions, FormGrid } from '../../components/FormLayout';\n"
+          assert action_items.count(drawer_anchor) == 1 and layout_import not in action_items
+          action_items = action_items.replace(drawer_anchor, drawer_anchor + layout_import, 1)
+          action_grid_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)<div className="action-items-form__grid">\n(?P<body>.*?)(?P=indent)</div>',
+              re.MULTILINE | re.DOTALL,
+          )
+          assert len(list(action_grid_pattern.finditer(action_items))) == 1
+          action_items = action_grid_pattern.sub(
+              lambda match: f"{match.group('indent')}<FormGrid>\n{match.group('body')}{match.group('indent')}</FormGrid>",
+              action_items,
+          )
+          action_footer_pattern = re.compile(
+              r'(?P<indent>^[ \t]*)<div className="action-items-form__actions">\n(?P<body>.*?)(?P=indent)</div>',
+              re.MULTILINE | re.DOTALL,
+          )
+          assert len(list(action_footer_pattern.finditer(action_items))) == 1
+          action_items = action_footer_pattern.sub(
+              lambda match: f"{match.group('indent')}<FormActions>\n{match.group('body')}{match.group('indent')}</FormActions>",
+              action_items,
+          )
+          for invariant in [
+              'resolutionId: draft.resolutionId || null',
+              'assigneeUserId: draft.assigneeUserId || null',
+              'serviceRequestId: draft.serviceRequestId || null',
+              'maintenanceWorkOrderId: draft.maintenanceWorkOrderId || null',
+              'expectedVersion: editor.item.version',
+              'expectedVersion: item.version',
+              "editor.mode === 'edit'",
+          ]:
+              assert invariant in original_action_items and invariant in action_items, invariant
+          assert 'action-items-form__grid' not in action_items
+          assert 'action-items-form__actions' not in action_items
+          assert 'action-item-card__actions' in action_items
+          action_items_path.write_text(action_items)
+
+          # Remove only dead Governance proposal form CSS ownership.
+          governance_css = governance_css_path.read_text()
+          governance_css, count = re.subn(r'^\.governance-form__actions,\n', '', governance_css, count=1, flags=re.MULTILINE)
+          assert count == 1
+          governance_css, count = re.subn(
+              r'\.governance-form-grid \{\n.*?\n\}\n\.governance-form-grid--three \{\n.*?\n\}\n',
+              '',
+              governance_css,
+              count=1,
+              flags=re.DOTALL,
+          )
+          assert count == 1
+          governance_css, count = re.subn(
+              r'\.governance-form__actions \{\n.*?\n\}\n',
+              '',
+              governance_css,
+              count=1,
+              flags=re.DOTALL,
+          )
+          assert count == 1
+          responsive_pair = "  .governance-form-grid,\n  .governance-form-grid--three,\n"
+          assert governance_css.count(responsive_pair) == 2
+          governance_css = governance_css.replace(responsive_pair, '')
+          assert 'governance-form-grid' not in governance_css
+          assert 'governance-form__actions' not in governance_css
+          assert '.governance-detail__actions {' in governance_css
+          governance_css_path.write_text(governance_css)
+
+          # Voting rules no longer own their two-column grid or mobile collapse.
+          rules_css = rules_css_path.read_text()
+          desktop_rule = """.governance-voting-rule__fields {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.8rem;
+          }
+
+          """
+          mobile_rule = """  .governance-voting-rule__fields {
+            grid-template-columns: 1fr;
+          }
+
+          """
+          assert rules_css.count(desktop_rule) == 1 and rules_css.count(mobile_rule) == 1
+          rules_css = rules_css.replace(desktop_rule, '', 1).replace(mobile_rule, '', 1)
+          assert 'governance-voting-rule__fields' not in rules_css
+          rules_css_path.write_text(rules_css)
+
+          # Assembly inline forms keep their own layout; only the create-drawer grid becomes shared.
+          assemblies_css = assemblies_css_path.read_text()
+          old_selector = ".assemblies-form__grid,\n.assemblies-inline-form {"
+          assert assemblies_css.count(old_selector) == 1
+          assemblies_css = assemblies_css.replace(old_selector, '.assemblies-inline-form {', 1)
+          assert assemblies_css.count('  .assemblies-form__grid,\n') == 1
+          assemblies_css = assemblies_css.replace('  .assemblies-form__grid,\n', '', 1)
+          assert 'assemblies-form__grid' not in assemblies_css
+          assert '.assemblies-inline-form {' in assemblies_css
+          assert '.assemblies-actions,' in assemblies_css
+          assemblies_css_path.write_text(assemblies_css)
+
+          # Action-item editor grid/footer become shared; card actions remain local.
+          action_css = action_items_css_path.read_text()
+          old_actions = ".action-item-card__links,\n.action-item-card__actions,\n.action-items-form__actions {"
+          new_actions = ".action-item-card__links,\n.action-item-card__actions {"
+          assert action_css.count(old_actions) == 1
+          action_css = action_css.replace(old_actions, new_actions, 1)
+          action_css, count = re.subn(
+              r'\.action-items-form__grid \{\n.*?\n\}\n\n',
+              '',
+              action_css,
+              count=1,
+              flags=re.DOTALL,
+          )
+          assert count == 1
+          assert action_css.count('  .action-items-form__grid,\n') == 1
+          action_css = action_css.replace('  .action-items-form__grid,\n', '', 1)
+          old_mobile_actions = "  .action-item-card__actions > button,\n  .action-items-form__actions > button {"
+          new_mobile_actions = "  .action-item-card__actions > button,\n  .action-items-form .form-actions > button {"
+          assert action_css.count(old_mobile_actions) == 1
+          action_css = action_css.replace(old_mobile_actions, new_mobile_actions, 1)
+          assert 'action-items-form__grid' not in action_css
+          assert 'action-items-form__actions' not in action_css
+          action_items_css_path.write_text(action_css)
+
+          matrix = matrix_path.read_text()
+          old_row = '| Gobernanza | GovernancePage formularios | deferred | Parcial | Parcial | No | No | Pendiente de prueba específica | No encontrado | Sólo auditoría | Pendiente de alcance separado. |'
+          new_row = '| Gobernanza | Propuestas, reglas de votación, asambleas y acuerdos | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2/3→1 y FormActions en editores principales | No encontrado | Completada | Conserva quórum/threshold, optimistic versioning, snapshots de elegibilidad, publicaciones e IDs operativos. |'
+          assert matrix.count(old_row) == 1
+          matrix_path.write_text(matrix.replace(old_row, new_row, 1))
+
+          test_path.write_text("""import { readFileSync } from 'node:fs';
+          import { describe, expect, it } from 'vitest';
+
+          const source = (relative: string) => readFileSync(new URL(relative, import.meta.url), 'utf8');
+          const count = (value: string, needle: string) => value.split(needle).length - 1;
+
+          const governance = source('./pages/GovernancePage.tsx');
+          const rules = source('./features/governance/GovernanceVotingRulesPanel.tsx');
+          const assemblies = source('./features/governance/AssembliesWorkspace.tsx');
+          const actionItems = source('./features/governance/AssemblyActionItemsWorkspace.tsx');
+          const governanceCss = source('./governance.css');
+          const rulesCss = source('./features/governance/governance-voting-rules-panel.css');
+          const assembliesCss = source('./features/governance/assemblies-workspace.css');
+          const actionItemsCss = source('./features/governance/assembly-action-items-workspace.css');
+          const parityMatrix = source('../../../docs/frontend/form-parity-matrix.md');
+
+          describe('HAB-275 Governance shared form layout', () => {
+            it('moves only the audited Governance form layout ownership to shared primitives', () => {
+              expect(count(governance, '<FormGrid')).toBe(2);
+              expect(count(governance, '<FormGrid columns={3}>')).toBe(1);
+              expect(count(governance, '<FormActions>')).toBe(1);
+              expect(count(rules, '<FormGrid')).toBe(1);
+              expect(count(assemblies, '<FormGrid')).toBe(2);
+              expect(count(assemblies, '<FormActions>')).toBe(1);
+              expect(count(actionItems, '<FormGrid')).toBe(1);
+              expect(count(actionItems, '<FormActions>')).toBe(1);
+              expect(governance).not.toContain('governance-form-grid');
+              expect(governance).not.toContain('governance-form__actions');
+              expect(rules).not.toContain('governance-voting-rule__fields');
+              expect(assemblies).not.toContain('assemblies-form__grid');
+              expect(actionItems).not.toContain('action-items-form__grid');
+              expect(actionItems).not.toContain('action-items-form__actions');
+            });
+
+            it('preserves proposal financial, quorum and closing semantics', () => {
+              expect(governance).toContain('budgetAmount: budgetAmount || undefined');
+              expect(governance).toContain('currencyCode: budgetAmount ? currencyCode : undefined');
+              expect(governance).toContain('quorumPercentage: Number(quorumPercentage)');
+              expect(governance).toContain('closesAt: new Date(closesAt).toISOString()');
+              expect(governance).toContain('governance-detail__actions');
+            });
+
+            it('preserves draft-only voting rules and optimistic concurrency', () => {
+              expect(rules).toContain("editable = manage && proposal.status === 'draft'");
+              expect(rules).toContain('approvalThresholdPercentage: Number(values.threshold)');
+              expect(rules).toContain('expectedVersion: proposal.version');
+            });
+
+            it('preserves assembly lifecycle, eligibility freeze and publication contracts', () => {
+              expect(assemblies).toContain(
+                "body: JSON.stringify({ action, expectedVersion: selected.version })",
+              );
+              expect(assemblies).toContain('Iniciar y congelar elegibilidad');
+              expect(assemblies).toContain('/minutes/publish');
+              expect(assemblies).toContain('assemblies-actions');
+            });
+
+            it('preserves action-item IDs and versioned edit/transition payloads', () => {
+              expect(actionItems).toContain('resolutionId: draft.resolutionId || null');
+              expect(actionItems).toContain('assigneeUserId: draft.assigneeUserId || null');
+              expect(actionItems).toContain('serviceRequestId: draft.serviceRequestId || null');
+              expect(actionItems).toContain(
+                'maintenanceWorkOrderId: draft.maintenanceWorkOrderId || null',
+              );
+              expect(actionItems).toContain('expectedVersion: editor.item.version');
+              expect(actionItems).toContain('expectedVersion: item.version');
+              expect(actionItems).toContain('action-item-card__actions');
+            });
+
+            it('removes only dead local form grid/action CSS', () => {
+              expect(governanceCss).not.toContain('governance-form-grid');
+              expect(governanceCss).not.toContain('governance-form__actions');
+              expect(governanceCss).toContain('.governance-detail__actions {');
+              expect(rulesCss).not.toContain('governance-voting-rule__fields');
+              expect(assembliesCss).not.toContain('assemblies-form__grid');
+              expect(assembliesCss).toContain('.assemblies-inline-form {');
+              expect(actionItemsCss).not.toContain('action-items-form__grid');
+              expect(actionItemsCss).not.toContain('action-items-form__actions');
+              expect(actionItemsCss).toContain('.action-item-card__actions');
+            });
+
+            it('marks Governance compliant only after focused contracts exist', () => {
+              expect(parityMatrix).toContain(
+                '| Gobernanza | Propuestas, reglas de votación, asambleas y acuerdos | compliant | Sí | Sí | Sí | Sí |',
+              );
+            });
+          });
+          """)
+          PY
+      - name: Format changed files
+        run: |
+          pnpm exec prettier --write \
+            apps/web/src/pages/GovernancePage.tsx \
+            apps/web/src/features/governance/GovernanceVotingRulesPanel.tsx \
+            apps/web/src/features/governance/AssembliesWorkspace.tsx \
+            apps/web/src/features/governance/AssemblyActionItemsWorkspace.tsx \
+            apps/web/src/governance.css \
+            apps/web/src/features/governance/governance-voting-rules-panel.css \
+            apps/web/src/features/governance/assemblies-workspace.css \
+            apps/web/src/features/governance/assembly-action-items-workspace.css \
+            apps/web/src/hab275-governance-shared-form-layout.test.ts \
+            docs/frontend/form-parity-matrix.md
+      - name: Verify focused invariants before commit
+        run: |
+          test "$(grep -o '<FormGrid' apps/web/src/pages/GovernancePage.tsx | wc -l)" -eq 2
+          test "$(grep -o '<FormGrid' apps/web/src/features/governance/GovernanceVotingRulesPanel.tsx | wc -l)" -eq 1
+          test "$(grep -o '<FormGrid' apps/web/src/features/governance/AssembliesWorkspace.tsx | wc -l)" -eq 2
+          test "$(grep -o '<FormGrid' apps/web/src/features/governance/AssemblyActionItemsWorkspace.tsx | wc -l)" -eq 1
+          grep -q 'expectedVersion: proposal.version' apps/web/src/features/governance/GovernanceVotingRulesPanel.tsx
+          grep -q 'expectedVersion: editor.item.version' apps/web/src/features/governance/AssemblyActionItemsWorkspace.tsx
+          git diff --check
+      - name: Commit product migration and remove temporary runner
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/hab275-apply-pr.yml
+          git add \
+            apps/web/src/pages/GovernancePage.tsx \
+            apps/web/src/features/governance/GovernanceVotingRulesPanel.tsx \
+            apps/web/src/features/governance/AssembliesWorkspace.tsx \
+            apps/web/src/features/governance/AssemblyActionItemsWorkspace.tsx \
+            apps/web/src/governance.css \
+            apps/web/src/features/governance/governance-voting-rules-panel.css \
+            apps/web/src/features/governance/assemblies-workspace.css \
+            apps/web/src/features/governance/assembly-action-items-workspace.css \
+            apps/web/src/hab275-governance-shared-form-layout.test.ts \
+            docs/frontend/form-parity-matrix.md
+          git commit -m 'HAB-275 migrate Governance forms to shared layout'
+          git push origin HEAD:hab-275-governance-shared-form-layout
