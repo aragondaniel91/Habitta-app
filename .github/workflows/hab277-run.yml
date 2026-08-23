@@ -1,0 +1,50 @@
+name: HAB-277 apply Budget shared form migration
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'hab-277-budget-shared-form-layout'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-277-budget-shared-form-layout
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply deterministic migration
+        run: python .github/hab277_apply.py
+      - name: Format and verify focused contracts
+        run: |
+          pnpm exec prettier --write \
+            apps/web/src/pages/BudgetsPage.tsx \
+            apps/web/src/budgets.css \
+            apps/web/src/hab277-budget-shared-form-layout.test.ts \
+            docs/frontend/form-parity-matrix.md
+          pnpm --filter @habitta/web exec vitest run src/hab277-budget-shared-form-layout.test.ts
+          git diff --check
+      - name: Commit product migration and remove temporary files
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm -f .github/workflows/hab277-run.yml .github/hab277_apply.py
+          git add \
+            apps/web/src/pages/BudgetsPage.tsx \
+            apps/web/src/budgets.css \
+            apps/web/src/hab277-budget-shared-form-layout.test.ts \
+            docs/frontend/form-parity-matrix.md
+          git commit -m 'HAB-277 migrate Budget editor to shared layout'
+          git push origin HEAD:hab-277-budget-shared-form-layout
