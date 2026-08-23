@@ -12,6 +12,7 @@ describe('HAB-277 Budget shared form layout', () => {
   it('moves only period layout and editor actions to shared primitives', () => {
     expect(count(budgets, '<FormGrid columns={3}>')).toBe(1);
     expect(count(budgets, '<FormActions>')).toBe(1);
+    expect(budgets).toContain('className="budgets-editor ux-form"');
     expect(budgets).not.toContain('budgets-editor__grid');
     expect(budgets).not.toContain('budgets-editor__footer');
     expect(budgets).toContain('className="budgets-editor-line"');
