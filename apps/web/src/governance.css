@@ -10,7 +10,6 @@
 .governance-section-heading,
 .governance-card__heading,
 .governance-card__footer,
-.governance-form__actions,
 .governance-detail__actions {
   display: flex;
   align-items: center;
@@ -221,14 +220,6 @@
   display: grid;
   gap: 17px;
 }
-.governance-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-.governance-form-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
 .governance-options-editor,
 .governance-support-editor {
   display: grid;
@@ -258,9 +249,6 @@
   color: var(--blue);
   font-size: 0.75rem;
   font-weight: 800;
-}
-.governance-form__actions {
-  justify-content: flex-end;
 }
 
 .governance-detail {
@@ -449,8 +437,6 @@
 
   .governance-metrics-grid,
   .governance-card-grid,
-  .governance-form-grid,
-  .governance-form-grid--three,
   .governance-detail__summary dl {
     grid-template-columns: 1fr;
   }
@@ -484,8 +470,6 @@
   }
   .governance-metrics-grid,
   .governance-card-grid,
-  .governance-form-grid,
-  .governance-form-grid--three,
   .governance-detail__summary dl {
     grid-template-columns: 1fr;
   }

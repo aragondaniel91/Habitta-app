@@ -14,7 +14,7 @@ auditados; no sustituye una auditoría completa de toda la aplicación.
 | Solicitudes | RequestsPage create, categories y gestión operativa | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2→1 y acciones compartidas | No encontrado | Completada | Conserva workflow, optimistic versioning, UUIDs, visibilidad interna/pública, adjuntos privados y cancelación. |
 | Anuncios | AnnouncementsPage create + editor | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2→1 y acciones compartidas | No encontrado | Completada | Conserva topología, UUIDs, publicación/programación/archivo, confirmación de lectura, optimistic versioning y adjuntos privados. |
 | Mantenimiento | Asset, Plan, Work Order y Service Log forms | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2/3→1 y acciones compartidas | No encontrado | Completada | Conserva topología, UUIDs, optimistic versioning, transiciones y evidencia financiera de service logs. |
-| Gobernanza | GovernancePage formularios | deferred | Parcial | Parcial | No | No | Pendiente de prueba específica | No encontrado | Sólo auditoría | Pendiente de alcance separado. |
+| Gobernanza | Propuestas, reglas de votación, asambleas y acuerdos | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2/3→1 y FormActions en editores principales | No encontrado | Completada | Conserva quórum/threshold, optimistic versioning, snapshots de elegibilidad, publicaciones e IDs operativos. |
 | Presupuestos | BudgetsPage formularios | deferred | Parcial | Parcial | No | No | Pendiente de prueba específica | No encontrado | Sólo auditoría | No tocar cálculos ni aprobaciones financieras en esta fase. |
 
 ## Decisiones de esta primera migración

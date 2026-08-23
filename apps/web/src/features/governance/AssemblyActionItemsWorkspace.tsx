@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
+import { FormActions, FormGrid } from '../../components/FormLayout';
 import { PageHeader } from '../../components/PageHeader';
 import { CheckCircleIcon, MaintenanceIcon, RequestsIcon } from '../../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../../components/ui';
@@ -778,7 +779,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
               />
             </Field>
 
-            <div className="action-items-form__grid">
+            <FormGrid>
               <Field
                 hint={
                   editor.mode === 'edit'
@@ -869,9 +870,9 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
                   ))}
                 </Select>
               </Field>
-            </div>
+            </FormGrid>
 
-            <div className="action-items-form__actions">
+            <FormActions>
               <Button disabled={saving} type="submit">
                 {saving
                   ? 'Guardando…'
@@ -882,7 +883,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
               <Button disabled={saving} onClick={closeEditor} type="button" variant="ghost">
                 Cancelar
               </Button>
-            </div>
+            </FormActions>
           </form>
         </Drawer>
       ) : null}
