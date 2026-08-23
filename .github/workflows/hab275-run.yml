@@ -1,0 +1,69 @@
+name: HAB-275 run staged migration
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'hab-275-governance-shared-form-layout'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-275-governance-shared-form-layout
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply staged migration
+        run: python .github/hab275_apply.py
+      - name: Format changed product files
+        run: |
+          pnpm exec prettier --write \
+            apps/web/src/pages/GovernancePage.tsx \
+            apps/web/src/features/governance/GovernanceVotingRulesPanel.tsx \
+            apps/web/src/features/governance/AssembliesWorkspace.tsx \
+            apps/web/src/features/governance/AssemblyActionItemsWorkspace.tsx \
+            apps/web/src/governance.css \
+            apps/web/src/features/governance/governance-voting-rules-panel.css \
+            apps/web/src/features/governance/assemblies-workspace.css \
+            apps/web/src/features/governance/assembly-action-items-workspace.css \
+            docs/frontend/form-parity-matrix.md
+          git diff --check
+      - name: Verify sensitive invariants
+        run: |
+          grep -q 'expectedVersion: proposal.version' apps/web/src/features/governance/GovernanceVotingRulesPanel.tsx
+          grep -q 'expectedVersion: editor.item.version' apps/web/src/features/governance/AssemblyActionItemsWorkspace.tsx
+          grep -q 'Iniciar y congelar elegibilidad' apps/web/src/features/governance/AssembliesWorkspace.tsx
+          grep -q 'currencyCode: budgetAmount ? currencyCode : undefined' apps/web/src/pages/GovernancePage.tsx
+      - name: Commit product migration and remove temporary files
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm \
+            .github/workflows/hab275-apply-pr.yml \
+            .github/workflows/hab275-run.yml \
+            .github/hab275-trigger.txt \
+            .github/hab275_apply.py
+          git add \
+            apps/web/src/pages/GovernancePage.tsx \
+            apps/web/src/features/governance/GovernanceVotingRulesPanel.tsx \
+            apps/web/src/features/governance/AssembliesWorkspace.tsx \
+            apps/web/src/features/governance/AssemblyActionItemsWorkspace.tsx \
+            apps/web/src/governance.css \
+            apps/web/src/features/governance/governance-voting-rules-panel.css \
+            apps/web/src/features/governance/assemblies-workspace.css \
+            apps/web/src/features/governance/assembly-action-items-workspace.css \
+            docs/frontend/form-parity-matrix.md
+          git commit -m 'HAB-275 migrate Governance forms to shared layout'
+          git push origin HEAD:hab-275-governance-shared-form-layout
