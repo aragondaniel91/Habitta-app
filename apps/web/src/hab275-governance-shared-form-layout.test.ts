@@ -48,7 +48,7 @@ describe('HAB-275 Governance shared form layout', () => {
 
   it('preserves assembly lifecycle, eligibility freeze and publication contracts', () => {
     expect(assemblies).toContain(
-      "body: JSON.stringify({ action, expectedVersion: selected.version })",
+      'body: JSON.stringify({ action, expectedVersion: selected.version })',
     );
     expect(assemblies).toContain('Iniciar y congelar elegibilidad');
     expect(assemblies).toContain('/minutes/publish');
