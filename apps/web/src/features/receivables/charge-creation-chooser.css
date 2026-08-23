@@ -1,0 +1,58 @@
+.charge-creation-chooser {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.charge-creation-chooser__intro {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.charge-creation-option {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  box-shadow: none;
+}
+
+.charge-creation-option[data-kind='ordinary'] {
+  border-color: color-mix(in srgb, var(--blue) 24%, var(--border));
+  background: color-mix(in srgb, var(--blue-soft) 28%, var(--surface));
+}
+
+.charge-creation-option__copy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.charge-creation-option__copy > span {
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.charge-creation-option__copy > strong {
+  color: var(--text-strong);
+  font-size: 0.95rem;
+}
+
+.charge-creation-option__copy > p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.charge-creation-option > .button {
+  justify-self: start;
+}
+
+@media (max-width: 640px) {
+  .charge-creation-option > .button {
+    width: 100%;
+  }
+}
