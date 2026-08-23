@@ -114,8 +114,7 @@
 }
 
 .action-item-card__links,
-.action-item-card__actions,
-.action-items-form__actions {
+.action-item-card__actions {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -143,12 +142,6 @@
 
 .action-items-form {
   display: grid;
-  gap: 1rem;
-}
-
-.action-items-form__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -232,8 +225,7 @@
 
   .action-items-metrics,
   .action-items-filters,
-  .action-item-card__meta,
-  .action-items-form__grid {
+  .action-item-card__meta {
     grid-template-columns: 1fr;
   }
 
@@ -248,7 +240,7 @@
   }
 
   .action-item-card__actions > button,
-  .action-items-form__actions > button {
+  .action-items-form .form-actions > button {
     width: 100%;
   }
 

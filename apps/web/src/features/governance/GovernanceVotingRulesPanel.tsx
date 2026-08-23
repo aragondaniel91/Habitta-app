@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Button, Field, Surface } from '../../components/ui';
+import { FormGrid } from '../../components/FormLayout';
 import { apiRequest } from '../../lib/api';
 import type { GovernanceProposal } from '../../lib/governance';
 import { governanceStatusLabels } from '../../lib/governance';
@@ -120,7 +121,7 @@ export function GovernanceVotingRulesPanel({ condominiumId, session }: Props) {
                 {!editable ? <span>Reglas bloqueadas</span> : <span>Editable en borrador</span>}
               </div>
 
-              <div className="governance-voting-rule__fields">
+              <FormGrid>
                 <Field
                   label="Quórum de participación"
                   hint="Mínimo de entidades elegibles que deben votar."
@@ -161,7 +162,7 @@ export function GovernanceVotingRulesPanel({ condominiumId, session }: Props) {
                     value={values.threshold}
                   />
                 </Field>
-              </div>
+              </FormGrid>
 
               {editable ? (
                 <Button

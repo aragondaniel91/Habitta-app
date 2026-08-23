@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
+import { FormActions, FormGrid } from '../../components/FormLayout';
 import { PageHeader } from '../../components/PageHeader';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../../components/ui';
 import { apiRequest } from '../../lib/api';
@@ -671,7 +672,7 @@ function CreateAssemblyDrawer({
             value={description}
           />
         </Field>
-        <div className="assemblies-form__grid">
+        <FormGrid>
           <Field label="Fecha y hora">
             <input
               className="input"
@@ -688,8 +689,8 @@ function CreateAssemblyDrawer({
               value={location}
             />
           </Field>
-        </div>
-        <div className="assemblies-form__grid">
+        </FormGrid>
+        <FormGrid>
           <Field label="Base de votación">
             <Select onChange={(event) => setBasis(event.target.value as VotingBasis)} value={basis}>
               <option value="one_per_unit">Un voto por unidad</option>
@@ -706,10 +707,12 @@ function CreateAssemblyDrawer({
               value={quorum}
             />
           </Field>
-        </div>
-        <Button disabled={saving || title.trim().length < 2} type="submit">
-          {saving ? 'Creando…' : 'Crear borrador'}
-        </Button>
+        </FormGrid>
+        <FormActions>
+          <Button disabled={saving || title.trim().length < 2} type="submit">
+            {saving ? 'Creando…' : 'Crear borrador'}
+          </Button>
+        </FormActions>
       </form>
     </Drawer>
   );

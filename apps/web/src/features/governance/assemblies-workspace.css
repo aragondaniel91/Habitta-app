@@ -154,7 +154,6 @@
   gap: 1rem;
 }
 
-.assemblies-form__grid,
 .assemblies-inline-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -237,7 +236,6 @@
   }
 
   .assemblies-grid,
-  .assemblies-form__grid,
   .assemblies-inline-form,
   .assemblies-detail__summary dl,
   .assembly-quorum {

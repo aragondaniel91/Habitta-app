@@ -10,6 +10,7 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
+import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { canManageGovernance, useCondominiumRoles } from '../lib/roles';
@@ -224,7 +225,7 @@ function CreateProposalForm({
           value={description}
         />
       </Field>
-      <div className="governance-form-grid">
+      <FormGrid>
         <Field label="Categoría">
           <Select
             onChange={(event) => setCategory(event.target.value as GovernanceCategory)}
@@ -246,8 +247,8 @@ function CreateProposalForm({
             <option value="one_per_owner">Un voto por propietario</option>
           </Select>
         </Field>
-      </div>
-      <div className="governance-form-grid governance-form-grid--three">
+      </FormGrid>
+      <FormGrid columns={3}>
         <Field label="Quórum requerido" hint="Porcentaje entre 0 y 100.">
           <input
             className="input"
@@ -281,7 +282,7 @@ function CreateProposalForm({
             <option value="EUR">EUR</option>
           </Select>
         </Field>
-      </div>
+      </FormGrid>
       <Field label="Presupuesto estimado" hint="Opcional">
         <input
           className="input"
@@ -338,14 +339,14 @@ function CreateProposalForm({
           <p>Después de crear el borrador podrás cargar cotizaciones y presupuestos privados.</p>
         </div>
       </section>
-      <div className="governance-form__actions">
+      <FormActions>
         <Button
           disabled={saving || !title || !description || options.some((option) => !option.trim())}
           type="submit"
         >
           {saving ? 'Creando…' : 'Crear propuesta en borrador'}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }
