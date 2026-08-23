@@ -46,7 +46,7 @@ jobs:
           page = page.replace(drawer_import, drawer_import + layout_import, 1)
 
           grid_pattern = re.compile(
-              r'(?P<indent>^[ \\t]*)<div className="maintenance-form-grid(?P<three> maintenance-form-grid--three)?">\\n(?P<body>.*?)(?P=indent)</div>',
+              r'(?P<indent>^[ \t]*)<div className="maintenance-form-grid(?P<three> maintenance-form-grid--three)?">\n(?P<body>.*?)(?P=indent)</div>',
               re.MULTILINE | re.DOTALL,
           )
           matches = list(grid_pattern.finditer(page))
@@ -56,12 +56,12 @@ jobs:
           def replace_grid(match: re.Match[str]) -> str:
               indent = match.group('indent')
               opening = '<FormGrid columns={3}>' if match.group('three') else '<FormGrid>'
-              return f"{indent}{opening}\\n{match.group('body')}{indent}</FormGrid>"
+              return f"{indent}{opening}\n{match.group('body')}{indent}</FormGrid>"
 
           page = grid_pattern.sub(replace_grid, page)
 
           actions_pattern = re.compile(
-              r'(?P<indent>^[ \\t]*)<div className="maintenance-form__actions">\\n(?P<body>.*?)(?P=indent)</div>',
+              r'(?P<indent>^[ \t]*)<div className="maintenance-form__actions">\n(?P<body>.*?)(?P=indent)</div>',
               re.MULTILINE | re.DOTALL,
           )
           action_matches = list(actions_pattern.finditer(page))
@@ -69,7 +69,7 @@ jobs:
 
           def replace_actions(match: re.Match[str]) -> str:
               indent = match.group('indent')
-              return f"{indent}<FormActions>\\n{match.group('body')}{indent}</FormActions>"
+              return f"{indent}<FormActions>\n{match.group('body')}{indent}</FormActions>"
 
           page = actions_pattern.sub(replace_actions, page)
 
