@@ -99,25 +99,30 @@ jobs:
           page_path.write_text(page)
 
           css = css_path.read_text()
-          grid_css = """.maintenance-form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.85rem;
-          }
+          css, count = re.subn(
+              r'\.maintenance-form-grid \{\n.*?\n\}\n\n\.maintenance-form-grid--three \{\n.*?\n\}\n\n',
+              '',
+              css,
+              count=1,
+              flags=re.DOTALL,
+          )
+          assert count == 1, f'expected one local grid CSS block, removed {count}'
 
-          .maintenance-form-grid--three {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-          }
+          css, count = re.subn(
+              r'\.maintenance-form__actions,\n\.maintenance-detail__actions \{',
+              '.maintenance-detail__actions {',
+              css,
+              count=1,
+          )
+          assert count == 1, f'expected one combined action selector, replaced {count}'
 
-          """
-          assert css.count(grid_css) == 1
-          css = css.replace(grid_css, '', 1)
-          old_action_selector = ".maintenance-form__actions,\n.maintenance-detail__actions {"
-          assert css.count(old_action_selector) == 1
-          css = css.replace(old_action_selector, '.maintenance-detail__actions {', 1)
-          responsive_refs = "    .maintenance-form-grid,\n    .maintenance-form-grid--three,\n"
-          assert css.count(responsive_refs) == 1
-          css = css.replace(responsive_refs, '', 1)
+          css, count = re.subn(
+              r'(?m)^(?P<indent>\s*)\.maintenance-form-grid,\n(?P=indent)\.maintenance-form-grid--three,\n',
+              '',
+              css,
+              count=1,
+          )
+          assert count == 1, f'expected one responsive local-grid pair, removed {count}'
           assert 'maintenance-form-grid' not in css
           assert 'maintenance-form__actions' not in css
           assert '.maintenance-detail__actions {' in css
@@ -133,6 +138,7 @@ jobs:
           import { describe, expect, it } from 'vitest';
 
           const source = (relative: string) => readFileSync(new URL(relative, import.meta.url), 'utf8');
+          const count = (value: string, needle: string) => value.split(needle).length - 1;
 
           const maintenanceSource = source('./pages/MaintenancePageBase.tsx');
           const maintenanceStyles = source('./maintenance.css');
@@ -144,9 +150,9 @@ jobs:
               expect(maintenanceSource).toContain(
                 \"import { FormActions, FormGrid } from '../components/FormLayout'\",
               );
-              expect(maintenanceSource.match(/<FormGrid/g)).toHaveLength(12);
-              expect(maintenanceSource.match(/<FormGrid columns=\\{3\\}>/g)).toHaveLength(3);
-              expect(maintenanceSource.match(/<FormActions>/g)).toHaveLength(4);
+              expect(count(maintenanceSource, '<FormGrid')).toBe(12);
+              expect(count(maintenanceSource, '<FormGrid columns={3}>')).toBe(3);
+              expect(count(maintenanceSource, '<FormActions>')).toBe(4);
               expect(maintenanceSource).not.toContain('maintenance-form-grid');
               expect(maintenanceSource).not.toContain('maintenance-form__actions');
               expect(maintenanceSource).toContain('maintenance-detail__actions');
