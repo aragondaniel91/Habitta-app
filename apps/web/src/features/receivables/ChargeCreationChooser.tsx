@@ -1,5 +1,6 @@
 import { Drawer } from '../../components/Drawer';
-import { Button } from '../../components/ui';
+import { Button, Surface } from '../../components/ui';
+import './charge-creation-chooser.css';
 
 type Props = {
   onClose: () => void;
@@ -8,37 +9,31 @@ type Props = {
   onOneOff: () => void;
 };
 
-const optionStyle = {
-  display: 'grid',
-  gap: '7px',
-  border: '1px solid var(--border-subtle)',
-  borderRadius: '14px',
-  padding: '14px',
-} as const;
-
 export function ChargeCreationChooser({ onClose, onOrdinary, onExtraordinary, onOneOff }: Props) {
   return (
     <Drawer eyebrow="Cuentas por cobrar" onClose={onClose} prefix="receivables" title="Nueva cuota">
-      <div style={{ display: 'grid', gap: '12px' }}>
-        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-          Elige el tipo de obligación que vas a registrar. Habitta te muestra el flujo correcto sin
-          exponer operaciones contables internas.
+      <div className="charge-creation-chooser">
+        <p className="charge-creation-chooser__intro">
+          Elige el tipo de obligación que vas a registrar. Habitta te lleva al flujo correcto sin
+          mezclar cuotas recurrentes, derramas extraordinarias y cargos individuales.
         </p>
 
-        <section style={optionStyle}>
-          <div>
+        <Surface className="charge-creation-option" data-kind="ordinary">
+          <div className="charge-creation-option__copy">
+            <span>Operación recurrente</span>
             <strong>Ordinaria recurrente</strong>
-            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.45, margin: '4px 0 0' }}>
+            <p>
               Administración, vigilancia, limpieza y otros gastos comunes que se repiten cada mes.
             </p>
           </div>
           <Button onClick={onOrdinary}>Configurar cuota ordinaria</Button>
-        </section>
+        </Surface>
 
-        <section style={optionStyle}>
-          <div>
+        <Surface className="charge-creation-option" data-kind="extraordinary">
+          <div className="charge-creation-option__copy">
+            <span>Operación extraordinaria</span>
             <strong>Extraordinaria de una sola vez</strong>
-            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.45, margin: '4px 0 0' }}>
+            <p>
               Derramas, proyectos o gastos excepcionales distribuidos entre varias unidades. Se
               publica como un lote único y no sustituye un plan de cuotas recurrentes.
             </p>
@@ -46,19 +41,18 @@ export function ChargeCreationChooser({ onClose, onOrdinary, onExtraordinary, on
           <Button onClick={onExtraordinary} variant="secondary">
             Crear lote extraordinario
           </Button>
-        </section>
+        </Surface>
 
-        <section style={optionStyle}>
-          <div>
+        <Surface className="charge-creation-option" data-kind="one-off">
+          <div className="charge-creation-option__copy">
+            <span>Operación individual</span>
             <strong>Cargo puntual</strong>
-            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.45, margin: '4px 0 0' }}>
-              Un cargo individual o no recurrente para una unidad específica.
-            </p>
+            <p>Un cargo individual o no recurrente para una unidad específica.</p>
           </div>
           <Button onClick={onOneOff} variant="secondary">
             Crear cargo puntual
           </Button>
-        </section>
+        </Surface>
       </div>
     </Drawer>
   );
