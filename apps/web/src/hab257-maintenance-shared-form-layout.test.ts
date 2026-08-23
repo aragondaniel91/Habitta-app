@@ -9,6 +9,7 @@ const maintenanceStyles = source('./maintenance.css');
 const sharedStyles = source('./styles.css');
 const parityMatrix = source('../../../docs/frontend/form-parity-matrix.md');
 
+// Keep this contract intentionally source-focused: HAB-257 changes presentation ownership, not domain behavior.
 describe('HAB-257 Maintenance shared form layout', () => {
   it('migrates exactly the compatible Maintenance grids and form footers', () => {
     expect(maintenanceSource).toContain(
