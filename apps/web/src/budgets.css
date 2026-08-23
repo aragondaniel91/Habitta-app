@@ -204,12 +204,6 @@
   gap: 18px;
 }
 
-.budgets-editor__grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr;
-  gap: 12px;
-}
-
 .budgets-editor label,
 .budgets-editor-line label {
   display: grid;
@@ -282,14 +276,6 @@
 
 .budgets-currency-input {
   text-transform: uppercase;
-}
-
-.budgets-editor__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
 }
 
 .budgets-report {
@@ -374,10 +360,6 @@
     justify-content: stretch;
   }
 
-  .budgets-editor__grid {
-    grid-template-columns: 1fr;
-  }
-
   .budgets-editor-line {
     grid-template-columns: 28px 1fr;
   }
@@ -386,13 +368,5 @@
   .budgets-editor-line__note,
   .budgets-editor-line > .button {
     grid-column: 2;
-  }
-
-  .budgets-editor__footer {
-    flex-direction: column-reverse;
-  }
-
-  .budgets-editor__footer .button {
-    width: 100%;
   }
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ExpensesIcon, ReportsIcon } from '../components/icons';
 import { Drawer } from '../components/Drawer';
+import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
 import { apiRequest } from '../lib/api';
@@ -115,10 +116,10 @@ function BudgetEditor({
       title={editor.mode === 'create' ? 'Crear presupuesto' : `Revisar ${editor.name}`}
       wide
     >
-      <div className="budgets-editor">
+      <div className="budgets-editor ux-form">
         {error ? <div className="budgets-alert">{error}</div> : null}
 
-        <div className="budgets-editor__grid">
+        <FormGrid columns={3}>
           <label>
             Nombre
             <input
@@ -150,7 +151,7 @@ function BudgetEditor({
               value={editor.endsOn}
             />
           </label>
-        </div>
+        </FormGrid>
 
         <label className="budgets-editor__note">
           Nota de versión
@@ -258,7 +259,7 @@ function BudgetEditor({
           ))}
         </div>
 
-        <div className="budgets-editor__footer">
+        <FormActions>
           <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
             Cancelar
           </Button>
@@ -269,7 +270,7 @@ function BudgetEditor({
                 ? 'Crear borrador'
                 : 'Crear nueva versión'}
           </Button>
-        </div>
+        </FormActions>
       </div>
     </Drawer>
   );

@@ -15,7 +15,7 @@ auditados; no sustituye una auditoría completa de toda la aplicación.
 | Anuncios | AnnouncementsPage create + editor | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2→1 y acciones compartidas | No encontrado | Completada | Conserva topología, UUIDs, publicación/programación/archivo, confirmación de lectura, optimistic versioning y adjuntos privados. |
 | Mantenimiento | Asset, Plan, Work Order y Service Log forms | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2/3→1 y acciones compartidas | No encontrado | Completada | Conserva topología, UUIDs, optimistic versioning, transiciones y evidencia financiera de service logs. |
 | Gobernanza | Propuestas, reglas de votación, asambleas y acuerdos | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2/3→1 y FormActions en editores principales | No encontrado | Completada | Conserva quórum/threshold, optimistic versioning, snapshots de elegibilidad, publicaciones e IDs operativos. |
-| Presupuestos | BudgetsPage formularios | deferred | Parcial | Parcial | No | No | Pendiente de prueba específica | No encontrado | Sólo auditoría | No tocar cálculos ni aprobaciones financieras en esta fase. |
+| Presupuestos | Editor de período y líneas financieras especializadas | compliant | Sí | Parcial | Sí | Sí | ux-form + FormGrid 3→1; líneas financieras conservan grid especializado responsive | No encontrado | Completada | Conserva requestId, categoría, moneda, monto, revisiones, aprobación y actual-vs-budget sin conversiones implícitas. |
 
 ## Decisiones de esta primera migración
 
