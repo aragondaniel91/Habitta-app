@@ -459,7 +459,7 @@ export function AdministrativeDashboard({
         <EmptyState
           actionLabel="Intentar nuevamente"
           description={error}
-          icon={<CommunityIcon size={26} />
+          icon={<CommunityIcon size={26} />}
           onAction={() => void load()}
           title="No pudimos cargar el resumen"
         />
