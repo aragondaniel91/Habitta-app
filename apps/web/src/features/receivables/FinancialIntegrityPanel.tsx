@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Badge, Button, Field, Select } from '../../components/ui';
 import { apiRequest } from '../../lib/api';
 import { formatDashboardDate } from '../../lib/dashboard';
@@ -249,15 +250,19 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
       {open ? (
         <div className="financial-integrity-config-grid">
           <form
-            className="financial-integrity-card"
+            className="financial-integrity-card ux-form"
             onSubmit={(event) => void saveCurrencyPolicy(event)}
           >
             <div>
               <strong>Monedas y conversión</strong>
-              <span>VES suele ser la moneda contable en Venezuela, pero Habitta no lo impone.</span>
+              <span>
+                Define las monedas permitidas y cuándo Habitta puede usar una tasa aprobada. Cambiar
+                esta política nunca revaloriza saldos históricos.
+              </span>
             </div>
             <Field label="Moneda contable">
               <input
+                className="input"
                 maxLength={3}
                 minLength={3}
                 onChange={(event) => setAccountingCurrency(event.target.value.toUpperCase())}
@@ -267,6 +272,7 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
             </Field>
             <Field label="Monedas aceptadas" hint="Sepáralas con comas. Ej. VES, USD, EUR">
               <input
+                className="input"
                 onChange={(event) => setAcceptedCurrencies(event.target.value)}
                 required
                 value={acceptedCurrencies}
@@ -288,14 +294,19 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
               hint="BCV puede ser la fuente operativa, pero el backend es neutral y admite una fuente aprobada manualmente."
             >
               <input
+                className="input"
                 maxLength={120}
                 onChange={(event) => setDefaultSource(event.target.value)}
                 placeholder="BCV"
                 value={defaultSource}
               />
             </Field>
-            <Field label="Antigüedad máxima de una tasa">
+            <Field
+              label="Antigüedad máxima de una tasa"
+              hint="Limita cuántos días puede tener una tasa aprobada antes de exigir una más reciente."
+            >
               <input
+                className="input"
                 max="31"
                 min="0"
                 onChange={(event) => setMaxRateAgeDays(event.target.value)}
@@ -304,13 +315,15 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
                 value={maxRateAgeDays}
               />
             </Field>
-            <Button disabled={busy === 'currency'} type="submit">
-              {busy === 'currency' ? 'Guardando…' : 'Guardar política de moneda'}
-            </Button>
+            <FormActions>
+              <Button disabled={busy === 'currency'} type="submit">
+                {busy === 'currency' ? 'Guardando…' : 'Guardar política de moneda'}
+              </Button>
+            </FormActions>
           </form>
 
           <form
-            className="financial-integrity-card"
+            className="financial-integrity-card ux-form"
             onSubmit={(event) => void saveSolvencyPolicy(event)}
           >
             <div>
@@ -333,6 +346,7 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
             </Field>
             <Field label="Días de gracia">
               <input
+                className="input"
                 max="365"
                 min="0"
                 onChange={(event) => setGraceDays(event.target.value)}
@@ -343,9 +357,10 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
             </Field>
             <Field
               label="Tolerancia por moneda"
-              hint="Se aplica independientemente a USD, VES, EUR, etc."
+              hint="Se aplica independientemente a USD, VES, EUR, etc.; no se consolida entre monedas."
             >
               <input
+                className="input"
                 min="0"
                 onChange={(event) => setTolerance(event.target.value)}
                 required
@@ -356,6 +371,7 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
             </Field>
             <Field label="Vigencia del certificado (días)">
               <input
+                className="input"
                 max="365"
                 min="1"
                 onChange={(event) => setValidityDays(event.target.value)}
@@ -364,21 +380,28 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
                 value={validityDays}
               />
             </Field>
-            <Button disabled={busy === 'solvency'} type="submit">
-              {busy === 'solvency' ? 'Guardando…' : 'Guardar criterio de solvencia'}
-            </Button>
+            <FormActions>
+              <Button disabled={busy === 'solvency'} type="submit">
+                {busy === 'solvency' ? 'Guardando…' : 'Guardar criterio de solvencia'}
+              </Button>
+            </FormActions>
           </form>
 
-          <form className="financial-integrity-card" onSubmit={(event) => void saveRate(event)}>
+          <form
+            className="financial-integrity-card ux-form"
+            onSubmit={(event) => void saveRate(event)}
+          >
             <div>
               <strong>Registrar tasa aprobada</strong>
               <span>
-                La tasa queda como evidencia inmutable para transacciones que la utilicen.
+                Registra la evidencia exacta de una tasa. El snapshot queda inmutable para las
+                transacciones que decidan referenciarlo.
               </span>
             </div>
-            <div className="financial-integrity-inline">
+            <FormGrid columns={3}>
               <Field label="Desde">
                 <input
+                  className="input"
                   maxLength={3}
                   minLength={3}
                   onChange={(event) => setFromCurrency(event.target.value.toUpperCase())}
@@ -388,6 +411,7 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
               </Field>
               <Field label="Hacia">
                 <input
+                  className="input"
                   maxLength={3}
                   minLength={3}
                   onChange={(event) => setToCurrency(event.target.value.toUpperCase())}
@@ -397,6 +421,7 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
               </Field>
               <Field label="Tasa">
                 <input
+                  className="input"
                   inputMode="decimal"
                   min="0.0000000001"
                   onChange={(event) => setRate(event.target.value)}
@@ -406,9 +431,10 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
                   value={rate}
                 />
               </Field>
-            </div>
+            </FormGrid>
             <Field label="Fecha efectiva">
               <input
+                className="input"
                 onChange={(event) => setEffectiveOn(event.target.value)}
                 required
                 type="date"
@@ -417,6 +443,7 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
             </Field>
             <Field label="Fecha/hora observada">
               <input
+                className="input"
                 onChange={(event) => {
                   const value = event.target.value;
                   if (value) setRateAt(new Date(value).toISOString());
@@ -428,6 +455,7 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
             </Field>
             <Field label="Fuente">
               <input
+                className="input"
                 maxLength={120}
                 onChange={(event) => setSource(event.target.value)}
                 placeholder="BCV, tasa contractual, otra fuente aprobada"
@@ -437,18 +465,21 @@ export function FinancialIntegrityPanel({ condominiumId, session }: Props) {
             </Field>
             <Field label="Referencia de la fuente">
               <input
+                className="input"
                 maxLength={500}
                 onChange={(event) => setSourceReference(event.target.value)}
                 placeholder="Referencia interna, gaceta, captura privada, etc."
                 value={sourceReference}
               />
             </Field>
-            <Button
-              disabled={busy === 'rate' || conversionMode !== 'approved_rates_only'}
-              type="submit"
-            >
-              {busy === 'rate' ? 'Registrando…' : 'Aprobar tasa'}
-            </Button>
+            <FormActions>
+              <Button
+                disabled={busy === 'rate' || conversionMode !== 'approved_rates_only'}
+                type="submit"
+              >
+                {busy === 'rate' ? 'Registrando…' : 'Aprobar tasa'}
+              </Button>
+            </FormActions>
           </form>
         </div>
       ) : null}
