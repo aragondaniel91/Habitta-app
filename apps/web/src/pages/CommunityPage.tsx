@@ -18,9 +18,12 @@ import {
   buildBuildingCommunityRows,
   getCommunityDirectoryRows,
   getCommunityStats,
+  getCommunityStructureCopy,
   getUnitTypeRows,
 } from '../lib/community';
 import type { CommunityBuilding, CommunityPerson, CommunityUnit } from '../lib/community';
+import { supportsBuildingStructure } from '../lib/unit-domain';
+import type { PropertyTopology } from '../lib/unit-domain';
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
 import '../community.css';
@@ -29,7 +32,10 @@ type CommunityData = {
   units: CommunityUnit[];
   buildings: CommunityBuilding[];
   people: CommunityPerson[];
+  propertyTopology: PropertyTopology;
 };
+
+type CondominiumProfile = { property_topology?: PropertyTopology };
 
 type Props = {
   condominiumId: string;
@@ -93,12 +99,19 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
     setLoading(true);
     setError('');
     try {
-      const [units, buildings, people] = await Promise.all([
-        apiRequest<CommunityUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-        apiRequest<CommunityBuilding[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-        apiRequest<CommunityPerson[]>(`/v1/condominiums/${condominiumId}/people`, session),
+      const base = `/v1/condominiums/${condominiumId}`;
+      const [units, buildings, people, profile] = await Promise.all([
+        apiRequest<CommunityUnit[]>(`${base}/units`, session),
+        apiRequest<CommunityBuilding[]>(`${base}/buildings`, session),
+        apiRequest<CommunityPerson[]>(`${base}/people`, session),
+        apiRequest<CondominiumProfile[]>(base, session).catch(() => []),
       ]);
-      setData({ units, buildings, people });
+      setData({
+        units,
+        buildings,
+        people,
+        propertyTopology: profile[0]?.property_topology ?? 'unspecified',
+      });
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo cargar la comunidad.',
@@ -141,6 +154,8 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
   const requestsRoute = routeByKey('requests');
   const announcementsRoute = routeByKey('announcements');
   const directoryComplete = stats.peopleWithoutContact === 0;
+  const structureCopy = getCommunityStructureCopy(data.propertyTopology, data.buildings.length);
+  const showBuildingDistribution = supportsBuildingStructure(data.propertyTopology);
 
   return (
     <div className="community-page">
@@ -179,7 +194,7 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
 
       <section aria-label="Indicadores de la comunidad" className="community-metrics-grid">
         <MetricCard
-          detail={`${data.buildings.length} ${data.buildings.length === 1 ? 'torre registrada' : 'torres registradas'}.`}
+          detail={structureCopy.metricDetail}
           icon={<UnitsIcon size={20} />}
           label="Unidades activas"
           tone="blue"
@@ -212,9 +227,9 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
         <Surface className="community-panel community-buildings-panel">
           <div className="community-section-heading">
             <div>
-              <span className="community-kicker">Estructura residencial</span>
-              <h2>Unidades por torre</h2>
-              <p>Distribución real de las unidades registradas.</p>
+              <span className="community-kicker">{structureCopy.kicker}</span>
+              <h2>{structureCopy.title}</h2>
+              <p>{structureCopy.description}</p>
             </div>
             <Button
               disabled={!unitsRoute}
@@ -225,7 +240,7 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
               Ver unidades <ArrowRightIcon size={16} />
             </Button>
           </div>
-          {buildingRows.length ? (
+          {showBuildingDistribution && buildingRows.length ? (
             <div className="community-building-list">
               {buildingRows.map((building) => (
                 <article key={building.id}>
@@ -244,9 +259,9 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
             </div>
           ) : (
             <EmptyState
-              description="Crea una torre o edificio para visualizar la distribución."
+              description={structureCopy.emptyDescription}
               icon={<UnitsIcon size={26} />}
-              title="Todavía no hay torres"
+              title={structureCopy.emptyTitle}
             />
           )}
         </Surface>
