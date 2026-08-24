@@ -60,11 +60,7 @@ export function getCommunityStructureCopy(
 
   if (topology === 'single_building') {
     return {
-      metricDetail: `${countLabel(
-        buildingCount,
-        'edificio registrado',
-        'edificios registrados',
-      )}.`,
+      metricDetail: `${countLabel(buildingCount, 'edificio registrado', 'edificios registrados')}.`,
       kicker: 'Estructura residencial',
       title: 'Unidades por edificio',
       description: 'Distribución real de las unidades dentro del edificio residencial.',
@@ -115,7 +111,8 @@ export function getCommunityStructureCopy(
       : 'Falta definir la topología del condominio.',
     kicker: 'Estructura residencial',
     title: 'Unidades por estructura',
-    description: 'Se muestra únicamente la estructura ya registrada mientras se completa el perfil.',
+    description:
+      'Se muestra únicamente la estructura ya registrada mientras se completa el perfil.',
     emptyTitle: 'Topología pendiente',
     emptyDescription:
       'Completa el tipo de propiedad antes de organizar la comunidad por edificios, torres o casas.',
