@@ -6,6 +6,7 @@ import type { AppRoute } from '../../navigation';
 import { CsvImportWizard } from '../imports/CsvImportWizard';
 import { IMPORT_DEFINITIONS } from '../imports/csv';
 import { MODULE_HELP, type ImportKind } from './module-help';
+import './module-help-guide.css';
 
 type Props = {
   condominiumId: string;
@@ -76,7 +77,7 @@ export function ModuleHelpDrawer({
               role="tab"
               type="button"
             >
-              Cómo funciona
+              Guía paso a paso
             </button>
             <button
               aria-selected={view === 'import'}
@@ -107,14 +108,47 @@ export function ModuleHelpDrawer({
                 </ul>
               </section>
 
-              <section>
-                <h3>Cómo comenzar</h3>
+              <section className="module-help-walkthrough">
+                <h3>Paso a paso</h3>
+                <p className="module-help-section-intro">
+                  Sigue estos pasos en orden. Los nombres coinciden con los botones y controles de
+                  Habitta.
+                </p>
                 <ol>
                   {content.steps.map((step) => (
                     <li key={step}>{step}</li>
                   ))}
                 </ol>
               </section>
+
+              <section className="module-help-checklist" data-tone="warning">
+                <h3>Antes de confirmar</h3>
+                <ul>
+                  {content.beforeConfirm.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="module-help-checklist" data-tone="success">
+                <h3>Qué debe pasar después</h3>
+                <ul>
+                  {content.result.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+
+              {content.troubleshooting?.length ? (
+                <section className="module-help-checklist" data-tone="info">
+                  <h3>Si algo no sale como esperas</h3>
+                  <ul>
+                    {content.troubleshooting.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
 
               <section>
                 <h3>Recomendaciones</h3>
