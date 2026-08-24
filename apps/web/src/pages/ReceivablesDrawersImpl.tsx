@@ -540,10 +540,7 @@ export function ReceivablesDrawerHost({
           ciclos futuros ni sustituye Cuotas recurrentes.
         </p>
         {!batchPreview ? (
-          <form
-            className="receivables-form ux-form"
-            onSubmit={(event) => void previewBatch(event)}
-          >
+          <form className="receivables-form ux-form" onSubmit={(event) => void previewBatch(event)}>
             <Field label="Concepto">
               <Select
                 name="conceptId"
