@@ -1,3 +1,5 @@
+import type { PropertyTopology } from './unit-domain';
+
 export type CommunityUnit = {
   id: string;
   code: string;
@@ -27,6 +29,95 @@ export type BuildingCommunityRow = {
   activeUnits: number;
   percentage: number;
 };
+
+export type CommunityStructureCopy = {
+  metricDetail: string;
+  kicker: string;
+  title: string;
+  description: string;
+  emptyTitle: string;
+  emptyDescription: string;
+};
+
+const countLabel = (count: number, singular: string, plural: string) =>
+  `${count} ${count === 1 ? singular : plural}`;
+
+export function getCommunityStructureCopy(
+  topology: PropertyTopology,
+  buildingCount: number,
+): CommunityStructureCopy {
+  if (topology === 'house_community') {
+    return {
+      metricDetail: 'Las casas se administran directamente como unidades del conjunto.',
+      kicker: 'Organización residencial',
+      title: 'Casas y unidades del conjunto',
+      description: 'Este tipo de condominio no necesita una jerarquía por torre o edificio.',
+      emptyTitle: 'Casas gestionadas directamente',
+      emptyDescription:
+        'Cada vivienda se administra desde Unidades y no requiere asignarse a una torre o edificio.',
+    };
+  }
+
+  if (topology === 'single_building') {
+    return {
+      metricDetail: `${countLabel(buildingCount, 'edificio registrado', 'edificios registrados')}.`,
+      kicker: 'Estructura residencial',
+      title: 'Unidades por edificio',
+      description: 'Distribución real de las unidades dentro del edificio residencial.',
+      emptyTitle: 'Edificio pendiente',
+      emptyDescription: 'Completa la estructura del edificio para visualizar su distribución.',
+    };
+  }
+
+  if (topology === 'multi_building_complex') {
+    return {
+      metricDetail: `${countLabel(
+        buildingCount,
+        'torre o edificio registrado',
+        'torres o edificios registrados',
+      )}.`,
+      kicker: 'Estructura residencial',
+      title: 'Unidades por torre o edificio',
+      description: 'Distribución real de las unidades entre las estructuras del conjunto.',
+      emptyTitle: 'Sin torres o edificios',
+      emptyDescription: 'Registra la estructura del conjunto para visualizar su distribución.',
+    };
+  }
+
+  if (topology === 'mixed') {
+    return {
+      metricDetail: `${countLabel(
+        buildingCount,
+        'edificio o torre registrado',
+        'edificios o torres registrados',
+      )}; las casas pueden existir como unidades directas.`,
+      kicker: 'Estructura mixta',
+      title: 'Unidades por edificio o torre',
+      description:
+        'Las estructuras verticales se muestran aquí y las casas permanecen como unidades directas.',
+      emptyTitle: 'Sin estructuras verticales',
+      emptyDescription:
+        'Las casas pueden gestionarse directamente; agrega edificios o torres sólo cuando existan físicamente.',
+    };
+  }
+
+  return {
+    metricDetail: buildingCount
+      ? `${countLabel(
+          buildingCount,
+          'estructura física registrada',
+          'estructuras físicas registradas',
+        )}; falta definir la topología.`
+      : 'Falta definir la topología del condominio.',
+    kicker: 'Estructura residencial',
+    title: 'Unidades por estructura',
+    description:
+      'Se muestra únicamente la estructura ya registrada mientras se completa el perfil.',
+    emptyTitle: 'Topología pendiente',
+    emptyDescription:
+      'Completa el tipo de propiedad antes de organizar la comunidad por edificios, torres o casas.',
+  };
+}
 
 export function getCommunityStats(units: CommunityUnit[], people: CommunityPerson[]) {
   const activeUnits = units.filter((unit) => unit.status === 'active').length;
