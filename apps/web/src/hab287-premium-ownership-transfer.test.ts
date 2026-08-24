@@ -50,7 +50,7 @@ describe('HAB-287 premium ownership-transfer form parity', () => {
 
   it('keeps debt and financial history explicitly bound to the unit', () => {
     expect(panel).toContain('nunca mueve la deuda de la unidad');
-    expect(panel).toContain('Cargos, pagos, saldos y movimientos permanecen');
+    expect(panel).toMatch(/Cargos, pagos, saldos y movimientos no cambian\s+de unidad\./);
     expect(panel).toContain(
       'Transferencia registrada. La cuenta financiera y toda su historia permanecen en la unidad.',
     );
