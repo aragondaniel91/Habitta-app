@@ -25,20 +25,23 @@ export function getModuleHelpContent(
       ],
       steps: [
         ...base.steps,
-        'Si necesitas eliminar la residencia completa, baja a Zona de peligro y verifica primero que el panel permita la acción para tu cuenta.',
-        'Pulsa Quiero eliminar esta residencia, escribe exactamente la frase de seguridad mostrada y usa Revisar eliminación.',
+        'Si necesitas eliminar la residencia completa, baja a Zona de peligro. Sólo el propietario de la organización puede ejecutar esta acción; los administradores normales no pueden.',
+        'Pulsa Quiero eliminar esta residencia y escribe exactamente ELIMINAR {nombre}, sustituyendo {nombre} por el nombre de la residencia que Habitta muestra en la frase de seguridad.',
+        'Cuando la frase coincida exactamente, pulsa Revisar eliminación.',
         'Lee la segunda confirmación completa y pulsa Sí, eliminar residencia sólo cuando realmente quieras borrar permanentemente los datos de esa residencia.',
       ],
       beforeConfirm: [
         ...base.beforeConfirm,
-        'Eliminar residencia es irreversible para los datos del condominio: unidades, personas, finanzas, documentos, auditoría y archivos privados asociados.',
-        'La eliminación requiere propietario de la organización, frase exacta y una segunda confirmación; no compartas ni intentes saltar esas protecciones.',
+        'Eliminar residencia es irreversible. Se eliminan unidades, personas, cuotas, pagos, recibos, tesorería, gastos, presupuestos, mantenimiento, documentos, solicitudes, anuncios, votaciones, auditoría y archivos privados asociados a la residencia.',
+        'La eliminación requiere propietario de la organización, la frase exacta ELIMINAR {nombre} y una segunda confirmación. No compartas ni intentes saltar esas protecciones.',
+        'La cuenta global de Habitta, el correo y la sesión del usuario no se eliminan junto con la residencia.',
       ],
       result: [
         ...base.result,
-        'Después de una eliminación exitosa, la cuenta Habitta del usuario se conserva y el sistema limpia los archivos privados antes de volver al onboarding; si la limpieza queda pendiente, Habitta muestra un estado explícito para continuar de forma segura.',
+        'Después de una eliminación exitosa, la cuenta Habitta del usuario se conserva y el sistema limpia los archivos privados antes de volver al onboarding.',
+        'Si la limpieza de archivos privados queda pendiente, Habitta conserva un registro de limpieza y permite continuar mientras el cleanup queda disponible para reintento seguro.',
       ],
-      permissions: `${base.permissions} Eliminar una residencia completa está reservado al propietario de la organización y vuelve a validarse en el servidor.`,
+      permissions: `${base.permissions} Eliminar una residencia completa está reservado al propietario de la organización; los administradores normales no pueden hacerlo y la autorización vuelve a validarse en el servidor.`,
     };
   }
 
