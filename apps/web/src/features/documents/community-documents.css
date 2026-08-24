@@ -83,21 +83,11 @@
   text-transform: uppercase;
 }
 
-.documents-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
+.documents-form .input[type='file'],
+.documents-version-form .input[type='file'] {
+  padding: 0.55rem;
 }
 
-.documents-form-grid .field:has(textarea),
-.documents-form-actions {
-  grid-column: 1 / -1;
-}
-
-.documents-form-grid input,
-.documents-form-grid textarea,
-.documents-version-form input,
-.documents-link-form input,
 .documents-search input {
   width: 100%;
   min-height: 44px;
@@ -108,29 +98,10 @@
   color: var(--text);
 }
 
-.documents-form-grid textarea {
-  min-height: 92px;
-  resize: vertical;
-}
-
-.documents-form-grid input:focus,
-.documents-form-grid textarea:focus,
-.documents-version-form input:focus,
-.documents-link-form input:focus,
 .documents-search input:focus {
   border-color: var(--blue);
   outline: none;
   box-shadow: 0 0 0 4px rgb(35 101 142 / 0.12);
-}
-
-.documents-form-grid input[type='file'],
-.documents-version-form input[type='file'] {
-  padding: 0.55rem;
-}
-
-.documents-form-actions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .documents-layout {
@@ -498,21 +469,14 @@
     grid-column: 1 / -1;
   }
 
-  .documents-filters,
-  .documents-form-grid {
+  .documents-filters {
     grid-template-columns: 1fr;
-  }
-
-  .documents-form-grid .field:has(textarea),
-  .documents-form-actions {
-    grid-column: 1;
   }
 }
 
 @media (max-width: 580px) {
   .documents-header-actions,
-  .documents-header-actions .button,
-  .documents-form-actions .button {
+  .documents-header-actions .button {
     width: 100%;
   }
 
