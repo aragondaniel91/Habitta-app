@@ -199,8 +199,8 @@ export function OwnershipTransferPanel({
             <strong>Fecha efectiva e historial</strong>
             <span>
               Habitta cerrará la relación de los propietarios actuales el día anterior y abrirá las
-              nuevas relaciones en la fecha indicada. Cargos, pagos, saldos y movimientos permanecen
-              ligados a esta unidad; la transferencia no los mueve al nuevo propietario.
+              nuevas relaciones en la fecha indicada. Cargos, pagos, saldos y movimientos no cambian
+              de unidad. La transferencia sólo actualiza quién figura como propietario.
             </span>
           </div>
 
