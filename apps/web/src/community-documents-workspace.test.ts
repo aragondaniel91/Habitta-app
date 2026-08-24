@@ -77,7 +77,9 @@ describe('HAB-193 Community Documents workspace contract', () => {
 
 describe('HAB-295 Community Documents form parity', () => {
   it('uses the shared form primitives for all administrative document forms', () => {
-    expect(pageSource).toContain("import { FormActions, FormGrid } from '../components/FormLayout'");
+    expect(pageSource).toContain(
+      "import { FormActions, FormGrid } from '../components/FormLayout'",
+    );
     expect(pageSource.match(/className="documents-form ux-form"/g)).toHaveLength(3);
     expect(pageSource).toContain('className="documents-version-form ux-form"');
     expect(pageSource).toContain('className="documents-link-form ux-form"');
@@ -86,31 +88,41 @@ describe('HAB-295 Community Documents form parity', () => {
     expect(pageSource).toContain('<FormActions>');
   });
 
-  it('normalizes compatible raw controls and removes the local composer grid/action contract', () => {
-    expect(pageSource).toContain('className="input"');
-    expect(pageSource).not.toContain('documents-form-grid');
-    expect(pageSource).not.toContain('documents-form-actions');
-    expect(cssSource).not.toContain('.documents-form-grid');
-    expect(cssSource).not.toContain('.documents-form-actions');
-  });
+  it(
+    'normalizes compatible raw controls and removes the local composer grid/action contract',
+    () => {
+      expect(pageSource).toContain('className="input"');
+      expect(pageSource).not.toContain('documents-form-grid');
+      expect(pageSource).not.toContain('documents-form-actions');
+      expect(cssSource).not.toContain('.documents-form-grid');
+      expect(cssSource).not.toContain('.documents-form-actions');
+    },
+  );
 
   it('keeps file, version, retention and category-default behavior unchanged', () => {
     expect(pageSource).toContain('accept={COMMUNITY_DOCUMENT_ACCEPT}');
     expect(pageSource).toContain('uploadCommunityDocumentVersion(');
     expect(pageSource).toContain('category.default_audience');
     expect(pageSource).toContain('category.default_retention_days');
-    expect(pageSource).toContain('retentionDays: documentRetention ? Number(documentRetention) : undefined');
-    expect(pageSource).toContain('defaultRetentionDays: categoryRetention ? Number(categoryRetention) : undefined');
+    expect(pageSource).toContain(
+      'retentionDays: documentRetention ? Number(documentRetention) : undefined',
+    );
+    expect(pageSource).toContain(
+      'defaultRetentionDays: categoryRetention ? Number(categoryRetention) : undefined',
+    );
   });
 
-  it('makes related-record linking explicit while preserving UUID validation and payload identity', () => {
-    expect(pageSource).toContain('label="Tipo de registro"');
-    expect(pageSource).toContain('label="UUID del registro"');
-    expect(pageSource).toContain('Usa el identificador UUID del registro que quieres relacionar.');
-    expect(pageSource).toContain('uuidPattern.test(linkTargetId.trim())');
-    expect(pageSource).toContain('targetType: linkType');
-    expect(pageSource).toContain('targetId: linkTargetId.trim()');
-  });
+  it(
+    'makes related-record linking explicit while preserving UUID validation and payload identity',
+    () => {
+      expect(pageSource).toContain('label="Tipo de registro"');
+      expect(pageSource).toContain('label="UUID del registro"');
+      expect(pageSource).toContain('Usa el identificador UUID del registro que quieres relacionar.');
+      expect(pageSource).toContain('uuidPattern.test(linkTargetId.trim())');
+      expect(pageSource).toContain('targetType: linkType');
+      expect(pageSource).toContain('targetId: linkTargetId.trim()');
+    },
+  );
 
   it('preserves audited archive and download semantics', () => {
     expect(pageSource).toContain('<ConfirmDialog');
