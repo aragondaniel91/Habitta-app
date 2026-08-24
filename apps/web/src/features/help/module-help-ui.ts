@@ -38,8 +38,7 @@ export function getModuleHelpContent(
         ...base.result,
         'Después de una eliminación exitosa, la cuenta Habitta del usuario se conserva y el sistema limpia los archivos privados antes de volver al onboarding; si la limpieza queda pendiente, Habitta muestra un estado explícito para continuar de forma segura.',
       ],
-      permissions:
-        `${base.permissions} Eliminar una residencia completa está reservado al propietario de la organización y vuelve a validarse en el servidor.`,
+      permissions: `${base.permissions} Eliminar una residencia completa está reservado al propietario de la organización y vuelve a validarse en el servidor.`,
     };
   }
 
