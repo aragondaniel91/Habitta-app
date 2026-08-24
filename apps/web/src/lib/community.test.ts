@@ -3,6 +3,7 @@ import {
   buildBuildingCommunityRows,
   getCommunityDirectoryRows,
   getCommunityStats,
+  getCommunityStructureCopy,
   getUnitTypeRows,
 } from './community';
 import type { CommunityBuilding, CommunityPerson, CommunityUnit } from './community';
@@ -63,5 +64,41 @@ describe('community overview calculations', () => {
       { label: 'Apartamento', count: 2 },
       { label: 'Local', count: 1 },
     ]);
+  });
+});
+
+describe('community topology presentation', () => {
+  it('does not require towers or buildings for a house community', () => {
+    const copy = getCommunityStructureCopy('house_community', 0);
+    expect(copy.title).toBe('Casas y unidades del conjunto');
+    expect(copy.metricDetail).toBe('Las casas se administran directamente como unidades del conjunto.');
+    expect(copy.emptyTitle).toBe('Casas gestionadas directamente');
+    expect(copy.emptyDescription).toContain('no requiere asignarse');
+  });
+
+  it('uses explicit building language for a single-building condominium', () => {
+    const copy = getCommunityStructureCopy('single_building', 1);
+    expect(copy.metricDetail).toBe('1 edificio registrado.');
+    expect(copy.title).toBe('Unidades por edificio');
+  });
+
+  it('uses multi-building language without changing building identity', () => {
+    const copy = getCommunityStructureCopy('multi_building_complex', 2);
+    expect(copy.metricDetail).toBe('2 torres o edificios registrados.');
+    expect(copy.title).toBe('Unidades por torre o edificio');
+  });
+
+  it('explains mixed topology and keeps houses direct', () => {
+    const copy = getCommunityStructureCopy('mixed', 1);
+    expect(copy.metricDetail).toContain('las casas pueden existir como unidades directas');
+    expect(copy.description).toContain('las casas permanecen como unidades directas');
+  });
+
+  it('uses neutral remediation copy when topology is unspecified', () => {
+    const empty = getCommunityStructureCopy('unspecified', 0);
+    const withStructure = getCommunityStructureCopy('unspecified', 2);
+    expect(empty.metricDetail).toBe('Falta definir la topología del condominio.');
+    expect(empty.title).toBe('Unidades por estructura');
+    expect(withStructure.metricDetail).toBe('2 estructuras físicas registradas; falta definir la topología.');
   });
 });
