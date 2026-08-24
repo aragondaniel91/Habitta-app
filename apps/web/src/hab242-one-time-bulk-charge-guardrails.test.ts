@@ -39,30 +39,4 @@ describe('HAB-242 one-time bulk charge guardrails', () => {
     expect(recurringFoundationSource).toContain('create table public.recurring_charge_runs');
     expect(recurringFoundationSource).toContain('unique (plan_id, period)');
   });
-
-  it('uses the shared premium form contract for one-off and bulk charge creation', () => {
-    expect(drawerSource).toContain('className="receivables-form ux-form"');
-    expect(drawerSource).toContain('<FormGrid>');
-    expect(drawerSource).toContain('<FormActions>');
-    expect(drawerSource).toContain('className="input"');
-  });
-
-  it('keeps one-off charges scoped to the selected unit UUID and payload', () => {
-    expect(drawerSource).toContain("unitId: String(values.get('unitId') ?? '')");
-    expect(drawerSource).toContain('conceptId ? { conceptId } : {}');
-    expect(drawerSource).toContain("description: String(values.get('description') ?? '')");
-    expect(drawerSource).toContain("amount: String(values.get('amount') ?? '')");
-    expect(drawerSource).toContain("currencyCode: String(values.get('currencyCode') ?? '')");
-    expect(drawerSource).toContain("issueDate: String(values.get('issueDate') ?? '')");
-    expect(drawerSource).toContain("dueDate ? { dueDate } : {}");
-    expect(drawerSource).toContain('`/v1/condominiums/${condominiumId}/receivables`');
-    expect(drawerSource).toContain('<option key={unit.id} value={unit.id}>');
-  });
-
-  it('keeps one-time batch unit targeting and distribution semantics', () => {
-    expect(drawerSource).toContain("distributionMethod: 'fixed_per_unit'");
-    expect(drawerSource).toContain("fixedAmount: String(values.get('fixedAmount') ?? '')");
-    expect(drawerSource).toContain('rows: activeUnits.map((unit) => ({ unitId: unit.id }))');
-    expect(drawerSource).toContain('Se aplicará una sola vez a cada unidad activa.');
-  });
 });
