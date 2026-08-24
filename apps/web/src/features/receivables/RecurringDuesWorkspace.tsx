@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../../components/Dialog';
 import { Drawer } from '../../components/Drawer';
+import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Badge, Button, EmptyState, Field, Select, Surface } from '../../components/ui';
 import { FeesIcon } from '../../components/icons';
 import { apiRequest } from '../../lib/api';
@@ -653,7 +654,7 @@ export function RecurringDuesWorkspace({
           prefix="recurring-dues"
           title="Nuevo ámbito financiero"
         >
-          <form className="recurring-dues-form" onSubmit={(event) => void saveScope(event)}>
+          <form className="recurring-dues-form ux-form" onSubmit={(event) => void saveScope(event)}>
             <p className="recurring-dues-form__intro">
               Un ámbito define qué unidades participan en un gasto o cuota sin confundir la
               estructura física con la contabilidad.
@@ -675,7 +676,7 @@ export function RecurringDuesWorkspace({
                 <option value="custom">Grupo personalizado de unidades</option>
               </Select>
             </Field>
-            <div className="recurring-dues-form-grid">
+            <FormGrid>
               <Field label="Código">
                 <input
                   className="input"
@@ -698,7 +699,7 @@ export function RecurringDuesWorkspace({
                   value={scopeForm.name}
                 />
               </Field>
-            </div>
+            </FormGrid>
             {scopeForm.kind === 'building' ? (
               <Field label="Edificio">
                 <Select
@@ -753,7 +754,7 @@ export function RecurringDuesWorkspace({
                   ))}
               </fieldset>
             ) : null}
-            <div className="recurring-dues-drawer-footer">
+            <FormActions sticky>
               <Button onClick={() => setScopeDrawerOpen(false)} type="button" variant="secondary">
                 Cancelar
               </Button>
@@ -766,7 +767,7 @@ export function RecurringDuesWorkspace({
               >
                 {busyId === 'scope' ? 'Guardando…' : 'Crear ámbito'}
               </Button>
-            </div>
+            </FormActions>
           </form>
         </Drawer>
       ) : null}
@@ -779,12 +780,12 @@ export function RecurringDuesWorkspace({
           title="Nueva cuota recurrente"
           wide
         >
-          <form className="recurring-dues-form" onSubmit={(event) => void savePlan(event)}>
+          <form className="recurring-dues-form ux-form" onSubmit={(event) => void savePlan(event)}>
             <p className="recurring-dues-form__intro">
               Habitta crea el primer período como programado. Nada se carga a las unidades hasta que
               revises el reparto y publiques la ocurrencia.
             </p>
-            <div className="recurring-dues-form-grid">
+            <FormGrid>
               <Field label="Concepto">
                 <Select
                   required
@@ -822,7 +823,7 @@ export function RecurringDuesWorkspace({
                   ))}
                 </Select>
               </Field>
-            </div>
+            </FormGrid>
             <Field label="Nombre del plan">
               <input
                 className="input"
@@ -834,7 +835,7 @@ export function RecurringDuesWorkspace({
                 value={planForm.name}
               />
             </Field>
-            <div className="recurring-dues-form-grid">
+            <FormGrid>
               <Field
                 hint={
                   planForm.distribution === 'participation_percentage'
@@ -875,8 +876,8 @@ export function RecurringDuesWorkspace({
                   value={planForm.amount}
                 />
               </Field>
-            </div>
-            <div className="recurring-dues-form-grid recurring-dues-form-grid--three">
+            </FormGrid>
+            <FormGrid columns={3}>
               <Field label="Moneda">
                 <input
                   className="input"
@@ -919,8 +920,8 @@ export function RecurringDuesWorkspace({
                   value={planForm.dueDay}
                 />
               </Field>
-            </div>
-            <div className="recurring-dues-form-grid">
+            </FormGrid>
+            <FormGrid>
               <Field label="Comienza">
                 <input
                   className="input"
@@ -946,7 +947,7 @@ export function RecurringDuesWorkspace({
                   value={planForm.endsOn}
                 />
               </Field>
-            </div>
+            </FormGrid>
             <div className="recurring-dues-safety-note">
               <strong>Control financiero</strong>
               <span>
@@ -954,14 +955,14 @@ export function RecurringDuesWorkspace({
                 aprobar” y después exige una acción separada para entrar al libro.
               </span>
             </div>
-            <div className="recurring-dues-drawer-footer">
+            <FormActions sticky>
               <Button onClick={() => setPlanDrawerOpen(false)} type="button" variant="secondary">
                 Cancelar
               </Button>
               <Button disabled={busyId === 'plan'} type="submit">
                 {busyId === 'plan' ? 'Creando…' : 'Crear plan y programar primer período'}
               </Button>
-            </div>
+            </FormActions>
           </form>
         </Drawer>
       ) : null}
