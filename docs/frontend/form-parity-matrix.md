@@ -16,6 +16,7 @@ auditados; no sustituye una auditoría completa de toda la aplicación.
 | Mantenimiento | Asset, Plan, Work Order y Service Log forms | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2/3→1 y acciones compartidas | No encontrado | Completada | Conserva topología, UUIDs, optimistic versioning, transiciones y evidencia financiera de service logs. |
 | Gobernanza | Propuestas, reglas de votación, asambleas y acuerdos | compliant | Sí | Sí | Sí | Sí | FormGrid compartido 2/3→1 y FormActions en editores principales | No encontrado | Completada | Conserva quórum/threshold, optimistic versioning, snapshots de elegibilidad, publicaciones e IDs operativos. |
 | Presupuestos | Editor de período y líneas financieras especializadas | compliant | Sí | Parcial | Sí | Sí | ux-form + FormGrid 3→1; líneas financieras conservan grid especializado responsive | No encontrado | Completada | Conserva requestId, categoría, moneda, monto, revisiones, aprobación y actual-vs-budget sin conversiones implícitas. |
+| Documentos | Community Documents: documento, carpeta, categoría, nueva versión y vínculo de registro | compliant | N/A — workspace inline | Sí | Sí | Sí | Workspace 3→2→1 paneles; FormGrid compartido 2→1; acciones y controles móviles a ancho completo | No; archivo usa ConfirmDialog compartido | Completada | Conserva API autenticada de documentos privados, roles de gestión, PDF/JPG/PNG hasta 10 MB, versiones inmutables, descargas auditadas, retención y vínculos por UUID. |
 
 ## Decisiones de esta primera migración
 
