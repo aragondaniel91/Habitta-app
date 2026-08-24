@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../components/Dialog';
+import { FormActions, FormGrid } from '../components/FormLayout';
 import { ArrowRightIcon, CheckCircleIcon, CommunityIcon, ReportsIcon } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
@@ -584,181 +585,203 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
             </div>
 
             {composer === 'document' ? (
-              <form className="documents-form-grid" onSubmit={saveDocument}>
-                <Field label="Título">
-                  <input
-                    maxLength={200}
-                    onChange={(event) => setDocumentTitle(event.target.value)}
-                    required
-                    value={documentTitle}
-                  />
-                </Field>
-                <Field label="Carpeta">
-                  <Select
-                    onChange={(event) => setDocumentFolderId(event.target.value)}
-                    value={documentFolderId}
-                  >
-                    <option value="">Sin carpeta</option>
-                    {folderRows.map(({ folder, depth }) => (
-                      <option key={folder.id} value={folder.id}>
-                        {`${'— '.repeat(depth)}${folder.name}`}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Categoría">
-                  <Select
-                    onChange={(event) => {
-                      const categoryId = event.target.value;
-                      setDocumentCategoryId(categoryId);
-                      const category = categoryById.get(categoryId);
-                      if (category) {
-                        setDocumentAudience(category.default_audience);
-                        setDocumentRetention(
-                          category.default_retention_days
-                            ? String(category.default_retention_days)
-                            : '',
-                        );
+              <form className="documents-form ux-form" onSubmit={saveDocument}>
+                <FormGrid>
+                  <Field label="Título">
+                    <input
+                      className="input"
+                      maxLength={200}
+                      onChange={(event) => setDocumentTitle(event.target.value)}
+                      required
+                      value={documentTitle}
+                    />
+                  </Field>
+                  <Field label="Carpeta">
+                    <Select
+                      onChange={(event) => setDocumentFolderId(event.target.value)}
+                      value={documentFolderId}
+                    >
+                      <option value="">Sin carpeta</option>
+                      {folderRows.map(({ folder, depth }) => (
+                        <option key={folder.id} value={folder.id}>
+                          {`${'— '.repeat(depth)}${folder.name}`}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Categoría">
+                    <Select
+                      onChange={(event) => {
+                        const categoryId = event.target.value;
+                        setDocumentCategoryId(categoryId);
+                        const category = categoryById.get(categoryId);
+                        if (category) {
+                          setDocumentAudience(category.default_audience);
+                          setDocumentRetention(
+                            category.default_retention_days
+                              ? String(category.default_retention_days)
+                              : '',
+                          );
+                        }
+                      }}
+                      value={documentCategoryId}
+                    >
+                      <option value="">Sin categoría</option>
+                      {activeCategories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Visibilidad">
+                    <Select
+                      onChange={(event) =>
+                        setDocumentAudience(event.target.value as CommunityDocumentAudience)
                       }
-                    }}
-                    value={documentCategoryId}
+                      value={documentAudience}
+                    >
+                      {Object.entries(audienceLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field
+                    hint="Déjalo vacío si no aplica una retención específica."
+                    label="Retención (días)"
                   >
-                    <option value="">Sin categoría</option>
-                    {activeCategories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Visibilidad">
-                  <Select
-                    onChange={(event) =>
-                      setDocumentAudience(event.target.value as CommunityDocumentAudience)
-                    }
-                    value={documentAudience}
-                  >
-                    {Object.entries(audienceLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field
-                  hint="Déjalo vacío si no aplica una retención específica."
-                  label="Retención (días)"
-                >
-                  <input
-                    min={1}
-                    onChange={(event) => setDocumentRetention(event.target.value)}
-                    type="number"
-                    value={documentRetention}
-                  />
-                </Field>
-                <Field hint="PDF, JPG o PNG · máximo 10 MB." label="Archivo inicial (opcional)">
-                  <input accept={COMMUNITY_DOCUMENT_ACCEPT} onChange={onInitialFile} type="file" />
-                </Field>
-                <Field label="Descripción">
-                  <textarea
-                    maxLength={4000}
-                    onChange={(event) => setDocumentDescription(event.target.value)}
-                    rows={3}
-                    value={documentDescription}
-                  />
-                </Field>
-                <div className="documents-form-actions">
+                    <input
+                      className="input"
+                      min={1}
+                      onChange={(event) => setDocumentRetention(event.target.value)}
+                      type="number"
+                      value={documentRetention}
+                    />
+                  </Field>
+                  <Field hint="PDF, JPG o PNG · máximo 10 MB." label="Archivo inicial (opcional)">
+                    <input
+                      accept={COMMUNITY_DOCUMENT_ACCEPT}
+                      className="input"
+                      onChange={onInitialFile}
+                      type="file"
+                    />
+                  </Field>
+                  <div data-span="full">
+                    <Field label="Descripción">
+                      <textarea
+                        maxLength={4000}
+                        onChange={(event) => setDocumentDescription(event.target.value)}
+                        rows={3}
+                        value={documentDescription}
+                      />
+                    </Field>
+                  </div>
+                </FormGrid>
+                <FormActions>
                   <Button disabled={saving || !documentTitle.trim()} type="submit">
                     {saving ? 'Guardando…' : 'Crear documento'}
                   </Button>
-                </div>
+                </FormActions>
               </form>
             ) : null}
 
             {composer === 'folder' ? (
-              <form className="documents-form-grid" onSubmit={saveFolder}>
-                <Field label="Nombre">
-                  <input
-                    maxLength={120}
-                    onChange={(event) => setFolderName(event.target.value)}
-                    required
-                    value={folderName}
-                  />
-                </Field>
-                <Field label="Carpeta superior">
-                  <Select
-                    onChange={(event) => setFolderParentId(event.target.value)}
-                    value={folderParentId}
-                  >
-                    <option value="">Raíz de la biblioteca</option>
-                    {folderRows.map(({ folder, depth }) => (
-                      <option key={folder.id} value={folder.id}>
-                        {`${'— '.repeat(depth)}${folder.name}`}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Descripción">
-                  <textarea
-                    maxLength={1000}
-                    onChange={(event) => setFolderDescription(event.target.value)}
-                    rows={3}
-                    value={folderDescription}
-                  />
-                </Field>
-                <div className="documents-form-actions">
+              <form className="documents-form ux-form" onSubmit={saveFolder}>
+                <FormGrid>
+                  <Field label="Nombre">
+                    <input
+                      className="input"
+                      maxLength={120}
+                      onChange={(event) => setFolderName(event.target.value)}
+                      required
+                      value={folderName}
+                    />
+                  </Field>
+                  <Field label="Carpeta superior">
+                    <Select
+                      onChange={(event) => setFolderParentId(event.target.value)}
+                      value={folderParentId}
+                    >
+                      <option value="">Raíz de la biblioteca</option>
+                      {folderRows.map(({ folder, depth }) => (
+                        <option key={folder.id} value={folder.id}>
+                          {`${'— '.repeat(depth)}${folder.name}`}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <div data-span="full">
+                    <Field label="Descripción">
+                      <textarea
+                        maxLength={1000}
+                        onChange={(event) => setFolderDescription(event.target.value)}
+                        rows={3}
+                        value={folderDescription}
+                      />
+                    </Field>
+                  </div>
+                </FormGrid>
+                <FormActions>
                   <Button disabled={saving || !folderName.trim()} type="submit">
                     {saving ? 'Guardando…' : 'Crear carpeta'}
                   </Button>
-                </div>
+                </FormActions>
               </form>
             ) : null}
 
             {composer === 'category' ? (
-              <form className="documents-form-grid" onSubmit={saveCategory}>
-                <Field label="Nombre">
-                  <input
-                    maxLength={120}
-                    onChange={(event) => setCategoryName(event.target.value)}
-                    required
-                    value={categoryName}
-                  />
-                </Field>
-                <Field label="Visibilidad predeterminada">
-                  <Select
-                    onChange={(event) =>
-                      setCategoryAudience(event.target.value as CommunityDocumentAudience)
-                    }
-                    value={categoryAudience}
-                  >
-                    {Object.entries(audienceLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Retención predeterminada (días)">
-                  <input
-                    min={1}
-                    onChange={(event) => setCategoryRetention(event.target.value)}
-                    type="number"
-                    value={categoryRetention}
-                  />
-                </Field>
-                <Field label="Descripción">
-                  <textarea
-                    maxLength={1000}
-                    onChange={(event) => setCategoryDescription(event.target.value)}
-                    rows={3}
-                    value={categoryDescription}
-                  />
-                </Field>
-                <div className="documents-form-actions">
+              <form className="documents-form ux-form" onSubmit={saveCategory}>
+                <FormGrid>
+                  <Field label="Nombre">
+                    <input
+                      className="input"
+                      maxLength={120}
+                      onChange={(event) => setCategoryName(event.target.value)}
+                      required
+                      value={categoryName}
+                    />
+                  </Field>
+                  <Field label="Visibilidad predeterminada">
+                    <Select
+                      onChange={(event) =>
+                        setCategoryAudience(event.target.value as CommunityDocumentAudience)
+                      }
+                      value={categoryAudience}
+                    >
+                      {Object.entries(audienceLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Retención predeterminada (días)">
+                    <input
+                      className="input"
+                      min={1}
+                      onChange={(event) => setCategoryRetention(event.target.value)}
+                      type="number"
+                      value={categoryRetention}
+                    />
+                  </Field>
+                  <div data-span="full">
+                    <Field label="Descripción">
+                      <textarea
+                        maxLength={1000}
+                        onChange={(event) => setCategoryDescription(event.target.value)}
+                        rows={3}
+                        value={categoryDescription}
+                      />
+                    </Field>
+                  </div>
+                </FormGrid>
+                <FormActions>
                   <Button disabled={saving || !categoryName.trim()} type="submit">
                     {saving ? 'Guardando…' : 'Crear categoría'}
                   </Button>
-                </div>
+                </FormActions>
               </form>
             ) : null}
           </Surface>
@@ -989,25 +1012,31 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                   </div>
 
                   {canManageDocuments && selectedDocument.status === 'active' ? (
-                    <form className="documents-version-form" onSubmit={uploadVersion}>
-                      <Field hint="PDF, JPG o PNG · máximo 10 MB." label="Nueva versión">
-                        <input
-                          accept={COMMUNITY_DOCUMENT_ACCEPT}
-                          onChange={onVersionFile}
-                          type="file"
-                        />
-                      </Field>
-                      <Field label="Nota del cambio">
-                        <input
-                          maxLength={1000}
-                          onChange={(event) => setVersionNote(event.target.value)}
-                          placeholder="Ej. Acta corregida y aprobada"
-                          value={versionNote}
-                        />
-                      </Field>
-                      <Button disabled={saving || !versionFile} size="sm" type="submit">
-                        {saving ? 'Subiendo…' : 'Guardar versión'}
-                      </Button>
+                    <form className="documents-version-form ux-form" onSubmit={uploadVersion}>
+                      <FormGrid columns={1}>
+                        <Field hint="PDF, JPG o PNG · máximo 10 MB." label="Nueva versión">
+                          <input
+                            accept={COMMUNITY_DOCUMENT_ACCEPT}
+                            className="input"
+                            onChange={onVersionFile}
+                            type="file"
+                          />
+                        </Field>
+                        <Field label="Nota del cambio">
+                          <input
+                            className="input"
+                            maxLength={1000}
+                            onChange={(event) => setVersionNote(event.target.value)}
+                            placeholder="Ej. Acta corregida y aprobada"
+                            value={versionNote}
+                          />
+                        </Field>
+                      </FormGrid>
+                      <FormActions>
+                        <Button disabled={saving || !versionFile} type="submit">
+                          {saving ? 'Subiendo…' : 'Guardar versión'}
+                        </Button>
+                      </FormActions>
                     </form>
                   ) : null}
 
@@ -1050,29 +1079,39 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                   </div>
 
                   {canManageDocuments ? (
-                    <form className="documents-link-form" onSubmit={saveLink}>
-                      <Select
-                        aria-label="Tipo de registro relacionado"
-                        onChange={(event) =>
-                          setLinkType(event.target.value as CommunityDocumentLinkType)
-                        }
-                        value={linkType}
-                      >
-                        {Object.entries(linkLabels).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </Select>
-                      <input
-                        aria-label="UUID del registro relacionado"
-                        onChange={(event) => setLinkTargetId(event.target.value)}
-                        placeholder="UUID del registro"
-                        value={linkTargetId}
-                      />
-                      <Button disabled={saving || !linkTargetId.trim()} size="sm" type="submit">
-                        Vincular
-                      </Button>
+                    <form className="documents-link-form ux-form" onSubmit={saveLink}>
+                      <FormGrid>
+                        <Field label="Tipo de registro">
+                          <Select
+                            onChange={(event) =>
+                              setLinkType(event.target.value as CommunityDocumentLinkType)
+                            }
+                            value={linkType}
+                          >
+                            {Object.entries(linkLabels).map(([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                        <Field
+                          hint="Usa el identificador UUID del registro que quieres relacionar."
+                          label="UUID del registro"
+                        >
+                          <input
+                            className="input"
+                            onChange={(event) => setLinkTargetId(event.target.value)}
+                            placeholder="Ej. 123e4567-e89b-12d3-a456-426614174000"
+                            value={linkTargetId}
+                          />
+                        </Field>
+                      </FormGrid>
+                      <FormActions>
+                        <Button disabled={saving || !linkTargetId.trim()} type="submit">
+                          Vincular registro
+                        </Button>
+                      </FormActions>
                     </form>
                   ) : null}
 
