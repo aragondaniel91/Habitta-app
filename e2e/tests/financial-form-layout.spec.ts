@@ -152,4 +152,60 @@ test.describe('Formularios administrativos autenticados', () => {
     await dialog.getByRole('button', { name: 'Cancelar' }).click();
     await expect(dialog).toBeHidden();
   });
+
+  test('Receivables usa Drawer y formulario premium sin overflow móvil', async ({ page }) => {
+    await signInAsAdministrator(page);
+    const { button: opener, dialog } = await openAtMobileSize(page, '/app/fees', 'Nuevo concepto');
+
+    await expect(dialog).toHaveAccessibleName('Crear concepto de cobro');
+    for (const label of [
+      'Código',
+      'Categoría',
+      'Nombre',
+      'Descripción',
+      'Moneda sugerida',
+      'Monto sugerido',
+    ]) {
+      await expect(dialog.getByLabel(label)).toBeVisible();
+    }
+    await expect(dialog.locator('.form-grid')).toHaveCount(2);
+    await expect(dialog.locator('.form-actions')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Crear concepto' })).toBeInViewport();
+
+    const controls = dialog.locator('.input, .select, textarea');
+    for (let index = 0; index < (await controls.count()); index += 1) {
+      expect(
+        await controls.nth(index).evaluate((element) => element.getBoundingClientRect().height),
+      ).toBeGreaterThanOrEqual(47);
+    }
+    await assertNoHorizontalOverflow(page, dialog);
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(opener).toBeFocused();
+  });
+
+  test('Receivables baja KPI y herramientas a una columna en teléfono estrecho', async ({
+    page,
+  }) => {
+    await signInAsAdministrator(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/app/fees');
+
+    const metrics = page.locator('.receivables-metrics-grid');
+    const tools = page.locator('.receivables-tools-menu');
+    await expect(metrics).toBeVisible();
+    await expect(tools).toBeVisible();
+    expect(
+      await metrics.evaluate(
+        (element) => getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      ),
+    ).toBe(1);
+    expect(
+      await tools.evaluate(
+        (element) => getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      ),
+    ).toBe(1);
+    await assertNoHorizontalOverflow(page);
+  });
 });

@@ -135,10 +135,7 @@
     font-size: 0.62rem;
   }
 
-  .receivables-insights-grid {
-    grid-template-columns: 1fr;
-  }
-
+  .receivables-insights-grid,
   .receivables-aging-list {
     grid-template-columns: 1fr;
   }
@@ -188,6 +185,7 @@
   }
 
   .receivables-table tr {
+    position: relative;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem 0.9rem;
@@ -236,10 +234,6 @@
     width: auto;
   }
 
-  .receivables-table tr {
-    position: relative;
-  }
-
   .receivables-item-name {
     min-width: 0;
     padding-right: 2.5rem;
@@ -250,12 +244,11 @@
     max-width: none;
   }
 
-  .receivables-drawer__content {
+  .receivables-drawer__body {
     padding: 1rem;
   }
 
-  .receivables-detail-list,
-  .receivables-form-grid {
+  .receivables-detail-list {
     grid-template-columns: 1fr;
   }
 
@@ -271,20 +264,29 @@
     border-bottom: 0;
   }
 
-  .receivables-preview-actions {
-    width: 100%;
-  }
-
-  .receivables-preview-actions .button {
-    flex: 1;
-  }
-
   .receivables-statement-list article {
     grid-template-columns: 1fr;
   }
 
   .receivables-statement-list article > div:last-child {
     justify-items: start;
+  }
+}
+
+@media (max-width: 460px) {
+  .receivables-overview__actions,
+  .receivables-tools-menu,
+  .receivables-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .receivables-overview__actions .button:last-child,
+  .receivables-tools-menu .button:last-child {
+    grid-column: auto;
+  }
+
+  .receivables-table tr {
+    grid-template-columns: 1fr;
   }
 }
 
