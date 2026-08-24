@@ -12,6 +12,10 @@ const structure = readFileSync(
   new URL('./pages/StructureManagementPage.tsx', import.meta.url),
   'utf8',
 );
+const dangerZone = readFileSync(
+  new URL('./features/settings/CondominiumDangerZone.tsx', import.meta.url),
+  'utf8',
+);
 
 const matrixLabels = {
   dashboard: 'Dashboard',
@@ -33,6 +37,24 @@ const matrixLabels = {
   audit: 'Auditoría',
   settings: 'Configuración',
 } as const;
+
+const dangerZoneDeletedData = [
+  'unidades',
+  'personas',
+  'cuotas',
+  'pagos',
+  'recibos',
+  'tesorería',
+  'gastos',
+  'presupuestos',
+  'mantenimiento',
+  'documentos',
+  'solicitudes',
+  'anuncios',
+  'votaciones',
+  'auditoría',
+  'archivos privados',
+] as const;
 
 describe('HAB-307 final administrator premium sweep', () => {
   it('certifies every one of the 18 administrator routes in the parity matrix', () => {
@@ -61,11 +83,37 @@ describe('HAB-307 final administrator premium sweep', () => {
     expect(team.steps.join(' ')).not.toContain('Retirar/Eliminar acceso');
 
     const settings = getModuleHelpContent('settings', MODULE_HELP.settings);
-    expect(settings.steps.join(' ')).toContain('Quiero eliminar esta residencia');
-    expect(settings.steps.join(' ')).toContain('Revisar eliminación');
-    expect(settings.steps.join(' ')).toContain('Sí, eliminar residencia');
-    expect(settings.beforeConfirm.join(' ')).toContain('irreversible');
-    expect(settings.permissions).toContain('propietario de la organización');
+    const settingsHelp = [
+      ...settings.actions,
+      ...settings.steps,
+      ...settings.beforeConfirm,
+      ...settings.result,
+      settings.permissions,
+    ].join(' ');
+
+    for (const label of [
+      'Quiero eliminar esta residencia',
+      'Revisar eliminación',
+      'Sí, eliminar residencia',
+    ]) {
+      expect(settingsHelp).toContain(label);
+      expect(dangerZone).toContain(label);
+    }
+
+    expect(settingsHelp).toContain('ELIMINAR {nombre}');
+    expect(dangerZone).toContain('ELIMINAR ${condominiumName}');
+    expect(settingsHelp).toContain('irreversible');
+    expect(settingsHelp).toContain('propietario de la organización');
+    expect(settingsHelp).toContain('administradores normales no pueden');
+    expect(settingsHelp).toContain('cuenta global de Habitta');
+    expect(settingsHelp).toContain('correo');
+    expect(settingsHelp).toContain('sesión');
+    expect(settingsHelp).toContain('reintento seguro');
+
+    for (const dataLabel of dangerZoneDeletedData) {
+      expect(settings.beforeConfirm.join(' '), dataLabel).toContain(dataLabel);
+      expect(dangerZone.toLowerCase(), dataLabel).toContain(dataLabel);
+    }
   });
 
   it('keeps legacy unspecified topology remediation discoverable and fail-closed', () => {
