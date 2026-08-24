@@ -36,7 +36,7 @@ describe('HAB-304 premium Team & Access parity', () => {
     expect(page).toContain('Suspender');
     expect(page).toContain('Reactivar');
     expect(page).toContain('Quitar acceso');
-    expect(page).toContain('la cuenta global y el historial se conservaron');
+    expect(page).toContain('La cuenta global y el historial se conservaron');
     expect(page).toContain('Su cuenta global y el historial de acciones se conservarán.');
   });
 
