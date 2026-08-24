@@ -47,9 +47,10 @@ describe('HAB-303 premium Community certification', () => {
 
   it('keeps contextual Help aligned with the real Community actions', () => {
     const guide = MODULE_HELP.community.steps.join(' ');
+    expect(guide).toContain('Ver unidades');
     expect(guide).toContain('Completar directorio');
     expect(guide).toContain('Ver solicitudes');
-    expect(guide).toContain('Anuncios');
+    expect(page).toContain('<strong>Anuncios</strong>');
   });
 
   it('records Community as certified in the parity matrix', () => {
