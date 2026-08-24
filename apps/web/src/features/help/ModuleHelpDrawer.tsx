@@ -6,6 +6,7 @@ import type { AppRoute } from '../../navigation';
 import { CsvImportWizard } from '../imports/CsvImportWizard';
 import { IMPORT_DEFINITIONS } from '../imports/csv';
 import { MODULE_HELP, type ImportKind } from './module-help';
+import { getModuleHelpContent } from './module-help-ui';
 import './module-help-guide.css';
 
 type Props = {
@@ -25,7 +26,7 @@ export function ModuleHelpDrawer({
   route,
   session,
 }: Props) {
-  const content = MODULE_HELP[route.key];
+  const content = getModuleHelpContent(route.key, MODULE_HELP[route.key]);
   const importKinds = content.importKinds ?? [];
   const panel = useRef<HTMLElement>(null);
   useDialogBehavior(panel, onClose);
@@ -34,7 +35,8 @@ export function ModuleHelpDrawer({
 
   useEffect(() => {
     if (!open) return;
-    const routeImportKinds = MODULE_HELP[route.key].importKinds ?? [];
+    const routeContent = getModuleHelpContent(route.key, MODULE_HELP[route.key]);
+    const routeImportKinds = routeContent.importKinds ?? [];
     setView(initialView === 'import' && routeImportKinds.length ? 'import' : 'guide');
     setSelectedKind(routeImportKinds[0] ?? null);
   }, [initialView, open, route.key]);
