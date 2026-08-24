@@ -50,9 +50,7 @@ test.describe('Formularios administrativos autenticados', () => {
     `Supabase local y fixture financiero requeridos: ${missingEnvironment.join(', ')}`,
   );
 
-  test('People conserva foco, teclado, retorno y layout móvil dentro del Drawer', async ({
-    page,
-  }) => {
+  test('People conserva foco, teclado, retorno y layout móvil dentro del Drawer', async ({ page }) => {
     await signInAsAdministrator(page);
     const { button: opener, dialog } = await openAtMobileSize(page, '/app/people', 'Nueva persona');
 
@@ -155,11 +153,7 @@ test.describe('Formularios administrativos autenticados', () => {
 
   test('Receivables usa Drawer y formulario premium sin overflow móvil', async ({ page }) => {
     await signInAsAdministrator(page);
-    const { button: opener, dialog } = await openAtMobileSize(
-      page,
-      '/app/fees',
-      'Nuevo concepto',
-    );
+    const { button: opener, dialog } = await openAtMobileSize(page, '/app/fees', 'Nuevo concepto');
 
     await expect(dialog).toHaveAccessibleName('Crear concepto de cobro');
     for (const label of [
