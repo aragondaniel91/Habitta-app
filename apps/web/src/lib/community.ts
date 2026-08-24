@@ -60,7 +60,11 @@ export function getCommunityStructureCopy(
 
   if (topology === 'single_building') {
     return {
-      metricDetail: `${countLabel(buildingCount, 'edificio registrado', 'edificios registrados')}.`,
+      metricDetail: `${countLabel(
+        buildingCount,
+        'edificio registrado',
+        'edificios registrados',
+      )}.`,
       kicker: 'Estructura residencial',
       title: 'Unidades por edificio',
       description: 'Distribución real de las unidades dentro del edificio residencial.',
@@ -71,7 +75,11 @@ export function getCommunityStructureCopy(
 
   if (topology === 'multi_building_complex') {
     return {
-      metricDetail: `${countLabel(buildingCount, 'torre o edificio registrado', 'torres o edificios registrados')}.`,
+      metricDetail: `${countLabel(
+        buildingCount,
+        'torre o edificio registrado',
+        'torres o edificios registrados',
+      )}.`,
       kicker: 'Estructura residencial',
       title: 'Unidades por torre o edificio',
       description: 'Distribución real de las unidades entre las estructuras del conjunto.',
@@ -82,10 +90,15 @@ export function getCommunityStructureCopy(
 
   if (topology === 'mixed') {
     return {
-      metricDetail: `${countLabel(buildingCount, 'edificio o torre registrado', 'edificios o torres registrados')}; las casas pueden existir como unidades directas.`,
+      metricDetail: `${countLabel(
+        buildingCount,
+        'edificio o torre registrado',
+        'edificios o torres registrados',
+      )}; las casas pueden existir como unidades directas.`,
       kicker: 'Estructura mixta',
       title: 'Unidades por edificio o torre',
-      description: 'Las estructuras verticales se muestran aquí y las casas permanecen como unidades directas.',
+      description:
+        'Las estructuras verticales se muestran aquí y las casas permanecen como unidades directas.',
       emptyTitle: 'Sin estructuras verticales',
       emptyDescription:
         'Las casas pueden gestionarse directamente; agrega edificios o torres sólo cuando existan físicamente.',
@@ -94,7 +107,11 @@ export function getCommunityStructureCopy(
 
   return {
     metricDetail: buildingCount
-      ? `${countLabel(buildingCount, 'estructura física registrada', 'estructuras físicas registradas')}; falta definir la topología.`
+      ? `${countLabel(
+          buildingCount,
+          'estructura física registrada',
+          'estructuras físicas registradas',
+        )}; falta definir la topología.`
       : 'Falta definir la topología del condominio.',
     kicker: 'Estructura residencial',
     title: 'Unidades por estructura',
