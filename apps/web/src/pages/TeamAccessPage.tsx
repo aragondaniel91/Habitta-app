@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../components/Dialog';
+import { FormActions, FormGrid } from '../components/FormLayout';
 import { CheckCircleIcon, PeopleIcon, SettingsIcon } from '../components/icons';
-import { Badge, Button, EmptyState, Field, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import {
   ADMINISTRATIVE_ROLE_OPTIONS,
@@ -387,34 +388,35 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
               <SettingsIcon size={22} />
             </div>
 
-            <form className="team-invitation-form" onSubmit={createInvitation}>
-              <Field label="Correo electrónico">
-                <input
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  className="input"
-                  inputMode="email"
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="administrador@correo.com"
-                  required
-                  type="email"
-                  value={email}
-                />
-              </Field>
+            <form className="team-invitation-form ux-form" onSubmit={createInvitation}>
+              <FormGrid>
+                <Field label="Correo electrónico">
+                  <input
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    className="input"
+                    inputMode="email"
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="administrador@correo.com"
+                    required
+                    type="email"
+                    value={email}
+                  />
+                </Field>
 
-              <Field label="Rol administrativo">
-                <select
-                  className="select"
-                  onChange={(event) => setRole(event.target.value as AdministrativeRole)}
-                  value={role}
-                >
-                  {ADMINISTRATIVE_ROLE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+                <Field label="Rol administrativo">
+                  <Select
+                    onChange={(event) => setRole(event.target.value as AdministrativeRole)}
+                    value={role}
+                  >
+                    {ADMINISTRATIVE_ROLE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </FormGrid>
 
               <p className="team-role-description">
                 {ADMINISTRATIVE_ROLE_OPTIONS.find((option) => option.value === role)?.description}
@@ -438,9 +440,11 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                 del condominio.
               </p>
 
-              <Button disabled={creating} type="submit">
-                {creating ? 'Creando invitación…' : 'Crear y enviar invitación'}
-              </Button>
+              <FormActions>
+                <Button disabled={creating} type="submit">
+                  {creating ? 'Creando invitación…' : 'Crear y enviar invitación'}
+                </Button>
+              </FormActions>
             </form>
           </Surface>
 
@@ -481,9 +485,9 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                       </Badge>
 
                       <div className="team-member-controls">
-                        <select
+                        <Select
                           aria-label={`Rol de ${member.full_name ?? member.email}`}
-                          className="select team-member-role-select"
+                          className="team-member-role-select"
                           disabled={busy}
                           onChange={(event) =>
                             setMemberRoles((current) => ({
@@ -498,7 +502,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                               {option.label}
                             </option>
                           ))}
-                        </select>
+                        </Select>
 
                         {member.status === 'active' ? (
                           <>
