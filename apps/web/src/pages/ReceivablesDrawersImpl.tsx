@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, FeesIcon, ReportsIcon, UnitsIcon } from '../components/icons';
+import { FormActions, FormGrid } from '../components/FormLayout';
 import { Badge, Button, EmptyState, Field, Select, Skeleton } from '../components/ui';
 import { apiRequest } from '../lib/api';
 import { csvFileName, downloadCsv } from '../lib/csv-export';
@@ -454,7 +455,7 @@ export function ReceivablesDrawerHost({
         <p className="receivables-drawer-intro">
           Registra una obligación individual sin mezclar monedas ni modificar saldos directamente.
         </p>
-        <form className="receivables-form" onSubmit={submitManualCharge}>
+        <form className="receivables-form ux-form" onSubmit={submitManualCharge}>
           <Field label="Unidad">
             <Select name="unitId" required>
               <option value="">Selecciona una unidad</option>
@@ -481,11 +482,17 @@ export function ReceivablesDrawerHost({
             </Select>
           </Field>
           <Field label="Descripción">
-            <input name="description" placeholder="Ej. Cuota de mantenimiento agosto" required />
+            <input
+              className="input"
+              name="description"
+              placeholder="Ej. Cuota de mantenimiento agosto"
+              required
+            />
           </Field>
-          <div className="receivables-form-grid">
+          <FormGrid>
             <Field label="Monto">
               <input
+                className="input"
                 inputMode="decimal"
                 name="amount"
                 pattern="^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$"
@@ -499,18 +506,20 @@ export function ReceivablesDrawerHost({
                 <option value="VES">VES</option>
               </Select>
             </Field>
-          </div>
-          <div className="receivables-form-grid">
+          </FormGrid>
+          <FormGrid>
             <Field label="Fecha de emisión">
-              <input defaultValue={todayIso()} name="issueDate" required type="date" />
+              <input className="input" defaultValue={todayIso()} name="issueDate" required type="date" />
             </Field>
             <Field label="Fecha de vencimiento">
-              <input name="dueDate" type="date" />
+              <input className="input" name="dueDate" type="date" />
             </Field>
-          </div>
-          <Button disabled={loading || !activeUnits.length} type="submit">
-            {loading ? 'Guardando…' : 'Crear cuota'}
-          </Button>
+          </FormGrid>
+          <FormActions>
+            <Button disabled={loading || !activeUnits.length} type="submit">
+              {loading ? 'Guardando…' : 'Crear cuota'}
+            </Button>
+          </FormActions>
         </form>
       </Drawer>
     );
@@ -525,7 +534,7 @@ export function ReceivablesDrawerHost({
           ciclos futuros ni sustituye Cuotas recurrentes.
         </p>
         {!batchPreview ? (
-          <form className="receivables-form" onSubmit={(event) => void previewBatch(event)}>
+          <form className="receivables-form ux-form" onSubmit={(event) => void previewBatch(event)}>
             <Field label="Concepto">
               <Select
                 name="conceptId"
@@ -550,11 +559,22 @@ export function ReceivablesDrawerHost({
               </Select>
             </Field>
             <Field label="Nombre del lote">
-              <input name="name" placeholder="Ej. Fondo extraordinario ascensores" required />
+              <input
+                className="input"
+                name="name"
+                placeholder="Ej. Fondo extraordinario ascensores"
+                required
+              />
             </Field>
-            <div className="receivables-form-grid">
+            <FormGrid>
               <Field label="Monto por unidad">
-                <input inputMode="decimal" name="fixedAmount" placeholder="0.00" required />
+                <input
+                  className="input"
+                  inputMode="decimal"
+                  name="fixedAmount"
+                  placeholder="0.00"
+                  required
+                />
               </Field>
               <Field label="Moneda">
                 <Select defaultValue={selectedCurrency || 'USD'} name="currencyCode">
@@ -562,15 +582,15 @@ export function ReceivablesDrawerHost({
                   <option value="VES">VES</option>
                 </Select>
               </Field>
-            </div>
-            <div className="receivables-form-grid">
+            </FormGrid>
+            <FormGrid>
               <Field label="Emisión">
-                <input defaultValue={todayIso()} name="issueDate" required type="date" />
+                <input className="input" defaultValue={todayIso()} name="issueDate" required type="date" />
               </Field>
               <Field label="Vencimiento">
-                <input name="dueDate" required type="date" />
+                <input className="input" name="dueDate" required type="date" />
               </Field>
-            </div>
+            </FormGrid>
             <div className="receivables-batch-note">
               <UnitsIcon size={20} />
               <div>
@@ -578,9 +598,11 @@ export function ReceivablesDrawerHost({
                 <span>Se aplicará una sola vez a cada unidad activa.</span>
               </div>
             </div>
-            <Button disabled={loading || !activeUnits.length} type="submit">
-              {loading ? 'Calculando…' : 'Previsualizar cargo único'}
-            </Button>
+            <FormActions>
+              <Button disabled={loading || !activeUnits.length} type="submit">
+                {loading ? 'Calculando…' : 'Previsualizar cargo único'}
+              </Button>
+            </FormActions>
           </form>
         ) : (
           <div className="receivables-preview-card">
@@ -595,14 +617,14 @@ export function ReceivablesDrawerHost({
               </b>
               <p>Concepto: {getConceptName(batchPreview.payload.conceptId, concepts)}</p>
             </div>
-            <div className="receivables-preview-actions">
+            <FormActions>
               <Button onClick={() => setBatchPreview(null)} size="sm" variant="secondary">
                 Editar
               </Button>
               <Button disabled={loading} onClick={commitBatch} size="sm">
                 {loading ? 'Publicando…' : 'Publicar cargo único'}
               </Button>
-            </div>
+            </FormActions>
           </div>
         )}
       </Drawer>
