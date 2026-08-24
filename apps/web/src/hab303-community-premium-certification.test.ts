@@ -26,7 +26,9 @@ describe('HAB-303 premium Community certification', () => {
 
   it('preserves topology-aware structure presentation and UUID-backed navigation', () => {
     expect(page).toContain('supportsBuildingStructure(data.propertyTopology)');
-    expect(page).toContain('getCommunityStructureCopy(data.propertyTopology, data.buildings.length)');
+    expect(page).toContain(
+      'getCommunityStructureCopy(data.propertyTopology, data.buildings.length)',
+    );
     expect(page).toContain("routeByKey('units')");
     expect(page).toContain("routeByKey('people')");
     expect(page).toContain("routeByKey('requests')");
