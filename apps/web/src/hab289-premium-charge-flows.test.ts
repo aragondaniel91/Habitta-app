@@ -42,9 +42,7 @@ describe('HAB-289 premium recurring, extraordinary and one-off charge flows', ()
   });
 
   it('moves one-off and extraordinary forms onto shared premium layout', () => {
-    expect(drawers).toContain(
-      "import { FormActions, FormGrid } from '../components/FormLayout'",
-    );
+    expect(drawers).toContain("import { FormActions, FormGrid } from '../components/FormLayout'");
     expect(count(drawers, 'className="receivables-form ux-form"')).toBe(2);
     expect(count(drawers, '<FormGrid>')).toBe(4);
     expect(count(drawers, '<FormActions>')).toBe(3);
