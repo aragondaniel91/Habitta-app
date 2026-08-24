@@ -36,7 +36,9 @@ describe('HAB-293 topology-aware Community presentation', () => {
     expect(domain).toContain("metricDetail: 'Falta definir la topología del condominio.'");
     expect(domain).toContain("title: 'Unidades por estructura'");
     expect(domain).toContain("emptyTitle: 'Topología pendiente'");
-    expect(page).toContain('getCommunityStructureCopy(data.propertyTopology, data.buildings.length)');
+    expect(page).toContain(
+      'getCommunityStructureCopy(data.propertyTopology, data.buildings.length)',
+    );
   });
 
   it('keeps the existing UUID-backed community entity routes and navigation intact', () => {
