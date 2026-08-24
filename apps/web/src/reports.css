@@ -3,34 +3,12 @@
   gap: 1.25rem;
 }
 
-.reports-overview {
-  display: flex;
-  min-height: 96px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
-  border-bottom: 1px solid var(--border);
-  padding: 0.25rem 0 1.25rem;
-}
-
-.reports-overview h2,
 .reports-section-heading h2 {
   margin: 0.22rem 0 0.15rem;
 }
 
-.reports-overview p,
 .reports-section-heading p {
   margin: 0;
-}
-
-.reports-overview__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.reports-overview__actions .select {
-  min-width: 180px;
 }
 
 .reports-kicker {
@@ -84,7 +62,7 @@
 
 .reports-currency-tabs button {
   min-width: 52px;
-  min-height: 32px;
+  min-height: 44px;
   border: 0;
   border-radius: 999px;
   padding: 0 0.7rem;
@@ -613,20 +591,9 @@
     gap: 1rem;
   }
 
-  .reports-overview,
   .reports-currency-row,
   .reports-section-heading {
     align-items: stretch;
-  }
-
-  .reports-overview {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .reports-overview__actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .reports-currency-row {
@@ -736,7 +703,6 @@
 }
 
 @media (max-width: 430px) {
-  .reports-overview__actions,
   .reports-metrics-grid {
     grid-template-columns: 1fr;
   }
