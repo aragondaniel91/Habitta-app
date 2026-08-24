@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Badge, Button, Field, Select } from '../../components/ui';
 import { apiRequest } from '../../lib/api';
 
@@ -193,18 +194,19 @@ export function OwnershipTransferPanel({
       </div>
 
       {open ? (
-        <form className="ownership-transfer-form" onSubmit={(event) => void submit(event)}>
+        <form className="ownership-transfer-form ux-form" onSubmit={(event) => void submit(event)}>
           <div className="ownership-transfer-warning">
             <strong>Fecha efectiva e historial</strong>
             <span>
               Habitta cerrará la relación de los propietarios actuales el día anterior y abrirá las
-              nuevas relaciones en la fecha indicada. Cargos, pagos, saldos y movimientos no cambian
-              de unidad.
+              nuevas relaciones en la fecha indicada. Cargos, pagos, saldos y movimientos permanecen
+              ligados a esta unidad; la transferencia no los mueve al nuevo propietario.
             </span>
           </div>
 
           <Field label="Fecha efectiva">
             <input
+              className="input"
               max={todayIso()}
               onChange={(event) => setEffectiveDate(event.target.value)}
               required
@@ -216,43 +218,46 @@ export function OwnershipTransferPanel({
           <div className="ownership-transfer-owner-list">
             {owners.map((owner, index) => (
               <div className="ownership-transfer-owner-row" key={index}>
-                <Field label={`Nuevo propietario ${index + 1}`}>
-                  <Select
-                    onChange={(event) =>
-                      setOwners((current) =>
-                        current.map((row, rowIndex) =>
-                          rowIndex === index ? { ...row, personId: event.target.value } : row,
-                        ),
-                      )
-                    }
-                    required
-                    value={owner.personId}
-                  >
-                    <option value="">Selecciona una persona</option>
-                    {people.map((person) => (
-                      <option key={person.id} value={person.id}>
-                        {person.first_name} {person.last_name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Alícuota %">
-                  <input
-                    max="100"
-                    min="0.0001"
-                    onChange={(event) =>
-                      setOwners((current) =>
-                        current.map((row, rowIndex) =>
-                          rowIndex === index ? { ...row, percentage: event.target.value } : row,
-                        ),
-                      )
-                    }
-                    required
-                    step="0.0001"
-                    type="number"
-                    value={owner.percentage}
-                  />
-                </Field>
+                <FormGrid className="ownership-transfer-owner-fields">
+                  <Field label={`Nuevo propietario ${index + 1}`}>
+                    <Select
+                      onChange={(event) =>
+                        setOwners((current) =>
+                          current.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, personId: event.target.value } : row,
+                          ),
+                        )
+                      }
+                      required
+                      value={owner.personId}
+                    >
+                      <option value="">Selecciona una persona</option>
+                      {people.map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.first_name} {person.last_name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Alícuota %">
+                    <input
+                      className="input"
+                      max="100"
+                      min="0.0001"
+                      onChange={(event) =>
+                        setOwners((current) =>
+                          current.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, percentage: event.target.value } : row,
+                          ),
+                        )
+                      }
+                      required
+                      step="0.0001"
+                      type="number"
+                      value={owner.percentage}
+                    />
+                  </Field>
+                </FormGrid>
                 <label className="ownership-transfer-primary">
                   <input
                     checked={owner.primary}
@@ -297,6 +302,7 @@ export function OwnershipTransferPanel({
             hint="Referencia interna o ruta privada del documento; no uses una URL pública permanente."
           >
             <input
+              className="input"
               maxLength={500}
               onChange={(event) => setDocumentReference(event.target.value)}
               placeholder="Ej. expediente-2026-014 / escritura privada"
@@ -312,7 +318,7 @@ export function OwnershipTransferPanel({
             />
           </Field>
 
-          <div className="ownership-transfer-actions">
+          <FormActions>
             <Button
               disabled={
                 busy ||
@@ -323,7 +329,7 @@ export function OwnershipTransferPanel({
             >
               {busy ? 'Registrando…' : 'Confirmar transferencia'}
             </Button>
-          </div>
+          </FormActions>
         </form>
       ) : null}
 
