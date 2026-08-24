@@ -71,7 +71,9 @@ describe('community topology presentation', () => {
   it('does not require towers or buildings for a house community', () => {
     const copy = getCommunityStructureCopy('house_community', 0);
     expect(copy.title).toBe('Casas y unidades del conjunto');
-    expect(copy.metricDetail).toBe('Las casas se administran directamente como unidades del conjunto.');
+    expect(copy.metricDetail).toBe(
+      'Las casas se administran directamente como unidades del conjunto.',
+    );
     expect(copy.emptyTitle).toBe('Casas gestionadas directamente');
     expect(copy.emptyDescription).toContain('no requiere asignarse');
   });
@@ -99,6 +101,8 @@ describe('community topology presentation', () => {
     const withStructure = getCommunityStructureCopy('unspecified', 2);
     expect(empty.metricDetail).toBe('Falta definir la topología del condominio.');
     expect(empty.title).toBe('Unidades por estructura');
-    expect(withStructure.metricDetail).toBe('2 estructuras físicas registradas; falta definir la topología.');
+    expect(withStructure.metricDetail).toBe(
+      '2 estructuras físicas registradas; falta definir la topología.',
+    );
   });
 });
