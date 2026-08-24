@@ -7,7 +7,7 @@ auditados; no sustituye una auditoría completa de toda la aplicación.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Personas | People V3 identity + unit relationship workspaces | compliant | Sí | Sí | Sí | Sí | Desktop/tablet/mobile; KPI 3→2→1, drawers viewport-bound y textos largos protegidos | No encontrado | Completada | Conserva creación atómica, UUIDs y ciclos separados de propiedad, ocupación, comunicaciones, notas e invitaciones. |
 | Pagos | PaymentCaptureDrawer | compliant | Sí | Sí | Sí | Sí | Grid móvil y footer sticky | No encontrado | Completada | El segundo paso conserva el borrador y no incorpora Cancelar. |
-| Cuentas por cobrar | FinancialAdministrationDrawer, ChargeCreationChooser, LateFeeSettingsDrawer | deferred | Sí, parcial | Sí, parcial | No | No | Pendiente de prueba específica | No encontrado | Sólo auditoría | Varios drawers financieros; no se migra para no ampliar lógica de cargos. |
+| Cuentas por cobrar | Receivables drawers + ChargeCreationChooser + LateFeeSettingsDrawer + FinancialIntegrityPanel + OwnershipTransferPanel + RecurringDuesWorkspace | compliant | Sí | Sí | Sí | Sí | Desktop/tablet/mobile; KPI 4→2→1, tabla→cards, drawers a ancho móvil y FormGrid 2/3→1 | Sólo impresión/PDF del estado de cuenta | Completada | Conserva cuotas ordinarias, extraordinarias y puntuales separadas; UUIDs; preview/idempotencia; mora explícita; saldos iniciales; transferencia de propiedad; solvencia y políticas FX sin conversiones ni revalorizaciones implícitas. |
 | Gastos | ExpenseCaptureDrawer | compliant | Sí | Sí | Sí | Sí | 1–3 columnas y footer sticky | No encontrado | Completada | El segundo paso de comprobante conserva el borrador. |
 | Tesorería | Account, Movement, Transfer y Reconciliation drawers | compliant | Sí | Sí | Sí | Sí | Grid móvil y footer sticky | No encontrado | Completada | Sin cambios a sobregiro, monedas, transferencias o conciliación. |
 | Unidades | Units V3 editor + detail workspace + Structure Management topology/building editor | compliant | Sí | Sí | Sí | Sí | Desktop/tablet/mobile; KPI 4→2→1, filas→cards, drawers viewport-bound y textos largos protegidos | No encontrado | Completada | Conserva topología, UUIDs de edificio, archivo no destructivo, historial de propiedad/ocupación y validación de alícuota. |
@@ -22,5 +22,7 @@ auditados; no sustituye una auditoría completa de toda la aplicación.
 - `Field` mantiene su API. La metadata visual `required` / `optional` queda diferida: los inputs
   nativos continúan siendo la fuente de verdad para `required` y no se duplicó semántica.
 - No se introdujeron `window.alert`, `window.confirm` ni `window.prompt` en los módulos migrados.
+- El estado de cuenta de Cuentas por cobrar conserva `window.print()` exclusivamente para imprimir o
+  guardar PDF; no se usa como confirmación de ninguna operación financiera.
 - Los formularios con un borrador de pago o gasto ya creado sólo reciben la acción existente de
   finalizar; el cierre no se normaliza de forma que pueda ocultar ese estado remoto.
