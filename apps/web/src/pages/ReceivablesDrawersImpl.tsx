@@ -655,7 +655,12 @@ export function ReceivablesDrawerHost({
               </Select>
             </Field>
             <Field label="Monto sugerido">
-              <input className="input" inputMode="decimal" name="defaultAmount" placeholder="Opcional" />
+              <input
+                className="input"
+                inputMode="decimal"
+                name="defaultAmount"
+                placeholder="Opcional"
+              />
             </Field>
           </FormGrid>
           <FormActions>
@@ -771,7 +776,10 @@ export function ReceivablesDrawerHost({
         </Field>
         {!openingPreview ? (
           <FormActions>
-            <Button disabled={!openingFile || loading} onClick={() => void previewOpeningBalances()}>
+            <Button
+              disabled={!openingFile || loading}
+              onClick={() => void previewOpeningBalances()}
+            >
               {loading ? 'Revisando…' : 'Previsualizar archivo'}
             </Button>
           </FormActions>
