@@ -6,7 +6,7 @@ const domain = readFileSync(new URL('./lib/community.ts', import.meta.url), 'utf
 
 describe('HAB-293 topology-aware Community presentation', () => {
   it('reads the existing condominium topology and fails soft to unspecified', () => {
-    expect(page).toContain("type CondominiumProfile = { property_topology?: PropertyTopology }");
+    expect(page).toContain('type CondominiumProfile = { property_topology?: PropertyTopology }');
     expect(page).toContain('apiRequest<CondominiumProfile[]>(base, session).catch(() => [])');
     expect(page).toContain("propertyTopology: profile[0]?.property_topology ?? 'unspecified'");
   });
