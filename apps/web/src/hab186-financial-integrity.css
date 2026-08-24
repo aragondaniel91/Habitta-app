@@ -62,12 +62,16 @@
 
 .ownership-transfer-owner-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.5fr) minmax(100px, 0.7fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: end;
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 10px;
+}
+
+.ownership-transfer-owner-fields {
+  min-width: 0;
 }
 
 .ownership-transfer-primary {
@@ -91,11 +95,6 @@
 
 .ownership-transfer-total[data-valid] {
   background: color-mix(in srgb, #0f8a4b 6%, var(--surface));
-}
-
-.ownership-transfer-actions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .ownership-transfer-history,
@@ -158,14 +157,6 @@
   .ownership-transfer-owner-row,
   .financial-integrity-rate-history > div {
     grid-template-columns: 1fr;
-  }
-
-  .ownership-transfer-actions {
-    justify-content: stretch;
-  }
-
-  .ownership-transfer-actions button {
-    width: 100%;
   }
 }
 
