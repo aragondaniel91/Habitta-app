@@ -47,7 +47,7 @@ describe('HAB-289 premium recurring, extraordinary and one-off charge flows', ()
 
   it('preserves one-off unit identity, currency and receivable payload', () => {
     expect(drawers).toContain("unitId: String(values.get('unitId') ?? '')");
-    expect(drawers).toContain("conceptId ? { conceptId } : {}");
+    expect(drawers).toContain('conceptId ? { conceptId } : {}');
     expect(drawers).toContain("description: String(values.get('description') ?? '')");
     expect(drawers).toContain("amount: String(values.get('amount') ?? '')");
     expect(drawers).toContain("currencyCode: String(values.get('currencyCode') ?? '')");
