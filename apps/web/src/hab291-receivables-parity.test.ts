@@ -25,7 +25,7 @@ describe('HAB-291 Receivables responsive and form-parity closure', () => {
     expect(drawers).toContain('<FormGrid>');
     expect(drawers).toContain('<FormActions>');
     expect(drawerCss).not.toContain('receivables-form-grid');
-    expect(drawerCss).not.toContain('min-height: 42px');
+    expect(drawerCss).not.toContain('.receivables-form input,');
     expect(responsiveCss).not.toContain('receivables-preview-actions');
     expect(responsiveCss).not.toContain('receivables-form-grid');
   });
