@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 const pageSource = readFileSync(new URL('./pages/ReceivablesPage.tsx', import.meta.url), 'utf8');
+const drawerSource = readFileSync(
+  new URL('./pages/ReceivablesDrawersImpl.tsx', import.meta.url),
+  'utf8',
+);
 const workspaceSource = readFileSync(
   new URL('./features/receivables/RecurringDuesWorkspace.tsx', import.meta.url),
   'utf8',
@@ -103,5 +107,16 @@ describe('HAB-185 recurring dues workspace contract', () => {
     expect(workspaceSource).toContain('issueDay: Number(planForm.issueDay)');
     expect(workspaceSource).toContain('dueDay: Number(planForm.dueDay)');
     expect(workspaceSource).toContain('Crear el plan no publica deuda');
+  });
+
+  it('keeps a one-off charge bound to the selected unit UUID and existing payload', () => {
+    expect(drawerSource).toContain('className="receivables-form ux-form"');
+    expect(drawerSource).toContain("unitId: String(values.get('unitId') ?? '')");
+    expect(drawerSource).toContain("description: String(values.get('description') ?? '')");
+    expect(drawerSource).toContain("amount: String(values.get('amount') ?? '')");
+    expect(drawerSource).toContain("currencyCode: String(values.get('currencyCode') ?? '')");
+    expect(drawerSource).toContain("issueDate: String(values.get('issueDate') ?? '')");
+    expect(drawerSource).toContain('`/v1/condominiums/${condominiumId}/receivables`');
+    expect(drawerSource).toContain('<option key={unit.id} value={unit.id}>');
   });
 });
