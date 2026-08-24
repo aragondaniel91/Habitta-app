@@ -8,12 +8,7 @@ import { apiRequest } from '../lib/api';
 import '../audit-log.css';
 
 type AuditModule =
-  | 'payments'
-  | 'expenses'
-  | 'treasury'
-  | 'maintenance'
-  | 'governance'
-  | 'assemblies';
+  'payments' | 'expenses' | 'treasury' | 'maintenance' | 'governance' | 'assemblies';
 type AuditSeverity = 'info' | 'warning';
 
 type AuditEvent = {
