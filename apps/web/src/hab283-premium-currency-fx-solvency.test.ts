@@ -12,7 +12,7 @@ describe('HAB-283 premium currency, FX and solvency policy forms', () => {
     expect(count(panel, 'className="financial-integrity-card ux-form"')).toBe(3);
     expect(count(panel, '<FormActions>')).toBe(3);
     expect(panel).toContain('<FormGrid columns={3}>');
-    expect(count(panel, 'className="input"')).toBe(13);
+    expect(count(panel, 'className="input"')).toBe(14);
     expect(panel).not.toContain('financial-integrity-inline');
     expect(css).not.toContain('.financial-integrity-inline');
   });
