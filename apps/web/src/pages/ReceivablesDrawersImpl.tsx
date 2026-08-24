@@ -509,7 +509,13 @@ export function ReceivablesDrawerHost({
           </FormGrid>
           <FormGrid>
             <Field label="Fecha de emisión">
-              <input className="input" defaultValue={todayIso()} name="issueDate" required type="date" />
+              <input
+                className="input"
+                defaultValue={todayIso()}
+                name="issueDate"
+                required
+                type="date"
+              />
             </Field>
             <Field label="Fecha de vencimiento">
               <input className="input" name="dueDate" type="date" />
@@ -534,7 +540,10 @@ export function ReceivablesDrawerHost({
           ciclos futuros ni sustituye Cuotas recurrentes.
         </p>
         {!batchPreview ? (
-          <form className="receivables-form ux-form" onSubmit={(event) => void previewBatch(event)}>
+          <form
+            className="receivables-form ux-form"
+            onSubmit={(event) => void previewBatch(event)}
+          >
             <Field label="Concepto">
               <Select
                 name="conceptId"
@@ -585,7 +594,13 @@ export function ReceivablesDrawerHost({
             </FormGrid>
             <FormGrid>
               <Field label="Emisión">
-                <input className="input" defaultValue={todayIso()} name="issueDate" required type="date" />
+                <input
+                  className="input"
+                  defaultValue={todayIso()}
+                  name="issueDate"
+                  required
+                  type="date"
+                />
               </Field>
               <Field label="Vencimiento">
                 <input className="input" name="dueDate" required type="date" />
