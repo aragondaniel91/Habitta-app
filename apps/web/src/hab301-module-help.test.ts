@@ -70,6 +70,7 @@ describe('HAB-301 contextual help coverage', () => {
     const routesWithoutImport = APP_ROUTES.filter(
       (route) => !['units', 'people', 'fees'].includes(route.key),
     );
-    for (const route of routesWithoutImport) expect(MODULE_HELP[route.key].importKinds).toBeUndefined();
+    for (const route of routesWithoutImport)
+      expect(MODULE_HELP[route.key].importKinds).toBeUndefined();
   });
 });

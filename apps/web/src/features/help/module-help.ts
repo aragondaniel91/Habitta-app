@@ -48,7 +48,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'El Dashboard es un resumen operativo; usa Reportes para análisis y los módulos financieros para el detalle contable.',
       'Habitta no completa cifras faltantes con datos simulados.',
     ],
-    permissions: 'Cada usuario ve únicamente los bloques y acciones permitidos por sus roles y por la autorización del servidor.',
+    permissions:
+      'Cada usuario ve únicamente los bloques y acciones permitidos por sus roles y por la autorización del servidor.',
   },
   units: {
     purpose:
@@ -199,7 +200,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Usa un concepto claro y consistente para que el estado de cuenta sea entendible por residentes y administración.',
       'Reversiones, transferencias de propiedad y ajustes deben conservar el historial en vez de borrar operaciones anteriores.',
     ],
-    permissions: 'Sólo los roles financieros autorizados pueden crear o modificar obligaciones; otros roles ven únicamente la información permitida.',
+    permissions:
+      'Sólo los roles financieros autorizados pueden crear o modificar obligaciones; otros roles ven únicamente la información permitida.',
     importKinds: ['opening_balances'],
   },
   payments: {
@@ -275,7 +277,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Corrige movimientos equivocados con mecanismos de reverso o ajuste, no borrando historia.',
       'Revisa cada moneda por separado; el total disponible nunca debe sumar monedas diferentes.',
     ],
-    permissions: 'Administradores y contadores autorizados gestionan tesorería; la junta puede tener acceso de consulta.',
+    permissions:
+      'Administradores y contadores autorizados gestionan tesorería; la junta puede tener acceso de consulta.',
   },
   expenses: {
     purpose:
@@ -312,7 +315,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Adjunta evidencia suficiente antes de pedir aprobación.',
       'Usa descripciones que permitan entender el gasto meses después sin depender de memoria personal.',
     ],
-    permissions: 'Los permisos separan preparación, aprobación y otras transiciones; el servidor vuelve a validar cada operación.',
+    permissions:
+      'Los permisos separan preparación, aprobación y otras transiciones; el servidor vuelve a validar cada operación.',
   },
   budgets: {
     purpose:
@@ -349,7 +353,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Usa Nota de versión para explicar por qué cambió un presupuesto.',
       'Revisa el Historial de versiones antes de crear otra revisión para evitar cambios duplicados.',
     ],
-    permissions: 'Administradores y contadores pueden preparar presupuestos; la aprobación requiere el rol administrativo autorizado.',
+    permissions:
+      'Administradores y contadores pueden preparar presupuestos; la aprobación requiere el rol administrativo autorizado.',
   },
   reports: {
     purpose:
@@ -384,7 +389,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Compara períodos equivalentes para evitar conclusiones engañosas.',
       'Los egresos no se completan con valores simulados cuando la fuente consolidada no está disponible.',
     ],
-    permissions: 'El acceso a reportes depende del rol; la vista es de lectura y no modifica libros financieros.',
+    permissions:
+      'El acceso a reportes depende del rol; la vista es de lectura y no modifica libros financieros.',
   },
   community: {
     purpose:
@@ -419,7 +425,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Usa Comunidad como tablero de calidad operativa, no como sustituto de Personas o Unidades.',
       'Mantén contactos actualizados para que Anuncios y otros canales sean útiles.',
     ],
-    permissions: 'La información y los accesos rápidos visibles se limitan según el rol del usuario.',
+    permissions:
+      'La información y los accesos rápidos visibles se limitan según el rol del usuario.',
   },
   documents: {
     purpose:
@@ -532,7 +539,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Escribe en la descripción ubicación, momento y síntomas suficientes para que otra persona pueda actuar sin preguntarte de nuevo.',
       'Usa notas internas para coordinación del equipo y comentarios públicos sólo para información apropiada para el solicitante.',
     ],
-    permissions: 'Residentes pueden crear/consultar según su acceso; el equipo autorizado gestiona asignación, estados, notas y categorías.',
+    permissions:
+      'Residentes pueden crear/consultar según su acceso; el equipo autorizado gestiona asignación, estados, notas y categorías.',
   },
   announcements: {
     purpose:
@@ -569,7 +577,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Usa títulos que permitan reconocer el asunto desde una notificación.',
       'Revisa el historial de actividad cuando necesites demostrar cuándo se programó, publicó o archivó un comunicado.',
     ],
-    permissions: 'Sólo roles autorizados crean, programan, publican o archivan; la audiencia y las relaciones activas limitan quién puede ver el contenido.',
+    permissions:
+      'Sólo roles autorizados crean, programan, publican o archivan; la audiencia y las relaciones activas limitan quién puede ver el contenido.',
   },
   team: {
     purpose:
@@ -606,7 +615,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Nunca compartas una misma cuenta entre administradores.',
       'Revisa periódicamente miembros activos, suspendidos e invitaciones pendientes.',
     ],
-    permissions: 'Sólo administradores con la facultad correspondiente pueden gestionar el equipo y los accesos del condominio.',
+    permissions:
+      'Sólo administradores con la facultad correspondiente pueden gestionar el equipo y los accesos del condominio.',
   },
   audit: {
     purpose:
@@ -641,7 +651,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Corrige cualquier problema desde el módulo de origen; Auditoría sólo explica qué ocurrió.',
       'La Metadata segura ya está limitada por el servidor para evitar exposición innecesaria de datos sensibles.',
     ],
-    permissions: 'El workspace está reservado a administradores autorizados y el servidor valida nuevamente el acceso a los eventos.',
+    permissions:
+      'El workspace está reservado a administradores autorizados y el servidor valida nuevamente el acceso a los eventos.',
   },
   settings: {
     purpose:
@@ -677,6 +688,7 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'No actives todos los correos por defecto si no son útiles; configura alertas que realmente requieran atención.',
       'Revisa configuración después de un cambio de administrador, política de cobranza o zona horaria.',
     ],
-    permissions: 'Las reglas globales requieren rol administrativo; cada usuario autorizado puede ajustar sus preferencias personales disponibles.',
+    permissions:
+      'Las reglas globales requieren rol administrativo; cada usuario autorizado puede ajustar sus preferencias personales disponibles.',
   },
 };
