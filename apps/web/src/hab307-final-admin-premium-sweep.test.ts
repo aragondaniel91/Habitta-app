@@ -94,9 +94,7 @@ describe('HAB-307 final administrator premium sweep', () => {
 
   it('retains the premium certification state for the four final module slices', () => {
     for (const label of ['Comunidad', 'Equipo y accesos', 'Auditoría', 'Configuración']) {
-      const row = matrix
-        .split('\n')
-        .find((line) => line.startsWith(`| ${label} |`));
+      const row = matrix.split('\n').find((line) => line.startsWith(`| ${label} |`));
       expect(row, label).toBeDefined();
       expect(row).toContain('| compliant |');
       expect(row).toContain('| Certificada |');
