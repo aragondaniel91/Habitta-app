@@ -138,12 +138,6 @@
   gap: 4px;
 }
 
-.financial-integrity-inline {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
 .financial-integrity-rate-history > div {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
@@ -162,7 +156,6 @@
 
 @media (max-width: 760px) {
   .ownership-transfer-owner-row,
-  .financial-integrity-inline,
   .financial-integrity-rate-history > div {
     grid-template-columns: 1fr;
   }
