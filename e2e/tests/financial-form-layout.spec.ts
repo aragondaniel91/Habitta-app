@@ -178,7 +178,9 @@ test.describe('Formularios administrativos autenticados', () => {
 
     const controls = dialog.locator('.input, .select, textarea');
     for (let index = 0; index < (await controls.count()); index += 1) {
-      expect(await controls.nth(index).evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(47);
+      expect(
+        await controls.nth(index).evaluate((element) => element.getBoundingClientRect().height),
+      ).toBeGreaterThanOrEqual(47);
     }
     await assertNoHorizontalOverflow(page, dialog);
 
@@ -187,7 +189,9 @@ test.describe('Formularios administrativos autenticados', () => {
     await expect(opener).toBeFocused();
   });
 
-  test('Receivables baja KPI y herramientas a una columna en teléfono estrecho', async ({ page }) => {
+  test('Receivables baja KPI y herramientas a una columna en teléfono estrecho', async ({
+    page,
+  }) => {
     await signInAsAdministrator(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/app/receivables');
@@ -202,7 +206,9 @@ test.describe('Formularios administrativos autenticados', () => {
       ),
     ).toBe(1);
     expect(
-      await tools.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length),
+      await tools.evaluate(
+        (element) => getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      ),
     ).toBe(1);
     await assertNoHorizontalOverflow(page);
   });
