@@ -8,8 +8,7 @@
 .recurring-dues-heading,
 .recurring-dues-section__title,
 .recurring-dues-run__summary,
-.recurring-dues-run__actions,
-.recurring-dues-drawer-footer {
+.recurring-dues-run__actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -264,16 +263,6 @@
   gap: 16px;
 }
 
-.recurring-dues-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.recurring-dues-form-grid--three {
-  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(100px, 0.8fr));
-}
-
 .recurring-dues-form .input,
 .recurring-dues-form .select {
   width: 100%;
@@ -325,16 +314,6 @@
   line-height: 1.5;
 }
 
-.recurring-dues-drawer-footer {
-  position: sticky;
-  bottom: -20px;
-  margin: 4px -20px -20px;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--surface);
-  padding: 14px 20px;
-  justify-content: flex-end;
-}
-
 @media (max-width: 900px) {
   .recurring-dues-plan-grid {
     grid-template-columns: 1fr;
@@ -358,9 +337,7 @@
     justify-content: flex-start;
   }
 
-  .recurring-dues-metrics,
-  .recurring-dues-form-grid,
-  .recurring-dues-form-grid--three {
+  .recurring-dues-metrics {
     grid-template-columns: 1fr;
   }
 

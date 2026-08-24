@@ -2,10 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 const pageSource = readFileSync(new URL('./pages/ReceivablesPage.tsx', import.meta.url), 'utf8');
+const drawerSource = readFileSync(
+  new URL('./pages/ReceivablesDrawersImpl.tsx', import.meta.url),
+  'utf8',
+);
 const workspaceSource = readFileSync(
   new URL('./features/receivables/RecurringDuesWorkspace.tsx', import.meta.url),
   'utf8',
 );
+const workspaceCss = readFileSync(new URL('./recurring-dues.css', import.meta.url), 'utf8');
 const chooserSource = readFileSync(
   new URL('./features/receivables/ChargeCreationChooser.tsx', import.meta.url),
   'utf8',
@@ -80,5 +85,38 @@ describe('HAB-185 recurring dues workspace contract', () => {
     expect(rollForwardSource).toContain("new.status <> 'posted'");
     expect(rollForwardSource).toContain("'scheduled'");
     expect(rollForwardSource).not.toContain('post_charge_batch');
+  });
+
+  it('uses the shared premium form contract for scope and plan drawers', () => {
+    expect(workspaceSource).toContain('className="recurring-dues-form ux-form"');
+    expect(workspaceSource).toContain('<FormGrid>');
+    expect(workspaceSource).toContain('<FormGrid columns={3}>');
+    expect(workspaceSource).toContain('<FormActions sticky>');
+    expect(workspaceCss).not.toContain('recurring-dues-form-grid');
+    expect(workspaceCss).not.toContain('recurring-dues-drawer-footer');
+  });
+
+  it('preserves recurring plan financial payload fields', () => {
+    expect(workspaceSource).toContain('conceptId: planForm.conceptId');
+    expect(workspaceSource).toContain('financialScopeId: planForm.financialScopeId');
+    expect(workspaceSource).toContain('distribution: planForm.distribution');
+    expect(workspaceSource).toContain('amount: planForm.amount');
+    expect(workspaceSource).toContain('currencyCode: planForm.currencyCode.toUpperCase()');
+    expect(workspaceSource).toContain('startsOn: planForm.startsOn');
+    expect(workspaceSource).toContain('endsOn: planForm.endsOn');
+    expect(workspaceSource).toContain('issueDay: Number(planForm.issueDay)');
+    expect(workspaceSource).toContain('dueDay: Number(planForm.dueDay)');
+    expect(workspaceSource).toContain('Crear el plan no publica deuda');
+  });
+
+  it('keeps a one-off charge bound to the selected unit UUID and existing payload', () => {
+    expect(drawerSource).toContain('className="receivables-form ux-form"');
+    expect(drawerSource).toContain("unitId: String(values.get('unitId') ?? '')");
+    expect(drawerSource).toContain("description: String(values.get('description') ?? '')");
+    expect(drawerSource).toContain("amount: String(values.get('amount') ?? '')");
+    expect(drawerSource).toContain("currencyCode: String(values.get('currencyCode') ?? '')");
+    expect(drawerSource).toContain("issueDate: String(values.get('issueDate') ?? '')");
+    expect(drawerSource).toContain('`/v1/condominiums/${condominiumId}/receivables`');
+    expect(drawerSource).toContain('<option key={unit.id} value={unit.id}>');
   });
 });
