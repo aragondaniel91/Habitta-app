@@ -24,16 +24,18 @@ describe('HAB-293 topology-aware Community presentation', () => {
     expect(page).not.toContain('Todavía no hay torres');
   });
 
-  it('keeps all topology copy in the Community domain helper', () => {
+  it('keeps topology copy in the Community domain helper with a neutral unspecified fallback', () => {
     for (const topology of [
       'house_community',
       'single_building',
       'multi_building_complex',
       'mixed',
-      'unspecified',
     ]) {
       expect(domain).toContain(`topology === '${topology}'`);
     }
+    expect(domain).toContain("metricDetail: 'Falta definir la topología del condominio.'");
+    expect(domain).toContain("title: 'Unidades por estructura'");
+    expect(domain).toContain("emptyTitle: 'Topología pendiente'");
     expect(page).toContain('getCommunityStructureCopy(data.propertyTopology, data.buildings.length)');
   });
 
