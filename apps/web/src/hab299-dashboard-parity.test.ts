@@ -1,9 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const pageSource = readFileSync(new URL('./pages/AdministrativeDashboard.tsx', import.meta.url), 'utf8');
-const cssSource = readFileSync(new URL('./dashboard.css', import.meta.url), 'utf8');
-const mobileCssSource = readFileSync(new URL('./dashboard-mobile.css', import.meta.url), 'utf8');
+const pageUrl = new URL('./pages/AdministrativeDashboard.tsx', import.meta.url);
+const cssUrl = new URL('./dashboard.css', import.meta.url);
+const mobileCssUrl = new URL('./dashboard-mobile.css', import.meta.url);
+const pageSource = readFileSync(pageUrl, 'utf8');
+const cssSource = readFileSync(cssUrl, 'utf8');
+const mobileCssSource = readFileSync(mobileCssUrl, 'utf8');
+const twoColumnGrid = 'grid-template-columns: repeat(2, minmax(0, 1fr));';
 
 describe('HAB-299 Administrative Dashboard premium parity', () => {
   it('keeps the shared PageHeader and intentional live-data status', () => {
@@ -22,7 +26,7 @@ describe('HAB-299 Administrative Dashboard premium parity', () => {
     expect(pageSource).not.toContain("'torres'");
     expect(pageSource).toContain('unidad registrada');
     expect(pageSource).toContain('Personas activas');
-    expect(cssSource).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
+    expect(cssSource).toContain(twoColumnGrid);
   });
 
   it('preserves financial sources and independent-currency behavior', () => {
