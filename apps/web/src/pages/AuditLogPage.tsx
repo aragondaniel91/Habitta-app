@@ -150,6 +150,10 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
     setError('');
   };
 
+  const useActorAsFilter = (actorUserId: string) => {
+    setFilters((current) => ({ ...current, actor: actorUserId }));
+  };
+
   return (
     <div className="audit-page">
       <PageHeader
@@ -161,7 +165,7 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
       {error ? <div className="audit-inline-alert">{error}</div> : null}
 
       <Surface className="audit-filter-panel">
-        <form className="audit-filters" onSubmit={applyFilters}>
+        <form className="audit-filters ux-form" onSubmit={applyFilters}>
           <Field label="Módulo">
             <Select
               onChange={(event) =>
@@ -268,75 +272,141 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
             ))}
           </div>
         ) : events.length ? (
-          <div className="audit-table-scroll">
-            <table className="audit-table">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Módulo</th>
-                  <th>Evento</th>
-                  <th>Entidad</th>
-                  <th>Actor</th>
-                  <th>Severidad</th>
-                  <th>Metadata segura</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((auditEvent) => (
-                  <tr key={auditEvent.event_id}>
-                    <td>
+          <>
+            <div className="audit-table-scroll">
+              <table className="audit-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Módulo</th>
+                    <th>Evento</th>
+                    <th>Entidad</th>
+                    <th>Actor</th>
+                    <th>Severidad</th>
+                    <th>Metadata segura</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((auditEvent) => (
+                    <tr key={auditEvent.event_id}>
+                      <td>
+                        <time dateTime={auditEvent.occurred_at}>
+                          {formatDate(auditEvent.occurred_at)}
+                        </time>
+                      </td>
+                      <td>{moduleLabels[auditEvent.module]}</td>
+                      <td>
+                        <strong>{auditEvent.summary}</strong>
+                        <small>{humanize(auditEvent.action)}</small>
+                      </td>
+                      <td>
+                        <strong>{humanize(auditEvent.entity_type)}</strong>
+                        <code title={auditEvent.entity_id}>{shortId(auditEvent.entity_id)}</code>
+                      </td>
+                      <td>
+                        {auditEvent.actor_user_id ? (
+                          <button
+                            className="audit-id-button"
+                            onClick={() => useActorAsFilter(auditEvent.actor_user_id ?? '')}
+                            title="Usar este actor como filtro"
+                            type="button"
+                          >
+                            {shortId(auditEvent.actor_user_id)}
+                          </button>
+                        ) : (
+                          <span>Sistema</span>
+                        )}
+                      </td>
+                      <td>
+                        <Badge tone={auditEvent.severity === 'warning' ? 'warning' : 'info'}>
+                          {auditEvent.severity === 'warning' ? 'Advertencia' : 'Info'}
+                        </Badge>
+                      </td>
+                      <td>
+                        {Object.keys(auditEvent.metadata).length ? (
+                          <details className="audit-metadata">
+                            <summary>Ver</summary>
+                            <pre>{JSON.stringify(auditEvent.metadata, null, 2)}</pre>
+                          </details>
+                        ) : (
+                          <span className="audit-muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div aria-label="Eventos de auditoría" className="audit-mobile-list">
+              {events.map((auditEvent) => (
+                <article className="audit-mobile-card" key={auditEvent.event_id}>
+                  <header>
+                    <div>
+                      <span>{moduleLabels[auditEvent.module]}</span>
                       <time dateTime={auditEvent.occurred_at}>
                         {formatDate(auditEvent.occurred_at)}
                       </time>
-                    </td>
-                    <td>{moduleLabels[auditEvent.module]}</td>
-                    <td>
-                      <strong>{auditEvent.summary}</strong>
-                      <small>{humanize(auditEvent.action)}</small>
-                    </td>
-                    <td>
-                      <strong>{humanize(auditEvent.entity_type)}</strong>
-                      <code title={auditEvent.entity_id}>{shortId(auditEvent.entity_id)}</code>
-                    </td>
-                    <td>
-                      {auditEvent.actor_user_id ? (
-                        <button
-                          className="audit-id-button"
-                          onClick={() =>
-                            setFilters((current) => ({
-                              ...current,
-                              actor: auditEvent.actor_user_id ?? '',
-                            }))
-                          }
-                          title="Usar este actor como filtro"
-                          type="button"
-                        >
-                          {shortId(auditEvent.actor_user_id)}
-                        </button>
-                      ) : (
-                        <span>Sistema</span>
-                      )}
-                    </td>
-                    <td>
-                      <Badge tone={auditEvent.severity === 'warning' ? 'warning' : 'info'}>
-                        {auditEvent.severity === 'warning' ? 'Advertencia' : 'Info'}
-                      </Badge>
-                    </td>
-                    <td>
-                      {Object.keys(auditEvent.metadata).length ? (
-                        <details className="audit-metadata">
-                          <summary>Ver</summary>
-                          <pre>{JSON.stringify(auditEvent.metadata, null, 2)}</pre>
-                        </details>
-                      ) : (
-                        <span className="audit-muted">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                    <Badge tone={auditEvent.severity === 'warning' ? 'warning' : 'info'}>
+                      {auditEvent.severity === 'warning' ? 'Advertencia' : 'Info'}
+                    </Badge>
+                  </header>
+
+                  <div className="audit-mobile-card__event">
+                    <strong>{auditEvent.summary}</strong>
+                    <span>{humanize(auditEvent.action)}</span>
+                  </div>
+
+                  <dl>
+                    <div>
+                      <dt>Entidad</dt>
+                      <dd>
+                        <strong>{humanize(auditEvent.entity_type)}</strong>
+                        <code title={auditEvent.entity_id}>{shortId(auditEvent.entity_id)}</code>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Actor</dt>
+                      <dd>
+                        {auditEvent.actor_user_id ? (
+                          <button
+                            className="audit-id-button audit-id-button--mobile"
+                            onClick={() => useActorAsFilter(auditEvent.actor_user_id ?? '')}
+                            title="Usar este actor como filtro"
+                            type="button"
+                          >
+                            {shortId(auditEvent.actor_user_id)}
+                          </button>
+                        ) : (
+                          <span>Sistema</span>
+                        )}
+                      </dd>
+                    </div>
+                    {auditEvent.correlation_id ? (
+                      <div>
+                        <dt>Correlación</dt>
+                        <dd>
+                          <code title={auditEvent.correlation_id}>
+                            {shortId(auditEvent.correlation_id)}
+                          </code>
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+
+                  {Object.keys(auditEvent.metadata).length ? (
+                    <details className="audit-metadata audit-metadata--mobile">
+                      <summary>Ver Metadata segura</summary>
+                      <pre>{JSON.stringify(auditEvent.metadata, null, 2)}</pre>
+                    </details>
+                  ) : (
+                    <span className="audit-muted">Sin metadata adicional.</span>
+                  )}
+                </article>
+              ))}
+            </div>
+          </>
         ) : (
           <EmptyState
             description="No hay eventos que coincidan con los filtros aplicados."
