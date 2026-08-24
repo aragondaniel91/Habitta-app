@@ -157,7 +157,7 @@ test.describe('Formularios administrativos autenticados', () => {
     await signInAsAdministrator(page);
     const { button: opener, dialog } = await openAtMobileSize(
       page,
-      '/app/receivables',
+      '/app/fees',
       'Nuevo concepto',
     );
 
@@ -194,7 +194,7 @@ test.describe('Formularios administrativos autenticados', () => {
   }) => {
     await signInAsAdministrator(page);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/app/receivables');
+    await page.goto('/app/fees');
 
     const metrics = page.locator('.receivables-metrics-grid');
     const tools = page.locator('.receivables-tools-menu');
