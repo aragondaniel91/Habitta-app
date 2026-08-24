@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
+import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Button, Field } from '../../components/ui';
 import {
   applyLateFees,
@@ -119,7 +120,7 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
       {loading || !form ? (
         <p className="late-fees-drawer__loading">Cargando política...</p>
       ) : (
-        <>
+        <div className="late-fees-drawer__content ux-form">
           <p className="late-fees-drawer__intro">
             Cada condominio define su propia política de mora. Nada cambia en los saldos hasta que
             la actives y generes los recargos explícitamente.
@@ -149,9 +150,10 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
             </span>
           </label>
 
-          <div className="late-fees-drawer__grid">
+          <FormGrid>
             <Field hint="Porcentaje sobre el saldo vencido de cada cuota." label="Tasa (%)">
               <input
+                className="input"
                 disabled={!canManage}
                 max={100}
                 min={0}
@@ -166,6 +168,7 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
               label="Período de gracia (días)"
             >
               <input
+                className="input"
                 disabled={!canManage}
                 max={365}
                 min={0}
@@ -180,6 +183,7 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
               label="Tope (% del cargo original)"
             >
               <input
+                className="input"
                 disabled={!canManage}
                 max={500}
                 min={0}
@@ -192,6 +196,7 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
             </Field>
             <Field hint="Moneda de referencia de este condominio." label="Moneda local">
               <input
+                className="input"
                 disabled={!canManage}
                 maxLength={3}
                 onChange={(event) =>
@@ -200,7 +205,7 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
                 value={form.localCurrencyCode}
               />
             </Field>
-          </div>
+          </FormGrid>
 
           <label className="late-fees-drawer__toggle">
             <input
@@ -221,7 +226,7 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
           </label>
 
           {canManage ? (
-            <div className="late-fees-drawer__actions">
+            <FormActions>
               <Button disabled={saving} onClick={() => void save()} type="button">
                 {saving ? 'Guardando...' : 'Guardar política'}
               </Button>
@@ -233,9 +238,9 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
               >
                 {applying ? 'Generando...' : 'Generar recargos ahora'}
               </Button>
-            </div>
+            </FormActions>
           ) : null}
-        </>
+        </div>
       )}
     </Drawer>
   );

@@ -56,11 +56,12 @@ test.describe('Formularios administrativos autenticados', () => {
     await signInAsAdministrator(page);
     const { button: opener, dialog } = await openAtMobileSize(page, '/app/people', 'Nueva persona');
 
-    await expect(dialog).toHaveAccessibleName('Agregar persona');
-    const firstInput = dialog.getByLabel('Nombre', { exact: true });
+    await expect(dialog).toHaveAccessibleName('Nueva persona');
+    const firstInput = dialog.getByRole('textbox', { name: 'Nombre', exact: true });
     await expect(firstInput).toBeFocused();
     await expect(dialog.locator('.form-section')).toHaveCount(2);
-    await expect(dialog.locator('.form-grid')).toHaveCount(2);
+    await expect(dialog.locator('.form-grid')).toHaveCount(1);
+    await expect(dialog.getByLabel('Relación')).toBeVisible();
     await expect(dialog.locator('.form-actions')).toBeVisible();
 
     const cancel = dialog.getByRole('button', { name: 'Cancelar' });
