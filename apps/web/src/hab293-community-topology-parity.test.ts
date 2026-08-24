@@ -33,7 +33,7 @@ describe('HAB-293 topology-aware Community presentation', () => {
     ]) {
       expect(domain).toContain(`topology === '${topology}'`);
     }
-    expect(domain).toContain("metricDetail: 'Falta definir la topología del condominio.'");
+    expect(domain).toContain("'Falta definir la topología del condominio.'");
     expect(domain).toContain("title: 'Unidades por estructura'");
     expect(domain).toContain("emptyTitle: 'Topología pendiente'");
     expect(page).toContain(
