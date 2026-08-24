@@ -31,7 +31,6 @@ import {
   sortReceivableSummaries,
 } from '../lib/dashboard';
 import type {
-  DashboardBuilding,
   DashboardPayment,
   DashboardPerson,
   DashboardReceivable,
@@ -50,7 +49,6 @@ const PORTFOLIO_COLORS = ['#28a745', '#78aee8', '#3978bd', '#e39b45', '#c94d58']
 
 type DashboardData = {
   units: DashboardUnit[];
-  buildings: DashboardBuilding[];
   people: DashboardPerson[];
   summaries: ReceivableSummary[];
   aging: ReceivableAging[];
@@ -335,7 +333,6 @@ export function AdministrativeDashboard({
 
       const [
         unitsResult,
-        buildingsResult,
         peopleResult,
         summariesResult,
         agingResult,
@@ -346,11 +343,6 @@ export function AdministrativeDashboard({
         settleDashboardSource(
           'unidades',
           apiRequest<DashboardUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-          [],
-        ),
-        settleDashboardSource(
-          'torres',
-          apiRequest<DashboardBuilding[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
           [],
         ),
         settleDashboardSource(
@@ -395,7 +387,6 @@ export function AdministrativeDashboard({
 
       setData({
         units: unitsResult.value,
-        buildings: buildingsResult.value,
         people: peopleResult.value,
         summaries: summariesResult.value,
         aging: agingResult.value,
@@ -407,7 +398,6 @@ export function AdministrativeDashboard({
       setError(
         buildDashboardSourceWarning([
           unitsResult,
-          buildingsResult,
           peopleResult,
           summariesResult,
           agingResult,
@@ -509,7 +499,7 @@ export function AdministrativeDashboard({
       <PageHeader
         actions={
           <>
-            <span className="dashboard-overview-heading__badge">
+            <span className="dashboard-header-status">
               <CheckCircleIcon size={17} />
               Datos reales del condominio
             </span>
@@ -547,7 +537,7 @@ export function AdministrativeDashboard({
           <CurrencyValues emptyLabel="Sin cobros" rows={collectionRows} />
         </MetricCard>
         <MetricCard
-          footer={`${data.buildings.length} ${data.buildings.length === 1 ? 'torre registrada' : 'torres registradas'}.`}
+          footer={`${data.units.length} ${data.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total.`}
           icon={(props) => <UnitsIcon {...props} />}
           label="Unidades activas"
           tone="navy"
@@ -750,11 +740,6 @@ export function AdministrativeDashboard({
               <span>Personas activas</span>
               <strong>{activePeople}</strong>
             </button>
-            <div>
-              <CommunityIcon size={21} />
-              <span>Torres</span>
-              <strong>{data.buildings.length}</strong>
-            </div>
           </div>
         </Surface>
 

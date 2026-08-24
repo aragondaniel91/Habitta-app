@@ -3,24 +3,6 @@
     gap: 1rem;
   }
 
-  .dashboard-overview-heading {
-    min-height: auto;
-    align-items: center;
-    flex-direction: row;
-    gap: 1.25rem;
-  }
-
-  .dashboard-overview-heading > div:first-child {
-    max-width: 56%;
-  }
-
-  .dashboard-overview-heading__actions {
-    width: auto;
-    margin-left: auto;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-  }
-
   .dashboard-metric-card {
     min-height: 154px;
   }
