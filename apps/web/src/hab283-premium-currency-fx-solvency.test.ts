@@ -18,7 +18,7 @@ describe('HAB-283 premium currency, FX and solvency policy forms', () => {
   });
 
   it('preserves currency policy normalization and payload semantics', () => {
-    expect(panel).toContain(".map((value) => value.trim().toUpperCase())");
+    expect(panel).toContain('.map((value) => value.trim().toUpperCase())');
     expect(panel).toContain('accountingCurrencyCode: accountingCurrency.toUpperCase()');
     expect(panel).toContain('acceptedCurrencyCodes: normalizedAccepted');
     expect(panel).toContain('conversionMode,');
@@ -53,7 +53,9 @@ describe('HAB-283 premium currency, FX and solvency policy forms', () => {
     expect(panel).toContain('rateAt,');
     expect(panel).toContain('source: source.trim()');
     expect(panel).toContain('sourceReference: sourceReference.trim() || undefined');
-    expect(panel).toContain("disabled={busy === 'rate' || conversionMode !== 'approved_rates_only'}");
+    expect(panel).toContain(
+      "disabled={busy === 'rate' || conversionMode !== 'approved_rates_only'}",
+    );
     expect(panel).toContain(
       'Tasa aprobada y congelada. Las transacciones futuras pueden referenciar este snapshot; las históricas no cambian.',
     );
