@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
 
 const appSource = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 const navigationSource = readFileSync(new URL('./navigation.ts', import.meta.url), 'utf8');
@@ -72,5 +72,52 @@ describe('HAB-193 Community Documents workspace contract', () => {
     expect(pageSource).toContain('El historial es inmutable');
     expect(cssSource).toContain('@media (max-width: 820px)');
     expect(cssSource).toContain('@media (max-width: 580px)');
+  });
+});
+
+describe('HAB-295 Community Documents form parity', () => {
+  it('uses shared form primitives', () => {
+    expect(pageSource).toContain('../components/FormLayout');
+    expect(pageSource).toContain('FormActions');
+    expect(pageSource).toContain('FormGrid');
+    expect(pageSource.match(/className="documents-form ux-form"/g)).toHaveLength(3);
+    expect(pageSource).toContain('className="documents-version-form ux-form"');
+    expect(pageSource).toContain('className="documents-link-form ux-form"');
+    expect(pageSource).toContain('<FormGrid columns={1}>');
+    expect(pageSource).toContain('<FormActions>');
+  });
+
+  it('removes local composer layout contracts', () => {
+    expect(pageSource).toContain('className="input"');
+    expect(pageSource).not.toContain('documents-form-grid');
+    expect(pageSource).not.toContain('documents-form-actions');
+    expect(cssSource).not.toContain('.documents-form-grid');
+    expect(cssSource).not.toContain('.documents-form-actions');
+  });
+
+  it('preserves document lifecycle behavior', () => {
+    expect(pageSource).toContain('accept={COMMUNITY_DOCUMENT_ACCEPT}');
+    expect(pageSource).toContain('uploadCommunityDocumentVersion(');
+    expect(pageSource).toContain('category.default_audience');
+    expect(pageSource).toContain('category.default_retention_days');
+    expect(pageSource).toContain('retentionDays: documentRetention');
+    expect(pageSource).toContain('defaultRetentionDays: categoryRetention');
+  });
+
+  it('keeps UUID linking explicit and unchanged', () => {
+    expect(pageSource).toContain('label="Tipo de registro"');
+    expect(pageSource).toContain('label="UUID del registro"');
+    expect(pageSource).toContain('identificador UUID');
+    expect(pageSource).toContain('uuidPattern.test(linkTargetId.trim())');
+    expect(pageSource).toContain('targetType: linkType');
+    expect(pageSource).toContain('targetId: linkTargetId.trim()');
+  });
+
+  it('preserves archive and download audit', () => {
+    expect(pageSource).toContain('<ConfirmDialog');
+    expect(pageSource).toContain('archiveCommunityDocument(');
+    expect(pageSource).toContain('downloadCommunityDocumentVersion(');
+    expect(pageSource).toContain('Descarga autorizada y registrada en la auditoría.');
+    expect(pageSource).toContain('versiones, archivos, vínculos y auditoría');
   });
 });
