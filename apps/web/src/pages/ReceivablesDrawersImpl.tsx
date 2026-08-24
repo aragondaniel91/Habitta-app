@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { Drawer as SharedDrawer } from '../components/Drawer';
 import { CheckCircleIcon, FeesIcon, ReportsIcon, UnitsIcon } from '../components/icons';
 import { FormActions, FormGrid } from '../components/FormLayout';
 import { Badge, Button, EmptyState, Field, Select, Skeleton } from '../components/ui';
@@ -82,26 +83,9 @@ function Drawer({
   children: ReactNode;
 }) {
   return (
-    <div className="receivables-drawer-layer">
-      <button
-        aria-label="Cerrar panel"
-        className="receivables-drawer-backdrop"
-        onClick={onClose}
-        type="button"
-      />
-      <aside aria-label={title} aria-modal="true" className="receivables-drawer" role="dialog">
-        <header className="receivables-drawer__header">
-          <div>
-            <span>{eyebrow}</span>
-            <h2>{title}</h2>
-          </div>
-          <button aria-label="Cerrar" onClick={onClose} type="button">
-            ×
-          </button>
-        </header>
-        <div className="receivables-drawer__content">{children}</div>
-      </aside>
-    </div>
+    <SharedDrawer eyebrow={eyebrow} onClose={onClose} prefix="receivables" title={title}>
+      {children}
+    </SharedDrawer>
   );
 }
 
@@ -155,15 +139,6 @@ export function ReceivablesDrawerHost({
     setOpeningFile(null);
     setOpeningPreview(null);
   }, [mode]);
-
-  useEffect(() => {
-    if (!mode) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [mode, onClose]);
 
   const activeUnits = units.filter((unit) => unit.status !== 'inactive');
   const activeConcepts = concepts.filter((concept) => concept.is_active !== false);
@@ -417,7 +392,7 @@ export function ReceivablesDrawerHost({
                 Reversar
               </Button>
             ) : (
-              <div className="receivables-reverse-form">
+              <div className="receivables-reverse-form ux-form">
                 <Field label="Motivo del reverso">
                   <textarea
                     minLength={3}
@@ -427,19 +402,18 @@ export function ReceivablesDrawerHost({
                     value={reverseReason}
                   />
                 </Field>
-                <div>
-                  <Button onClick={() => setShowReverseForm(false)} size="sm" variant="secondary">
+                <FormActions>
+                  <Button onClick={() => setShowReverseForm(false)} variant="secondary">
                     Cancelar
                   </Button>
                   <Button
                     disabled={loading || reverseReason.trim().length < 3}
                     onClick={reverseReceivable}
-                    size="sm"
                     variant="danger"
                   >
                     {loading ? 'Reversando…' : 'Confirmar reverso'}
                   </Button>
-                </div>
+                </FormActions>
               </div>
             )}
           </section>
@@ -651,10 +625,10 @@ export function ReceivablesDrawerHost({
           Los conceptos ayudan a clasificar cuotas y preparar lotes recurrentes de forma
           consistente.
         </p>
-        <form className="receivables-form" onSubmit={submitConcept}>
-          <div className="receivables-form-grid">
+        <form className="receivables-form ux-form" onSubmit={submitConcept}>
+          <FormGrid>
             <Field label="Código">
-              <input maxLength={32} name="code" placeholder="MANT" required />
+              <input className="input" maxLength={32} name="code" placeholder="MANT" required />
             </Field>
             <Field label="Categoría">
               <Select defaultValue="regular_dues" name="category">
@@ -665,14 +639,14 @@ export function ReceivablesDrawerHost({
                 ))}
               </Select>
             </Field>
-          </div>
+          </FormGrid>
           <Field label="Nombre">
-            <input name="name" placeholder="Cuota de mantenimiento" required />
+            <input className="input" name="name" placeholder="Cuota de mantenimiento" required />
           </Field>
           <Field label="Descripción">
             <textarea name="description" placeholder="Uso interno y alcance del concepto" />
           </Field>
-          <div className="receivables-form-grid">
+          <FormGrid>
             <Field label="Moneda sugerida">
               <Select defaultValue="" name="defaultCurrencyCode">
                 <option value="">Sin valor predeterminado</option>
@@ -681,12 +655,14 @@ export function ReceivablesDrawerHost({
               </Select>
             </Field>
             <Field label="Monto sugerido">
-              <input inputMode="decimal" name="defaultAmount" placeholder="Opcional" />
+              <input className="input" inputMode="decimal" name="defaultAmount" placeholder="Opcional" />
             </Field>
-          </div>
-          <Button disabled={loading} type="submit">
-            {loading ? 'Guardando…' : 'Crear concepto'}
-          </Button>
+          </FormGrid>
+          <FormActions>
+            <Button disabled={loading} type="submit">
+              {loading ? 'Guardando…' : 'Crear concepto'}
+            </Button>
+          </FormActions>
         </form>
       </Drawer>
     );
@@ -697,72 +673,73 @@ export function ReceivablesDrawerHost({
     return (
       <Drawer eyebrow="Consulta" onClose={onClose} title="Estado de cuenta por unidad">
         <Feedback message={message} />
-        <Field label="Unidad">
-          <Select
-            onChange={(event) => void loadStatement(event.target.value)}
-            value={statementUnitId}
-          >
-            <option value="">Selecciona una unidad</option>
-            {units.map((unit) => (
-              <option key={unit.id} value={unit.id}>
-                {unit.code}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        {statementLoading ? <Skeleton className="receivables-statement-skeleton" /> : null}
-        {!statementLoading && statementUnitId && !statement.length ? (
-          <EmptyState
-            description="Esta unidad todavía no tiene movimientos financieros."
-            icon={<ReportsIcon size={26} />}
-            title="Estado de cuenta vacío"
-          />
-        ) : null}
-        {statement.length ? (
-          <div className="receivables-statement-actions">
-            <Button
-              onClick={() =>
-                downloadCsv(
-                  csvFileName('estado-de-cuenta', statementUnitCode),
-                  createStatementCsv(statement, statementUnitCode),
-                )
-              }
-              size="sm"
-              variant="secondary"
+        <div className="receivables-statement-workspace ux-form">
+          <Field label="Unidad">
+            <Select
+              onChange={(event) => void loadStatement(event.target.value)}
+              value={statementUnitId}
             >
-              Descargar CSV
-            </Button>
-            {/* The browser's print dialog saves to PDF, so a statement reaches an owner without
-                pulling a PDF library into the Worker. */}
-            <Button onClick={() => window.print()} size="sm" variant="secondary">
-              Imprimir o guardar PDF
-            </Button>
-          </div>
-        ) : null}
-        {statement.length ? (
-          <div className="receivables-statement-list">
-            {statement.map((row, index) => (
-              <article key={`${row.effective_date}-${row.entry_type}-${index}`}>
-                <div>
-                  <strong>{row.description}</strong>
-                  <span>
-                    {formatDashboardDate(row.effective_date)} · {row.entry_type}
-                  </span>
-                </div>
-                <div>
-                  <small>
-                    {row.debit
-                      ? `Débito ${formatDashboardAmount(row.debit, row.currency_code)}`
-                      : row.credit
-                        ? `Crédito ${formatDashboardAmount(row.credit, row.currency_code)}`
-                        : 'Sin movimiento'}
-                  </small>
-                  <b>{formatDashboardAmount(row.running_balance, row.currency_code)}</b>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
+              <option value="">Selecciona una unidad</option>
+              {units.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.code}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {statementLoading ? <Skeleton className="receivables-statement-skeleton" /> : null}
+          {!statementLoading && statementUnitId && !statement.length ? (
+            <EmptyState
+              description="Esta unidad todavía no tiene movimientos financieros."
+              icon={<ReportsIcon size={26} />}
+              title="Estado de cuenta vacío"
+            />
+          ) : null}
+          {statement.length ? (
+            <FormActions align="start">
+              <Button
+                onClick={() =>
+                  downloadCsv(
+                    csvFileName('estado-de-cuenta', statementUnitCode),
+                    createStatementCsv(statement, statementUnitCode),
+                  )
+                }
+                variant="secondary"
+              >
+                Descargar CSV
+              </Button>
+              {/* The browser's print dialog saves to PDF, so a statement reaches an owner without
+                  pulling a PDF library into the Worker. */}
+              <Button onClick={() => window.print()} variant="secondary">
+                Imprimir o guardar PDF
+              </Button>
+            </FormActions>
+          ) : null}
+          {statement.length ? (
+            <div className="receivables-statement-list">
+              {statement.map((row, index) => (
+                <article key={`${row.effective_date}-${row.entry_type}-${index}`}>
+                  <div>
+                    <strong>{row.description}</strong>
+                    <span>
+                      {formatDashboardDate(row.effective_date)} · {row.entry_type}
+                    </span>
+                  </div>
+                  <div>
+                    <small>
+                      {row.debit
+                        ? `Débito ${formatDashboardAmount(row.debit, row.currency_code)}`
+                        : row.credit
+                          ? `Crédito ${formatDashboardAmount(row.credit, row.currency_code)}`
+                          : 'Sin movimiento'}
+                    </small>
+                    <b>{formatDashboardAmount(row.running_balance, row.currency_code)}</b>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </Drawer>
     );
   }
@@ -770,69 +747,76 @@ export function ReceivablesDrawerHost({
   return (
     <Drawer eyebrow="Migración financiera" onClose={onClose} title="Importar saldos iniciales">
       <Feedback message={message} />
-      <div className="receivables-upload-guide">
-        <ReportsIcon size={24} />
-        <div>
-          <strong>Archivo CSV controlado</strong>
-          <p>
-            Usa unit_code, balance_type, amount, currency_code, effective_date, description. Si el
-            código se repite entre edificios, usa building_name antes de unit_code.
-          </p>
+      <div className="receivables-opening-workspace ux-form">
+        <div className="receivables-upload-guide">
+          <ReportsIcon size={24} />
+          <div>
+            <strong>Archivo CSV controlado</strong>
+            <p>
+              Usa unit_code, balance_type, amount, currency_code, effective_date, description. Si el
+              código se repite entre edificios, usa building_name antes de unit_code.
+            </p>
+          </div>
         </div>
-      </div>
-      <Field label="Archivo CSV">
-        <input
-          accept=".csv,text/csv"
-          onChange={(event) => {
-            setOpeningFile(event.target.files?.[0] ?? null);
-            setOpeningPreview(null);
-          }}
-          type="file"
-        />
-      </Field>
-      {!openingPreview ? (
-        <Button disabled={!openingFile || loading} onClick={() => void previewOpeningBalances()}>
-          {loading ? 'Revisando…' : 'Previsualizar archivo'}
-        </Button>
-      ) : (
-        <div className="receivables-opening-preview">
-          <div>
-            <span data-tone="success">
-              <CheckCircleIcon size={20} />
-            </span>
-            <div>
-              <strong>{openingPreview.valid.length} filas válidas</strong>
-              <small>Listas para importar</small>
-            </div>
-          </div>
-          <div>
-            <span data-tone={openingPreview.errors.length ? 'warning' : 'success'}>
-              <ReportsIcon size={20} />
-            </span>
-            <div>
-              <strong>{openingPreview.errors.length} errores</strong>
-              <small>
-                {openingPreview.errors.length
-                  ? 'Deben corregirse antes de continuar'
-                  : 'El archivo pasó la validación'}
-              </small>
-            </div>
-          </div>
-          {openingPreview.errors.length ? (
-            <div className="receivables-opening-errors">
-              {openingPreview.errors.map((item) => (
-                <p key={`${item.row}-${item.error}`}>
-                  Fila {item.row}: {item.error}
-                </p>
-              ))}
-            </div>
-          ) : (
-            <Button disabled={loading} onClick={commitOpeningBalances}>
-              {loading ? 'Importando…' : 'Confirmar importación'}
+        <Field label="Archivo CSV">
+          <input
+            accept=".csv,text/csv"
+            className="input"
+            onChange={(event) => {
+              setOpeningFile(event.target.files?.[0] ?? null);
+              setOpeningPreview(null);
+            }}
+            type="file"
+          />
+        </Field>
+        {!openingPreview ? (
+          <FormActions>
+            <Button disabled={!openingFile || loading} onClick={() => void previewOpeningBalances()}>
+              {loading ? 'Revisando…' : 'Previsualizar archivo'}
             </Button>
-          )}
-        </div>
-      )}
+          </FormActions>
+        ) : (
+          <div className="receivables-opening-preview">
+            <div>
+              <span data-tone="success">
+                <CheckCircleIcon size={20} />
+              </span>
+              <div>
+                <strong>{openingPreview.valid.length} filas válidas</strong>
+                <small>Listas para importar</small>
+              </div>
+            </div>
+            <div>
+              <span data-tone={openingPreview.errors.length ? 'warning' : 'success'}>
+                <ReportsIcon size={20} />
+              </span>
+              <div>
+                <strong>{openingPreview.errors.length} errores</strong>
+                <small>
+                  {openingPreview.errors.length
+                    ? 'Deben corregirse antes de continuar'
+                    : 'El archivo pasó la validación'}
+                </small>
+              </div>
+            </div>
+            {openingPreview.errors.length ? (
+              <div className="receivables-opening-errors">
+                {openingPreview.errors.map((item) => (
+                  <p key={`${item.row}-${item.error}`}>
+                    Fila {item.row}: {item.error}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <FormActions>
+                <Button disabled={loading} onClick={commitOpeningBalances}>
+                  {loading ? 'Importando…' : 'Confirmar importación'}
+                </Button>
+              </FormActions>
+            )}
+          </div>
+        )}
+      </div>
     </Drawer>
   );
 }
