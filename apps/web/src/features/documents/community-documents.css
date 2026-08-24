@@ -328,20 +328,9 @@
 
 .documents-version-form,
 .documents-link-form {
-  display: grid;
-  gap: 0.55rem;
   border-radius: var(--radius-md);
   padding: 0.7rem;
   background: var(--surface-subtle);
-}
-
-.documents-version-form {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.documents-link-form {
-  grid-template-columns: minmax(130px, 0.65fr) minmax(150px, 1fr) auto;
-  align-items: end;
 }
 
 .documents-history-list,
@@ -517,10 +506,6 @@
   .documents-version-form .button,
   .documents-link-form .button {
     width: 100%;
-  }
-
-  .documents-link-form {
-    grid-template-columns: 1fr;
   }
 
   .documents-history-list article,
