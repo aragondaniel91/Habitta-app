@@ -7,6 +7,12 @@ import { ownershipFinanceRoutes } from './ownership-finance-routes';
 
 type Variables = { token: string; userId: string };
 type RecurringDuesContext = Context<{ Bindings: NotificationBindings; Variables: Variables }>;
+type RecurringDomainFailure = {
+  status: 403 | 409 | 422;
+  error: string;
+  publicMessage: string;
+};
+type RpcSuccessStatus = 200 | 201;
 
 export const recurringDuesRoutes = new Hono<{
   Bindings: NotificationBindings;
@@ -80,6 +86,95 @@ const runQuerySchema = z.object({
   status: z.enum(['scheduled', 'pending_review', 'posted', 'cancelled']).optional(),
 });
 
+const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
+  'permission denied': {
+    status: 403,
+    error: 'recurring_dues_forbidden',
+    publicMessage: 'No tienes permisos para realizar esta acción.',
+  },
+  'scope code and name are required': {
+    status: 422,
+    error: 'financial_scope_fields_required',
+    publicMessage: 'Completa el código y el nombre del ámbito financiero.',
+  },
+  'custom financial scope requires units': {
+    status: 422,
+    error: 'financial_scope_units_required',
+    publicMessage: 'Selecciona al menos una unidad para el ámbito personalizado.',
+  },
+  'building and financial scope must share condominium': {
+    status: 422,
+    error: 'financial_scope_building_mismatch',
+    publicMessage: 'La torre seleccionada no pertenece a este condominio.',
+  },
+  'scope unit and financial scope must share condominium': {
+    status: 422,
+    error: 'financial_scope_unit_mismatch',
+    publicMessage: 'Una de las unidades seleccionadas no pertenece a este condominio.',
+  },
+  'invalid recurring charge plan': {
+    status: 422,
+    error: 'recurring_plan_invalid',
+    publicMessage: 'Revisa los datos de la cuota recurrente antes de continuar.',
+  },
+  'concept or financial scope unavailable': {
+    status: 409,
+    error: 'recurring_plan_dependency_unavailable',
+    publicMessage:
+      'El concepto o el ámbito financiero ya no está disponible. Actualiza la información e intenta de nuevo.',
+  },
+  'invalid recurring period': {
+    status: 422,
+    error: 'recurring_period_invalid',
+    publicMessage: 'El período de la cuota debe usar el formato AAAA-MM.',
+  },
+  'period outside active plan': {
+    status: 409,
+    error: 'recurring_period_outside_plan',
+    publicMessage: 'Ese período está fuera de la vigencia del plan recurrente.',
+  },
+  'only scheduled recurring runs can be prepared': {
+    status: 409,
+    error: 'recurring_run_not_preparable',
+    publicMessage: 'Solo una corrida programada puede prepararse para revisión.',
+  },
+  'financial scope has no active units': {
+    status: 422,
+    error: 'financial_scope_without_active_units',
+    publicMessage: 'El ámbito financiero no tiene unidades activas para generar esta cuota.',
+  },
+  'all scoped units require a participation percentage': {
+    status: 422,
+    error: 'recurring_participation_incomplete',
+    publicMessage:
+      'Todas las unidades del ámbito necesitan una alícuota de participación antes de preparar la cuota.',
+  },
+  'invalid participation total': {
+    status: 422,
+    error: 'recurring_participation_invalid',
+    publicMessage: 'Las alícuotas del ámbito no forman una distribución válida.',
+  },
+  'recurring charge run must be reviewed before posting': {
+    status: 409,
+    error: 'recurring_run_requires_review',
+    publicMessage: 'Primero prepara y revisa la corrida antes de publicarla.',
+  },
+  'posted recurring charge runs are immutable': {
+    status: 409,
+    error: 'recurring_run_already_posted',
+    publicMessage: 'La corrida ya fue publicada y no puede modificarse.',
+  },
+};
+
+export function recurringDomainFailureFromPostgrest(
+  payload: unknown,
+): RecurringDomainFailure | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const message = (payload as { message?: unknown }).message;
+  if (typeof message !== 'string') return null;
+  return recurringDomainFailures[message] ?? null;
+}
+
 function rest(c: RecurringDuesContext, path: string, init: RequestInit = {}) {
   return fetch(`${c.env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -95,6 +190,42 @@ function rest(c: RecurringDuesContext, path: string, init: RequestInit = {}) {
 
 async function rpc(c: RecurringDuesContext, name: string, payload: Record<string, unknown>) {
   return rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+async function rpcResult(
+  c: RecurringDuesContext,
+  response: Response,
+  successStatus: RpcSuccessStatus,
+) {
+  const payload = await response
+    .clone()
+    .json()
+    .catch(() => null);
+  if (response.ok) return c.json(payload, successStatus);
+
+  const domainFailure = recurringDomainFailureFromPostgrest(payload);
+  if (domainFailure) {
+    return c.json(
+      { error: domainFailure.error, publicMessage: domainFailure.publicMessage },
+      domainFailure.status,
+    );
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return c.json(
+      {
+        error: 'recurring_dues_forbidden',
+        publicMessage: 'No tienes permisos para realizar esta acción.',
+      },
+      403,
+    );
+  }
+
+  if (response.status >= 500) {
+    return c.json({ error: 'recurring_dues_upstream_failure' }, 502);
+  }
+
+  return c.json({ error: 'recurring_dues_operation_failed' }, 400);
 }
 
 async function parseBody<T extends z.ZodTypeAny>(c: RecurringDuesContext, schema: T) {
@@ -129,7 +260,7 @@ recurringDuesRoutes.post('/:id/financial-scopes', async (c) => {
     target_building: parsed.buildingId ?? null,
     target_units: parsed.unitIds ?? null,
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return rpcResult(c, response, 201);
 });
 
 recurringDuesRoutes.get('/:id/recurring-charge-plans', async (c) => {
@@ -158,7 +289,7 @@ recurringDuesRoutes.post('/:id/recurring-charge-plans', async (c) => {
     plan_due_day: parsed.dueDay,
     plan_ends_on: parsed.endsOn ?? null,
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return rpcResult(c, response, 201);
 });
 
 recurringDuesRoutes.get('/:id/recurring-charge-runs', async (c) => {
@@ -189,7 +320,7 @@ recurringDuesRoutes.post('/:id/recurring-charge-plans/:planId/runs', async (c) =
     target_plan: planId,
     target_period: parsed.period,
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return rpcResult(c, response, 201);
 });
 
 async function mutateRun(
@@ -206,7 +337,7 @@ async function mutateRun(
   )
     return c.json({ error: 'Recurring run not found in condominium' }, 404);
   const response = await rpc(c, rpcName, { target_run: runId });
-  return c.json(await response.json(), response.ok ? 200 : 400);
+  return rpcResult(c, response, 200);
 }
 
 recurringDuesRoutes.post('/:id/recurring-charge-runs/:runId/prepare', (c) =>
