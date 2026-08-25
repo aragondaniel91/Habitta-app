@@ -31,10 +31,10 @@ set search_path = ''
 as $$
   select exists (
     select 1
-    from habitta_internal.condominium_purge_authorizations authorization
-    where authorization.backend_pid = pg_backend_pid()
-      and authorization.transaction_id = pg_current_xact_id()::text
-      and authorization.condominium_id = target_condominium_id
+    from habitta_internal.condominium_purge_authorizations purge_auth
+    where purge_auth.backend_pid = pg_backend_pid()
+      and purge_auth.transaction_id = pg_current_xact_id()::text
+      and purge_auth.condominium_id = target_condominium_id
   );
 $$;
 
@@ -47,10 +47,10 @@ set search_path = ''
 as $$
   select exists (
     select 1
-    from habitta_internal.condominium_purge_authorizations authorization
-    where authorization.backend_pid = pg_backend_pid()
-      and authorization.transaction_id = pg_current_xact_id()::text
-      and target_unit_id = any(authorization.unit_ids)
+    from habitta_internal.condominium_purge_authorizations purge_auth
+    where purge_auth.backend_pid = pg_backend_pid()
+      and purge_auth.transaction_id = pg_current_xact_id()::text
+      and target_unit_id = any(purge_auth.unit_ids)
   );
 $$;
 
@@ -63,9 +63,9 @@ set search_path = ''
 as $$
   select exists (
     select 1
-    from habitta_internal.condominium_purge_authorizations authorization
-    where authorization.backend_pid = pg_backend_pid()
-      and authorization.transaction_id = pg_current_xact_id()::text
+    from habitta_internal.condominium_purge_authorizations purge_auth
+    where purge_auth.backend_pid = pg_backend_pid()
+      and purge_auth.transaction_id = pg_current_xact_id()::text
   );
 $$;
 
@@ -886,10 +886,10 @@ begin
 
   delete from public.condominiums where id = target_condominium_id;
 
-  delete from habitta_internal.condominium_purge_authorizations authorization
-  where authorization.backend_pid = pg_backend_pid()
-    and authorization.transaction_id = authorization_transaction_id
-    and authorization.condominium_id = target_condominium_id;
+  delete from habitta_internal.condominium_purge_authorizations purge_auth
+  where purge_auth.backend_pid = pg_backend_pid()
+    and purge_auth.transaction_id = authorization_transaction_id
+    and purge_auth.condominium_id = target_condominium_id;
 
   if not found then
     raise exception 'Tenant purge authorization was lost' using errcode = '55000';
