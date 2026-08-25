@@ -10,12 +10,7 @@ import { canManage, useCondominiumRoles } from '../lib/roles';
 import { unitReferenceLabel } from '../lib/unit-domain';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import type { ReceivableAging, ReceivableSummary } from '../lib/dashboard';
-import {
-  collectAllPages,
-  financialPagePath,
-  mergePageItems,
-  pageInfo,
-} from '../lib/pagination';
+import { collectAllPages, financialPagePath, mergePageItems, pageInfo } from '../lib/pagination';
 import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
   filterReceivables,
@@ -531,8 +526,8 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             <span className="receivables-kicker">Cartera</span>
             <h2>Cargos registrados</h2>
             <p>
-              {visibleItems.length} visibles · {data.items.length} de {data.itemsPage.total} cargados
-              en {selectedCurrency || 'la moneda seleccionada'}.
+              {visibleItems.length} visibles · {data.items.length} de {data.itemsPage.total}{' '}
+              cargados en {selectedCurrency || 'la moneda seleccionada'}.
             </p>
           </div>
           <div className="receivables-tools-menu">

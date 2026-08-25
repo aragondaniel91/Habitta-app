@@ -22,12 +22,7 @@ import type {
 import { ApiRequestError, apiRequest } from '../lib/api';
 import { canManage, useCondominiumRoles } from '../lib/roles';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
-import {
-  collectAllPages,
-  financialPagePath,
-  mergePageItems,
-  pageInfo,
-} from '../lib/pagination';
+import { collectAllPages, financialPagePath, mergePageItems, pageInfo } from '../lib/pagination';
 import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
   filterPayments,
@@ -393,7 +388,8 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       {data.payments.length < data.paymentsPage.total ? (
         <div className="payments-inline-alert" role="status">
           Indicadores, búsquedas y filtros usan {data.payments.length} de {data.paymentsPage.total}{' '}
-          pagos cargados. Usa “Cargar más” para ampliar el historial sin traerlo completo de una vez.
+          pagos cargados. Usa “Cargar más” para ampliar el historial sin traerlo completo de una
+          vez.
         </div>
       ) : null}
 
