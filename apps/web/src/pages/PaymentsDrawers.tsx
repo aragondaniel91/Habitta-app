@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { ComponentProps, FormEvent, ReactNode } from 'react';
 import { ConfirmDialog } from '../components/Dialog';
 import { Drawer, useDialogBehavior } from '../components/Drawer';
-import { CheckCircleIcon, SettingsIcon } from '../components/icons';
+import { CheckCircleIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
 import { paymentApi } from '../features/payments/api';
 import type { Payment, PaymentMethod, PaymentReceipt } from '../features/payments/types';
@@ -371,7 +371,6 @@ export function PaymentsDrawerHost(props: Props) {
       <Drawer
         description="Configura métodos de pago visibles para residentes y administradores."
         eyebrow="Configuración financiera"
-        icon={<SettingsIcon size={22} />}
         onClose={props.onClose}
         prefix="payments"
         title="Métodos de pago"
