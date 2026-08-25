@@ -12,9 +12,7 @@ describe('HAB-318 people CSV import consolidation', () => {
   it('routes the live People drawer through the canonical CSV wizard', async () => {
     const drawer = await source(drawerUrl);
 
-    expect(drawer).toContain(
-      "import { CsvImportWizard } from '../imports/CsvImportWizard'",
-    );
+    expect(drawer).toContain("import { CsvImportWizard } from '../imports/CsvImportWizard'");
     expect(drawer).toContain('<CsvImportWizard');
     expect(drawer).toContain('kind="people"');
     expect(drawer).not.toContain('/people/import/preview');
