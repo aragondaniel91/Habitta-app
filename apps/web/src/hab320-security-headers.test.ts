@@ -15,7 +15,9 @@ describe('HAB-320 main web security headers', () => {
     expect(value).toContain('X-Frame-Options: DENY');
     expect(value).toContain('X-Content-Type-Options: nosniff');
     expect(value).toContain('Referrer-Policy: strict-origin-when-cross-origin');
-    expect(value).toContain('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+    expect(value).toContain(
+      'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+    );
   });
 
   it('keeps scripts same-origin and permits only required API/Auth connections', async () => {
