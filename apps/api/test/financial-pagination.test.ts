@@ -91,6 +91,40 @@ describe('HAB-321 financial list pagination', () => {
     expect(dataUrl).toContain('offset=2');
   });
 
+  it('preserves complete array reads for existing consumers without silent truncation', async () => {
+    const dataCalls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/auth/v1/user')) return auth();
+        dataCalls.push(url);
+        if (url.includes('offset=0')) {
+          return Response.json(
+            Array.from({ length: 500 }, (_, index) => ({ id: `row-${index + 1}` })),
+            { headers: { 'Content-Range': '0-499/501' } },
+          );
+        }
+        return Response.json([{ id: 'row-501' }], {
+          headers: { 'Content-Range': '500-500/501' },
+        });
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments`,
+      { headers: token },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.json()) as unknown[]).toHaveLength(501);
+    expect(dataCalls).toHaveLength(2);
+    expect(dataCalls[0]).toContain(`condominium_id=eq.${condo}`);
+    expect(dataCalls[0]).toContain('limit=500&offset=0');
+    expect(dataCalls[1]).toContain('limit=500&offset=500');
+  });
+
   it.each([
     ['page=0&pageSize=50'],
     ['page=1&pageSize=0'],
