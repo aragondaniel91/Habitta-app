@@ -1,0 +1,81 @@
+name: HAB336 Apply Form Validation
+
+on:
+  push:
+    branches:
+      - hab-336-recurring-plan-validation-ux
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-336-recurring-plan-validation-ux
+          fetch-depth: 0
+      - name: Patch recurring dues form
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/src/features/receivables/RecurringDuesWorkspace.tsx')
+          text = path.read_text()
+
+          replacements = [
+            (
+              "import { unitReferenceLabel } from '../../lib/unit-domain';\n",
+              "import { unitReferenceLabel } from '../../lib/unit-domain';\nimport { validateRecurringPlanDraft } from './recurring-plan-validation';\n",
+            ),
+            (
+              "  const activeConcepts = useMemo(\n    () => concepts.filter((concept) => concept.is_active !== false),\n    [concepts],\n  );\n",
+              "  const activeConcepts = useMemo(\n    () => concepts.filter((concept) => concept.is_active !== false),\n    [concepts],\n  );\n  const planValidation = useMemo(() => validateRecurringPlanDraft(planForm), [planForm]);\n",
+            ),
+            (
+              "  const savePlan = async (event: FormEvent) => {\n    event.preventDefault();\n    setBusyId('plan');\n",
+              "  const savePlan = async (event: FormEvent) => {\n    event.preventDefault();\n    const validation = validateRecurringPlanDraft(planForm);\n    if (!validation.valid) {\n      setError('Revisa los campos marcados antes de crear el plan.');\n      return;\n    }\n    setBusyId('plan');\n",
+            ),
+            ('<Field label="Concepto" required>', '<Field error={planValidation.errors.conceptId} label="Concepto" required>'),
+            ('<Field label="Ámbito financiero" required>', '<Field error={planValidation.errors.financialScopeId} label="Ámbito financiero" required>'),
+            ('<Field label="Nombre del plan" required>', '<Field error={planValidation.errors.name} label="Nombre del plan" required>'),
+            (
+              "                <Field\n                  label={\n                    planForm.distribution === 'participation_percentage'\n",
+              "                <Field\n                  error={planValidation.errors.amount}\n                  label={\n                    planForm.distribution === 'participation_percentage'\n",
+            ),
+            ('<Field label="Moneda" required>', '<Field error={planValidation.errors.currencyCode} label="Moneda" required>'),
+            ('<Field label="Día de emisión" required>', '<Field error={planValidation.errors.issueDay} label="Día de emisión" required>'),
+            ('<Field label="Día de vencimiento" required>', '<Field error={planValidation.errors.dueDay} label="Día de vencimiento" required>'),
+            ('<Field label="Comienza" required>', '<Field error={planValidation.errors.startsOn} label="Comienza" required>'),
+            (
+              "                <Field\n                  hint=\"Opcional. Déjalo vacío para una cuota recurrente indefinida.\"\n                  label=\"Finaliza\"\n",
+              "                <Field\n                  error={planValidation.errors.endsOn}\n                  hint=\"Opcional. Déjalo vacío para una cuota recurrente indefinida.\"\n                  label=\"Finaliza\"\n",
+            ),
+            (
+              "                disabled={\n                  busyId === 'plan' ||\n                  !activeConcepts.length ||\n                  !planForm.conceptId ||\n                  !planForm.financialScopeId\n                }\n",
+              "                disabled={busyId === 'plan' || !planValidation.valid}\n",
+            ),
+          ]
+
+          for old, new in replacements:
+            count = text.count(old)
+            if count != 1:
+              raise SystemExit(f'expected exactly one target, found {count}: {old[:80]!r}')
+            text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+          pnpm prettier --write apps/web/src/features/receivables/RecurringDuesWorkspace.tsx apps/web/src/features/receivables/recurring-plan-validation.ts apps/web/src/features/receivables/recurring-plan-validation.test.ts
+          pnpm --filter @habitta/web typecheck
+          pnpm --filter @habitta/web test -- recurring-plan-validation.test.ts recurring-dues-workspace.test.ts
+          git diff --check
+      - name: Commit product patch and remove temporary workflow
+        run: |
+          rm .github/workflows/hab336-apply-form-validation.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/web/src/features/receivables/RecurringDuesWorkspace.tsx apps/web/src/features/receivables/recurring-plan-validation.ts apps/web/src/features/receivables/recurring-plan-validation.test.ts .github/workflows/hab336-apply-form-validation.yml
+          git commit -m 'fix HAB-336 validate recurring plans before submit'
+          git push origin HEAD:hab-336-recurring-plan-validation-ux
