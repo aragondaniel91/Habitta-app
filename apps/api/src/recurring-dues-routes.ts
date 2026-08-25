@@ -166,7 +166,9 @@ const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
   },
 };
 
-export function recurringDomainFailureFromPostgrest(payload: unknown): RecurringDomainFailure | null {
+export function recurringDomainFailureFromPostgrest(
+  payload: unknown,
+): RecurringDomainFailure | null {
   if (!payload || typeof payload !== 'object') return null;
   const message = (payload as { message?: unknown }).message;
   if (typeof message !== 'string') return null;
