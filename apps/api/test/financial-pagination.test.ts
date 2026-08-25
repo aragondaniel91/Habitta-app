@@ -9,7 +9,10 @@ const env = {
   SUPABASE_ANON_KEY: 'anon',
 };
 const auth = () =>
-  Response.json({ id: '00000000-0000-0000-0000-000000000303' }, { status: 200 });
+  Response.json(
+    { id: '00000000-0000-0000-0000-000000000303' },
+    { status: 200 },
+  );
 
 afterEach(() => vi.restoreAllMocks());
 
