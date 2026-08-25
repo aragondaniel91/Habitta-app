@@ -11,6 +11,7 @@ import {
   uuidSchema,
 } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
+import { registerFinancialListRoutes } from './financial-list-routes';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
@@ -73,6 +74,7 @@ const listJson = async (c: AppContext, response: Response) => {
 };
 
 export const treasuryRoutes = new Hono<AppEnvironment>();
+registerFinancialListRoutes(treasuryRoutes);
 
 treasuryRoutes.get('/:id/treasury/accounts', async (c) => {
   const response = await rpc(c, 'get_treasury_accounts', {
