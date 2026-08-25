@@ -5,7 +5,9 @@ const normalizeNewlines = (value: string) => value.replace(/\r\n/g, '\n');
 const pageSource = normalizeNewlines(
   readFileSync(new URL('./pages/ReportsPage.tsx', import.meta.url), 'utf8'),
 );
-const cssSource = normalizeNewlines(readFileSync(new URL('./reports.css', import.meta.url), 'utf8'));
+const cssSource = normalizeNewlines(
+  readFileSync(new URL('./reports.css', import.meta.url), 'utf8'),
+);
 
 describe('HAB-297 Reports responsive parity', () => {
   it('uses the shared module header and explicit report controls', () => {
