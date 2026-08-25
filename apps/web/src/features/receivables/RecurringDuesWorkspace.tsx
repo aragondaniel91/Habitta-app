@@ -9,6 +9,7 @@ import { FeesIcon } from '../../components/icons';
 import { apiRequest } from '../../lib/api';
 import type { ChargeConcept } from '../../lib/receivables';
 import { unitReferenceLabel } from '../../lib/unit-domain';
+import { validateRecurringPlanDraft } from './recurring-plan-validation';
 
 type Props = {
   condominiumId: string;
@@ -237,6 +238,7 @@ export function RecurringDuesWorkspace({
     () => concepts.filter((concept) => concept.is_active !== false),
     [concepts],
   );
+  const planValidation = useMemo(() => validateRecurringPlanDraft(planForm), [planForm]);
   const activePlans = plans.filter((plan) => plan.status === 'active');
   const pendingRuns = runs.filter((run) => run.status === 'pending_review');
   const scheduledRuns = runs.filter((run) => run.status === 'scheduled');
@@ -304,6 +306,11 @@ export function RecurringDuesWorkspace({
 
   const savePlan = async (event: FormEvent) => {
     event.preventDefault();
+    const validation = validateRecurringPlanDraft(planForm);
+    if (!validation.valid) {
+      setError('Revisa los campos marcados antes de crear el plan.');
+      return;
+    }
     setBusyId('plan');
     setError('');
     try {
@@ -822,7 +829,7 @@ export function RecurringDuesWorkspace({
             >
               <FormGrid>
                 {activeConcepts.length ? (
-                  <Field label="Concepto" required>
+                  <Field error={planValidation.errors.conceptId} label="Concepto" required>
                     <Select
                       required
                       value={planForm.conceptId}
@@ -849,7 +856,11 @@ export function RecurringDuesWorkspace({
                     </Button>
                   </div>
                 )}
-                <Field label="Ámbito financiero" required>
+                <Field
+                  error={planValidation.errors.financialScopeId}
+                  label="Ámbito financiero"
+                  required
+                >
                   <Select
                     required
                     value={planForm.financialScopeId}
@@ -869,7 +880,7 @@ export function RecurringDuesWorkspace({
                   </Select>
                 </Field>
               </FormGrid>
-              <Field label="Nombre del plan" required>
+              <Field error={planValidation.errors.name} label="Nombre del plan" required>
                 <input
                   className="input"
                   maxLength={160}
@@ -907,6 +918,7 @@ export function RecurringDuesWorkspace({
                   </Select>
                 </Field>
                 <Field
+                  error={planValidation.errors.amount}
                   label={
                     planForm.distribution === 'participation_percentage'
                       ? 'Presupuesto total por período'
@@ -926,7 +938,7 @@ export function RecurringDuesWorkspace({
                     value={planForm.amount}
                   />
                 </Field>
-                <Field label="Moneda" required>
+                <Field error={planValidation.errors.currencyCode} label="Moneda" required>
                   <input
                     className="input"
                     maxLength={3}
@@ -951,7 +963,7 @@ export function RecurringDuesWorkspace({
               variant="card"
             >
               <FormGrid>
-                <Field label="Día de emisión" required>
+                <Field error={planValidation.errors.issueDay} label="Día de emisión" required>
                   <input
                     className="input"
                     max="28"
@@ -964,7 +976,7 @@ export function RecurringDuesWorkspace({
                     value={planForm.issueDay}
                   />
                 </Field>
-                <Field label="Día de vencimiento" required>
+                <Field error={planValidation.errors.dueDay} label="Día de vencimiento" required>
                   <input
                     className="input"
                     max="28"
@@ -979,7 +991,7 @@ export function RecurringDuesWorkspace({
                 </Field>
               </FormGrid>
               <FormGrid>
-                <Field label="Comienza" required>
+                <Field error={planValidation.errors.startsOn} label="Comienza" required>
                   <input
                     className="input"
                     onChange={(event) =>
@@ -991,6 +1003,7 @@ export function RecurringDuesWorkspace({
                   />
                 </Field>
                 <Field
+                  error={planValidation.errors.endsOn}
                   hint="Opcional. Déjalo vacío para una cuota recurrente indefinida."
                   label="Finaliza"
                 >
@@ -1017,15 +1030,7 @@ export function RecurringDuesWorkspace({
               <Button onClick={() => setPlanDrawerOpen(false)} type="button" variant="secondary">
                 Cancelar
               </Button>
-              <Button
-                disabled={
-                  busyId === 'plan' ||
-                  !activeConcepts.length ||
-                  !planForm.conceptId ||
-                  !planForm.financialScopeId
-                }
-                type="submit"
-              >
+              <Button disabled={busyId === 'plan' || !planValidation.valid} type="submit">
                 {busyId === 'plan' ? 'Creando…' : 'Crear y programar'}
               </Button>
             </FormActions>
