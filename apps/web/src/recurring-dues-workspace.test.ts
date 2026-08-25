@@ -89,11 +89,28 @@ describe('HAB-185 recurring dues workspace contract', () => {
 
   it('uses the shared premium form contract for scope and plan drawers', () => {
     expect(workspaceSource).toContain('className="recurring-dues-form ux-form"');
+    expect(workspaceSource).toContain('<FormSection');
+    expect(workspaceSource).toContain('title="Definición"');
+    expect(workspaceSource).toContain('title="Reparto y monto"');
+    expect(workspaceSource).toContain('title="Calendario"');
     expect(workspaceSource).toContain('<FormGrid>');
     expect(workspaceSource).toContain('<FormGrid columns={3}>');
     expect(workspaceSource).toContain('<FormActions sticky>');
     expect(workspaceCss).not.toContain('recurring-dues-form-grid');
     expect(workspaceCss).not.toContain('recurring-dues-drawer-footer');
+  });
+
+  it('keeps concept creation inside the recurring dues workflow', () => {
+    expect(workspaceSource).toContain('onCreateConcept: () => void');
+    expect(pageSource).toContain("onCreateConcept={() => openDrawer('concept')}");
+    expect(workspaceSource).toContain('No hay conceptos de cobro activos.');
+    expect(workspaceSource).toContain('Crear primer concepto');
+    expect(workspaceSource).toContain('Nuevo concepto');
+    expect(workspaceSource).toContain(
+      'activeConcepts.some((concept) => concept.id === current.conceptId)',
+    );
+    expect(workspaceSource).toContain("item.category === 'regular_dues'");
+    expect(workspaceSource).toContain("'Crear y programar'");
   });
 
   it('preserves recurring plan financial payload fields', () => {

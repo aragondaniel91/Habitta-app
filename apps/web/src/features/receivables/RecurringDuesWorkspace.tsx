@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../../components/Dialog';
 import { Drawer } from '../../components/Drawer';
-import { FormActions, FormGrid } from '../../components/FormLayout';
+import { FormActions, FormGrid, FormSection } from '../../components/FormLayout';
 import { Badge, Button, EmptyState, Field, Select, Surface } from '../../components/ui';
 import { FeesIcon } from '../../components/icons';
 import { apiRequest } from '../../lib/api';
@@ -16,6 +16,7 @@ type Props = {
   concepts: ChargeConcept[];
   canManage: boolean;
   onLedgerChanged: () => void;
+  onCreateConcept: () => void;
 };
 
 type FinancialScopeKind = 'condominium' | 'building' | 'custom';
@@ -170,6 +171,7 @@ export function RecurringDuesWorkspace({
   concepts,
   canManage,
   onLedgerChanged,
+  onCreateConcept,
 }: Props) {
   const [scopes, setScopes] = useState<FinancialScope[]>([]);
   const [plans, setPlans] = useState<RecurringPlan[]>([]);
@@ -231,6 +233,10 @@ export function RecurringDuesWorkspace({
   }, [condominiumId]);
 
   const activeScopes = scopes.filter((scope) => scope.is_active);
+  const activeConcepts = useMemo(
+    () => concepts.filter((concept) => concept.is_active !== false),
+    [concepts],
+  );
   const activePlans = plans.filter((plan) => plan.status === 'active');
   const pendingRuns = runs.filter((run) => run.status === 'pending_review');
   const scheduledRuns = runs.filter((run) => run.status === 'scheduled');
@@ -251,6 +257,23 @@ export function RecurringDuesWorkspace({
     setPlanForm(initialPlanForm(concepts, activeScopes));
     setPlanDrawerOpen(true);
   };
+
+  useEffect(() => {
+    if (!planDrawerOpen || !activeConcepts.length) return;
+    setPlanForm((current) => {
+      if (activeConcepts.some((concept) => concept.id === current.conceptId)) return current;
+      const concept =
+        activeConcepts.find((item) => item.category === 'regular_dues') ?? activeConcepts[0];
+      if (!concept) return current;
+      return {
+        ...current,
+        conceptId: concept.id,
+        name: current.name === 'Cuota ordinaria mensual' ? `${concept.name} mensual` : current.name,
+        amount: concept.default_amount ?? current.amount,
+        currencyCode: concept.default_currency_code ?? current.currencyCode,
+      };
+    });
+  }, [activeConcepts, planDrawerOpen]);
 
   const saveScope = async (event: FormEvent) => {
     event.preventDefault();
@@ -785,169 +808,204 @@ export function RecurringDuesWorkspace({
               Habitta crea el primer período como programado. Nada se carga a las unidades hasta que
               revises el reparto y publiques la ocurrencia.
             </p>
-            <FormGrid>
-              <Field label="Concepto">
-                <Select
-                  required
-                  value={planForm.conceptId}
-                  onChange={(event) =>
-                    setPlanForm((current) => ({ ...current, conceptId: event.target.value }))
-                  }
-                >
-                  <option value="">Selecciona un concepto</option>
-                  {concepts
-                    .filter((concept) => concept.is_active !== false)
-                    .map((concept) => (
-                      <option key={concept.id} value={concept.id}>
-                        {concept.name}
+            <FormSection
+              actions={
+                activeConcepts.length ? (
+                  <Button onClick={onCreateConcept} size="sm" type="button" variant="secondary">
+                    Nuevo concepto
+                  </Button>
+                ) : undefined
+              }
+              description="Define qué se cobra y a qué ámbito financiero se aplicará."
+              title="Definición"
+              variant="card"
+            >
+              <FormGrid>
+                {activeConcepts.length ? (
+                  <Field label="Concepto" required>
+                    <Select
+                      required
+                      value={planForm.conceptId}
+                      onChange={(event) =>
+                        setPlanForm((current) => ({ ...current, conceptId: event.target.value }))
+                      }
+                    >
+                      <option value="">Selecciona un concepto</option>
+                      {activeConcepts.map((concept) => (
+                        <option key={concept.id} value={concept.id}>
+                          {concept.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                ) : (
+                  <div className="recurring-dues-concept-empty" role="status">
+                    <div>
+                      <strong>Concepto</strong>
+                      <span>No hay conceptos de cobro activos.</span>
+                    </div>
+                    <Button onClick={onCreateConcept} size="sm" type="button" variant="secondary">
+                      Crear primer concepto
+                    </Button>
+                  </div>
+                )}
+                <Field label="Ámbito financiero" required>
+                  <Select
+                    required
+                    value={planForm.financialScopeId}
+                    onChange={(event) =>
+                      setPlanForm((current) => ({
+                        ...current,
+                        financialScopeId: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Selecciona un ámbito</option>
+                    {activeScopes.map((scope) => (
+                      <option key={scope.id} value={scope.id}>
+                        {scope.name}
                       </option>
                     ))}
-                </Select>
-              </Field>
-              <Field label="Ámbito financiero">
-                <Select
-                  required
-                  value={planForm.financialScopeId}
+                  </Select>
+                </Field>
+              </FormGrid>
+              <Field label="Nombre del plan" required>
+                <input
+                  className="input"
+                  maxLength={160}
                   onChange={(event) =>
-                    setPlanForm((current) => ({
-                      ...current,
-                      financialScopeId: event.target.value,
-                    }))
+                    setPlanForm((current) => ({ ...current, name: event.target.value }))
                   }
+                  required
+                  value={planForm.name}
+                />
+              </Field>
+            </FormSection>
+
+            <FormSection
+              description={
+                planForm.distribution === 'participation_percentage'
+                  ? 'El presupuesto total del período se reparte proporcionalmente según la alícuota de cada unidad.'
+                  : 'Cada unidad del ámbito recibe exactamente el mismo monto.'
+              }
+              title="Reparto y monto"
+              variant="card"
+            >
+              <FormGrid columns={3}>
+                <Field label="Distribución" required>
+                  <Select
+                    value={planForm.distribution}
+                    onChange={(event) =>
+                      setPlanForm((current) => ({
+                        ...current,
+                        distribution: event.target.value as Distribution,
+                      }))
+                    }
+                  >
+                    <option value="participation_percentage">Por alícuota / participación</option>
+                    <option value="fixed_per_unit">Monto fijo por unidad</option>
+                  </Select>
+                </Field>
+                <Field
+                  label={
+                    planForm.distribution === 'participation_percentage'
+                      ? 'Presupuesto total por período'
+                      : 'Monto por unidad'
+                  }
+                  required
                 >
-                  <option value="">Selecciona un ámbito</option>
-                  {activeScopes.map((scope) => (
-                    <option key={scope.id} value={scope.id}>
-                      {scope.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </FormGrid>
-            <Field label="Nombre del plan">
-              <input
-                className="input"
-                maxLength={160}
-                onChange={(event) =>
-                  setPlanForm((current) => ({ ...current, name: event.target.value }))
-                }
-                required
-                value={planForm.name}
-              />
-            </Field>
-            <FormGrid>
-              <Field
-                hint={
-                  planForm.distribution === 'participation_percentage'
-                    ? 'El total del período se reparte proporcionalmente por alícuota.'
-                    : 'Cada unidad recibe exactamente el mismo monto.'
-                }
-                label="Distribución"
-              >
-                <Select
-                  value={planForm.distribution}
-                  onChange={(event) =>
-                    setPlanForm((current) => ({
-                      ...current,
-                      distribution: event.target.value as Distribution,
-                    }))
-                  }
+                  <input
+                    className="input"
+                    inputMode="decimal"
+                    onChange={(event) =>
+                      setPlanForm((current) => ({ ...current, amount: event.target.value }))
+                    }
+                    pattern="^(0|[1-9][0-9]*)(\.[0-9]{1,2})?$"
+                    placeholder="0.00"
+                    required
+                    value={planForm.amount}
+                  />
+                </Field>
+                <Field label="Moneda" required>
+                  <input
+                    className="input"
+                    maxLength={3}
+                    minLength={3}
+                    onChange={(event) =>
+                      setPlanForm((current) => ({
+                        ...current,
+                        currencyCode: event.target.value.toUpperCase(),
+                      }))
+                    }
+                    pattern="[A-Z]{3}"
+                    required
+                    value={planForm.currencyCode}
+                  />
+                </Field>
+              </FormGrid>
+            </FormSection>
+
+            <FormSection
+              description="Configura el ciclo mensual y por cuánto tiempo estará vigente el plan."
+              title="Calendario"
+              variant="card"
+            >
+              <FormGrid>
+                <Field label="Día de emisión" required>
+                  <input
+                    className="input"
+                    max="28"
+                    min="1"
+                    onChange={(event) =>
+                      setPlanForm((current) => ({ ...current, issueDay: event.target.value }))
+                    }
+                    required
+                    type="number"
+                    value={planForm.issueDay}
+                  />
+                </Field>
+                <Field label="Día de vencimiento" required>
+                  <input
+                    className="input"
+                    max="28"
+                    min={Number(planForm.issueDay) || 1}
+                    onChange={(event) =>
+                      setPlanForm((current) => ({ ...current, dueDay: event.target.value }))
+                    }
+                    required
+                    type="number"
+                    value={planForm.dueDay}
+                  />
+                </Field>
+              </FormGrid>
+              <FormGrid>
+                <Field label="Comienza" required>
+                  <input
+                    className="input"
+                    onChange={(event) =>
+                      setPlanForm((current) => ({ ...current, startsOn: event.target.value }))
+                    }
+                    required
+                    type="date"
+                    value={planForm.startsOn}
+                  />
+                </Field>
+                <Field
+                  hint="Opcional. Déjalo vacío para una cuota recurrente indefinida."
+                  label="Finaliza"
                 >
-                  <option value="participation_percentage">Por alícuota / participación</option>
-                  <option value="fixed_per_unit">Monto fijo por unidad</option>
-                </Select>
-              </Field>
-              <Field
-                label={
-                  planForm.distribution === 'participation_percentage'
-                    ? 'Presupuesto total por período'
-                    : 'Monto por unidad'
-                }
-              >
-                <input
-                  className="input"
-                  inputMode="decimal"
-                  onChange={(event) =>
-                    setPlanForm((current) => ({ ...current, amount: event.target.value }))
-                  }
-                  pattern="^(0|[1-9][0-9]*)(\.[0-9]{1,2})?$"
-                  placeholder="0.00"
-                  required
-                  value={planForm.amount}
-                />
-              </Field>
-            </FormGrid>
-            <FormGrid columns={3}>
-              <Field label="Moneda">
-                <input
-                  className="input"
-                  maxLength={3}
-                  minLength={3}
-                  onChange={(event) =>
-                    setPlanForm((current) => ({
-                      ...current,
-                      currencyCode: event.target.value.toUpperCase(),
-                    }))
-                  }
-                  pattern="[A-Z]{3}"
-                  required
-                  value={planForm.currencyCode}
-                />
-              </Field>
-              <Field label="Día de emisión">
-                <input
-                  className="input"
-                  max="28"
-                  min="1"
-                  onChange={(event) =>
-                    setPlanForm((current) => ({ ...current, issueDay: event.target.value }))
-                  }
-                  required
-                  type="number"
-                  value={planForm.issueDay}
-                />
-              </Field>
-              <Field label="Día de vencimiento">
-                <input
-                  className="input"
-                  max="28"
-                  min={Number(planForm.issueDay) || 1}
-                  onChange={(event) =>
-                    setPlanForm((current) => ({ ...current, dueDay: event.target.value }))
-                  }
-                  required
-                  type="number"
-                  value={planForm.dueDay}
-                />
-              </Field>
-            </FormGrid>
-            <FormGrid>
-              <Field label="Comienza">
-                <input
-                  className="input"
-                  onChange={(event) =>
-                    setPlanForm((current) => ({ ...current, startsOn: event.target.value }))
-                  }
-                  required
-                  type="date"
-                  value={planForm.startsOn}
-                />
-              </Field>
-              <Field
-                hint="Opcional. Déjalo vacío para una cuota recurrente indefinida."
-                label="Finaliza"
-              >
-                <input
-                  className="input"
-                  min={planForm.startsOn}
-                  onChange={(event) =>
-                    setPlanForm((current) => ({ ...current, endsOn: event.target.value }))
-                  }
-                  type="date"
-                  value={planForm.endsOn}
-                />
-              </Field>
-            </FormGrid>
+                  <input
+                    className="input"
+                    min={planForm.startsOn}
+                    onChange={(event) =>
+                      setPlanForm((current) => ({ ...current, endsOn: event.target.value }))
+                    }
+                    type="date"
+                    value={planForm.endsOn}
+                  />
+                </Field>
+              </FormGrid>
+            </FormSection>
             <div className="recurring-dues-safety-note">
               <strong>Control financiero</strong>
               <span>
@@ -959,8 +1017,16 @@ export function RecurringDuesWorkspace({
               <Button onClick={() => setPlanDrawerOpen(false)} type="button" variant="secondary">
                 Cancelar
               </Button>
-              <Button disabled={busyId === 'plan'} type="submit">
-                {busyId === 'plan' ? 'Creando…' : 'Crear plan y programar primer período'}
+              <Button
+                disabled={
+                  busyId === 'plan' ||
+                  !activeConcepts.length ||
+                  !planForm.conceptId ||
+                  !planForm.financialScopeId
+                }
+                type="submit"
+              >
+                {busyId === 'plan' ? 'Creando…' : 'Crear y programar'}
               </Button>
             </FormActions>
           </form>

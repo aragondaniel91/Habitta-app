@@ -268,6 +268,40 @@
   width: 100%;
 }
 
+.recurring-dues-form .form-section {
+  min-width: 0;
+}
+
+.recurring-dues-concept-empty {
+  display: grid;
+  min-width: 0;
+  min-height: 74px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--ux-control-radius, 12px);
+  background: var(--surface-subtle, rgba(15, 23, 42, 0.025));
+  padding: 10px 12px;
+}
+
+.recurring-dues-concept-empty > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.recurring-dues-concept-empty strong {
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.recurring-dues-concept-empty span {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .recurring-dues-unit-picker {
   display: grid;
   gap: 7px;
@@ -357,5 +391,13 @@
 
   .recurring-dues-unit-picker small {
     grid-column: 2;
+  }
+
+  .recurring-dues-concept-empty {
+    grid-template-columns: 1fr;
+  }
+
+  .recurring-dues-concept-empty .button {
+    width: 100%;
   }
 }
