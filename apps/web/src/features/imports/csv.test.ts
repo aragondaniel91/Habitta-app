@@ -52,6 +52,33 @@ describe('guided CSV imports', () => {
     expect(rows[1]?.errors).toContain('unit_code está duplicado dentro del archivo');
   });
 
+  it('accepts optional opening-balance aging dates without breaking legacy CSVs', () => {
+    const legacy = parseCsv(
+      'unit_code,balance_type,amount,currency_code,effective_date,description\n' +
+        'A-101,debit,25.00,USD,2026-01-01,Legacy',
+    );
+    const withDueDate = parseCsv(
+      'unit_code,balance_type,amount,currency_code,effective_date,due_date,description\n' +
+        'A-101,debit,25.00,USD,2026-01-01,2025-12-01,Historical debt',
+    );
+    const withDebtDate = parseCsv(
+      'unit_code,balance_type,amount,currency_code,effective_date,debt_date,description\n' +
+        'A-101,debit,25.00,USD,2026-01-01,2025-12-01,Alias',
+    );
+
+    expect(validateImportRows('opening_balances', legacy)[0]?.errors).toEqual([]);
+    expect(validateImportRows('opening_balances', withDueDate)[0]?.errors).toEqual([]);
+    expect(validateImportRows('opening_balances', withDebtDate)[0]?.errors).toEqual([]);
+  });
+
+  it('includes due_date in the new opening-balance template while keeping it optional', () => {
+    const parsed = parseCsv(createTemplateCsv('opening_balances'));
+
+    expect(parsed.headers).toContain('due_date');
+    expect(parsed.headers).not.toContain('debt_date');
+    expect(validateImportRows('opening_balances', parsed)[0]?.errors).toEqual([]);
+  });
+
   it('generates an editable template with the exact supported headers', () => {
     const template = createTemplateCsv('people');
     const parsed = parseCsv(template);

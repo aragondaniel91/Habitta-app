@@ -46,9 +46,22 @@ begin
       end;
     end if;
 
-    if issue is null and nullif(btrim(coalesce(row_data ->> 'due_date','')), '') is not null then
+    if issue is null
+      and nullif(btrim(coalesce(row_data ->> 'due_date','')), '') is not null
+      and nullif(btrim(coalesce(row_data ->> 'debt_date','')), '') is not null
+      and btrim(row_data ->> 'due_date') <> btrim(row_data ->> 'debt_date') then
+      issue := 'Conflicting debt dates';
+    end if;
+
+    if issue is null and coalesce(
+      nullif(btrim(coalesce(row_data ->> 'due_date','')), ''),
+      nullif(btrim(coalesce(row_data ->> 'debt_date','')), '')
+    ) is not null then
       begin
-        perform (row_data ->> 'due_date')::date;
+        perform coalesce(
+          nullif(btrim(coalesce(row_data ->> 'due_date','')), ''),
+          nullif(btrim(coalesce(row_data ->> 'debt_date','')), '')
+        )::date;
       exception when others then
         issue := 'Invalid due date';
       end;
@@ -119,10 +132,10 @@ begin
   end if;
 
   for row_data in select value from jsonb_array_elements(metadata -> 'valid') loop
-    item_due := case
-      when nullif(btrim(coalesce(row_data ->> 'due_date','')), '') is null then null
-      else (row_data ->> 'due_date')::date
-    end;
+    item_due := coalesce(
+      nullif(btrim(coalesce(row_data ->> 'due_date','')), ''),
+      nullif(btrim(coalesce(row_data ->> 'debt_date','')), '')
+    )::date;
 
     if row_data ->> 'balance_type' = 'debit' then
       item := public.insert_receivable_item_and_entry(

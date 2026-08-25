@@ -52,6 +52,8 @@ const remoteErrorLabels: Record<string, string> = {
   'Invalid currency': 'La moneda no es válida',
   'Invalid amount': 'El monto no es válido',
   'Invalid date': 'La fecha no es válida',
+  'Invalid due date': 'La fecha de deuda o vencimiento no es válida',
+  'Conflicting debt dates': 'due_date y debt_date deben coincidir si se incluyen ambos',
 };
 
 const normalizedOpeningBalance = (row: Record<string, string>) => ({
@@ -60,6 +62,7 @@ const normalizedOpeningBalance = (row: Record<string, string>) => ({
   amount: row.amount?.trim() ?? '',
   currency_code: row.currency_code?.trim().toUpperCase() ?? '',
   effective_date: row.effective_date?.trim() ?? '',
+  due_date: row.due_date?.trim() || row.debt_date?.trim() || undefined,
   description: row.description?.trim() || undefined,
 });
 

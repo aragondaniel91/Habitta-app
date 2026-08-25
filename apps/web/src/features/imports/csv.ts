@@ -4,6 +4,7 @@ export type ImportDefinition = {
   title: string;
   description: string;
   headers: string[];
+  templateHeaders?: string[];
   sample: Record<string, string>;
   instructions: string[];
 };
@@ -78,12 +79,22 @@ export const IMPORT_DEFINITIONS: Record<ImportKind, ImportDefinition> = {
       'effective_date',
       'description',
     ],
+    templateHeaders: [
+      'unit_code',
+      'balance_type',
+      'amount',
+      'currency_code',
+      'effective_date',
+      'due_date',
+      'description',
+    ],
     sample: {
       unit_code: 'A-101',
       balance_type: 'debit',
       amount: '125.50',
       currency_code: 'USD',
       effective_date: '2026-08-01',
+      due_date: '2026-07-01',
       description: 'Saldo anterior a la migración',
     },
     instructions: [
@@ -91,6 +102,8 @@ export const IMPORT_DEFINITIONS: Record<ImportKind, ImportDefinition> = {
       'Monto (amount): debe ser positivo y usar punto decimal, por ejemplo 125.50.',
       'Moneda (currency_code): usa tres letras, por ejemplo USD, VES o EUR.',
       'Fecha efectiva (effective_date): usa el formato YYYY-MM-DD.',
+      'Fecha de deuda/vencimiento (due_date): opcional; usa YYYY-MM-DD. También se acepta debt_date como alias.',
+      'Si no indicas fecha de deuda en un saldo deudor histórico, Habitta usará effective_date para el envejecimiento.',
     ],
   },
 };
@@ -241,6 +254,8 @@ export function validateImportRows(kind: ImportKind, parsed: ParsedCsv): Validat
       const amount = valueFor(data, 'amount');
       const currencyCode = valueFor(data, 'currency_code');
       const effectiveDate = valueFor(data, 'effective_date');
+      const dueDate = valueFor(data, 'due_date');
+      const debtDate = valueFor(data, 'debt_date');
       if (!unitCode) errors.push('unit_code es obligatorio');
       if (!['debit', 'credit'].includes(balanceType))
         errors.push('balance_type debe ser debit o credit');
@@ -248,6 +263,10 @@ export function validateImportRows(kind: ImportKind, parsed: ParsedCsv): Validat
         errors.push('amount debe ser un monto positivo con hasta 2 decimales');
       if (!/^[A-Za-z]{3}$/.test(currencyCode)) errors.push('currency_code debe tener tres letras');
       if (!isDate(effectiveDate)) errors.push('effective_date debe usar YYYY-MM-DD');
+      if (dueDate && !isDate(dueDate)) errors.push('due_date debe usar YYYY-MM-DD');
+      if (debtDate && !isDate(debtDate)) errors.push('debt_date debe usar YYYY-MM-DD');
+      if (dueDate && debtDate && dueDate !== debtDate)
+        errors.push('due_date y debt_date deben coincidir si se incluyen ambos');
     }
 
     return { rowNumber, data, errors };
@@ -259,9 +278,10 @@ const escapeCsv = (value: string) =>
 
 export function createTemplateCsv(kind: ImportKind) {
   const definition = IMPORT_DEFINITIONS[kind];
+  const headers = definition.templateHeaders ?? definition.headers;
   return [
-    definition.headers.join(','),
-    definition.headers.map((header) => escapeCsv(definition.sample[header] ?? '')).join(','),
+    headers.join(','),
+    headers.map((header) => escapeCsv(definition.sample[header] ?? '')).join(','),
   ].join('\n');
 }
 
