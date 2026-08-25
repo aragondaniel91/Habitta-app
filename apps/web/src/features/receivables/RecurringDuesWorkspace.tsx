@@ -410,6 +410,8 @@ export function RecurringDuesWorkspace({
     }
   };
 
+  if (!canManage) return null;
+
   return (
     <Surface className="recurring-dues-workspace">
       <div className="recurring-dues-heading">
