@@ -60,6 +60,34 @@ describe('apiRequest safe error messages', () => {
     });
   });
 
+  it('propagates a safe recurring-dues domain message', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: 'recurring_participation_incomplete',
+              publicMessage:
+                'Todas las unidades del ámbito necesitan una alícuota de participación antes de preparar la cuota.',
+            }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          ),
+      ),
+    );
+
+    await expect(
+      apiRequest('/v1/condominiums/condo/recurring-charge-runs/run/prepare', session, {
+        method: 'POST',
+      }),
+    ).rejects.toMatchObject({
+      name: 'ApiRequestError',
+      status: 422,
+      message:
+        'Todas las unidades del ámbito necesitan una alícuota de participación antes de preparar la cuota.',
+    });
+  });
+
   it('does not expose arbitrary upstream error messages', async () => {
     vi.stubGlobal(
       'fetch',
