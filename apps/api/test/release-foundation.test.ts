@@ -150,17 +150,18 @@ describe('development release safeguards', () => {
     expect(diagnostic).toContain('[REDACTED]');
     expect(diagnostic).not.toContain('secret-token-value');
   });
-  it('keeps dispatch inputs out of shell and supports repository credentials on GitHub Free', async () => {
+  it('keeps dispatch inputs out of shell and gates development apply explicitly', async () => {
     const root = new URL('../../../', import.meta.url);
     const [plan, apply] = await Promise.all([
       readFile(new URL('.github/workflows/development-release-plan.yml', root), 'utf8'),
       readFile(new URL('.github/workflows/development-release-apply.yml', root), 'utf8'),
     ]);
     expect(plan).not.toContain('environment: development');
-    expect(apply).not.toContain('environment: development');
+    expect(apply).toContain('environment: development');
     expect(plan).toContain('SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}');
     expect(apply).toContain('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
     expect(apply).toContain('confirm_project_ref');
+    expect(apply).toContain('database_mode_confirmation');
     expect(apply).toContain('GH_TOKEN: ${{ github.token }}');
     expect(
       [...plan.matchAll(/run: \|([\s\S]*?)(?=\n      -|$)/g)].map((match) => match[1]).join('\n'),
