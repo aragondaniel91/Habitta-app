@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(16);
 
 select has_schema('habitta_internal', 'tenant purge authorization lives outside the public API schema');
 select has_table(
