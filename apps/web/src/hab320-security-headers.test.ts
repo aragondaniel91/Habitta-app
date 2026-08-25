@@ -23,10 +23,11 @@ describe('HAB-320 main web security headers', () => {
   it('keeps scripts locked down while allowing required production runtime dependencies', async () => {
     const value = await headers();
 
-    expect(value).toContain("script-src 'self'");
+    expect(value).toContain("script-src 'self' https://static.cloudflareinsights.com");
     expect(value).not.toContain("script-src 'self' 'unsafe-inline'");
-    expect(value).toContain("'sha256-rzYL7hOwHzQqRFNJOlaxJfjShAIx5DDvf4KFTSIA7Xo='");
-    expect(value).toContain('https://static.cloudflareinsights.com');
+    expect(value).not.toContain('sha256-rzYL7hOwHzQqRFNJOlaxJfjShAIx5DDvf4KFTSIA7Xo=');
+    expect(value).not.toContain('sha256-qi6h5hk1m/LyOmzF1sS5yp7wJAY8PAYzz6Fi9P0WZKo=');
+    expect(value).toContain('Cache-Control: no-transform');
     expect(value).toContain('https://fonts.googleapis.com');
     expect(value).toContain('https://fonts.gstatic.com');
     expect(value).toContain('https://cloudflareinsights.com');
