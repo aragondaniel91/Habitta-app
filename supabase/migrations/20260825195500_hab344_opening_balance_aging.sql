@@ -2,6 +2,19 @@
 -- appearing current merely because legacy imports stored due_date = null. New imports may
 -- provide due_date explicitly; legacy opening balances fall back to issue_date/effective_date.
 -- Ordinary non-opening charges with no due date retain their existing current/no-due semantics.
+-- Opening balances are the one valid case where a historical due date can predate the date the
+-- balance was entered into Habitta. Preserve the original due-date invariant for every other item.
+
+alter table public.receivable_items
+  drop constraint if exists receivable_items_due_date_valid;
+
+alter table public.receivable_items
+  add constraint receivable_items_due_date_valid
+  check (
+    due_date is null
+    or item_type = 'opening_balance'
+    or due_date >= issue_date
+  );
 
 create or replace function public.preview_opening_balances(target uuid, rows jsonb)
 returns jsonb
