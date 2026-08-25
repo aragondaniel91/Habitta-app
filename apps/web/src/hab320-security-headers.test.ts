@@ -20,11 +20,16 @@ describe('HAB-320 main web security headers', () => {
     );
   });
 
-  it('keeps scripts same-origin and permits only required API/Auth connections', async () => {
+  it('keeps scripts locked down while allowing required production runtime dependencies', async () => {
     const value = await headers();
 
     expect(value).toContain("script-src 'self'");
     expect(value).not.toContain("script-src 'self' 'unsafe-inline'");
+    expect(value).toContain("'sha256-rzYL7hOwHzQqRFNJOlaxJfjShAIx5DDvf4KFTSIA7Xo='");
+    expect(value).toContain('https://static.cloudflareinsights.com');
+    expect(value).toContain('https://fonts.googleapis.com');
+    expect(value).toContain('https://fonts.gstatic.com');
+    expect(value).toContain('https://cloudflareinsights.com');
     expect(value).toContain('https://kgsfaahixbcwcmykmhat.supabase.co');
     expect(value).toContain('https://habitta-api-prod.aragondaniel91.workers.dev');
     expect(value).toContain('https://habitta-api-dev.aragondaniel91.workers.dev');
