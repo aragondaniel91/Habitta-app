@@ -381,6 +381,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
         canManage={manage}
         concepts={data.concepts}
         condominiumId={condominiumId}
+        onCreateConcept={() => openDrawer('concept')}
         onLedgerChanged={() => void load(true)}
         session={session}
       />
