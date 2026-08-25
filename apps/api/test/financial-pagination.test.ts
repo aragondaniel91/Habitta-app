@@ -8,11 +8,7 @@ const env = {
   SUPABASE_URL: 'https://supabase.test',
   SUPABASE_ANON_KEY: 'anon',
 };
-const auth = () =>
-  Response.json(
-    { id: '00000000-0000-0000-0000-000000000303' },
-    { status: 200 },
-  );
+const auth = () => Response.json({ id: '00000000-0000-0000-0000-000000000303' }, { status: 200 });
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -134,7 +130,10 @@ describe('HAB-321 financial list pagination', () => {
     ['page=1&pageSize=101'],
     ['page=nope&pageSize=50'],
   ])('rejects invalid pagination bounds: %s', async (query) => {
-    vi.stubGlobal('fetch', vi.fn(async () => auth()));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => auth()),
+    );
     const response = await app.request(
       `/v1/condominiums/${condo}/payments?${query}`,
       { headers: token },
