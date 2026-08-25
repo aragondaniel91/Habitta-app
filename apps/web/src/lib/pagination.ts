@@ -9,7 +9,14 @@ export type PageInfo = {
 
 export type PaginatedResponse<T> = PageInfo & { items: T[] };
 
-export const pageInfo = <T>({ items: _items, ...meta }: PaginatedResponse<T>): PageInfo => meta;
+export const pageInfo = <T>(response: PaginatedResponse<T>): PageInfo => ({
+  page: response.page,
+  pageSize: response.pageSize,
+  total: response.total,
+  totalPages: response.totalPages,
+  hasNextPage: response.hasNextPage,
+  hasPreviousPage: response.hasPreviousPage,
+});
 
 export const financialPagePath = (path: string, page: number, pageSize: number) => {
   const separator = path.includes('?') ? '&' : '?';
