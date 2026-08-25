@@ -7,6 +7,7 @@ const count = (value: string, needle: string) => value.split(needle).length - 1;
 const chooser = source('./features/receivables/ChargeCreationChooser.tsx');
 const chooserCss = source('./features/receivables/charge-creation-chooser.css');
 const lateFees = source('./features/receivables/LateFeeSettingsDrawer.tsx');
+const lateFeesClient = source('./features/receivables/lateFees.ts');
 const lateFeesCss = source('./late-fees.css');
 
 describe('HAB-281 premium charge chooser and late-fee settings', () => {
@@ -49,12 +50,17 @@ describe('HAB-281 premium charge chooser and late-fee settings', () => {
     expect(lateFees).toContain('appliesToForeignCurrency: form.appliesToForeignCurrency');
   });
 
-  it('keeps saving policy separate from explicitly generating charges', () => {
+  it('requires preview and confirmation before explicitly generating monthly charges', () => {
     expect(lateFees).toContain('await updateLateFeeSettings(condominiumId, session, {');
+    expect(lateFees).toContain('const nextPreview = await previewLateFees(condominiumId, session)');
     expect(lateFees).toContain('const count = await applyLateFees(condominiumId, session)');
-    expect(lateFees).toContain('disabled={applying || !form.enabled}');
+    expect(lateFees).toContain('disabled={previewing || applying || !form.enabled}');
     expect(lateFees).toContain("setMessage('Política de mora actualizada.')");
-    expect(lateFees).toContain('Generar recargos ahora');
+    expect(lateFees).toContain('Tasa mensual (%)');
+    expect(lateFees).toContain('Revisar recargos del mes');
+    expect(lateFees).toContain('<ConfirmDialog');
+    expect(lateFees).toContain('confirmLabel="Generar recargos"');
+    expect(lateFeesClient).toContain('/late-fees/preview');
     expect(count(lateFees, 'disabled={!canManage}')).toBeGreaterThanOrEqual(6);
   });
 });
