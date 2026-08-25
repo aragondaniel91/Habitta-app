@@ -57,10 +57,13 @@ const paginatedFinancialList = (table: string, order: string) => async (c: AppCo
 
       const pageItems = (await response.json()) as unknown[];
       const pageTotal = parseExactTotal(response.headers.get('content-range'));
-      if (!Array.isArray(pageItems) || pageTotal === null)
+      if (!Array.isArray(pageItems) || pageTotal === null) {
         return c.json({ error: 'Pagination metadata unavailable' }, 502);
+      }
       total ??= pageTotal;
-      if (pageTotal !== total) return c.json({ error: 'Financial list changed during read' }, 409);
+      if (pageTotal !== total) {
+        return c.json({ error: 'Financial list changed during read' }, 409);
+      }
       if (total > COMPLETE_READ_MAX_ROWS) {
         return c.json(
           {
@@ -74,8 +77,9 @@ const paginatedFinancialList = (table: string, order: string) => async (c: AppCo
 
       items.push(...pageItems);
       if (items.length >= total) return c.json(items);
-      if (pageItems.length === 0)
+      if (pageItems.length === 0) {
         return c.json({ error: 'Financial history ended before exact count' }, 502);
+      }
     }
   }
 
