@@ -263,6 +263,8 @@ export const openingBalancesSchema = z.object({
             .regex(/^[A-Za-z]{3}$/)
             .transform((x) => x.toUpperCase()),
           effective_date: z.string().date(),
+          due_date: z.string().date().optional(),
+          debt_date: z.string().date().optional(),
           description: z.string().optional(),
         })
         .superRefine((row, context) => {
@@ -270,6 +272,12 @@ export const openingBalancesSchema = z.object({
             context.addIssue({
               code: z.ZodIssueCode.custom,
               message: 'unit_id or unit_code is required',
+            });
+          if (row.due_date && row.debt_date && row.due_date !== row.debt_date)
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['due_date'],
+              message: 'due_date and debt_date must match when both are provided',
             });
         }),
     )
