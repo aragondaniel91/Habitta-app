@@ -16,8 +16,7 @@ export type RecurringPlanValidation = {
   errors: Partial<Record<keyof RecurringPlanDraft, string>>;
 };
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const moneyPattern = /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/;
 const currencyPattern = /^[A-Z]{3}$/;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -56,11 +55,7 @@ export function validateRecurringPlanDraft(draft: RecurringPlanDraft): Recurring
   if (!isIsoDate(draft.startsOn)) errors.startsOn = 'Selecciona una fecha de inicio válida.';
   if (draft.endsOn && !isIsoDate(draft.endsOn)) {
     errors.endsOn = 'Selecciona una fecha de finalización válida.';
-  } else if (
-    draft.endsOn &&
-    isIsoDate(draft.startsOn) &&
-    draft.endsOn < draft.startsOn
-  ) {
+  } else if (draft.endsOn && isIsoDate(draft.startsOn) && draft.endsOn < draft.startsOn) {
     errors.endsOn = 'La fecha final no puede ser anterior al inicio.';
   }
 
