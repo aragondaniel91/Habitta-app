@@ -12,6 +12,9 @@ const paginationQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
 });
 
+const COMPLETE_READ_PAGE_SIZE = 500;
+const COMPLETE_READ_MAX_ROWS = 50_000;
+
 const rest = (c: AppContext, path: string, init: RequestInit = {}) =>
   fetch(`${c.env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
@@ -28,14 +31,60 @@ const parseExactTotal = (contentRange: string | null) => {
   return match ? Number.parseInt(match[1]!, 10) : null;
 };
 
+const listFailure = async (c: AppContext, response: Response) => {
+  const value = (await response.json().catch(() => null)) as { code?: string } | null;
+  const denied =
+    response.status === 401 || response.status === 403 || value?.code === '42501';
+  return c.json({ error: denied ? 'Forbidden' : 'Request failed' }, denied ? 403 : 400);
+};
+
 const paginatedFinancialList = (table: string, order: string) => async (c: AppContext) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const explicitPagination =
+    c.req.query('page') !== undefined || c.req.query('pageSize') !== undefined;
+
+  if (!explicitPagination) {
+    const items: unknown[] = [];
+    let total: number | null = null;
+
+    for (let offset = 0; ; offset += COMPLETE_READ_PAGE_SIZE) {
+      const response = await rest(
+        c,
+        `${table}?condominium_id=eq.${id}&select=*&order=${order}&limit=${COMPLETE_READ_PAGE_SIZE}&offset=${offset}`,
+        { headers: { Prefer: 'count=exact' } },
+      );
+      if (!response.ok) return listFailure(c, response);
+
+      const pageItems = (await response.json()) as unknown[];
+      const pageTotal = parseExactTotal(response.headers.get('content-range'));
+      if (!Array.isArray(pageItems) || pageTotal === null)
+        return c.json({ error: 'Pagination metadata unavailable' }, 502);
+      total ??= pageTotal;
+      if (pageTotal !== total) return c.json({ error: 'Financial list changed during read' }, 409);
+      if (total > COMPLETE_READ_MAX_ROWS) {
+        return c.json(
+          {
+            error: 'Financial history requires explicit pagination',
+            total,
+            maxCompleteReadRows: COMPLETE_READ_MAX_ROWS,
+          },
+          413,
+        );
+      }
+
+      items.push(...pageItems);
+      if (items.length >= total) return c.json(items);
+      if (pageItems.length === 0)
+        return c.json({ error: 'Financial history ended before exact count' }, 502);
+    }
+  }
+
   const query = paginationQuerySchema.safeParse({
     page: c.req.query('page') || undefined,
     pageSize: c.req.query('pageSize') || undefined,
   });
   if (!query.success) return c.json({ error: query.error.flatten() }, 400);
 
-  const id = uuidSchema.parse(c.req.param('id'));
   const { page, pageSize } = query.data;
   const offset = (page - 1) * pageSize;
   const response = await rest(
@@ -43,13 +92,9 @@ const paginatedFinancialList = (table: string, order: string) => async (c: AppCo
     `${table}?condominium_id=eq.${id}&select=*&order=${order}&limit=${pageSize}&offset=${offset}`,
     { headers: { Prefer: 'count=exact' } },
   );
-  const value = await response.json();
-  if (!response.ok) {
-    const code = (value as { code?: string }).code;
-    const denied = response.status === 401 || response.status === 403 || code === '42501';
-    return c.json({ error: denied ? 'Forbidden' : 'Request failed' }, denied ? 403 : 400);
-  }
+  if (!response.ok) return listFailure(c, response);
 
+  const value = await response.json();
   const items = Array.isArray(value) ? value : [];
   const total = parseExactTotal(response.headers.get('content-range'));
   if (total === null) return c.json({ error: 'Pagination metadata unavailable' }, 502);
@@ -67,12 +112,18 @@ const paginatedFinancialList = (table: string, order: string) => async (c: AppCo
 };
 
 export function registerFinancialListRoutes(router: Hono<AppEnvironment>) {
-  router.get('/:id/charge-concepts', paginatedFinancialList('charge_concepts', 'created_at.desc,id.desc'));
+  router.get(
+    '/:id/charge-concepts',
+    paginatedFinancialList('charge_concepts', 'created_at.desc,id.desc'),
+  );
   router.get(
     '/:id/receivables',
     paginatedFinancialList('receivable_balances', 'issue_date.desc,id.desc'),
   );
-  router.get('/:id/charge-batches', paginatedFinancialList('charge_batches', 'created_at.desc,id.desc'));
+  router.get(
+    '/:id/charge-batches',
+    paginatedFinancialList('charge_batches', 'created_at.desc,id.desc'),
+  );
   router.get(
     '/:id/payment-methods',
     paginatedFinancialList('condominium_payment_methods', 'display_name.asc,id.asc'),
