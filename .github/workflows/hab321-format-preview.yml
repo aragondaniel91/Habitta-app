@@ -1,0 +1,38 @@
+name: HAB321 Format Preview
+
+on:
+  push:
+    branches:
+      - hab-321-financial-pagination
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format HAB-321 files
+        run: >-
+          pnpm exec prettier --write
+          apps/api/src/financial-list-routes.ts
+          apps/api/test/financial-pagination.test.ts
+          apps/web/src/pages/PaymentsPage.tsx
+          apps/web/src/pages/ReceivablesPage.tsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hab321-formatted
+          path: |
+            apps/api/src/financial-list-routes.ts
+            apps/api/test/financial-pagination.test.ts
+            apps/web/src/pages/PaymentsPage.tsx
+            apps/web/src/pages/ReceivablesPage.tsx
