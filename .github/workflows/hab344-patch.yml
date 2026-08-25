@@ -1,0 +1,31 @@
+name: HAB-344 temporary patch
+
+on:
+  push:
+    branches:
+      - hab-344-opening-balance-aging
+    paths:
+      - .github/workflows/hab344-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-344-opening-balance-aging
+          fetch-depth: 0
+      - name: Apply staged patch
+        run: python scripts/hab344_patch.py
+      - name: Commit implementation and remove temporary files
+        run: |
+          rm scripts/hab344_patch.py .github/workflows/hab344-patch.yml
+          git config user.name "aragondaniel91"
+          git config user.email "79597132+aragondaniel91@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "complete HAB-344 opening balance aging contract"
+          git push origin HEAD:hab-344-opening-balance-aging
