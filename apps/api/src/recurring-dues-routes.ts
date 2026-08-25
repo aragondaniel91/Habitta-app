@@ -216,4 +216,11 @@ recurringDuesRoutes.post('/:id/recurring-charge-runs/:runId/post', (c) =>
   mutateRun(c, 'post_recurring_charge_run'),
 );
 
+recurringDuesRoutes.post('/:id/late-fees/preview', async (c) => {
+  const response = await rpc(c, 'preview_late_fees', {
+    target_condominium: uuidSchema.parse(c.req.param('id')),
+  });
+  return c.json(await response.json(), response.ok ? 200 : 400);
+});
+
 recurringDuesRoutes.route('/', ownershipFinanceRoutes);

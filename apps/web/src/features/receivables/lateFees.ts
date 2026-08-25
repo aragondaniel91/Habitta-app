@@ -20,6 +20,12 @@ export type LateFeeSettingsInput = {
   appliesToForeignCurrency: boolean;
 };
 
+export type LateFeePreview = {
+  period: string;
+  count: number;
+  totals: { currencyCode: string; amount: string }[];
+};
+
 export const getLateFeeSettings = (condominiumId: string, session: Session) =>
   apiRequest<LateFeeSettings>(`/v1/condominiums/${condominiumId}/late-fee-settings`, session);
 
@@ -31,6 +37,11 @@ export const updateLateFeeSettings = (
   apiRequest<LateFeeSettings>(`/v1/condominiums/${condominiumId}/late-fee-settings`, session, {
     method: 'PUT',
     body: JSON.stringify(input),
+  });
+
+export const previewLateFees = (condominiumId: string, session: Session) =>
+  apiRequest<LateFeePreview>(`/v1/condominiums/${condominiumId}/late-fees/preview`, session, {
+    method: 'POST',
   });
 
 export const applyLateFees = (condominiumId: string, session: Session) =>
