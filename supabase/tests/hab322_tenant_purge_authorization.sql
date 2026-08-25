@@ -41,19 +41,22 @@ select ok(
   'condominium purge authorization is false outside the owner-only deletion RPC'
 );
 
-select unlike(
-  lower(pg_get_functiondef('public.request_condominium_deletion(uuid,text)'::regprocedure)),
-  '%disable trigger%',
+select ok(
+  position(
+    'disable trigger' in lower(pg_get_functiondef('public.request_condominium_deletion(uuid,text)'::regprocedure))
+  ) = 0,
   'runtime deletion no longer disables USER triggers'
 );
-select unlike(
-  lower(pg_get_functiondef('public.request_condominium_deletion(uuid,text)'::regprocedure)),
-  '%enable trigger%',
+select ok(
+  position(
+    'enable trigger' in lower(pg_get_functiondef('public.request_condominium_deletion(uuid,text)'::regprocedure))
+  ) = 0,
   'runtime deletion no longer toggles USER triggers back on'
 );
-select like(
-  lower(pg_get_functiondef('public.request_condominium_deletion(uuid,text)'::regprocedure)),
-  '%for update of c%',
+select ok(
+  position(
+    'for update of c' in lower(pg_get_functiondef('public.request_condominium_deletion(uuid,text)'::regprocedure))
+  ) > 0,
   'deletion locks only the target condominium row against same-tenant races'
 );
 
@@ -104,15 +107,17 @@ select is(
   'all immutable/no-delete guards used by condominium purge require narrow authorization'
 );
 
-select like(
-  pg_get_functiondef('public.guard_unit_owner_history()'::regprocedure),
-  '%is_unit_condominium_purge_authorized%',
+select ok(
+  position(
+    'is_unit_condominium_purge_authorized' in pg_get_functiondef('public.guard_unit_owner_history()'::regprocedure)
+  ) > 0,
   'unit owner history uses captured target unit UUIDs rather than a global bypass'
 );
 
-select like(
-  pg_get_functiondef('public.maintenance_append_only()'::regprocedure),
-  '%has_condominium_purge_authorization%',
+select ok(
+  position(
+    'has_condominium_purge_authorization' in pg_get_functiondef('public.maintenance_append_only()'::regprocedure)
+  ) > 0,
   'statement-level maintenance history only yields inside an authorized purge transaction'
 );
 
