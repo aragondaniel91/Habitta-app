@@ -8,6 +8,7 @@ import {
   ReportsIcon,
   SettingsIcon,
 } from '../components/icons';
+import { FinancialPagination } from '../components/FinancialPagination';
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { paymentApi } from '../features/payments/api';
@@ -21,6 +22,13 @@ import type {
 import { ApiRequestError, apiRequest } from '../lib/api';
 import { canManage, useCondominiumRoles } from '../lib/roles';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
+import {
+  collectAllPages,
+  financialPagePath,
+  mergePageItems,
+  pageInfo,
+} from '../lib/pagination';
+import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
   filterPayments,
   getPaymentCurrencies,
@@ -41,6 +49,7 @@ type PaymentsData = {
   buildings: Building[];
   methods: PaymentMethod[];
   payments: Payment[];
+  paymentsPage: PageInfo;
   receivables: Receivable[];
   reviewQueue: Payment[];
   reviewQueueAvailable: boolean;
@@ -51,6 +60,9 @@ type Props = {
   condominiumName: string;
   session: Session;
 };
+
+const PAYMENTS_PAGE_SIZE = 50;
+const REFERENCE_PAGE_SIZE = 100;
 
 const initialFilters: PaymentFilters = {
   query: '',
@@ -132,6 +144,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   const manage = canManage(roles);
   const [data, setData] = useState<PaymentsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMorePayments, setLoadingMorePayments] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
@@ -154,26 +167,48 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
             }
             throw requestError;
           });
-        const [units, buildings, methods, payments, receivables, reviewQueueResult] =
+        const methodsPromise = collectAllPages((page) =>
+          apiRequest<PaginatedResponse<PaymentMethod>>(
+            financialPagePath(
+              `/v1/condominiums/${condominiumId}/payment-methods`,
+              page,
+              REFERENCE_PAGE_SIZE,
+            ),
+            session,
+          ),
+        );
+        const receivablesPromise = collectAllPages((page) =>
+          apiRequest<PaginatedResponse<Receivable>>(
+            financialPagePath(
+              `/v1/condominiums/${condominiumId}/receivables`,
+              page,
+              REFERENCE_PAGE_SIZE,
+            ),
+            session,
+          ),
+        ).catch(() => [] as Receivable[]);
+        const [units, buildings, methods, paymentsPage, receivables, reviewQueueResult] =
           await Promise.all([
             apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
             apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-            apiRequest<PaymentMethod[]>(
-              `/v1/condominiums/${condominiumId}/payment-methods`,
+            methodsPromise,
+            apiRequest<PaginatedResponse<Payment>>(
+              financialPagePath(
+                `/v1/condominiums/${condominiumId}/payments`,
+                1,
+                PAYMENTS_PAGE_SIZE,
+              ),
               session,
             ),
-            apiRequest<Payment[]>(`/v1/condominiums/${condominiumId}/payments`, session),
-            apiRequest<Receivable[]>(
-              `/v1/condominiums/${condominiumId}/receivables`,
-              session,
-            ).catch(() => []),
+            receivablesPromise,
             reviewQueuePromise,
           ]);
         setData({
           units,
           buildings,
           methods,
-          payments,
+          payments: paymentsPage.items,
+          paymentsPage: pageInfo(paymentsPage),
           receivables,
           reviewQueue: reviewQueueResult.items,
           reviewQueueAvailable: reviewQueueResult.available,
@@ -197,6 +232,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     setDrawer(null);
     setFilters(initialFilters);
     setMessage('');
+    setLoadingMorePayments(false);
   }, [condominiumId]);
 
   const currencies = useMemo(
@@ -234,6 +270,39 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       }),
     );
   }, [data, filters, selectedCurrency, unitCodes]);
+
+  const loadMorePayments = useCallback(async () => {
+    if (!data?.paymentsPage.hasNextPage || loadingMorePayments) return;
+    setLoadingMorePayments(true);
+    setError('');
+    try {
+      const next = await apiRequest<PaginatedResponse<Payment>>(
+        financialPagePath(
+          `/v1/condominiums/${condominiumId}/payments`,
+          data.paymentsPage.page + 1,
+          data.paymentsPage.pageSize,
+        ),
+        session,
+      );
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              payments: mergePageItems(current.payments, next.items),
+              paymentsPage: pageInfo(next),
+            }
+          : current,
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo cargar más historial de pagos.',
+      );
+    } finally {
+      setLoadingMorePayments(false);
+    }
+  }, [condominiumId, data?.paymentsPage, loadingMorePayments, session]);
 
   const onChanged = async (nextMessage: string) => {
     setMessage(nextMessage);
@@ -319,6 +388,12 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       {message ? (
         <div className="payments-success-alert" role="status">
           <CheckCircleIcon size={17} /> {message}
+        </div>
+      ) : null}
+      {data.payments.length < data.paymentsPage.total ? (
+        <div className="payments-inline-alert" role="status">
+          Indicadores, búsquedas y filtros usan {data.payments.length} de {data.paymentsPage.total}{' '}
+          pagos cargados. Usa “Cargar más” para ampliar el historial sin traerlo completo de una vez.
         </div>
       ) : null}
 
@@ -472,7 +547,10 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
             <h2>Movimientos registrados</h2>
             <p>Busca por unidad, pagador, referencia o método.</p>
           </div>
-          <span className="payments-result-count">{visiblePayments.length} resultados</span>
+          <span className="payments-result-count">
+            {visiblePayments.length} visibles · {data.payments.length} de {data.paymentsPage.total}{' '}
+            cargados
+          </span>
         </div>
         <div className="payments-filters">
           <input
@@ -586,12 +664,24 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
         ) : (
           <EmptyState
             actionLabel="Limpiar filtros"
-            description="Prueba con otros términos, estados o métodos."
+            description={
+              data.payments.length < data.paymentsPage.total
+                ? 'No hay coincidencias en el historial cargado. Carga más pagos para ampliar la búsqueda.'
+                : 'Prueba con otros términos, estados o métodos.'
+            }
             icon={<PaymentsIcon size={26} />}
             onAction={() => setFilters(initialFilters)}
             title="No encontramos pagos"
           />
         )}
+
+        <FinancialPagination
+          itemLabel="pagos"
+          loaded={data.payments.length}
+          loading={loadingMorePayments}
+          onLoadMore={() => void loadMorePayments()}
+          total={data.paymentsPage.total}
+        />
       </Surface>
 
       {drawer?.type === 'create' ? (
