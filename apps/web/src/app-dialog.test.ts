@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const dialogUrl = new URL('./components/Dialog.tsx', import.meta.url);
@@ -61,7 +62,7 @@ describe('HAB-210 shared app dialogs', () => {
   });
 
   it('does not allow native browser confirm, alert or prompt calls in product source', async () => {
-    const rootPath = sourceRoot.pathname;
+    const rootPath = fileURLToPath(sourceRoot);
     const files = await productionSourceFiles(rootPath);
     const violations: string[] = [];
 
