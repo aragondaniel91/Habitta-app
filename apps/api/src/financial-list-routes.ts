@@ -33,8 +33,7 @@ const parseExactTotal = (contentRange: string | null) => {
 
 const listFailure = async (c: AppContext, response: Response) => {
   const value = (await response.json().catch(() => null)) as { code?: string } | null;
-  const denied =
-    response.status === 401 || response.status === 403 || value?.code === '42501';
+  const denied = response.status === 401 || response.status === 403 || value?.code === '42501';
   return c.json({ error: denied ? 'Forbidden' : 'Request failed' }, denied ? 403 : 400);
 };
 
