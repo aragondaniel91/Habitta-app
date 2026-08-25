@@ -2,11 +2,15 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MODULE_HELP } from './features/help/module-help';
 
-const page = readFileSync(new URL('./pages/CommunityPage.tsx', import.meta.url), 'utf8');
-const styles = readFileSync(new URL('./community.css', import.meta.url), 'utf8');
-const matrix = readFileSync(
-  new URL('../../../docs/frontend/form-parity-matrix.md', import.meta.url),
-  'utf8',
+const normalizeNewlines = (value: string) => value.replace(/\r\n/g, '\n');
+const page = normalizeNewlines(
+  readFileSync(new URL('./pages/CommunityPage.tsx', import.meta.url), 'utf8'),
+);
+const styles = normalizeNewlines(
+  readFileSync(new URL('./community.css', import.meta.url), 'utf8'),
+);
+const matrix = normalizeNewlines(
+  readFileSync(new URL('../../../docs/frontend/form-parity-matrix.md', import.meta.url), 'utf8'),
 );
 
 describe('HAB-303 premium Community certification', () => {
