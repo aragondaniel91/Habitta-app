@@ -162,7 +162,9 @@ describe('HAB-352 recurring plan edits', () => {
         'Hay una cuota de este plan pendiente de revisión. Publícala o resuélvela antes de editar la configuración.',
     });
     expect(
-      recurringDomainFailureFromPostgrest({ message: 'posted recurring history outside edited plan' }),
+      recurringDomainFailureFromPostgrest({
+        message: 'posted recurring history outside edited plan',
+      }),
     ).toMatchObject({ status: 409, error: 'recurring_plan_posted_history_conflict' });
     expect(
       recurringDomainFailureFromPostgrest({
