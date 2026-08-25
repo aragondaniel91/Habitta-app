@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowRightIcon, CheckCircleIcon, FeesIcon, ReportsIcon } from '../components/icons';
+import { FinancialPagination } from '../components/FinancialPagination';
 import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
@@ -9,6 +10,13 @@ import { canManage, useCondominiumRoles } from '../lib/roles';
 import { unitReferenceLabel } from '../lib/unit-domain';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import type { ReceivableAging, ReceivableSummary } from '../lib/dashboard';
+import {
+  collectAllPages,
+  financialPagePath,
+  mergePageItems,
+  pageInfo,
+} from '../lib/pagination';
+import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
   filterReceivables,
   getAgingForCurrency,
@@ -43,6 +51,7 @@ type ReceivablesData = {
   buildings: Building[];
   concepts: ChargeConcept[];
   items: ReceivableItem[];
+  itemsPage: PageInfo;
   summaries: ReceivableSummary[];
   aging: ReceivableAging[];
 };
@@ -53,6 +62,9 @@ type Props = {
   condominiumName: string;
   session: Session;
 };
+
+const RECEIVABLES_PAGE_SIZE = 50;
+const REFERENCE_PAGE_SIZE = 100;
 
 const initialFilters: ReceivableFilters = {
   query: '',
@@ -145,6 +157,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
   const manage = canManage(roles);
   const [data, setData] = useState<ReceivablesData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMoreItems, setLoadingMoreItems] = useState(false);
   const [error, setError] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [filters, setFilters] = useState<ReceivableFilters>(initialFilters);
@@ -158,11 +171,28 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       if (!background) setLoading(true);
       setError('');
       try {
-        const [units, buildings, concepts, items, summaries, aging] = await Promise.all([
+        const conceptsPromise = collectAllPages((page) =>
+          apiRequest<PaginatedResponse<ChargeConcept>>(
+            financialPagePath(
+              `/v1/condominiums/${condominiumId}/charge-concepts`,
+              page,
+              REFERENCE_PAGE_SIZE,
+            ),
+            session,
+          ),
+        );
+        const [units, buildings, concepts, itemsPage, summaries, aging] = await Promise.all([
           apiRequest<ReceivableUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
           apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-          apiRequest<ChargeConcept[]>(`/v1/condominiums/${condominiumId}/charge-concepts`, session),
-          apiRequest<ReceivableItem[]>(`/v1/condominiums/${condominiumId}/receivables`, session),
+          conceptsPromise,
+          apiRequest<PaginatedResponse<ReceivableItem>>(
+            financialPagePath(
+              `/v1/condominiums/${condominiumId}/receivables`,
+              1,
+              RECEIVABLES_PAGE_SIZE,
+            ),
+            session,
+          ),
           apiRequest<ReceivableSummary[]>(
             `/v1/condominiums/${condominiumId}/receivables/summary`,
             session,
@@ -172,7 +202,15 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             session,
           ),
         ]);
-        setData({ units, buildings, concepts, items, summaries, aging });
+        setData({
+          units,
+          buildings,
+          concepts,
+          items: itemsPage.items,
+          itemsPage: pageInfo(itemsPage),
+          summaries,
+          aging,
+        });
       } catch (requestError) {
         setError(
           requestError instanceof Error
@@ -195,6 +233,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
     setFilters(initialFilters);
     setSelectedReceivableId('');
     setChargeChooserOpen(false);
+    setLoadingMoreItems(false);
   }, [condominiumId]);
 
   const currencies = useMemo(
@@ -235,6 +274,39 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       }),
     );
   }, [data, filters, selectedCurrency]);
+
+  const loadMoreItems = useCallback(async () => {
+    if (!data?.itemsPage.hasNextPage || loadingMoreItems) return;
+    setLoadingMoreItems(true);
+    setError('');
+    try {
+      const next = await apiRequest<PaginatedResponse<ReceivableItem>>(
+        financialPagePath(
+          `/v1/condominiums/${condominiumId}/receivables`,
+          data.itemsPage.page + 1,
+          data.itemsPage.pageSize,
+        ),
+        session,
+      );
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              items: mergePageItems(current.items, next.items),
+              itemsPage: pageInfo(next),
+            }
+          : current,
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo cargar más historial de cuentas por cobrar.',
+      );
+    } finally {
+      setLoadingMoreItems(false);
+    }
+  }, [condominiumId, data?.itemsPage, loadingMoreItems, session]);
 
   if (loading && !data) return <ReceivablesLoading />;
 
@@ -300,6 +372,13 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       {error ? (
         <div className="receivables-inline-alert" role="status">
           {error} Se mantienen los últimos datos cargados.
+        </div>
+      ) : null}
+      {data.items.length < data.itemsPage.total ? (
+        <div className="receivables-inline-alert" role="status">
+          Los saldos y la antigüedad usan los agregados completos del servidor. La composición por
+          estado, búsquedas y tabla usan {data.items.length} de {data.itemsPage.total} cargos
+          cargados; “Cargar más” amplía el historial sin traerlo completo de una vez.
         </div>
       ) : null}
 
@@ -395,7 +474,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             <div>
               <span className="receivables-kicker">Estado</span>
               <h2>Composición de cargos</h2>
-              <p>Volumen de obligaciones según su estado actual.</p>
+              <p>Volumen de obligaciones según los cargos cargados en esta vista.</p>
             </div>
           </div>
           <div className="receivables-status-list">
@@ -452,7 +531,8 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             <span className="receivables-kicker">Cartera</span>
             <h2>Cargos registrados</h2>
             <p>
-              {visibleItems.length} resultados en {selectedCurrency || 'la moneda seleccionada'}.
+              {visibleItems.length} visibles · {data.items.length} de {data.itemsPage.total} cargados
+              en {selectedCurrency || 'la moneda seleccionada'}.
             </p>
           </div>
           <div className="receivables-tools-menu">
@@ -618,12 +698,24 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
         ) : (
           <EmptyState
             actionLabel="Limpiar filtros"
-            description="Prueba otra búsqueda o registra una nueva cuota para comenzar."
+            description={
+              data.items.length < data.itemsPage.total
+                ? 'No hay coincidencias en los cargos cargados. Carga más historial para ampliar la búsqueda.'
+                : 'Prueba otra búsqueda o registra una nueva cuota para comenzar.'
+            }
             icon={<FeesIcon size={27} />}
             onAction={() => setFilters(initialFilters)}
             title="No hay cargos para esta vista"
           />
         )}
+
+        <FinancialPagination
+          itemLabel="cargos"
+          loaded={data.items.length}
+          loading={loadingMoreItems}
+          onLoadMore={() => void loadMoreItems()}
+          total={data.itemsPage.total}
+        />
       </Surface>
 
       {chargeChooserOpen ? (
