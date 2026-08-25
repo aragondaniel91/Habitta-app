@@ -17,9 +17,7 @@ describe('HAB-317 live approved-payment reversal', () => {
     expect(drawers).toContain("import { ConfirmDialog } from '../components/Dialog'");
     expect(drawers).toContain("payment.status === 'approved' && manage");
     expect(drawers).toContain('Reversar pago aprobado');
-    expect(drawers).toContain(
-      `/v1/condominiums/\${condominiumId}/payments/\${payment.id}/reverse`,
-    );
+    expect(drawers).toContain(`/v1/condominiums/\${condominiumId}/payments/\${payment.id}/reverse`);
   });
 
   it('requires a reason, shared destructive confirmation and refreshes after success', async () => {
@@ -29,7 +27,7 @@ describe('HAB-317 live approved-payment reversal', () => {
     expect(drawers).toContain('<ConfirmDialog');
     expect(drawers).toContain('destructive');
     expect(drawers).toContain('confirmLabel="Reversar pago"');
-    expect(drawers).toContain("body: JSON.stringify({ reason: reason.trim() })");
+    expect(drawers).toContain('body: JSON.stringify({ reason: reason.trim() })');
     expect(drawers).toContain("await onChanged('Pago reversado.')");
     expect(drawers).not.toContain('window.confirm(');
   });
