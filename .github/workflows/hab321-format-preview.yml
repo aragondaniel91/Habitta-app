@@ -6,13 +6,15 @@ on:
       - hab-321-financial-pagination
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: hab-321-financial-pagination
       - uses: pnpm/action-setup@v4
         with:
           version: 10.12.1
@@ -28,11 +30,22 @@ jobs:
           apps/api/test/financial-pagination.test.ts
           apps/web/src/pages/PaymentsPage.tsx
           apps/web/src/pages/ReceivablesPage.tsx
-      - uses: actions/upload-artifact@v4
-        with:
-          name: hab321-formatted
-          path: |
-            apps/api/src/financial-list-routes.ts
-            apps/api/test/financial-pagination.test.ts
-            apps/web/src/pages/PaymentsPage.tsx
+      - name: Commit exact Prettier output when needed
+        run: |
+          if git diff --quiet -- \
+            apps/api/src/financial-list-routes.ts \
+            apps/api/test/financial-pagination.test.ts \
+            apps/web/src/pages/PaymentsPage.tsx \
+            apps/web/src/pages/ReceivablesPage.tsx; then
+            echo 'HAB-321 files already match repository Prettier output.'
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            apps/api/src/financial-list-routes.ts \
+            apps/api/test/financial-pagination.test.ts \
+            apps/web/src/pages/PaymentsPage.tsx \
             apps/web/src/pages/ReceivablesPage.tsx
+          git commit -m 'style HAB-321 with repository Prettier'
+          git push origin HEAD:hab-321-financial-pagination
