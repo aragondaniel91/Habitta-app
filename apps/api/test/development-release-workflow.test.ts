@@ -46,4 +46,18 @@ describe('development release workflow', () => {
     expect(workflow).toContain('Deployment alias URL:');
     expect(workflow).toContain('deploymentUrl:$deploymentUrl');
   });
+
+  it('requires explicit acknowledgement when development shares production Supabase', async () => {
+    const workflow = await readFile(workflowUrl, 'utf8');
+
+    expect(workflow).toContain('environment: development');
+    expect(workflow).toContain('HABITTA_PROD_PROJECT_REF: kgsfaahixbcwcmykmhat');
+    expect(workflow).toContain('database_mode_confirmation:');
+    expect(workflow).toContain('DEV-SHARES-PRODUCTION-DATABASE');
+    expect(workflow).toContain('SEPARATE-DEVELOPMENT-DATABASE');
+    expect(workflow).toContain(
+      'if [ "$SUPABASE_PROJECT_REF" = "$HABITTA_PROD_PROJECT_REF" ]; then',
+    );
+    expect(workflow).toContain('Reviewed migrations can affect production data.');
+  });
 });
