@@ -20,7 +20,7 @@ describe('HAB-321 financial list pagination', () => {
     ['payment-methods', 'condominium_payment_methods', 'display_name.asc,id.asc'],
     ['payments', 'payments', 'created_at.desc,id.desc'],
   ])('paginates %s with stable tenant-scoped ordering', async (endpoint, table, order) => {
-    const calls: { url: string; init?: RequestInit }[] = [];
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
