@@ -19,10 +19,23 @@ export const recurringDuesRoutes = new Hono<{
   Variables: Variables;
 }>();
 
-const moneySchema = z
-  .string()
-  .regex(/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/)
-  .refine((value) => Number(value) > 0);
+const moneyPattern = /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/;
+
+export function normalizeRecurringMoneyInput(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return value;
+  const serialized = String(value);
+  if (!moneyPattern.test(serialized)) return value;
+  if (!Number.isSafeInteger(Math.round(value * 100))) return value;
+  return serialized;
+}
+
+const moneySchema = z.preprocess(
+  normalizeRecurringMoneyInput,
+  z
+    .string()
+    .regex(moneyPattern)
+    .refine((value) => Number(value) > 0),
+);
 
 const scopeInputSchema = z
   .object({

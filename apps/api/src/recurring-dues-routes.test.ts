@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { recurringDomainFailureFromPostgrest } from './recurring-dues-routes';
+import {
+  normalizeRecurringMoneyInput,
+  recurringDomainFailureFromPostgrest,
+} from './recurring-dues-routes';
 
 const source = readFileSync(
   fileURLToPath(new URL('./recurring-dues-routes.ts', import.meta.url)),
@@ -118,5 +121,23 @@ describe('HAB-347 recurring dues domain errors', () => {
     expect(source).toContain('return rpcResult(c, response, 201)');
     expect(source).toContain('return rpcResult(c, response, 200)');
     expect(source).toContain("error: 'recurring_dues_upstream_failure'");
+  });
+});
+
+describe('HAB-349 recurring numeric amount compatibility', () => {
+  it('normalizes canonical JSON numbers emitted by PostgREST into the existing money string contract', () => {
+    expect(normalizeRecurringMoneyInput(30)).toBe('30');
+    expect(normalizeRecurringMoneyInput(30.5)).toBe('30.5');
+    expect(normalizeRecurringMoneyInput(0.29)).toBe('0.29');
+    expect(normalizeRecurringMoneyInput('30.00')).toBe('30.00');
+    expect(source).toContain('z.preprocess(\n  normalizeRecurringMoneyInput');
+    expect(source).toContain('amount: moneySchema');
+  });
+
+  it('does not coerce imprecise, non-positive, non-finite, or unsafe numeric amounts', () => {
+    expect(normalizeRecurringMoneyInput(30.123)).toBe(30.123);
+    expect(normalizeRecurringMoneyInput(0)).toBe(0);
+    expect(normalizeRecurringMoneyInput(Number.POSITIVE_INFINITY)).toBe(Number.POSITIVE_INFINITY);
+    expect(normalizeRecurringMoneyInput(Number.MAX_SAFE_INTEGER)).toBe(Number.MAX_SAFE_INTEGER);
   });
 });
