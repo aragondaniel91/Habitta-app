@@ -10,6 +10,10 @@ const workspaceSource = readFileSync(
   new URL('./features/receivables/RecurringDuesWorkspace.tsx', import.meta.url),
   'utf8',
 );
+const recurringApiSource = readFileSync(
+  new URL('../../api/src/recurring-dues-routes.ts', import.meta.url),
+  'utf8',
+);
 const workspaceCss = readFileSync(new URL('./recurring-dues.css', import.meta.url), 'utf8');
 const chooserSource = readFileSync(
   new URL('./features/receivables/ChargeCreationChooser.tsx', import.meta.url),
@@ -124,6 +128,13 @@ describe('HAB-185 recurring dues workspace contract', () => {
     expect(workspaceSource).toContain('issueDay: Number(planForm.issueDay)');
     expect(workspaceSource).toContain('dueDay: Number(planForm.dueDay)');
     expect(workspaceSource).toContain('Crear el plan no publica deuda');
+  });
+
+  it('keeps PostgREST numeric concept defaults compatible with the recurring API money boundary', () => {
+    expect(workspaceSource).toContain('amount: concept?.default_amount ??');
+    expect(recurringApiSource).toContain('normalizeRecurringMoneyInput');
+    expect(recurringApiSource).toContain('z.preprocess(\n  normalizeRecurringMoneyInput');
+    expect(recurringApiSource).toContain('amount: moneySchema');
   });
 
   it('keeps a one-off charge bound to the selected unit UUID and existing payload', () => {
