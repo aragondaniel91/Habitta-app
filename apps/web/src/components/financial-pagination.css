@@ -1,0 +1,33 @@
+.financial-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--border-subtle, rgba(15, 23, 42, 0.1));
+  margin-top: 16px;
+  color: var(--text-muted, #64748b);
+}
+
+.financial-pagination span {
+  font-size: 0.875rem;
+}
+
+.financial-pagination strong {
+  color: var(--text-primary, #0f172a);
+}
+
+.financial-pagination small {
+  font-size: 0.8rem;
+}
+
+@media (max-width: 560px) {
+  .financial-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .financial-pagination button {
+    width: 100%;
+  }
+}
