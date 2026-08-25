@@ -51,9 +51,10 @@ describe('HAB-261 live Personas UX redesign', () => {
     expect(relationship).toContain('onRequestClose');
   });
 
-  it('preserves community roles private notes resident invitations and CSV preview plus idempotent commit', async () => {
+  it('preserves community roles private notes resident invitations and canonical CSV import', async () => {
     const controller = await read('./features/people/PeoplePanelV3.tsx');
     const importer = await read('./features/people/PeopleImportDrawerV3.tsx');
+    const wizard = await read('./features/imports/CsvImportWizard.tsx');
 
     expect(controller).toContain('/condominium-relationships`');
     expect(controller).toContain('/admin-notes`');
@@ -63,11 +64,13 @@ describe('HAB-261 live Personas UX redesign', () => {
     expect(controller).toContain('residentAccessOptions');
     expect(controller).toContain('revokeResidentInvitation');
     expect(controller).toContain('listResidentInvitationDeliveryEvents');
-    expect(importer).toContain('/people/import/preview`');
-    expect(importer).toContain('/people/import/commit`');
-    expect(importer).toContain('crypto.randomUUID()');
-    expect(importer).toContain('preview.valid');
-    expect(importer).toContain('preview.errors');
+    expect(importer).toContain('<CsvImportWizard');
+    expect(importer).toContain('kind="people"');
+    expect(importer).not.toContain('/people/import/preview`');
+    expect(wizard).toContain('/imports/people/preview');
+    expect(wizard).toContain('/people/import/commit');
+    expect(wizard).toContain('crypto.randomUUID()');
+    expect(wizard).toContain('rows: validRows.map((row) => row.data)');
   });
 
   it('keeps lifecycle confirmations shared and exposes audit history without destructive rewrites', async () => {
