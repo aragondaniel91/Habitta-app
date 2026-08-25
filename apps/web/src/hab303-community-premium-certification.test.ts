@@ -6,9 +6,7 @@ const normalizeNewlines = (value: string) => value.replace(/\r\n/g, '\n');
 const page = normalizeNewlines(
   readFileSync(new URL('./pages/CommunityPage.tsx', import.meta.url), 'utf8'),
 );
-const styles = normalizeNewlines(
-  readFileSync(new URL('./community.css', import.meta.url), 'utf8'),
-);
+const styles = normalizeNewlines(readFileSync(new URL('./community.css', import.meta.url), 'utf8'));
 const matrix = normalizeNewlines(
   readFileSync(new URL('../../../docs/frontend/form-parity-matrix.md', import.meta.url), 'utf8'),
 );
