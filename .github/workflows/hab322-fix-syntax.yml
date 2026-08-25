@@ -1,0 +1,51 @@
+name: HAB322 Fix SQL Alias
+
+on:
+  push:
+    branches:
+      - hab-322-tenant-purge-no-global-locks
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-322-tenant-purge-no-global-locks
+          fetch-depth: 0
+      - name: Replace reserved SQL alias
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('supabase/migrations/20260825041500_hab322_tenant_purge_no_global_locks.sql')
+          text = path.read_text()
+          old = '''  delete from habitta_internal.condominium_purge_authorizations authorization
+  where authorization.backend_pid = pg_backend_pid()
+    and authorization.transaction_id = authorization_transaction_id
+    and authorization.condominium_id = target_condominium_id;'''
+          new = '''  delete from habitta_internal.condominium_purge_authorizations purge_auth
+  where purge_auth.backend_pid = pg_backend_pid()
+    and purge_auth.transaction_id = authorization_transaction_id
+    and purge_auth.condominium_id = target_condominium_id;'''
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one SQL alias target, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          git diff --check
+          grep -n "delete from habitta_internal.condominium_purge_authorizations purge_auth" supabase/migrations/20260825041500_hab322_tenant_purge_no_global_locks.sql
+          if grep -n "condominium_purge_authorizations authorization" supabase/migrations/20260825041500_hab322_tenant_purge_no_global_locks.sql; then
+            echo 'reserved alias remains' >&2
+            exit 1
+          fi
+      - name: Commit syntax fix and remove temporary workflow
+        run: |
+          rm .github/workflows/hab322-fix-syntax.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/migrations/20260825041500_hab322_tenant_purge_no_global_locks.sql .github/workflows/hab322-fix-syntax.yml
+          git commit -m 'fix: avoid reserved purge authorization alias'
+          git push origin HEAD:hab-322-tenant-purge-no-global-locks
