@@ -180,7 +180,9 @@ describe('HAB-352 recurring plan edit UX', () => {
     expect(workspaceSource).toContain(
       'const hasPendingReview = pendingRuns.some((run) => run.plan_id === plan.id)',
     );
-    expect(workspaceSource).toContain('disabled={hasPendingReview}');
+    // HAB-359 widened the guard to also cover stopped plans; a reviewed period must still block
+    // the edit, so assert the condition rather than one exact spelling of it.
+    expect(workspaceSource).toMatch(/disabled=\{hasPendingReview(\s*\|\|[^}]*)?\}/);
     expect(workspaceSource).toContain('Primero resuelve la cuota pendiente de revisión.');
   });
 });
