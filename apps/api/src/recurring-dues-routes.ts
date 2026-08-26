@@ -37,34 +37,51 @@ const moneySchema = z.preprocess(
     .refine((value) => Number(value) > 0),
 );
 
-const scopeInputSchema = z
-  .object({
-    code: z.string().trim().min(1).max(48),
-    name: z.string().trim().min(1).max(120),
-    kind: z.enum(['condominium', 'building', 'custom']),
-    buildingId: uuidSchema.optional(),
-    unitIds: z.array(uuidSchema).min(1).optional(),
-  })
-  .superRefine((value, context) => {
-    if (value.kind === 'building' && !value.buildingId)
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['buildingId'],
-        message: 'buildingId is required',
-      });
-    if (value.kind !== 'building' && value.buildingId)
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['buildingId'],
-        message: 'buildingId is only valid for building scopes',
-      });
-    if (value.kind === 'custom' && !value.unitIds?.length)
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['unitIds'],
-        message: 'unitIds are required for custom scopes',
-      });
-  });
+const scopeShape = {
+  code: z.string().trim().min(1).max(48),
+  name: z.string().trim().min(1).max(120),
+  kind: z.enum(['condominium', 'building', 'custom']),
+  buildingId: uuidSchema.optional(),
+  unitIds: z.array(uuidSchema).min(1).optional(),
+};
+
+type ScopeInput = {
+  kind: 'condominium' | 'building' | 'custom';
+  buildingId?: string;
+  unitIds?: string[];
+};
+
+function validateScopeShape(value: ScopeInput, context: z.RefinementCtx) {
+  if (value.kind === 'building' && !value.buildingId)
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['buildingId'],
+      message: 'buildingId is required',
+    });
+  if (value.kind !== 'building' && value.buildingId)
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['buildingId'],
+      message: 'buildingId is only valid for building scopes',
+    });
+  if (value.kind === 'custom' && !value.unitIds?.length)
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['unitIds'],
+      message: 'unitIds are required for custom scopes',
+    });
+  if (value.kind !== 'custom' && value.unitIds?.length)
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['unitIds'],
+      message: 'unitIds are only valid for custom scopes',
+    });
+}
+
+const scopeInputSchema = z.object(scopeShape).superRefine(validateScopeShape);
+const scopeUpdateInputSchema = z
+  .object({ ...scopeShape, isActive: z.boolean() })
+  .superRefine(validateScopeShape);
 
 const planInputSchema = z
   .object({
@@ -114,6 +131,28 @@ const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
     status: 422,
     error: 'financial_scope_units_required',
     publicMessage: 'Selecciona al menos una unidad para el ámbito personalizado.',
+  },
+  'invalid financial scope configuration': {
+    status: 422,
+    error: 'financial_scope_invalid',
+    publicMessage: 'Revisa el tipo de ámbito y las unidades o el edificio seleccionado.',
+  },
+  'financial scope unavailable': {
+    status: 409,
+    error: 'financial_scope_unavailable',
+    publicMessage: 'El ámbito financiero ya no está disponible. Actualiza la información.',
+  },
+  'financial scope has pending review run': {
+    status: 409,
+    error: 'financial_scope_pending_review',
+    publicMessage:
+      'Hay una cuota de este ámbito pendiente de revisión. Publícala o resuélvela antes de editar el ámbito.',
+  },
+  'active recurring plan requires financial scope': {
+    status: 409,
+    error: 'financial_scope_active_plan',
+    publicMessage:
+      'Este ámbito todavía es usado por una cuota recurrente activa. Desactiva o cambia ese plan antes de archivar el ámbito.',
   },
   'building and financial scope must share condominium': {
     status: 422,
@@ -279,7 +318,7 @@ recurringDuesRoutes.get('/:id/financial-scopes', async (c) => {
   const condominiumId = uuidSchema.parse(c.req.param('id'));
   const response = await rest(
     c,
-    `financial_scopes?condominium_id=eq.${condominiumId}&select=*&order=name`,
+    `financial_scopes?condominium_id=eq.${condominiumId}&select=*,financial_scope_units(unit_id)&order=name`,
   );
   return c.json(await response.json(), response.ok ? 200 : 403);
 });
@@ -297,6 +336,31 @@ recurringDuesRoutes.post('/:id/financial-scopes', async (c) => {
     target_units: parsed.unitIds ?? null,
   });
   return rpcResult(c, response, 201);
+});
+
+recurringDuesRoutes.patch('/:id/financial-scopes/:scopeId', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const scopeId = uuidSchema.parse(c.req.param('scopeId'));
+  const parsed = await parseBody(c, scopeUpdateInputSchema);
+  if (parsed instanceof Response) return parsed;
+  if (
+    !(await scopedExists(
+      c,
+      `financial_scopes?id=eq.${scopeId}&condominium_id=eq.${condominiumId}&select=id`,
+    ))
+  )
+    return c.json({ error: 'Financial scope not found in condominium' }, 404);
+  const response = await rpc(c, 'update_financial_scope', {
+    target: condominiumId,
+    target_scope: scopeId,
+    scope_code: parsed.code,
+    scope_name: parsed.name,
+    scope_kind: parsed.kind,
+    target_building: parsed.buildingId ?? null,
+    target_units: parsed.unitIds ?? null,
+    scope_active: parsed.isActive,
+  });
+  return rpcResult(c, response, 200);
 });
 
 recurringDuesRoutes.get('/:id/recurring-charge-plans', async (c) => {
