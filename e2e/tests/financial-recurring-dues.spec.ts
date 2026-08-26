@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
 const requiredEnvironment = ['E2E_SUPABASE_URL', 'E2E_SUPABASE_ANON_KEY', 'E2E_FIXTURE_PASSWORD'];
@@ -90,6 +91,40 @@ const rows = async <T>(request: APIRequestContext, token: string, path: string) 
   return (await response.json()) as T[];
 };
 
+/*
+ * A run key has to be unique across *executions*, not just across workers and retries. Worker
+ * index and retry count both repeat on the next run, so codes built from them collided with the
+ * rows the previous run left behind: `financial scope code already exists`. CI never saw it
+ * because it starts from a fresh database, but it made the suite impossible to run twice locally.
+ */
+const executionId = randomUUID().slice(0, 8);
+const runKeyFor = (testInfo: { workerIndex: number; retry: number }, prefix = '') =>
+  `${prefix}${testInfo.workerIndex}-${testInfo.retry}-${executionId}`;
+
+/*
+ * `financial_scopes_single_condominium_scope` is a partial unique index on `condominium_id` alone,
+ * so a condominium may hold exactly one scope of kind 'condominium'. Varying the code per run does
+ * not help: uniqueness never looked at the code. Creating one unconditionally therefore worked on
+ * a fresh database and failed on every retry and every local re-run. Reuse the one that exists.
+ */
+const condominiumScope = async (request: APIRequestContext, token: string, runKey: string) => {
+  const existing = await rows<FinancialScope>(
+    request,
+    token,
+    `financial_scopes?condominium_id=eq.${ids.condominium}&kind=eq.condominium&select=id,code&limit=1`,
+  );
+  if (existing[0]) return existing[0];
+
+  return rpc<FinancialScope>(request, token, 'create_financial_scope', {
+    target: ids.condominium,
+    scope_code: `e2e-recurring-${runKey}`,
+    scope_name: `E2E recurrente ${runKey}`,
+    scope_kind: 'condominium',
+    target_building: null,
+    target_units: null,
+  });
+};
+
 test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
   test.skip(
     missingEnvironment.length > 0,
@@ -100,16 +135,9 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
     request,
   }, testInfo) => {
     const admin = await authenticate(request);
-    const runKey = `${testInfo.workerIndex}-${testInfo.retry}`;
+    const runKey = runKeyFor(testInfo);
 
-    const scope = await rpc<FinancialScope>(request, admin.access_token, 'create_financial_scope', {
-      target: ids.condominium,
-      scope_code: `e2e-recurring-${runKey}`,
-      scope_name: `E2E recurrente ${runKey}`,
-      scope_kind: 'condominium',
-      target_building: null,
-      target_units: null,
-    });
+    const scope = await condominiumScope(request, admin.access_token, runKey);
 
     const plan = await rpc<RecurringPlan>(
       request,
@@ -232,7 +260,7 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
     request,
   }, testInfo) => {
     const admin = await authenticate(request);
-    const runKey = `scope-${testInfo.workerIndex}-${testInfo.retry}`;
+    const runKey = runKeyFor(testInfo, 'scope-');
 
     const scope = await rpc<FinancialScope>(request, admin.access_token, 'create_financial_scope', {
       target: ids.condominium,
@@ -380,7 +408,7 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
   });
   test('detiene una cuota recurrente sin borrar lo ya publicado', async ({ request }, testInfo) => {
     const admin = await authenticate(request);
-    const runKey = `stop-${testInfo.workerIndex}-${testInfo.retry}`;
+    const runKey = runKeyFor(testInfo, 'stop-');
 
     const scope = await rpc<FinancialScope>(request, admin.access_token, 'create_financial_scope', {
       target: ids.condominium,
