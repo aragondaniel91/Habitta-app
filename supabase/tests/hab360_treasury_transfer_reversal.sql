@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(24);
 
 select has_function(
   'public',
@@ -123,6 +123,40 @@ select is(
   (select count(*) from public.treasury_movements where movement_kind='reversal'),
   2::bigint,
   'a second request never doubles the compensation'
+);
+
+-- Guards the API translates for the administrator but that nothing exercised at runtime.
+
+select throws_ok(
+  $$select public.reverse_treasury_transfer('36210000-0000-4000-8000-000000000001','36299999-0000-4000-8000-000000000999','Transferencia inexistente')$$,
+  'P0001',
+  'treasury transfer not found',
+  'a transfer id that does not belong to this condominium is refused by name'
+);
+
+-- An archived account is settled at zero, so a reversal must not push money back into it. Reaching
+-- that guard needs a transfer that was never reversed and an account that has returned to zero.
+select lives_ok(
+  $$select public.create_treasury_account('36210000-0000-4000-8000-000000000001','Puente HAB 360X','bank','USD','Banco C','0102-0003')$$,
+  'a third account is created'
+);
+select lives_ok(
+  $$select public.create_treasury_transfer('36210000-0000-4000-8000-000000000001',(select id from public.treasury_accounts where name='Origen HAB 360X'),(select id from public.treasury_accounts where name='Puente HAB 360X'),100.00,current_date,'Ida al puente',null,'hab360x-transfer-2')$$,
+  'money moves out to the third account'
+);
+select lives_ok(
+  $$select public.create_treasury_transfer('36210000-0000-4000-8000-000000000001',(select id from public.treasury_accounts where name='Puente HAB 360X'),(select id from public.treasury_accounts where name='Origen HAB 360X'),100.00,current_date,'Vuelta del puente',null,'hab360x-transfer-3')$$,
+  'and comes straight back, leaving the third account at zero'
+);
+select lives_ok(
+  $$select public.update_treasury_account('36210000-0000-4000-8000-000000000001',(select id from public.treasury_accounts where name='Puente HAB 360X'),'Puente HAB 360X','bank','USD','Banco C','0102-0003',null,false)$$,
+  'the settled account is archived'
+);
+select throws_ok(
+  $$select public.reverse_treasury_transfer('36210000-0000-4000-8000-000000000001',(select id from public.treasury_transfers where idempotency_key='hab360x-transfer-2'),'Reverso tardio')$$,
+  'P0001',
+  'treasury account is inactive',
+  'a reversal never reopens an archived account that was settled at zero'
 );
 
 select * from finish();

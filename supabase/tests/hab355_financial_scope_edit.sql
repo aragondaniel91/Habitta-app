@@ -1,5 +1,5 @@
 begin;
-select plan(42);
+select plan(52);
 
 select has_function(
   'public',
@@ -263,6 +263,67 @@ select is(
   (select sum(amount) from public.receivable_ledger_entries where condominium_id='35510000-0000-4000-8000-000000000001' and direction='debit'),
   30.00::numeric,
   'ledger history across both posted periods is unchanged by scope edits'
+);
+
+-- Guards the API promises to translate for the administrator but that nothing exercised at runtime.
+
+select throws_ok(
+  $$select public.create_financial_scope('35510000-0000-4000-8000-000000000001','   ','   ','custom',null,array['35530000-0000-4000-8000-000000000001'::uuid])$$,
+  'P0001',
+  'scope code and name are required',
+  'a scope cannot be created without a code and a name'
+);
+select throws_ok(
+  $$select public.create_financial_scope('35510000-0000-4000-8000-000000000001','hab355-vacio','Grupo vacio','custom',null,null)$$,
+  'P0001',
+  'custom financial scope requires units',
+  'a custom scope with no units is refused'
+);
+select lives_ok(
+  $$select public.create_financial_scope('35510000-0000-4000-8000-000000000001','hab355-torre','Torre A','building','35520000-0000-4000-8000-000000000001',null)$$,
+  'the first building scope is created'
+);
+select throws_ok(
+  $$select public.create_financial_scope('35510000-0000-4000-8000-000000000001','hab355-torre-2','Torre A otra vez','building','35520000-0000-4000-8000-000000000001',null)$$,
+  'P0001',
+  'building financial scope already exists',
+  'a building cannot carry two financial scopes'
+);
+select throws_ok(
+  $$select public.create_recurring_charge_plan('35510000-0000-4000-8000-000000000001','35540000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-custom'),'Plan invalido','fixed_per_unit',0.00,'USD','2026-09-01'::date,1::smallint,10::smallint,null::date)$$,
+  'P0001',
+  'invalid recurring charge plan',
+  'a plan with a non-positive amount is refused'
+);
+select throws_ok(
+  $$select public.update_recurring_charge_plan('35510000-0000-4000-8000-000000000001','35599999-0000-4000-8000-000000000999','35540000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-custom'),'Inexistente','fixed_per_unit',10.00,'USD','2026-09-01'::date,1::smallint,10::smallint,null::date)$$,
+  'P0001',
+  'recurring plan unavailable',
+  'editing a plan that does not exist is refused by name'
+);
+select throws_ok(
+  $$select public.set_recurring_charge_plan_status('35510000-0000-4000-8000-000000000001',(select id from public.recurring_charge_plans where name='Cuota HAB 355'),null)$$,
+  'P0001',
+  'invalid recurring plan status',
+  'a plan status must say which state it wants'
+);
+select throws_ok(
+  $$select public.schedule_recurring_charge_run((select id from public.recurring_charge_plans where name='Cuota HAB 355'),'2026-13')$$,
+  'P0001',
+  'invalid recurring period',
+  'a period outside the calendar is refused before anything is written'
+);
+
+-- Narrowing a plan's window must not strand a period already scheduled outside it.
+select lives_ok(
+  $$select public.schedule_recurring_charge_run((select id from public.recurring_charge_plans where name='Cuota HAB 355'),'2026-12')$$,
+  'a later period is scheduled'
+);
+select throws_ok(
+  $$select public.update_recurring_charge_plan('35510000-0000-4000-8000-000000000001',(select id from public.recurring_charge_plans where name='Cuota HAB 355'),'35540000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-custom'),'Cuota HAB 355','fixed_per_unit',10.00,'USD','2026-09-01'::date,1::smallint,10::smallint,'2026-10-31'::date)$$,
+  'P0001',
+  'scheduled recurring period outside edited plan',
+  'the plan cannot end before a period it already has scheduled'
 );
 
 select * from finish();
