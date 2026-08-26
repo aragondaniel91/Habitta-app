@@ -176,6 +176,14 @@
   min-height: 44px;
 }
 
+.team-member-hint {
+  grid-column: 2 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
 .team-member--suspended .team-member-identity,
 .team-member--suspended > span:first-child {
   opacity: 0.72;

@@ -161,6 +161,15 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
     () => data?.members.filter((member) => member.status === 'suspended').length ?? 0,
     [data?.members],
   );
+  // The RPC refuses to leave a condominium without an administrator. Knowing that here lets the
+  // page explain the rule up front instead of letting the administrator discover it as an error.
+  const activeAdministrators = useMemo(
+    () =>
+      data?.members.filter(
+        (member) => member.status === 'active' && member.role === 'condominium_admin',
+      ).length ?? 0,
+    [data?.members],
+  );
 
   const createInvitation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -463,6 +472,12 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                 {data.members.map((member) => {
                   const selectedRole = memberRoles[member.user_id] ?? member.role;
                   const busy = memberBusyId === member.user_id;
+                  const isLastAdministrator =
+                    member.status === 'active' &&
+                    member.role === 'condominium_admin' &&
+                    activeAdministrators <= 1;
+                  const wouldRemoveLastAdministrator =
+                    isLastAdministrator && selectedRole !== 'condominium_admin';
                   const isCurrentUser = member.user_id === session.user.id;
                   return (
                     <article
@@ -507,7 +522,9 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                         {member.status === 'active' ? (
                           <>
                             <Button
-                              disabled={busy || selectedRole === member.role}
+                              disabled={
+                                busy || selectedRole === member.role || wouldRemoveLastAdministrator
+                              }
                               onClick={() => void runMemberAction(member, 'change_role')}
                               size="sm"
                               type="button"
@@ -516,7 +533,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                               Guardar rol
                             </Button>
                             <Button
-                              disabled={busy}
+                              disabled={busy || isLastAdministrator}
                               onClick={() => setPendingMemberAction({ member, action: 'suspend' })}
                               size="sm"
                               type="button"
@@ -538,7 +555,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                         )}
 
                         <Button
-                          disabled={busy}
+                          disabled={busy || isLastAdministrator}
                           onClick={() => setPendingMemberAction({ member, action: 'remove' })}
                           size="sm"
                           type="button"
@@ -547,6 +564,14 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
                           Quitar acceso
                         </Button>
                       </div>
+
+                      {isLastAdministrator ? (
+                        <p className="team-member-hint">
+                          Este es el único administrador activo del condominio. Asigna el rol de
+                          administrador a otra persona antes de cambiar, suspender o retirar este
+                          acceso.
+                        </p>
+                      ) : null}
                     </article>
                   );
                 })}

@@ -100,11 +100,14 @@ function requireSupabase() {
 
 function translateTeamError(error: { message: string }) {
   const message = error.message.toLowerCase();
+  // 'administrator required' is a substring of 'last condominium administrator required', so the
+  // specific rule has to be tested first or the last-administrator guard reads as a permission
+  // error and tells the administrator they lack access to their own condominium.
+  if (message.includes('last condominium administrator required')) {
+    return 'Debe permanecer al menos un administrador activo del condominio. Asigna primero otro administrador y vuelve a intentarlo.';
+  }
   if (message.includes('administrator required')) {
     return 'No tienes permisos para administrar el equipo de este condominio.';
-  }
-  if (message.includes('last condominium administrator required')) {
-    return 'Debe permanecer al menos un administrador activo del condominio.';
   }
   if (message.includes('active team member required')) {
     return 'Este miembro ya no tiene un acceso administrativo activo.';
