@@ -356,7 +356,7 @@ export function SignInGate({
               </div>
 
               {mode === 'sign-in' ? (
-                <form className="access-form" onSubmit={submitSignIn}>
+                <form className="access-form ux-form" onSubmit={submitSignIn}>
                   <Field label="Correo electrónico">
                     <input
                       autoCapitalize="none"
@@ -402,7 +402,7 @@ export function SignInGate({
               ) : null}
 
               {mode === 'register' ? (
-                <form className="access-form" onSubmit={submitRegistration}>
+                <form className="access-form ux-form" onSubmit={submitRegistration}>
                   <Field label="Nombre y apellido">
                     <input
                       autoComplete="name"
@@ -457,7 +457,7 @@ export function SignInGate({
               ) : null}
 
               {mode === 'forgot' ? (
-                <form className="access-form" onSubmit={submitRecovery}>
+                <form className="access-form ux-form" onSubmit={submitRecovery}>
                   <Field label="Correo electrónico">
                     <input
                       autoCapitalize="none"
@@ -584,7 +584,7 @@ export function PasswordRecoveryGate({ onComplete }: { onComplete: () => void })
           </div>
 
           {!completed ? (
-            <form className="access-form" onSubmit={submit}>
+            <form className="access-form ux-form" onSubmit={submit}>
               <PasswordField
                 autoComplete="new-password"
                 autoFocus

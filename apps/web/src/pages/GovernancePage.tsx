@@ -198,7 +198,7 @@ function CreateProposalForm({
     );
 
   return (
-    <form className="governance-form" onSubmit={(event) => void submit(event)}>
+    <form className="governance-form ux-form" onSubmit={(event) => void submit(event)}>
       {error ? <div className="governance-inline-alert">{error}</div> : null}
       <Field label="Título de la propuesta">
         <input

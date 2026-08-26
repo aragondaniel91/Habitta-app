@@ -340,7 +340,7 @@ function CreateAnnouncementDrawer({
 
   return (
     <DrawerShell eyebrow="Nuevo comunicado" onClose={onClose} title="Crear anuncio">
-      <form className="announcements-form" onSubmit={(event) => void submit(event)}>
+      <form className="announcements-form ux-form" onSubmit={(event) => void submit(event)}>
         <div className="announcements-form__intro">
           <AnnouncementsIcon size={25} />
           <div>

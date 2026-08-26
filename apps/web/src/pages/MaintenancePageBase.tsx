@@ -210,7 +210,7 @@ function AssetForm({
   };
 
   return (
-    <form className="maintenance-form" onSubmit={(event) => void submit(event)}>
+    <form className="maintenance-form ux-form" onSubmit={(event) => void submit(event)}>
       {error ? <div className="maintenance-inline-alert">{error}</div> : null}
       <FormGrid columns={3}>
         <Field label="Código">
@@ -420,7 +420,7 @@ function PlanForm({
   };
 
   return (
-    <form className="maintenance-form" onSubmit={(event) => void submit(event)}>
+    <form className="maintenance-form ux-form" onSubmit={(event) => void submit(event)}>
       {error ? <div className="maintenance-inline-alert">{error}</div> : null}
       <Field label="Activo">
         <Select onChange={(event) => setAssetId(event.target.value)} required value={assetId}>
@@ -580,7 +580,7 @@ function WorkOrderForm({
   };
 
   return (
-    <form className="maintenance-form" onSubmit={(event) => void submit(event)}>
+    <form className="maintenance-form ux-form" onSubmit={(event) => void submit(event)}>
       {error ? <div className="maintenance-inline-alert">{error}</div> : null}
       <FormGrid>
         <Field label="Activo" hint="Opcional para trabajos generales">
@@ -878,7 +878,7 @@ function WorkOrderDetail({
       workOrder.status === 'completed' ? (
         <section className="maintenance-detail__section">
           <h3>Registrar servicio</h3>
-          <form className="maintenance-form" onSubmit={(event) => void addLog(event)}>
+          <form className="maintenance-form ux-form" onSubmit={(event) => void addLog(event)}>
             <FormGrid>
               <Field label="Fecha">
                 <input

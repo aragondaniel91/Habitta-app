@@ -205,7 +205,7 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
         <section className="admin-onboarding-stage">
           <Surface className="admin-onboarding-card">
             {step === 'organization' ? (
-              <form className="admin-onboarding-form" onSubmit={continueFromOrganization}>
+              <form className="admin-onboarding-form ux-form" onSubmit={continueFromOrganization}>
                 <div>
                   <span className="access-kicker">Tu modelo de administración</span>
                   <h2>¿Cómo trabajarás con Habitta?</h2>
@@ -266,7 +266,7 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
             ) : null}
 
             {step === 'condominium' ? (
-              <form className="admin-onboarding-form" onSubmit={continueFromCondominium}>
+              <form className="admin-onboarding-form ux-form" onSubmit={continueFromCondominium}>
                 <div>
                   <span className="access-kicker">Perfil del condominio</span>
                   <h2>Registra cómo está constituida y organizada la comunidad.</h2>

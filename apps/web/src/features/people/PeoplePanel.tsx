@@ -933,7 +933,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     <Badge tone="info">{ownerships.filter((item) => !item.ends_at).length}</Badge>
                   </div>
                   <form
-                    className="people-inline-form"
+                    className="people-inline-form ux-form"
                     onSubmit={(event) => void createOwnership(event)}
                   >
                     <Field label="Unidad">
@@ -1042,7 +1042,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     <Badge tone="info">{occupancies.filter((item) => !item.ends_at).length}</Badge>
                   </div>
                   <form
-                    className="people-inline-form"
+                    className="people-inline-form ux-form"
                     onSubmit={(event) => void createOccupancy(event)}
                   >
                     <Field label="Unidad">
@@ -1141,7 +1141,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     </Badge>
                   </div>
                   <form
-                    className="people-inline-form"
+                    className="people-inline-form ux-form"
                     onSubmit={(event) => void createCondominiumRelationship(event)}
                   >
                     <Field label="Relación">
@@ -1240,7 +1240,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                       <Badge tone="warning">Privado</Badge>
                     </div>
                     <form
-                      className="people-invitation-form"
+                      className="people-invitation-form ux-form"
                       onSubmit={(event) => void saveAdminNote(event)}
                     >
                       <Field
@@ -1300,7 +1300,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                   </div>
 
                   <form
-                    className="people-invitation-form"
+                    className="people-invitation-form ux-form"
                     onSubmit={(event) => void createInvitation(event)}
                   >
                     <Field label="Rol que recibirá">
@@ -1557,7 +1557,7 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
           prefix="people"
           title={editingPersonId ? 'Editar persona' : 'Agregar persona'}
         >
-          <form className="people-editor" onSubmit={(event) => void savePerson(event)}>
+          <form className="people-editor ux-form" onSubmit={(event) => void savePerson(event)}>
             <p>
               La identidad se registra una sola vez. Después podrás asociarla a varias unidades y
               responsabilidades sin duplicar la persona.

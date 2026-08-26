@@ -269,7 +269,7 @@ function CreateRequestDrawer({
 
   return (
     <DrawerShell eyebrow="Nueva solicitud" onClose={onClose} title="Cuéntanos qué está pasando">
-      <form className="requests-form" onSubmit={(event) => void submit(event)}>
+      <form className="requests-form ux-form" onSubmit={(event) => void submit(event)}>
         <div className="requests-form__intro">
           <RequestsIcon size={24} />
           <div>
@@ -465,7 +465,7 @@ function CategoriesDrawer({
         ))}
       </div>
       <form
-        className="requests-form requests-form--category"
+        className="requests-form requests-form--category ux-form"
         onSubmit={(event) => void create(event)}
       >
         <div className="requests-section-heading">
@@ -843,7 +843,10 @@ function RequestDetailDrawer({
           )}
         </section>
         <aside>
-          <form className="request-comment-form" onSubmit={(event) => void addComment(event)}>
+          <form
+            className="request-comment-form ux-form"
+            onSubmit={(event) => void addComment(event)}
+          >
             <div className="requests-section-heading">
               <span>Agregar comentario</span>
               <p>Comparte una actualización con el residente o el equipo.</p>

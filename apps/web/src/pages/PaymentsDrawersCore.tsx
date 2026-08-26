@@ -151,7 +151,7 @@ function PaymentForm({
   };
 
   return (
-    <form className="payments-form" onSubmit={(event) => void submit(event)}>
+    <form className="payments-form ux-form" onSubmit={(event) => void submit(event)}>
       {message ? <div className="payments-form__message">{message}</div> : null}
       {!methods.length ? (
         <div className="payments-form__notice">
@@ -326,7 +326,10 @@ function MethodsForm({
           </article>
         ))}
       </div>
-      <form className="payments-form payments-method-form" onSubmit={(event) => void submit(event)}>
+      <form
+        className="payments-form payments-method-form ux-form"
+        onSubmit={(event) => void submit(event)}
+      >
         <div className="payments-form__section-heading">
           <strong>Agregar método</strong>
           <span>Publica instrucciones claras para residentes y administradores.</span>

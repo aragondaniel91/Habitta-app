@@ -23,6 +23,7 @@ export function CondominiumNotificationSettings({
     <details>
       <summary>Configuración administrativa</summary>
       <form
+        className="ux-form"
         onSubmit={(event) => {
           event.preventDefault();
           void saveNotificationSettings(session, condominiumId, settings)

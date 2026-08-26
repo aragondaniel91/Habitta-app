@@ -1,4 +1,14 @@
 :root {
+  /*
+   * Type scale. These are not new sizes: they are the values the form contract already used,
+   * given names so every module can reach the same standard instead of re-deriving it.
+   */
+  --ux-text-xs: 0.775rem; /* hints, errors, secondary metadata */
+  --ux-text-sm: 0.8rem; /* supporting copy */
+  --ux-text-md: 0.875rem; /* labels and body copy */
+  --ux-text-control: 0.9375rem; /* text the user types into */
+  --ux-text-lg: 1rem; /* section headings */
+
   --ux-control-height: 48px;
   --ux-control-radius: 0.75rem;
   --ux-card-radius: 1rem;
@@ -23,7 +33,7 @@
 
 .ux-form .field__label {
   color: var(--text-strong);
-  font-size: 0.875rem;
+  font-size: var(--ux-text-md);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -35,7 +45,7 @@
 .ux-form .field__hint,
 .ux-form .field__error {
   min-height: 1rem;
-  font-size: 0.775rem;
+  font-size: var(--ux-text-xs);
   line-height: 1.35;
 }
 
@@ -48,7 +58,7 @@
   border-radius: var(--ux-control-radius);
   background: var(--surface);
   color: var(--text);
-  font-size: 0.9375rem;
+  font-size: var(--ux-text-control);
 }
 
 .ux-form .input,
@@ -108,12 +118,12 @@
 }
 
 .form-section[data-variant='card'] .form-section__heading h3 {
-  font-size: 1rem;
+  font-size: var(--ux-text-lg);
 }
 
 .form-section[data-variant='card'] .form-section__heading p {
   max-width: 760px;
-  font-size: 0.8rem;
+  font-size: var(--ux-text-sm);
 }
 
 /* Shared workspace drawer. Legacy drawers remain untouched unless presentation="workspace" is used. */

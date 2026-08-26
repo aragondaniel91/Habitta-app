@@ -31,7 +31,7 @@ export function PaymentMethodsSettings({
           {method.instructions}
         </p>
       ))}
-      <form onSubmit={(event) => void submit(event)}>
+      <form className="ux-form" onSubmit={(event) => void submit(event)}>
         <select name="methodType">
           <option value="bank_transfer">Transferencia bancaria</option>
           <option value="pago_movil">Pago Móvil</option>

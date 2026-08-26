@@ -87,7 +87,7 @@ export function ExpenseCaptureDrawer({
       wide
     >
       {!createdExpense ? (
-        <form className="expenses-form" onSubmit={(event) => void submit(event)}>
+        <form className="expenses-form ux-form" onSubmit={(event) => void submit(event)}>
           {message ? <div className="expenses-inline-alert">{message}</div> : null}
           <div aria-label="Progreso de captura" className="financial-capture-progress">
             <strong>1. Datos</strong>

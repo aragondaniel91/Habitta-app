@@ -92,7 +92,7 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
         </div>
       </div>
 
-      <form className="admin-onboarding-form" onSubmit={submit}>
+      <form className="admin-onboarding-form ux-form" onSubmit={submit}>
         <Field error={errors.organizationId} label="Organización administradora">
           <select
             className="select"

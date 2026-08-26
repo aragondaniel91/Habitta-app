@@ -654,7 +654,7 @@ function CreateAssemblyDrawer({
       title="Nueva asamblea"
       wide
     >
-      <form className="assemblies-form" onSubmit={submit}>
+      <form className="assemblies-form ux-form" onSubmit={submit}>
         {error ? <div className="governance-inline-alert">{error}</div> : null}
         <Field label="Título">
           <input
@@ -754,7 +754,7 @@ function AgendaForm({
     }
   };
   return (
-    <form className="assemblies-inline-form" onSubmit={submit}>
+    <form className="assemblies-inline-form ux-form" onSubmit={submit}>
       <Field label="Nuevo punto">
         <input
           className="input"
@@ -808,7 +808,7 @@ function ResolutionForm({
     }
   };
   return (
-    <form className="assemblies-resolution-form" onSubmit={submit}>
+    <form className="assemblies-resolution-form ux-form" onSubmit={submit}>
       <Field label="Título">
         <input className="input" onChange={(event) => setTitle(event.target.value)} value={title} />
       </Field>
