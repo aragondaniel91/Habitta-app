@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
+import { FeesIcon } from '../../components/icons';
 import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Badge, Button, EmptyState, Field, Select } from '../../components/ui';
 import { apiRequest } from '../../lib/api';
@@ -150,6 +151,7 @@ export function ChargeConceptManagerDrawer({
           <EmptyState
             actionLabel="Crear concepto"
             description="Crea el primer concepto para clasificar cuotas, lotes y planes recurrentes."
+            icon={<FeesIcon size={26} />}
             onAction={openCreate}
             title="Todavía no hay conceptos"
           />
