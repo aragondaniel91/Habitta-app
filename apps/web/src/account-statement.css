@@ -242,3 +242,19 @@
     overflow: visible;
   }
 }
+
+.ownership-revert-reason {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ownership-revert-reason span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.ownership-revert-reason textarea {
+  min-height: 84px;
+  resize: vertical;
+}

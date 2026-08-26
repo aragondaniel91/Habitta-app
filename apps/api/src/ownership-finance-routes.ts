@@ -96,6 +96,86 @@ async function jsonResponse(c: RouteContext, response: Response, successStatus: 
   return c.json(await response.json(), response.ok ? successStatus : 400);
 }
 
+type OwnershipFailure = { status: 403 | 409 | 422; error: string; publicMessage: string };
+
+/** Annulment guards are the whole point here, so each one has to say what it protects. */
+const ownershipFailures: Record<string, OwnershipFailure> = {
+  'permission denied': {
+    status: 403,
+    error: 'ownership_forbidden',
+    publicMessage: 'No tienes permisos para realizar esta corrección.',
+  },
+  'ownership transfer not found': {
+    status: 409,
+    error: 'ownership_transfer_unavailable',
+    publicMessage: 'El traspaso ya no está disponible. Actualiza la información.',
+  },
+  'invalid ownership revert': {
+    status: 422,
+    error: 'ownership_revert_invalid',
+    publicMessage: 'Escribe el motivo del reverso (entre 3 y 500 caracteres).',
+  },
+  'only the latest ownership transfer can be reverted': {
+    status: 409,
+    error: 'ownership_revert_not_latest',
+    publicMessage:
+      'Solo se puede revertir el último traspaso de la unidad. Revierte primero los posteriores.',
+  },
+  'ownership transfer already reverted': {
+    status: 409,
+    error: 'ownership_revert_duplicate',
+    publicMessage: 'Este traspaso ya fue revertido.',
+  },
+  'ownership transfer has no previous owners to restore': {
+    status: 409,
+    error: 'ownership_revert_without_previous',
+    publicMessage:
+      'Este traspaso fue la primera asignación de la unidad, así que no hay propietarios anteriores que restaurar. Registra un traspaso nuevo.',
+  },
+  'solvency certificate not found': {
+    status: 409,
+    error: 'solvency_certificate_unavailable',
+    publicMessage: 'El certificado ya no está disponible. Actualiza la información.',
+  },
+  'solvency certificate already annulled': {
+    status: 409,
+    error: 'solvency_certificate_already_annulled',
+    publicMessage: 'Este certificado ya fue anulado.',
+  },
+  'invalid solvency annulment': {
+    status: 422,
+    error: 'solvency_annulment_invalid',
+    publicMessage: 'Escribe el motivo de la anulación (entre 3 y 500 caracteres).',
+  },
+};
+
+export function ownershipFailureFromPostgrest(payload: unknown): OwnershipFailure | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const message = (payload as { message?: unknown }).message;
+  if (typeof message !== 'string') return null;
+  return ownershipFailures[message] ?? null;
+}
+
+const annulmentReasonSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+
+async function guardedResponse(c: RouteContext, response: Response) {
+  const payload = await response
+    .clone()
+    .json()
+    .catch(() => null);
+  if (response.ok) return c.json(payload, 200);
+
+  const failure = ownershipFailureFromPostgrest(payload);
+  if (failure) {
+    return c.json({ error: failure.error, publicMessage: failure.publicMessage }, failure.status);
+  }
+  if (response.status === 401 || response.status === 403) {
+    return c.json({ error: 'ownership_forbidden' }, 403);
+  }
+  if (response.status >= 500) return c.json({ error: 'ownership_upstream_failure' }, 502);
+  return c.json({ error: 'ownership_operation_failed' }, 400);
+}
+
 ownershipFinanceRoutes.get('/:id/units/:unitId/ownership-transfers', async (c) => {
   const condominiumId = uuidSchema.parse(c.req.param('id'));
   const unitId = uuidSchema.parse(c.req.param('unitId'));
@@ -254,3 +334,35 @@ ownershipFinanceRoutes.put('/:id/solvency-policy', async (c) => {
   });
   return jsonResponse(c, response);
 });
+
+ownershipFinanceRoutes.post(
+  '/:id/units/:unitId/ownership-transfers/:transferId/revert',
+  async (c) => {
+    const condominiumId = uuidSchema.parse(c.req.param('id'));
+    const transferId = uuidSchema.parse(c.req.param('transferId'));
+    const body = await parsedBody(c, annulmentReasonSchema);
+    if (body instanceof Response) return body;
+    const response = await rpc(c, 'revert_unit_ownership_transfer', {
+      target: condominiumId,
+      target_transfer: transferId,
+      revert_reason: body.reason,
+    });
+    return guardedResponse(c, response);
+  },
+);
+
+ownershipFinanceRoutes.post(
+  '/:id/units/:unitId/solvency-certificates/:certificateId/annul',
+  async (c) => {
+    const condominiumId = uuidSchema.parse(c.req.param('id'));
+    const certificateId = uuidSchema.parse(c.req.param('certificateId'));
+    const body = await parsedBody(c, annulmentReasonSchema);
+    if (body instanceof Response) return body;
+    const response = await rpc(c, 'annul_solvency_certificate', {
+      target: condominiumId,
+      target_certificate: certificateId,
+      annulment_reason: body.reason,
+    });
+    return guardedResponse(c, response);
+  },
+);
