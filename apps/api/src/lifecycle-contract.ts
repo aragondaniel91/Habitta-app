@@ -28,7 +28,13 @@ export type LifecycleEntity = {
   /** Route literal exactly as registered in the API source. */
   create: string;
   classification: LifecycleClassification;
-  /** Route literal that corrects the entity, or the action that stands in for an edit. */
+  /**
+   * How the entity is corrected. Three shapes exist, because not every correction is a Worker
+   * route and scanning only the API surface produced false gaps in the first sweep:
+   *   - `/route/literal`  a route registered in apps/api/src
+   *   - `rpc:name`        a Supabase function the web app calls directly through supabase-js
+   *   - `supersede:name`  re-running the create function supersedes the previous record
+   */
   correction: string | null;
   /** Issue tracking a missing correction path. Required whenever `correction` is null. */
   knownGap?: string;
@@ -105,18 +111,16 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     entity: 'resident invitation',
     create: '/:condominiumId/resident-invitations',
     classification: 'lifecycle',
-    correction: null,
-    knownGap: '#360',
-    note: 'revoke_resident_invitation exists in the database but no route exposes it.',
+    correction: 'rpc:revoke_resident_invitation',
+    note: 'Called directly from PeoplePanelV3 through supabase-js, not through the Worker.',
   },
   {
     module: 'team',
     entity: 'administrator invitation',
     create: '/:condominiumId/admin-invitations',
     classification: 'lifecycle',
-    correction: null,
-    knownGap: '#360',
-    note: 'revoke_admin_invitation exists in the database but no route exposes it.',
+    correction: 'rpc:revoke_admin_invitation',
+    note: 'Called directly from TeamAccessPage through supabase-js, not through the Worker.',
   },
 
   // ---------------------------------------------------------------- fees
@@ -241,9 +245,8 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     entity: 'approved exchange rate',
     create: '/:id/exchange-rates',
     classification: 'history',
-    correction: null,
-    knownGap: '#360',
-    note: 'The table models approved -> superseded but no RPC performs the transition, so a wrong rate stays selectable for allocations.',
+    correction: 'supersede:record_approved_exchange_rate',
+    note: 'Re-recording the rate for the same day and source marks the previous one superseded, so a wrong rate is corrected additively and never edited.',
   },
   {
     module: 'fees',
