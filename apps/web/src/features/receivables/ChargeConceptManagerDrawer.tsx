@@ -18,7 +18,8 @@ type Props = {
 
 type View = 'catalog' | 'create' | 'edit';
 
-const amountValue = (value: string | number | undefined) => (value == null ? '' : String(value));
+const amountValue = (value: string | number | undefined) =>
+  value == null ? '' : String(value);
 
 export function ChargeConceptManagerDrawer({
   condominiumId,
@@ -103,7 +104,12 @@ export function ChargeConceptManagerDrawer({
 
   if (view === 'catalog') {
     return (
-      <Drawer eyebrow="Catálogo financiero" onClose={onClose} prefix="receivables" title="Conceptos de cobro">
+      <Drawer
+        eyebrow="Catálogo financiero"
+        onClose={onClose}
+        prefix="receivables"
+        title="Conceptos de cobro"
+      >
         {message ? (
           <div className="receivables-action-feedback" role="status">
             {message}
@@ -178,7 +184,10 @@ export function ChargeConceptManagerDrawer({
         onSubmit={(event) => void submitConcept(event)}
       >
         <FormGrid>
-          <Field label="Código" hint={editing ? 'Se protege cuando ya existe historial.' : undefined}>
+          <Field
+            label="Código"
+            hint={editing ? 'Se protege cuando ya existe historial.' : undefined}
+          >
             <input
               className="input"
               defaultValue={concept?.code ?? ''}
@@ -188,7 +197,10 @@ export function ChargeConceptManagerDrawer({
               required
             />
           </Field>
-          <Field label="Categoría" hint={editing ? 'Se protege cuando ya existe historial.' : undefined}>
+          <Field
+            label="Categoría"
+            hint={editing ? 'Se protege cuando ya existe historial.' : undefined}
+          >
             <Select defaultValue={concept?.category ?? 'regular_dues'} name="category">
               {Object.entries(conceptCategoryLabels).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -198,7 +210,10 @@ export function ChargeConceptManagerDrawer({
             </Select>
           </Field>
         </FormGrid>
-        <Field label="Nombre" hint={editing ? 'Se protege cuando ya existe historial.' : undefined}>
+        <Field
+          label="Nombre"
+          hint={editing ? 'Se protege cuando ya existe historial.' : undefined}
+        >
           <input
             className="input"
             defaultValue={concept?.name ?? ''}
@@ -223,7 +238,10 @@ export function ChargeConceptManagerDrawer({
                 : 'Solo se usa como valor predeterminado.'
             }
           >
-            <Select defaultValue={concept?.default_currency_code ?? ''} name="defaultCurrencyCode">
+            <Select
+              defaultValue={concept?.default_currency_code ?? ''}
+              name="defaultCurrencyCode"
+            >
               <option value="">Sin valor predeterminado</option>
               <option value="USD">USD</option>
               <option value="VES">VES</option>
@@ -255,7 +273,10 @@ export function ChargeConceptManagerDrawer({
               : undefined
           }
         >
-          <Select defaultValue={concept?.is_active === false ? 'false' : 'true'} name="isActive">
+          <Select
+            defaultValue={concept?.is_active === false ? 'false' : 'true'}
+            name="isActive"
+          >
             <option value="true">Activo</option>
             <option value="false">Inactivo</option>
           </Select>
