@@ -45,10 +45,12 @@ const scopeShape = {
   unitIds: z.array(uuidSchema).min(1).optional(),
 };
 
+// `exactOptionalPropertyTypes` is on: Zod infers optional keys as `T | undefined`, so the
+// refinement contract has to admit the explicit undefined or the callback stops matching.
 type ScopeInput = {
   kind: 'condominium' | 'building' | 'custom';
-  buildingId?: string;
-  unitIds?: string[];
+  buildingId?: string | undefined;
+  unitIds?: string[] | undefined;
 };
 
 function validateScopeShape(value: ScopeInput, context: z.RefinementCtx) {
@@ -131,6 +133,22 @@ const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
     status: 422,
     error: 'financial_scope_units_required',
     publicMessage: 'Selecciona al menos una unidad para el ámbito personalizado.',
+  },
+  'financial scope code already exists': {
+    status: 409,
+    error: 'financial_scope_code_taken',
+    publicMessage: 'Ya existe otro ámbito financiero con ese código. Usa un código distinto.',
+  },
+  'condominium financial scope already exists': {
+    status: 409,
+    error: 'financial_scope_condominium_taken',
+    publicMessage:
+      'Este condominio ya tiene un ámbito que cubre todas las unidades. Edita el existente en lugar de crear otro.',
+  },
+  'building financial scope already exists': {
+    status: 409,
+    error: 'financial_scope_building_taken',
+    publicMessage: 'Esa torre ya tiene su propio ámbito financiero. Edita el existente.',
   },
   'invalid financial scope configuration': {
     status: 422,

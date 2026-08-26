@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(42);
 
 select has_function(
   'public',
@@ -179,6 +179,90 @@ select is(
   (select condominium_id from public.financial_scopes where code='hab355-custom'),
   '35510000-0000-4000-8000-000000000001'::uuid,
   'scope tenant identity remains unchanged'
+);
+
+-- Kind transitions, uniqueness and archival use a second scope so the narrative above stays intact.
+select lives_ok(
+  $$select public.create_financial_scope('35510000-0000-4000-8000-000000000001','hab355-general','Condominio general HAB 355','condominium',null,null)$$,
+  'administrator creates a condominium-wide scope'
+);
+select throws_ok(
+  $$select public.create_financial_scope('35510000-0000-4000-8000-000000000001','hab355-general-2','Otro general','condominium',null,null)$$,
+  'P0001',
+  'condominium financial scope already exists',
+  'a condominium may only have one condominium-wide scope'
+);
+select throws_ok(
+  $$select public.update_financial_scope('35510000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-custom'),'hab355-general','Codigo duplicado','custom',null,array['35530000-0000-4000-8000-000000000001'::uuid],true)$$,
+  'P0001',
+  'financial scope code already exists',
+  'duplicate scope codes are reported as a domain error instead of a unique violation'
+);
+
+select lives_ok(
+  $$select public.update_financial_scope('35510000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-general'),'hab355-general','Torre convertida','building','35520000-0000-4000-8000-000000000001',null,true)$$,
+  'scope kind can move from condominium to building'
+);
+select is(
+  (select building_id from public.financial_scopes where code='hab355-general'),
+  '35520000-0000-4000-8000-000000000001'::uuid,
+  'building transition stores the selected building'
+);
+select lives_ok(
+  $$select public.update_financial_scope('35510000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-general'),'hab355-general','Grupo convertido','custom',null,array['35530000-0000-4000-8000-000000000002'::uuid],true)$$,
+  'scope kind can move from building to custom'
+);
+select is(
+  (select count(*) from public.financial_scope_units where scope_id=(select id from public.financial_scopes where code='hab355-general')),
+  1::bigint,
+  'custom transition creates the requested membership'
+);
+select is(
+  (select building_id from public.financial_scopes where code='hab355-general'),
+  null::uuid,
+  'leaving building kind clears the building reference'
+);
+select lives_ok(
+  $$select public.update_financial_scope('35510000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-general'),'hab355-general','General otra vez','condominium',null,null,true)$$,
+  'scope kind can move back to condominium'
+);
+select is(
+  (select count(*) from public.financial_scope_units where scope_id=(select id from public.financial_scopes where code='hab355-general')),
+  0::bigint,
+  'leaving custom kind clears the previous membership'
+);
+select throws_ok(
+  $$select public.update_financial_scope('35510000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-general'),'hab355-general','General invalido','condominium',null,array['35530000-0000-4000-8000-000000000002'::uuid],true)$$,
+  'P0001',
+  'invalid financial scope configuration',
+  'units cannot be attached to a non-custom scope'
+);
+
+select lives_ok(
+  $$select public.update_financial_scope('35510000-0000-4000-8000-000000000001',(select id from public.financial_scopes where code='hab355-general'),'hab355-general','General otra vez','condominium',null,null,false)$$,
+  'a scope without dependent plans can be archived'
+);
+select is(
+  (select is_active from public.financial_scopes where code='hab355-general'),
+  false,
+  'archived scope is deactivated instead of deleted'
+);
+
+-- Published history must survive every edit above untouched.
+select is(
+  (select count(*) from public.receivable_items where charge_batch_id=(select charge_batch_id from public.recurring_charge_runs where plan_id=(select id from public.recurring_charge_plans where name='Cuota HAB 355') and period='2026-09')),
+  2::bigint,
+  'posted period keeps every receivable it published'
+);
+select is(
+  (select sum(original_amount) from public.receivable_items where charge_batch_id=(select charge_batch_id from public.recurring_charge_runs where plan_id=(select id from public.recurring_charge_plans where name='Cuota HAB 355') and period='2026-09')),
+  20.00::numeric,
+  'posted receivables keep their original published amounts'
+);
+select is(
+  (select sum(amount) from public.receivable_ledger_entries where condominium_id='35510000-0000-4000-8000-000000000001' and direction='debit'),
+  30.00::numeric,
+  'ledger history across both posted periods is unchanged by scope edits'
 );
 
 select * from finish();

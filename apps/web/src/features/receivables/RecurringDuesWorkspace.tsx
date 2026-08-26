@@ -31,6 +31,7 @@ type FinancialScope = {
   code: string;
   name: string;
   is_active: boolean;
+  financial_scope_units?: { unit_id: string }[];
 };
 
 type RecurringPlan = {
@@ -83,6 +84,7 @@ type ScopeForm = {
   name: string;
   buildingId: string;
   unitIds: string[];
+  isActive: boolean;
 };
 
 type PlanForm = {
@@ -109,6 +111,24 @@ const initialScopeForm: ScopeForm = {
   name: 'Condominio general',
   buildingId: '',
   unitIds: [],
+  isActive: true,
+};
+
+// Editing reuses the create form, so an existing scope has to be projected back onto the same
+// shape the drawer already knows how to render.
+const scopeFormFromScope = (scope: FinancialScope): ScopeForm => ({
+  kind: scope.kind,
+  code: scope.code,
+  name: scope.name,
+  buildingId: scope.building_id ?? '',
+  unitIds: (scope.financial_scope_units ?? []).map((membership) => membership.unit_id),
+  isActive: scope.is_active,
+});
+
+const scopeKindLabels: Record<FinancialScopeKind, string> = {
+  condominium: 'Todo el condominio',
+  building: 'Un edificio',
+  custom: 'Grupo personalizado de unidades',
 };
 
 const initialPlanForm = (concepts: ChargeConcept[], scopes: FinancialScope[]): PlanForm => {
@@ -198,6 +218,8 @@ export function RecurringDuesWorkspace({
   const [planDrawerOpen, setPlanDrawerOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState('');
   const [scopeDrawerOpen, setScopeDrawerOpen] = useState(false);
+  const [scopeView, setScopeView] = useState<'catalog' | 'form'>('catalog');
+  const [editingScopeId, setEditingScopeId] = useState('');
   const [runToPost, setRunToPost] = useState<RecurringRun | null>(null);
   const [expandedRunId, setExpandedRunId] = useState('');
   const [scopeForm, setScopeForm] = useState<ScopeForm>(initialScopeForm);
@@ -269,6 +291,46 @@ export function RecurringDuesWorkspace({
     [buildings],
   );
   const unitById = useMemo(() => new Map(units.map((unit) => [unit.id, unit])), [units]);
+  // A reviewed allocation is frozen, so the backend refuses scope edits while one is open. Surface
+  // that up front instead of letting the administrator discover it after filling the form.
+  const scopesWithPendingReview = useMemo(() => {
+    const blocked = new Set<string>();
+    runs
+      .filter((run) => run.status === 'pending_review')
+      .forEach((run) => {
+        const plan = plans.find((item) => item.id === run.plan_id);
+        if (plan) blocked.add(plan.financial_scope_id);
+      });
+    return blocked;
+  }, [plans, runs]);
+  const unitLabel = useCallback(
+    (unitId: string) => {
+      const unit = unitById.get(unitId);
+      if (!unit) return 'Unidad no disponible';
+      return unitReferenceLabel({
+        code: unit.code,
+        buildingName: unit.building_id ? (buildingNameById[unit.building_id] ?? null) : null,
+      });
+    },
+    [buildingNameById, unitById],
+  );
+  const describeScope = useCallback(
+    (scope: FinancialScope) => {
+      if (scope.kind === 'building')
+        return scope.building_id
+          ? `Edificio · ${buildingNameById[scope.building_id] ?? 'Edificio no disponible'}`
+          : 'Edificio · sin asignar';
+      if (scope.kind === 'custom') {
+        const members = scope.financial_scope_units ?? [];
+        if (!members.length) return 'Grupo personalizado · sin unidades';
+        const names = members.slice(0, 3).map((member) => unitLabel(member.unit_id));
+        const rest = members.length - names.length;
+        return `${members.length} unidad(es) · ${names.join(', ')}${rest > 0 ? ` y ${rest} más` : ''}`;
+      }
+      return 'Todo el condominio';
+    },
+    [buildingNameById, unitLabel],
+  );
 
   const closePlanDrawer = () => {
     setPlanDrawerOpen(false);
@@ -304,27 +366,68 @@ export function RecurringDuesWorkspace({
     });
   }, [activeConcepts, editingPlanId, planDrawerOpen]);
 
+  const openCreateScopeDrawer = () => {
+    setEditingScopeId('');
+    setScopeForm(initialScopeForm);
+    setScopeView('form');
+    setScopeDrawerOpen(true);
+  };
+
+  const openEditScopeDrawer = (scope: FinancialScope) => {
+    setEditingScopeId(scope.id);
+    setScopeForm(scopeFormFromScope(scope));
+    setScopeView('form');
+    setScopeDrawerOpen(true);
+  };
+
+  const openScopeCatalog = () => {
+    setEditingScopeId('');
+    setScopeView('catalog');
+    setScopeDrawerOpen(true);
+  };
+
+  const closeScopeDrawer = () => {
+    setScopeDrawerOpen(false);
+    setScopeView('catalog');
+    setEditingScopeId('');
+    setScopeForm(initialScopeForm);
+  };
+
   const saveScope = async (event: FormEvent) => {
     event.preventDefault();
     setBusyId('scope');
     setError('');
+    const editing = Boolean(editingScopeId);
     try {
-      await apiRequest(`/v1/condominiums/${condominiumId}/financial-scopes`, session, {
-        method: 'POST',
-        body: JSON.stringify({
-          code: scopeForm.code,
-          name: scopeForm.name,
-          kind: scopeForm.kind,
-          ...(scopeForm.kind === 'building' ? { buildingId: scopeForm.buildingId } : {}),
-          ...(scopeForm.kind === 'custom' ? { unitIds: scopeForm.unitIds } : {}),
-        }),
-      });
+      await apiRequest(
+        editing
+          ? `/v1/condominiums/${condominiumId}/financial-scopes/${editingScopeId}`
+          : `/v1/condominiums/${condominiumId}/financial-scopes`,
+        session,
+        {
+          method: editing ? 'PATCH' : 'POST',
+          body: JSON.stringify({
+            code: scopeForm.code,
+            name: scopeForm.name,
+            kind: scopeForm.kind,
+            ...(scopeForm.kind === 'building' ? { buildingId: scopeForm.buildingId } : {}),
+            ...(scopeForm.kind === 'custom' ? { unitIds: scopeForm.unitIds } : {}),
+            // Creation is always born active; the flag only becomes an operator decision on edit.
+            ...(editing ? { isActive: scopeForm.isActive } : {}),
+          }),
+        },
+      );
+      setEditingScopeId('');
       setScopeForm(initialScopeForm);
-      setScopeDrawerOpen(false);
+      setScopeView('catalog');
       await load();
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo crear el ámbito.',
+        requestError instanceof Error
+          ? requestError.message
+          : editing
+            ? 'No se pudo actualizar el ámbito.'
+            : 'No se pudo crear el ámbito.',
       );
     } finally {
       setBusyId('');
@@ -457,7 +560,7 @@ export function RecurringDuesWorkspace({
         </div>
         {canManage ? (
           <div className="recurring-dues-actions">
-            <Button onClick={() => setScopeDrawerOpen(true)} size="sm" variant="secondary">
+            <Button onClick={openScopeCatalog} size="sm" variant="secondary">
               Ámbitos financieros
             </Button>
             <Button disabled={!activeScopes.length} onClick={openPlanDrawer} size="sm">
@@ -727,19 +830,81 @@ export function RecurringDuesWorkspace({
         />
       ) : null}
 
-      {scopeDrawerOpen ? (
+      {scopeDrawerOpen && scopeView === 'catalog' ? (
+        <Drawer
+          eyebrow="Catálogo financiero"
+          onClose={closeScopeDrawer}
+          prefix="recurring-dues"
+          title="Ámbitos financieros"
+        >
+          <p className="recurring-dues-form__intro">
+            Un ámbito define qué unidades participan en una cuota sin confundir la estructura física
+            con la contabilidad. Los cambios afectan períodos que todavía no han sido preparados;
+            los repartos ya revisados o publicados conservan su snapshot original.
+          </p>
+          <FormActions align="start">
+            <Button onClick={openCreateScopeDrawer}>Nuevo ámbito</Button>
+          </FormActions>
+          {scopes.length ? (
+            <div className="recurring-dues-scope-list" aria-label="Ámbitos financieros">
+              {scopes.map((scope) => {
+                const blocked = scopesWithPendingReview.has(scope.id);
+                return (
+                  <article key={scope.id}>
+                    <div>
+                      <strong>{scope.name}</strong>
+                      <span>{describeScope(scope)}</span>
+                      <small>{scopeKindLabels[scope.kind]}</small>
+                      {blocked ? (
+                        <small data-tone="warning">
+                          Hay una cuota de este ámbito pendiente de revisión. Publícala o resuélvela
+                          antes de editarlo.
+                        </small>
+                      ) : null}
+                    </div>
+                    <div>
+                      <Badge tone={scope.is_active ? 'success' : 'neutral'}>
+                        {scope.is_active ? 'Activo' : 'Archivado'}
+                      </Badge>
+                      <Button
+                        disabled={blocked}
+                        onClick={() => openEditScopeDrawer(scope)}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        Editar
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              actionLabel="Nuevo ámbito"
+              description="Define dónde se distribuye la cuota: todo el condominio, un edificio o un grupo de unidades."
+              icon={<FeesIcon size={26} />}
+              onAction={openCreateScopeDrawer}
+              title="Todavía no hay ámbitos financieros"
+            />
+          )}
+        </Drawer>
+      ) : null}
+
+      {scopeDrawerOpen && scopeView === 'form' ? (
         <Drawer
           eyebrow="Configuración financiera"
-          onClose={() => setScopeDrawerOpen(false)}
+          onClose={closeScopeDrawer}
           prefix="recurring-dues"
-          title="Nuevo ámbito financiero"
+          title={editingScopeId ? 'Editar ámbito financiero' : 'Nuevo ámbito financiero'}
         >
           <form className="recurring-dues-form ux-form" onSubmit={(event) => void saveScope(event)}>
             <p className="recurring-dues-form__intro">
-              Un ámbito define qué unidades participan en un gasto o cuota sin confundir la
-              estructura física con la contabilidad.
+              {editingScopeId
+                ? 'Los cambios afectan períodos que todavía no han sido preparados. Los repartos ya revisados o publicados conservan su snapshot original.'
+                : 'Un ámbito define qué unidades participan en un gasto o cuota sin confundir la estructura física con la contabilidad.'}
             </p>
-            <Field label="Tipo de ámbito">
+            <Field label="Tipo de ámbito" required>
               <Select
                 value={scopeForm.kind}
                 onChange={(event) =>
@@ -757,7 +922,7 @@ export function RecurringDuesWorkspace({
               </Select>
             </Field>
             <FormGrid>
-              <Field label="Código">
+              <Field label="Código" required>
                 <input
                   className="input"
                   maxLength={48}
@@ -768,7 +933,7 @@ export function RecurringDuesWorkspace({
                   value={scopeForm.code}
                 />
               </Field>
-              <Field label="Nombre">
+              <Field label="Nombre" required>
                 <input
                   className="input"
                   maxLength={120}
@@ -781,7 +946,7 @@ export function RecurringDuesWorkspace({
               </Field>
             </FormGrid>
             {scopeForm.kind === 'building' ? (
-              <Field label="Edificio">
+              <Field label="Edificio" required>
                 <Select
                   required
                   value={scopeForm.buildingId}
@@ -834,18 +999,46 @@ export function RecurringDuesWorkspace({
                   ))}
               </fieldset>
             ) : null}
+            {editingScopeId ? (
+              <Field
+                hint="Un ámbito archivado deja de ofrecerse para nuevas cuotas y conserva todo su historial."
+                label="Estado"
+              >
+                <Select
+                  value={scopeForm.isActive ? 'active' : 'archived'}
+                  onChange={(event) =>
+                    setScopeForm((current) => ({
+                      ...current,
+                      isActive: event.target.value === 'active',
+                    }))
+                  }
+                >
+                  <option value="active">Activo</option>
+                  <option value="archived">Archivado</option>
+                </Select>
+              </Field>
+            ) : null}
             <FormActions sticky>
-              <Button onClick={() => setScopeDrawerOpen(false)} type="button" variant="secondary">
-                Cancelar
+              <Button
+                onClick={() => (editingScopeId ? setScopeView('catalog') : closeScopeDrawer())}
+                type="button"
+                variant="secondary"
+              >
+                {editingScopeId ? 'Volver' : 'Cancelar'}
               </Button>
               <Button
                 disabled={
                   busyId === 'scope' ||
-                  (scopeForm.kind === 'custom' && scopeForm.unitIds.length === 0)
+                  (scopeForm.kind === 'custom' && scopeForm.unitIds.length === 0) ||
+                  (scopeForm.kind === 'building' && !scopeForm.buildingId)
                 }
                 type="submit"
               >
-                {busyId === 'scope' ? 'Guardando…' : 'Crear ámbito'}
+                {busyId === 'scope'
+                  ? 'Guardando…'
+                  : editingScopeId
+                    ? 'Guardar cambios'
+                    : 'Crear ámbito'}
               </Button>
             </FormActions>
           </form>

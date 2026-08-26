@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   normalizeRecurringMoneyInput,
   recurringDomainFailureFromPostgrest,
 } from './recurring-dues-routes';
+import { app as securityApp } from './security-entry';
 
 const source = readFileSync(
   fileURLToPath(new URL('./recurring-dues-routes.ts', import.meta.url)),
@@ -171,5 +172,151 @@ describe('HAB-352 recurring plan edits', () => {
         message: 'scheduled recurring period outside edited plan',
       }),
     ).toMatchObject({ status: 409, error: 'recurring_plan_scheduled_period_conflict' });
+  });
+});
+
+const CONDOMINIUM = '00000000-0000-4000-8000-000000000355';
+const SCOPE = '00000000-0000-4000-8000-000000000356';
+
+type UpstreamHandler = (url: string, init?: RequestInit) => Response;
+
+const withUpstream = (handler: UpstreamHandler) =>
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.includes('/auth/v1/user'))
+      return new Response(JSON.stringify({ id: CONDOMINIUM }), { status: 200 });
+    return handler(url, init);
+  });
+
+const patchScope = (body: unknown) =>
+  securityApp.fetch(
+    new Request(`http://api.test/v1/condominiums/${CONDOMINIUM}/financial-scopes/${SCOPE}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer token', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+    {
+      SUPABASE_URL: 'https://supabase.test',
+      SUPABASE_ANON_KEY: 'anon',
+      APP_ENV: 'production',
+    } as never,
+  );
+
+const validScopeBody = {
+  code: 'general',
+  name: 'Condominio general',
+  kind: 'condominium',
+  isActive: true,
+};
+
+describe('HAB-355 financial scope edit API contract', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('exposes a guarded PATCH that only reaches the protected RPC', () => {
+    expect(source).toContain("patch('/:id/financial-scopes/:scopeId'");
+    expect(source).toContain("rpc(c, 'update_financial_scope'");
+    expect(source).toContain('target_scope: scopeId');
+    expect(source).toContain(
+      'financial_scopes?id=eq.${scopeId}&condominium_id=eq.${condominiumId}&select=id',
+    );
+    expect(source).toContain("'Financial scope not found in condominium'");
+  });
+
+  it('never writes financial scope tables directly', () => {
+    expect(source).not.toMatch(
+      /rest\(c,\s*`?(financial_scopes|financial_scope_units)[^)]*\{\s*method:\s*'(POST|PUT|PATCH|DELETE)'/s,
+    );
+    expect(source).not.toContain("method: 'DELETE'");
+  });
+
+  it('prefills custom membership without an N+1 lookup', () => {
+    expect(source).toContain('select=*,financial_scope_units(unit_id)');
+  });
+
+  it('rejects a scope from another condominium before calling the RPC', async () => {
+    const calls: string[] = [];
+    withUpstream((url) => {
+      calls.push(url);
+      return new Response('[]', { status: 200 });
+    });
+
+    const response = await patchScope(validScopeBody);
+
+    expect(response.status).toBe(404);
+    expect(calls.some((url) => url.includes('rpc/update_financial_scope'))).toBe(false);
+  });
+
+  it('translates every scope lifecycle conflict into an actionable message', async () => {
+    const cases = [
+      ['financial scope has pending review run', 409, 'financial_scope_pending_review'],
+      ['active recurring plan requires financial scope', 409, 'financial_scope_active_plan'],
+      ['financial scope unavailable', 409, 'financial_scope_unavailable'],
+      ['invalid financial scope configuration', 422, 'financial_scope_invalid'],
+      ['financial scope code already exists', 409, 'financial_scope_code_taken'],
+      ['condominium financial scope already exists', 409, 'financial_scope_condominium_taken'],
+      ['building financial scope already exists', 409, 'financial_scope_building_taken'],
+    ] as const;
+
+    for (const [message, status, error] of cases) {
+      vi.restoreAllMocks();
+      withUpstream((url) =>
+        url.includes('rpc/update_financial_scope')
+          ? new Response(JSON.stringify({ code: 'P0001', message, details: null, hint: null }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          : new Response(JSON.stringify([{ id: SCOPE }]), { status: 200 }),
+      );
+
+      const response = await patchScope(validScopeBody);
+      const payload = (await response.json()) as { error: string; publicMessage?: string };
+
+      expect(response.status).toBe(status);
+      expect(payload.error).toBe(error);
+      expect(payload.publicMessage).toBeTypeOf('string');
+      expect(payload.publicMessage).not.toMatch(/duplicate key|constraint|P0001|null value/i);
+    }
+  });
+
+  it('keeps unknown upstream failures fail-closed without leaking internals', async () => {
+    withUpstream((url) =>
+      url.includes('rpc/update_financial_scope')
+        ? new Response(
+            JSON.stringify({
+              code: '23505',
+              message: 'duplicate key value violates unique constraint "financial_scopes_pkey"',
+              details: 'Key (id)=(1) already exists.',
+              hint: null,
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } },
+          )
+        : new Response(JSON.stringify([{ id: SCOPE }]), { status: 200 }),
+    );
+
+    const response = await patchScope(validScopeBody);
+    const body = await response.text();
+
+    expect(response.status).toBe(400);
+    expect(body).not.toMatch(/duplicate key|constraint|Key \(id\)/);
+  });
+
+  it('requires an explicit activation flag and a coherent scope shape', async () => {
+    withUpstream(() => new Response(JSON.stringify([{ id: SCOPE }]), { status: 200 }));
+
+    const missingActive = await patchScope({
+      code: 'general',
+      name: 'Condominio general',
+      kind: 'condominium',
+    });
+    expect(missingActive.status).toBe(400);
+
+    const unitsOnCondominiumScope = await patchScope({
+      ...validScopeBody,
+      unitIds: ['00000000-0000-4000-8000-000000000357'],
+    });
+    expect(unitsOnCondominiumScope.status).toBe(400);
+
+    const buildingWithoutId = await patchScope({ ...validScopeBody, kind: 'building' });
+    expect(buildingWithoutId.status).toBe(400);
   });
 });

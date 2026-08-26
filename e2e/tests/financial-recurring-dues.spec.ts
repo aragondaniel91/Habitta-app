@@ -9,6 +9,8 @@ const password = process.env.E2E_FIXTURE_PASSWORD;
 const ids = {
   condominium: '22222222-2222-4222-8222-222222222221',
   chargeConcept: '66666666-6666-4666-8666-666666666661',
+  unitA101: '33333333-3333-4333-8333-333333333331',
+  unitA102: '33333333-3333-4333-8333-333333333332',
 };
 
 const adminEmail = 'habitta-e2e-admin@example.invalid';
@@ -60,6 +62,24 @@ const rpc = async <T>(
   });
   expect(response.ok(), await response.text()).toBe(true);
   return (await response.json()) as T;
+};
+
+const rpcExpectingFailure = async (
+  request: APIRequestContext,
+  token: string,
+  functionName: string,
+  data: Record<string, unknown>,
+) => {
+  const response = await request.post(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+    headers: {
+      apikey: anonKey ?? '',
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    data,
+  });
+  expect(response.ok()).toBe(false);
+  return (await response.json()) as { message?: string };
 };
 
 const rows = async <T>(request: APIRequestContext, token: string, path: string) => {
@@ -207,5 +227,155 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
     expect(allRuns[0]?.total_amount && Number(allRuns[0].total_amount)).toBe(90);
     expect(allRuns[1]?.due_date).toBe('2026-10-14');
     expect(allRuns[1]?.charge_batch_id).toBeNull();
+  });
+  test('edita la membresía de un ámbito sin tocar el período ya publicado', async ({
+    request,
+  }, testInfo) => {
+    const admin = await authenticate(request);
+    const runKey = `scope-${testInfo.workerIndex}-${testInfo.retry}`;
+
+    const scope = await rpc<FinancialScope>(request, admin.access_token, 'create_financial_scope', {
+      target: ids.condominium,
+      scope_code: `e2e-scope-${runKey}`,
+      scope_name: `E2E ámbito ${runKey}`,
+      scope_kind: 'custom',
+      target_building: null,
+      target_units: [ids.unitA101, ids.unitA102],
+    });
+
+    const plan = await rpc<RecurringPlan>(
+      request,
+      admin.access_token,
+      'create_recurring_charge_plan',
+      {
+        target: ids.condominium,
+        target_concept: ids.chargeConcept,
+        target_scope: scope.id,
+        plan_name: `Cuota ámbito E2E ${runKey}`,
+        plan_distribution: 'fixed_per_unit',
+        plan_amount: '30.00',
+        plan_currency: 'USD',
+        plan_starts_on: '2026-09-01',
+        plan_issue_day: 1,
+        plan_due_day: 10,
+        plan_ends_on: null,
+      },
+    );
+
+    const [scheduledA] = await rows<RecurringRun>(
+      request,
+      admin.access_token,
+      `recurring_charge_runs?plan_id=eq.${plan.id}&period=eq.2026-09&select=id,status,period,due_date,total_amount,distribution_snapshot,charge_batch_id`,
+    );
+    const preparedA = await rpc<RecurringRun>(
+      request,
+      admin.access_token,
+      'prepare_recurring_charge_run',
+      { target_run: scheduledA!.id },
+    );
+    expect(preparedA.status).toBe('pending_review');
+    expect(preparedA.distribution_snapshot).toHaveLength(2);
+
+    // A reviewed allocation freezes the scope: the guard must reject the edit, not silently apply.
+    const blocked = await rpcExpectingFailure(
+      request,
+      admin.access_token,
+      'update_financial_scope',
+      {
+        target: ids.condominium,
+        target_scope: scope.id,
+        scope_code: `e2e-scope-${runKey}`,
+        scope_name: `E2E ámbito ${runKey}`,
+        scope_kind: 'custom',
+        target_building: null,
+        target_units: [ids.unitA101],
+        scope_active: true,
+      },
+    );
+    expect(blocked.message).toBe('financial scope has pending review run');
+
+    const postedA = await rpc<RecurringRun>(
+      request,
+      admin.access_token,
+      'post_recurring_charge_run',
+      { target_run: scheduledA!.id },
+    );
+    expect(postedA.status).toBe('posted');
+    expect(Number(postedA.total_amount)).toBe(60);
+
+    await rpc<FinancialScope>(request, admin.access_token, 'update_financial_scope', {
+      target: ids.condominium,
+      target_scope: scope.id,
+      scope_code: `e2e-scope-${runKey}`,
+      scope_name: `E2E ámbito editado ${runKey}`,
+      scope_kind: 'custom',
+      target_building: null,
+      target_units: [ids.unitA101],
+      scope_active: true,
+    });
+
+    const membership = await rows<{ unit_id: string }>(
+      request,
+      admin.access_token,
+      `financial_scope_units?scope_id=eq.${scope.id}&select=unit_id`,
+    );
+    expect(membership.map((row) => row.unit_id)).toEqual([ids.unitA101]);
+
+    const [periodAAfterEdit] = await rows<RecurringRun>(
+      request,
+      admin.access_token,
+      `recurring_charge_runs?id=eq.${scheduledA!.id}&select=id,status,period,due_date,total_amount,distribution_snapshot,charge_batch_id`,
+    );
+    expect(Number(periodAAfterEdit!.total_amount)).toBe(60);
+    expect(periodAAfterEdit!.distribution_snapshot).toHaveLength(2);
+    expect(periodAAfterEdit!.charge_batch_id).toBe(postedA.charge_batch_id);
+
+    const receivablesA = await rows<{ id: string; original_amount: string }>(
+      request,
+      admin.access_token,
+      `receivable_items?charge_batch_id=eq.${postedA.charge_batch_id}&select=id,original_amount`,
+    );
+    expect(receivablesA).toHaveLength(2);
+    expect(receivablesA.reduce((sum, item) => sum + Number(item.original_amount), 0)).toBe(60);
+
+    const scheduledB = await rpc<RecurringRun>(
+      request,
+      admin.access_token,
+      'schedule_recurring_charge_run',
+      { target_plan: plan.id, target_period: '2026-10' },
+    );
+    const preparedB = await rpc<RecurringRun>(
+      request,
+      admin.access_token,
+      'prepare_recurring_charge_run',
+      { target_run: scheduledB.id },
+    );
+    expect(preparedB.distribution_snapshot).toHaveLength(1);
+    expect(Number(preparedB.total_amount)).toBe(30);
+    expect(preparedB.distribution_snapshot?.[0]?.unit_id).toBe(ids.unitA101);
+
+    // The reviewed period has to be resolved first: the pending-review guard runs before the
+    // dependency guard, so publishing B is what makes the archive attempt reach it.
+    await rpc<RecurringRun>(request, admin.access_token, 'post_recurring_charge_run', {
+      target_run: scheduledB.id,
+    });
+
+    // Archiving must stay closed while an active plan still depends on the scope.
+    const archiveBlocked = await rpcExpectingFailure(
+      request,
+      admin.access_token,
+      'update_financial_scope',
+      {
+        target: ids.condominium,
+        target_scope: scope.id,
+        scope_code: `e2e-scope-${runKey}`,
+        scope_name: `E2E ámbito editado ${runKey}`,
+        scope_kind: 'custom',
+        target_building: null,
+        target_units: [ids.unitA101],
+        scope_active: false,
+      },
+    );
+    expect(archiveBlocked.message).toBe('active recurring plan requires financial scope');
   });
 });
