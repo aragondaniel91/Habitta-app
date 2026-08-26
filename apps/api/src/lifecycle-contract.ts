@@ -350,16 +350,16 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     entity: 'community document category',
     create: '/:condominiumId/community-documents/categories',
     classification: 'configuration',
-    correction: null,
-    knownGap: '#360',
+    correction: '/:condominiumId/community-documents/categories/:categoryId',
+    note: 'HAB-360: archiving refused while active documents still file under it.',
   },
   {
     module: 'documents',
     entity: 'community document folder',
     create: '/:condominiumId/community-documents/folders',
     classification: 'configuration',
-    correction: null,
-    knownGap: '#360',
+    correction: '/:condominiumId/community-documents/folders/:folderId',
+    note: 'HAB-360: reparenting cannot create a cycle; archiving refused while documents or child folders remain.',
   },
   // ---------------------------------------------------------------- structure (structure-routes)
   {

@@ -219,6 +219,43 @@ export async function createCommunityDocumentFolder(
   return unwrapCreated(created);
 }
 
+export async function updateCommunityDocumentCategory(
+  condominiumId: string,
+  session: Session,
+  categoryId: string,
+  input: {
+    name: string;
+    description?: string | undefined;
+    defaultAudience: CommunityDocumentAudience;
+    defaultRetentionDays?: number | undefined;
+    isActive: boolean;
+  },
+) {
+  return apiRequest<CommunityDocumentCategory>(
+    `${basePath(condominiumId)}/categories/${categoryId}`,
+    session,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  );
+}
+
+export async function updateCommunityDocumentFolder(
+  condominiumId: string,
+  session: Session,
+  folderId: string,
+  input: {
+    name: string;
+    description?: string | undefined;
+    parentFolderId?: string | undefined;
+    isActive: boolean;
+  },
+) {
+  return apiRequest<CommunityDocumentFolder>(
+    `${basePath(condominiumId)}/folders/${folderId}`,
+    session,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  );
+}
+
 export async function createCommunityDocument(
   condominiumId: string,
   session: Session,
