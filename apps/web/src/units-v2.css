@@ -16,7 +16,7 @@
 .units-v2-card span,
 .units-v2-card p,
 .units-v2-detail p {
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--muted));
 }
 .units-v2-metrics strong {
   font-size: 1.55rem;
@@ -46,7 +46,7 @@
 }
 .units-v2-card {
   background: transparent;
-  border: 1px solid var(--border-subtle, #e2e8f0);
+  border: 1px solid var(--border-subtle, var(--border));
   border-radius: 0.75rem;
   color: inherit;
   cursor: pointer;
@@ -98,7 +98,7 @@
 }
 .units-v2-detail li span {
   flex-basis: 100%;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--muted));
 }
 .units-v2-drawer-layer {
   inset: 0;
@@ -113,7 +113,7 @@
   width: 100%;
 }
 .units-v2-drawer {
-  background: var(--surface, #fff);
+  background: var(--surface, var(--surface));
   box-shadow: -12px 0 32px rgb(15 23 42 / 0.18);
   display: grid;
   grid-template-rows: auto 1fr;
@@ -125,7 +125,7 @@
 }
 .units-v2-drawer__header {
   align-items: center;
-  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  border-bottom: 1px solid var(--border-subtle, var(--border));
   display: flex;
   justify-content: space-between;
   padding: 1rem 1.25rem;

@@ -20,11 +20,11 @@
 }
 
 .reports-inline-alert {
-  border: 1px solid #f4d6a3;
+  border: 1px solid var(--amber-border);
   border-radius: var(--radius-md);
   padding: 0.8rem 1rem;
-  background: #fff8e8;
-  color: #8a5b0a;
+  background: var(--amber-soft);
+  color: var(--amber);
   font-size: 0.82rem;
   font-weight: 650;
 }
@@ -74,7 +74,7 @@
 
 .reports-currency-tabs button[data-active='true'] {
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
   box-shadow: 0 4px 10px rgb(13 27 42 / 0.18);
 }
 
@@ -116,7 +116,7 @@
 }
 
 .reports-metric[data-tone='navy'] .reports-metric__heading > span {
-  background: #e9eef5;
+  background: var(--border);
   color: var(--navy);
 }
 
@@ -269,11 +269,11 @@
 }
 
 .reports-bar--collections {
-  background: linear-gradient(180deg, #43bd5d, var(--green));
+  background: linear-gradient(180deg, var(--chart-green), var(--green));
 }
 
 .reports-bar--charges {
-  background: linear-gradient(180deg, #3b82c4, var(--blue));
+  background: linear-gradient(180deg, var(--chart-blue), var(--blue));
 }
 
 .reports-month-group > strong {
@@ -345,7 +345,7 @@
 }
 
 .reports-aging-track > span[data-bucket='days_1_30'] {
-  background: #78aee8;
+  background: var(--chart-sky);
 }
 
 .reports-aging-track > span[data-bucket='days_31_60'] {
@@ -353,11 +353,11 @@
 }
 
 .reports-aging-track > span[data-bucket='days_61_90'] {
-  background: #e39b45;
+  background: var(--chart-amber);
 }
 
 .reports-aging-track > span[data-bucket='over_90'] {
-  background: #c94d58;
+  background: var(--red);
 }
 
 .reports-empty-chart {
@@ -488,8 +488,8 @@
 }
 
 .reports-insight-list article[data-tone='warning'] > span {
-  background: #fff4df;
-  color: #9a6100;
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 
 .reports-insight-list article > div {

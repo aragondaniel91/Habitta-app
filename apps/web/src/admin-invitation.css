@@ -13,7 +13,7 @@
   gap: 3rem;
   padding: clamp(2rem, 5vw, 4.5rem);
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
 }
 
 .admin-invite-story > div:last-child {
@@ -23,7 +23,7 @@
 .admin-invite-story h1 {
   max-width: 680px;
   margin: 1rem 0;
-  color: #fff;
+  color: var(--surface);
   font-size: clamp(2.2rem, 4.5vw, 4rem);
   line-height: 1.05;
 }

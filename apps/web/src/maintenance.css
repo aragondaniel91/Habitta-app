@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  border: 1px solid #f4b8bc;
+  border: 1px solid var(--red-border);
   border-radius: var(--radius-md);
   padding: 0.85rem 1rem;
   background: var(--red-soft);
@@ -80,7 +80,7 @@
 }
 
 .maintenance-metric[data-tone='amber'] {
-  color: #9a6700;
+  color: var(--amber);
 }
 
 .maintenance-metric[data-tone='red'] {
@@ -100,7 +100,7 @@
   place-items: center;
   border-radius: 0.75rem;
   background: currentColor;
-  color: #fff;
+  color: var(--surface);
 }
 
 .maintenance-metric__top small {

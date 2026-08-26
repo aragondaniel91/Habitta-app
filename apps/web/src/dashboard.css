@@ -21,11 +21,11 @@
 }
 
 .dashboard-inline-alert {
-  border: 1px solid #f4d6a3;
+  border: 1px solid var(--amber-border);
   border-radius: var(--radius-md);
   padding: 0.8rem 1rem;
-  background: #fff8e8;
-  color: #8a5b0a;
+  background: var(--amber-soft);
+  color: var(--amber);
   font-size: 0.82rem;
   font-weight: 600;
 }
@@ -76,7 +76,7 @@
 }
 
 .dashboard-metric-card[data-tone='navy'] .dashboard-metric-card__icon {
-  background: #e9eef5;
+  background: var(--border);
   color: var(--navy);
 }
 
@@ -191,7 +191,7 @@
 
 .dashboard-currency-tabs button[data-active='true'] {
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
   box-shadow: 0 3px 8px rgb(13 27 42 / 0.18);
 }
 
@@ -278,11 +278,11 @@
 }
 
 .dashboard-bar--income {
-  background: linear-gradient(180deg, #43bd5d, var(--green));
+  background: linear-gradient(180deg, var(--chart-green), var(--green));
 }
 
 .dashboard-bar--charges {
-  background: linear-gradient(180deg, #3b82c4, var(--blue));
+  background: linear-gradient(180deg, var(--chart-blue), var(--blue));
 }
 
 .dashboard-bar-group > strong {
@@ -525,7 +525,7 @@
 }
 
 .dashboard-priority-list button > span[data-tone='warning'] {
-  background: #fff3df;
+  background: var(--amber-soft);
   color: #b56e13;
 }
 
@@ -620,12 +620,12 @@
 }
 
 .dashboard-action-grid button:nth-child(3) {
-  background: #f1efff;
+  background: var(--surface-subtle);
   color: #6250a4;
 }
 
 .dashboard-action-grid button:nth-child(4) {
-  background: #edf1f5;
+  background: var(--border);
   color: var(--navy);
 }
 

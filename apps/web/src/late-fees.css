@@ -77,15 +77,15 @@
 }
 
 .late-fees-drawer__alert[data-tone='error'] {
-  border: 1px solid #f3b9b9;
-  background: #fef2f2;
-  color: #9c1c1c;
+  border: 1px solid var(--red-border);
+  background: var(--red-soft);
+  color: var(--red);
 }
 
 .late-fees-drawer__alert[data-tone='success'] {
-  border: 1px solid #b7e4c2;
-  background: #f1fbf4;
-  color: #17642b;
+  border: 1px solid var(--green-border);
+  background: var(--surface-subtle);
+  color: var(--green-dark);
 }
 
 .late-fees-drawer__toggle {

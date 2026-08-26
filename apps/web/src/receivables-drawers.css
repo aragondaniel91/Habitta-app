@@ -94,11 +94,11 @@
 
 .receivables-action-feedback {
   margin-bottom: 1rem;
-  border: 1px solid #f1d4a0;
+  border: 1px solid var(--amber-border);
   border-radius: var(--radius-md);
   padding: 0.75rem 0.85rem;
-  background: #fff8e8;
-  color: #875a0b;
+  background: var(--amber-soft);
+  color: var(--amber);
   font-size: 0.74rem;
   font-weight: 650;
 }
@@ -186,10 +186,10 @@
 .receivables-danger-zone {
   display: grid;
   gap: 0.8rem;
-  border: 1px solid #edc8cc;
+  border: 1px solid var(--red-border);
   border-radius: var(--radius-lg);
   padding: 1rem;
-  background: #fff7f8;
+  background: var(--red-soft);
 }
 
 .receivables-danger-zone > div:first-child {
@@ -362,17 +362,17 @@
 .receivables-opening-errors {
   max-height: 220px;
   overflow-y: auto;
-  border: 1px solid #f1d4a0;
+  border: 1px solid var(--amber-border);
   border-radius: var(--radius-md);
   padding: 0.6rem 0.75rem;
-  background: #fff8e8;
+  background: var(--amber-soft);
 }
 
 .receivables-opening-errors p {
   margin: 0;
-  border-bottom: 1px solid #f1dfbb;
+  border-bottom: 1px solid var(--amber-border);
   padding: 0.45rem 0;
-  color: #875a0b;
+  color: var(--amber);
   font-size: 0.68rem;
 }
 

@@ -90,11 +90,11 @@
   gap: 12px;
   border-radius: 10px;
   padding: 10px 12px;
-  background: color-mix(in srgb, #b42318 5%, var(--surface));
+  background: color-mix(in srgb, var(--red) 5%, var(--surface));
 }
 
 .ownership-transfer-total[data-valid] {
-  background: color-mix(in srgb, #0f8a4b 6%, var(--surface));
+  background: color-mix(in srgb, var(--green-dark) 6%, var(--surface));
 }
 
 .ownership-transfer-history,

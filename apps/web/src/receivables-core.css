@@ -54,11 +54,11 @@
 }
 
 .receivables-inline-alert {
-  border: 1px solid #f1d4a0;
+  border: 1px solid var(--amber-border);
   border-radius: var(--radius-md);
   padding: 0.8rem 1rem;
-  background: #fff8e8;
-  color: #875a0b;
+  background: var(--amber-soft);
+  color: var(--amber);
   font-size: 0.8rem;
   font-weight: 650;
 }
@@ -110,7 +110,7 @@
 
 .receivables-currency-tabs button[data-active='true'] {
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
   box-shadow: 0 4px 12px rgb(13 27 42 / 0.2);
 }
 
@@ -162,7 +162,7 @@
 }
 
 .receivables-metric[data-tone='navy'] .receivables-metric__heading > span {
-  background: #edf1f5;
+  background: var(--border);
   color: var(--navy);
 }
 
@@ -249,7 +249,7 @@
 
 .receivables-aging-bar > span[data-bucket='days_1_30'],
 .receivables-aging-list > div > span[data-bucket='days_1_30'] {
-  background: #75aee8;
+  background: var(--chart-sky);
 }
 
 .receivables-aging-bar > span[data-bucket='days_31_60'],
@@ -259,7 +259,7 @@
 
 .receivables-aging-bar > span[data-bucket='days_61_90'],
 .receivables-aging-list > div > span[data-bucket='days_61_90'] {
-  background: #e39a43;
+  background: var(--chart-amber);
 }
 
 .receivables-aging-bar > span[data-bucket='over_90'],
@@ -365,7 +365,7 @@
 
 .receivables-status-list button > span[data-tone='warning'],
 .receivables-opening-preview > div > span[data-tone='warning'] {
-  background: #fff2dc;
+  background: var(--amber-soft);
   color: #bf7416;
 }
 
@@ -376,7 +376,7 @@
 }
 
 .receivables-status-list button > span[data-tone='neutral'] {
-  background: #edf1f5;
+  background: var(--border);
   color: var(--muted);
 }
 
