@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 
 // The shell owns the breadcrumb and its own controls; the page owns the words and the actions that
@@ -7,11 +7,30 @@ import type { ReactNode } from 'react';
 export type PageChrome = {
   breadcrumb: string;
   actions?: ReactNode;
+  /**
+   * A module that splits into workspaces puts its switcher here. It used to be rendered by the
+   * wrapper *above* the page, which placed it above the breadcrumb and left every such module
+   * looking different from the rest. Inside the header it always lands in the same place.
+   */
+  tabs?: ReactNode;
 };
 
 const PageChromeContext = createContext<PageChrome | null>(null);
 
 export const PageChromeProvider = PageChromeContext.Provider;
+
+/**
+ * Adds to the chrome the shell already provides instead of replacing it. A module wrapper that
+ * provided its own value would otherwise drop the breadcrumb and the shell's own actions.
+ */
+export function PageChromeExtension({ tabs, children }: { tabs: ReactNode; children: ReactNode }) {
+  const outer = useContext(PageChromeContext);
+  const value = useMemo<PageChrome>(
+    () => ({ ...(outer ?? { breadcrumb: '' }), tabs }),
+    [outer, tabs],
+  );
+  return <PageChromeContext.Provider value={value}>{children}</PageChromeContext.Provider>;
+}
 
 type Props = {
   eyebrow?: string;
@@ -42,6 +61,7 @@ export function PageHeader({ eyebrow, title, description, actions }: Props) {
           {chrome?.actions}
         </div>
       ) : null}
+      {chrome?.tabs ? <div className="page-header__tabs">{chrome.tabs}</div> : null}
     </header>
   );
 }
