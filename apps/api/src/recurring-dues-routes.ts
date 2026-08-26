@@ -263,6 +263,16 @@ const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
     error: 'recurring_run_already_posted',
     publicMessage: 'La corrida ya fue publicada y no puede modificarse.',
   },
+  'late fee generation denied': {
+    status: 403,
+    error: 'late_fee_generation_denied',
+    publicMessage: 'No tienes permisos para calcular recargos por mora en este condominio.',
+  },
+  'late fee generation date required': {
+    status: 422,
+    error: 'late_fee_date_required',
+    publicMessage: 'Indica la fecha hasta la que se deben calcular los recargos.',
+  },
 };
 
 export function recurringDomainFailureFromPostgrest(
@@ -524,7 +534,10 @@ recurringDuesRoutes.post('/:id/late-fees/preview', async (c) => {
   const response = await rpc(c, 'preview_late_fees', {
     target_condominium: uuidSchema.parse(c.req.param('id')),
   });
-  return c.json(await response.json(), response.ok ? 200 : 400);
+  // This route used to hand the raw PostgREST body back with a bare 400, so a permission failure
+  // reached the administrator as an untranslated Postgres string. Every other route in this file
+  // already goes through rpcResult; this one was the exception.
+  return rpcResult(c, response, 200);
 });
 
 recurringDuesRoutes.route('/', ownershipFinanceRoutes);
