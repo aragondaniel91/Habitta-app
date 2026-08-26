@@ -208,4 +208,40 @@ test.describe('Formularios administrativos autenticados', () => {
     ).toBe(1);
     await assertNoHorizontalOverflow(page);
   });
+  test('Ámbitos financieros ofrece catálogo, edición y acciones alcanzables en móvil', async ({
+    page,
+  }) => {
+    await signInAsAdministrator(page);
+    const { dialog } = await openAtMobileSize(page, '/app/fees', 'Ámbitos financieros');
+
+    await expect(dialog).toHaveAccessibleName('Ámbitos financieros');
+    await expect(dialog.getByRole('button', { name: 'Nuevo ámbito' }).first()).toBeInViewport();
+
+    const editButtons = dialog.getByRole('button', { name: 'Editar' });
+    const catalogEntries = await editButtons.count();
+
+    if (catalogEntries > 0) {
+      await editButtons.first().click();
+      await expect(dialog).toHaveAccessibleName('Editar ámbito financiero');
+      await expect(dialog.getByLabel('Tipo de ámbito')).toBeVisible();
+      await expect(dialog.getByLabel('Código')).toBeVisible();
+      await expect(dialog.getByLabel('Nombre')).toBeVisible();
+      await expect(dialog.getByLabel('Estado')).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Guardar cambios' })).toBeInViewport();
+      await expect(dialog.getByRole('button', { name: 'Volver' })).toBeInViewport();
+      await expect(dialog.locator('.form-actions')).toBeVisible();
+    } else {
+      await dialog.getByRole('button', { name: 'Nuevo ámbito' }).first().click();
+      await expect(dialog).toHaveAccessibleName('Nuevo ámbito financiero');
+      await expect(dialog.getByRole('button', { name: 'Crear ámbito' })).toBeInViewport();
+    }
+
+    const controls = dialog.locator('.input, .select');
+    for (let index = 0; index < (await controls.count()); index += 1) {
+      expect(
+        await controls.nth(index).evaluate((element) => element.getBoundingClientRect().height),
+      ).toBeGreaterThanOrEqual(47);
+    }
+    await assertNoHorizontalOverflow(page, dialog);
+  });
 });
