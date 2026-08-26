@@ -216,12 +216,19 @@ jobs:
           const origin = process.env.CLOUDFLARE_PAGES_PROD_URL;
           const expectedCommit = process.env.RELEASE_COMMIT;
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          // A version deploy returns before every edge location is serving it. The old budget was
+          // ten attempts five seconds apart -- forty-five seconds -- and a release whose Worker
+          // bundle was unchanged still spent longer than that reporting the previous commit. Every
+          // assertion below is unchanged; only the patience and the reporting are.
+          const attempts = 30;
           let lastError;
-          for (let attempt = 1; attempt <= 10; attempt += 1) {
+          let observed;
+          for (let attempt = 1; attempt <= attempts; attempt += 1) {
             try {
               const health = await fetch(`${apiUrl}/health`, { headers: { Origin: origin } });
               if (!health.ok) throw new Error(`health_${health.status}`);
               const metadata = await health.json();
+              observed = metadata;
               if (metadata.environment !== 'production') throw new Error('environment_mismatch');
               if (metadata.commit !== expectedCommit) throw new Error('commit_mismatch');
               if (metadata.notificationsEmailMode !== 'live') throw new Error('email_mode_mismatch');
@@ -233,14 +240,27 @@ jobs:
                 headers: { Origin: origin },
               });
               if (unauthorized.status !== 401) throw new Error('auth_guard_mismatch');
+              if (attempt > 1) console.log(`Worker smoke passed on attempt ${attempt}.`);
               lastError = undefined;
               break;
             } catch (error) {
               lastError = error;
-              if (attempt < 10) await sleep(5_000);
+              if (attempt < attempts) {
+                // Five seconds for the first minute, then ten: quick when it is nearly there,
+                // patient when the edge is genuinely slow, about four minutes in total.
+                await sleep(attempt <= 12 ? 5_000 : 10_000);
+              }
             }
           }
-          if (lastError) throw lastError;
+          if (lastError) {
+            // `commit_mismatch` on its own says nothing about what the edge was actually serving,
+            // which made the previous failure take a log download to understand.
+            console.error(
+              `Worker smoke failed after ${attempts} attempts: ${lastError.message}`,
+              JSON.stringify({ expectedCommit, observed }, null, 2),
+            );
+            throw lastError;
+          }
           NODE
       - name: Deploy production Pages
         run: |
@@ -263,8 +283,10 @@ jobs:
           const apiUrl = process.env.CLOUDFLARE_WORKER_PROD_URL;
           const origin = process.env.CLOUDFLARE_PAGES_PROD_URL;
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          // Same edge-propagation budget as the Worker smoke above, for the same reason.
+          const attempts = 30;
           let lastError;
-          for (let attempt = 1; attempt <= 12; attempt += 1) {
+          for (let attempt = 1; attempt <= attempts; attempt += 1) {
             try {
               const web = await fetch(`${deploymentUrl}/app/dashboard`);
               if (!web.ok) throw new Error(`deployment_web_${web.status}`);
@@ -277,14 +299,21 @@ jobs:
               });
               if (!preflight.ok || preflight.headers.get('access-control-allow-origin') !== origin)
                 throw new Error('preflight_mismatch');
+              if (attempt > 1) console.log(`Pages smoke passed on attempt ${attempt}.`);
               lastError = undefined;
               break;
             } catch (error) {
               lastError = error;
-              if (attempt < 12) await sleep(5_000);
+              if (attempt < attempts) await sleep(attempt <= 12 ? 5_000 : 10_000);
             }
           }
-          if (lastError) throw lastError;
+          if (lastError) {
+            console.error(
+              `Pages smoke failed after ${attempts} attempts: ${lastError.message}`,
+              JSON.stringify({ deploymentUrl, origin }, null, 2),
+            );
+            throw lastError;
+          }
           NODE
       - name: Verify canonical production Pages control plane
         run: node scripts/release/verify-production-pages-control-plane.mjs
