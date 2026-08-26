@@ -566,6 +566,11 @@ export const treasuryAccountSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
 });
 
+/** Editing carries the same shape plus an explicit archive decision. */
+export const treasuryAccountUpdateSchema = treasuryAccountSchema.extend({
+  isActive: z.boolean(),
+});
+
 // transfer_in and transfer_out are produced by create_treasury_transfer, and reversal by
 // reverse_treasury_movement, so neither can be recorded straight from this endpoint.
 export const treasuryMovementSchema = z.object({

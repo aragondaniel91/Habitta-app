@@ -184,9 +184,8 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     entity: 'treasury account',
     create: '/:id/treasury/accounts',
     classification: 'configuration',
-    correction: null,
-    knownGap: '#360',
-    note: 'A bank or cash account cannot be renamed, corrected or archived.',
+    correction: '/:id/treasury/accounts/:accountId',
+    note: 'HAB-360: descriptive fields always correctable; currency and type freeze once movements exist; archiving refused while a balance remains.',
   },
   {
     module: 'treasury',

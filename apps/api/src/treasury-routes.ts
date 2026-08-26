@@ -3,6 +3,7 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 import {
   treasuryAccountSchema,
+  treasuryAccountUpdateSchema,
   treasuryMatchSchema,
   treasuryMovementSchema,
   treasuryReconciliationSchema,
@@ -37,9 +38,64 @@ const rest = (c: AppContext, path: string, init: RequestInit = {}) =>
 const rpc = (c: AppContext, name: string, payload: unknown) =>
   rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) });
 
+type TreasuryFailure = { status: 400 | 403 | 409 | 422; error: string; publicMessage: string };
+
+/**
+ * Treasury guards used to collapse into a generic "Request failed". The operator has to know which
+ * rule stopped them and how to satisfy it, without ever reading a PostgreSQL constraint name.
+ */
+const treasuryFailures: Record<string, TreasuryFailure> = {
+  'treasury management denied': {
+    status: 403,
+    error: 'treasury_forbidden',
+    publicMessage: 'No tienes permisos para administrar la tesorería de este condominio.',
+  },
+  'treasury account unavailable': {
+    status: 409,
+    error: 'treasury_account_unavailable',
+    publicMessage: 'La cuenta de tesorería ya no está disponible. Actualiza la información.',
+  },
+  'invalid treasury account': {
+    status: 422,
+    error: 'treasury_account_invalid',
+    publicMessage:
+      'Revisa el nombre (2 a 120 caracteres), la moneda de tres letras y la referencia de la cuenta.',
+  },
+  'cash accounts cannot have a bank name': {
+    status: 422,
+    error: 'treasury_cash_account_bank',
+    publicMessage: 'Una cuenta de efectivo no puede tener banco. Déjalo vacío o cámbiala a banco.',
+  },
+  'treasury account has movements': {
+    status: 409,
+    error: 'treasury_account_has_movements',
+    publicMessage:
+      'Esta cuenta ya registró movimientos, así que su moneda y su tipo no se pueden cambiar. Puedes corregir el nombre, el banco y la referencia.',
+  },
+  'treasury account still holds a balance': {
+    status: 409,
+    error: 'treasury_account_has_balance',
+    publicMessage:
+      'La cuenta todavía tiene saldo. Traslada o concilia el saldo antes de archivarla.',
+  },
+};
+
+export function treasuryFailureFromPostgrest(payload: unknown): TreasuryFailure | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const message = (payload as { message?: unknown }).message;
+  if (typeof message !== 'string') return null;
+  return treasuryFailures[message] ?? null;
+}
+
 const responseJson = async (c: AppContext, response: Response, successStatus: 200 | 201 = 200) => {
   const value = (await response.json()) as { code?: string; message?: string };
   if (response.ok) return c.json(value, successStatus);
+
+  const failure = treasuryFailureFromPostgrest(value);
+  if (failure) {
+    return c.json({ error: failure.error, publicMessage: failure.publicMessage }, failure.status);
+  }
+
   const denied =
     response.status === 401 ||
     response.status === 403 ||
@@ -96,6 +152,23 @@ treasuryRoutes.post('/:id/treasury/accounts', async (c) => {
     account_notes: payload.notes ?? null,
   });
   return responseJson(c, response, 201);
+});
+
+treasuryRoutes.patch('/:id/treasury/accounts/:accountId', async (c) => {
+  const payload = await body(c, treasuryAccountUpdateSchema);
+  if (payload instanceof Response) return payload;
+  const response = await rpc(c, 'update_treasury_account', {
+    target_condominium: condominiumId(c),
+    target_account: uuidSchema.parse(c.req.param('accountId')),
+    account_name: payload.name,
+    account_kind: payload.accountType,
+    account_currency: payload.currencyCode,
+    financial_institution: payload.bankName ?? null,
+    reference_value: payload.accountReference ?? null,
+    account_notes: payload.notes ?? null,
+    account_active: payload.isActive,
+  });
+  return responseJson(c, response, 200);
 });
 
 treasuryRoutes.post('/:id/treasury/payments/:paymentId/account', async (c) => {

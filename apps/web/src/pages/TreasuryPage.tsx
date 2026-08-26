@@ -6,6 +6,7 @@ import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
 import {
   closeTreasuryReconciliation,
   createTreasuryAccount,
+  updateTreasuryAccount,
   createTreasuryReconciliation,
   createTreasuryTransfer,
   loadTreasuryWorkspace,
@@ -74,6 +75,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [drawer, setDrawer] = useState<TreasuryDrawer>(null);
+  const [editingAccountId, setEditingAccountId] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -105,6 +107,8 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
     setMessage(text);
     await load();
   };
+
+  const editingAccount = data.accounts.find((account) => account.id === editingAccountId);
 
   if (loading && !data.accounts.length && !error) return <TreasuryLoading />;
 
@@ -206,6 +210,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                     <th>Tipo</th>
                     <th>Último movimiento</th>
                     <th className="treasury-table__amount">Saldo</th>
+                    <th aria-label="Acciones" />
                   </tr>
                 </thead>
                 <tbody>
@@ -223,6 +228,15 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                       <td>{formatTreasuryDate(account.latest_movement_at)}</td>
                       <td className="treasury-table__amount">
                         {formatTreasuryAmount(account.balance, account.currency_code)}
+                      </td>
+                      <td>
+                        <Button
+                          onClick={() => setEditingAccountId(account.id)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Editar
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -367,6 +381,17 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           onSubmit={async (input) => {
             await createTreasuryAccount(condominiumId, session, input);
             await afterWrite('Cuenta creada.');
+          }}
+        />
+      ) : null}
+      {editingAccount ? (
+        <AccountDrawer
+          account={editingAccount}
+          onClose={() => setEditingAccountId('')}
+          onSubmit={async (input) => {
+            await updateTreasuryAccount(condominiumId, session, editingAccount.id, input);
+            setEditingAccountId('');
+            await afterWrite('Cuenta actualizada.');
           }}
         />
       ) : null}

@@ -56,34 +56,64 @@ const useSubmit = (action: () => Promise<void>) => {
 };
 
 export function AccountDrawer({
+  account,
   onClose,
   onSubmit,
 }: {
+  account?: {
+    id: string;
+    name: string;
+    account_type: string;
+    currency_code: string;
+    bank_name?: string | null;
+    account_reference?: string | null;
+    is_active?: boolean;
+    balance?: string | number | null;
+  };
   onClose: () => void;
   onSubmit: (input: {
     name: string;
     accountType: string;
     currencyCode: string;
     bankName?: string;
+    accountReference?: string;
+    isActive: boolean;
   }) => Promise<void>;
 }) {
-  const [name, setName] = useState('');
-  const [accountType, setAccountType] = useState('bank');
-  const [currencyCode, setCurrencyCode] = useState('USD');
-  const [bankName, setBankName] = useState('');
+  const editing = Boolean(account);
+  // A settled account cannot be reinterpreted: the balance it already reported would change.
+  const hasMovements = editing && Number(account?.balance ?? 0) !== 0;
+  const [name, setName] = useState(account?.name ?? '');
+  const [accountType, setAccountType] = useState(account?.account_type ?? 'bank');
+  const [currencyCode, setCurrencyCode] = useState(account?.currency_code ?? 'USD');
+  const [bankName, setBankName] = useState(account?.bank_name ?? '');
+  const [accountReference, setAccountReference] = useState(account?.account_reference ?? '');
+  const [isActive, setIsActive] = useState(account?.is_active ?? true);
   const { saving, error, submit } = useSubmit(() =>
     onSubmit({
       name,
       accountType,
       currencyCode,
       ...(bankName.trim() ? { bankName: bankName.trim() } : {}),
+      ...(accountReference.trim() ? { accountReference: accountReference.trim() } : {}),
+      isActive,
     }),
   );
 
   return (
-    <DrawerShell eyebrow="Tesorería" onClose={onClose} title="Nueva cuenta">
+    <DrawerShell
+      eyebrow="Tesorería"
+      onClose={onClose}
+      title={editing ? 'Editar cuenta' : 'Nueva cuenta'}
+    >
       <form className="treasury-form" onSubmit={(event) => void submit(event)}>
         {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        {hasMovements ? (
+          <p className="treasury-form__note" role="note">
+            Esta cuenta ya tiene saldo registrado. Puedes corregir el nombre, la institución y la
+            referencia; la moneda y el tipo quedan fijos para no alterar movimientos ya conciliados.
+          </p>
+        ) : null}
         <Field label="Nombre">
           <input
             className="input"
@@ -95,7 +125,11 @@ export function AccountDrawer({
         </Field>
         <FormGrid>
           <Field label="Tipo">
-            <Select onChange={(event) => setAccountType(event.target.value)} value={accountType}>
+            <Select
+              disabled={hasMovements}
+              onChange={(event) => setAccountType(event.target.value)}
+              value={accountType}
+            >
               {Object.entries(accountTypeLabels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -104,7 +138,11 @@ export function AccountDrawer({
             </Select>
           </Field>
           <Field hint="Una cuenta nunca mezcla monedas." label="Moneda">
-            <Select onChange={(event) => setCurrencyCode(event.target.value)} value={currencyCode}>
+            <Select
+              disabled={hasMovements}
+              onChange={(event) => setCurrencyCode(event.target.value)}
+              value={currencyCode}
+            >
               <option value="USD">USD</option>
               <option value="VES">VES</option>
               <option value="EUR">EUR</option>
@@ -121,12 +159,34 @@ export function AccountDrawer({
             />
           </Field>
         ) : null}
+        <Field label="Referencia">
+          <input
+            className="input"
+            onChange={(event) => setAccountReference(event.target.value)}
+            placeholder="0102-0000-00-0000000000"
+            value={accountReference}
+          />
+        </Field>
+        {editing ? (
+          <Field
+            hint="Una cuenta archivada deja de ofrecerse para nuevos movimientos y conserva su historial."
+            label="Estado"
+          >
+            <Select
+              onChange={(event) => setIsActive(event.target.value === 'active')}
+              value={isActive ? 'active' : 'archived'}
+            >
+              <option value="active">Activa</option>
+              <option value="archived">Archivada</option>
+            </Select>
+          </Field>
+        ) : null}
         <FormActions sticky>
           <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
             Cancelar
           </Button>
           <Button disabled={saving} type="submit">
-            {saving ? 'Guardando…' : 'Crear cuenta'}
+            {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear cuenta'}
           </Button>
         </FormActions>
       </form>
