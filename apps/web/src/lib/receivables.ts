@@ -14,7 +14,7 @@ export type ChargeConcept = {
   description?: string;
   category: string;
   default_currency_code?: string;
-  default_amount?: string;
+  default_amount?: string | number;
   is_active?: boolean;
 };
 
