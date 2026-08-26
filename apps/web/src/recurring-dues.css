@@ -52,9 +52,9 @@
 }
 
 .recurring-dues-alert {
-  border: 1px solid color-mix(in srgb, var(--danger, #b42318) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger, var(--red)) 28%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--danger, #b42318) 7%, transparent);
+  background: color-mix(in srgb, var(--danger, var(--red)) 7%, transparent);
   padding: 10px 12px;
   color: var(--text-primary);
   font-size: 14px;
@@ -403,7 +403,7 @@
 }
 
 .recurring-dues-scope-list small[data-tone='warning'] {
-  color: #8a5b0a;
+  color: var(--amber);
   font-weight: 650;
 }
 

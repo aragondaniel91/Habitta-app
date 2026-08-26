@@ -14,7 +14,7 @@
   overflow: hidden;
   padding: clamp(2rem, 5vw, 4.75rem);
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
 }
 
 .access-story::after {
@@ -43,7 +43,7 @@
 }
 
 .access-brand[data-inverse] {
-  color: #fff;
+  color: var(--surface);
 }
 
 .access-brand > span:last-child {
@@ -83,13 +83,13 @@
 }
 
 .access-story .access-kicker {
-  color: #85df97;
+  color: var(--green-border);
 }
 
 .access-story h1 {
   max-width: 760px;
   margin: 1rem 0 1.25rem;
-  color: #fff;
+  color: var(--surface);
   font-size: clamp(2.45rem, 5vw, 4.8rem);
   line-height: 1.04;
   letter-spacing: -0.05em;
@@ -121,7 +121,7 @@
 
 .access-trust-list svg {
   flex: 0 0 auto;
-  color: #78d58b;
+  color: var(--green-border);
 }
 
 .access-story__footer {
@@ -175,7 +175,7 @@
 
 .access-message {
   margin: 0;
-  border: 1px solid #bdd5e8;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: 0.75rem 0.875rem;
   background: var(--blue-soft);
@@ -185,7 +185,7 @@
 }
 
 .access-message[data-tone='error'] {
-  border-color: #f1c1c5;
+  border-color: var(--red-border);
   background: var(--red-soft);
   color: var(--red);
 }
@@ -238,7 +238,7 @@
 
 .onboarding-loading h1 {
   margin-bottom: 0.3rem;
-  color: #fff;
+  color: var(--surface);
 }
 
 .onboarding-loading p {
@@ -369,7 +369,7 @@
 .onboarding-progress li[data-active] > span {
   border-color: var(--blue);
   background: var(--blue);
-  color: #fff;
+  color: var(--surface);
 }
 
 .onboarding-progress li[data-complete] > span {

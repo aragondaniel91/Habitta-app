@@ -55,9 +55,9 @@
 
 .payments-inline-alert,
 .payments-form__message {
-  border-color: #f4d6a3;
-  background: #fff8e8;
-  color: #8a5b0a;
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 
 .payments-success-alert {
@@ -120,7 +120,7 @@
 
 .payments-currency-tabs button[data-active='true'] {
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
   box-shadow: 0 4px 10px rgb(13 27 42 / 0.18);
 }
 
@@ -162,7 +162,7 @@
 }
 
 .payments-metric[data-tone='navy'] .payments-metric__heading > span {
-  background: #e9eef5;
+  background: var(--border);
   color: var(--navy);
 }
 
@@ -636,7 +636,7 @@
   place-items: center;
   border-radius: 12px;
   background: var(--green);
-  color: #fff;
+  color: var(--surface);
 }
 
 .payments-receipt-card__brand > div {

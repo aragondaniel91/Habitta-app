@@ -1,17 +1,79 @@
+/*
+ * The palette. One definition per token, in one file.
+ *
+ * These tokens used to be declared here *and* in styles.css with different values. Because this
+ * sheet is imported later, its values silently won and the ones in styles.css were dead, along
+ * with the dark block that sat above them. Everything lives here now, so a colour has one home.
+ */
 :root {
-  /* Habitta core brand palette */
+  /* Brand */
   --navy: #0d1b2a;
+  --navy-soft: #0d1b2a;
   --blue: #1b4f72;
-  --green: #28a745;
   --blue-soft: #e6f0fa;
+
+  /* Surfaces and text */
   --background: #f5f7fa;
+  --surface: #ffffff;
+  --surface-subtle: #f5f7fa;
   --text: #333d4b;
   --text-strong: #0d1b2a;
-
-  /* Neutral tokens derived from the core palette. */
   --muted: rgb(51 61 75 / 0.72);
   --border: rgb(51 61 75 / 0.12);
   --border-strong: rgb(51 61 75 / 0.22);
-  --surface-subtle: #f5f7fa;
-  --navy-soft: #0d1b2a;
+
+  /* Status. Modules were inventing their own ambers and reds because these did not exist. */
+  --green: #28a745;
+  --green-dark: #20873a;
+  --green-soft: #e9f7ed;
+  --green-border: #78d58b;
+  --red: #b4232c;
+  --red-soft: #fff0f1;
+  --red-border: #f0b8bd;
+  --amber: #8a5b0a;
+  --amber-soft: #fff8e8;
+  --amber-border: #f4d6a3;
+
+  /*
+   * Data-series colours. Charts need hues that stay apart from each other, which is a different
+   * job from the status colours above. Dashboard and Reports had these same four hard-coded
+   * twice; naming them keeps the two views showing the same series in the same colour.
+   */
+  --chart-green: #43bd5d;
+  --chart-blue: #3b82c4;
+  --chart-sky: #78aee8;
+  --chart-amber: #e39b45;
+
+  /*
+   * Names that the module sheets already used but that nobody ever defined. 149 declarations
+   * referenced them with no fallback, so each one was invalid at computed-value time: text fell
+   * back to the inherited colour, backgrounds to transparent and borders to currentColor. That is
+   * why panels drifted apart for no visible reason. They are aliases, not new colours, so the
+   * existing call sites finally render what they always asked for.
+   */
+  --border-subtle: var(--border);
+  --surface-muted: var(--surface-subtle);
+  --text-muted: var(--muted);
+  --text-secondary: var(--muted);
+  --text-primary: var(--text-strong);
+  --brand-navy: var(--navy);
+  --brand-blue: var(--blue);
+  --brand-light-blue: var(--blue-soft);
+  --brand-green: var(--green);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #0b1420;
+  --surface: #111f2d;
+  --surface-subtle: #162535;
+  --text: #eef3f7;
+  --text-strong: #f7fafc;
+  --muted: #aebbc8;
+  --border: #2a3b4c;
+  --border-strong: #4d6072;
+  --blue-soft: #17344c;
+  --green-soft: #153a25;
+  --red-soft: #3a1a1d;
+  --amber-soft: #3a2c12;
 }
