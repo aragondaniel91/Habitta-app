@@ -158,7 +158,10 @@ describe('notification development scripts', () => {
     });
     expect(output).toContain('"result":"skipped"');
     expect(output).toContain('"resendCalls":0');
-  }, 15000);
+    // This case boots a Node subprocess and takes several seconds on its own. Under the full
+    // suite it competes for CPU with every other file, so 15s turned a slow run into a red gate.
+    // The assertions are untouched; only the budget accounts for contention.
+  }, 60000);
   it('prints an idempotent provisioning plan without calling Cloudflare', () => {
     const output = execFileSync(
       process.execPath,

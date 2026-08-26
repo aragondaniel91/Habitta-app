@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, ExpensesIcon, PaymentsIcon, ReportsIcon } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
+import { ConfirmDialog } from '../components/Dialog';
 import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
 import {
   closeTreasuryReconciliation,
@@ -9,6 +10,7 @@ import {
   updateTreasuryAccount,
   createTreasuryReconciliation,
   createTreasuryTransfer,
+  reverseTreasuryTransfer,
   loadTreasuryWorkspace,
   recordTreasuryMovement,
 } from '../features/treasury/api';
@@ -76,6 +78,9 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   const [message, setMessage] = useState('');
   const [drawer, setDrawer] = useState<TreasuryDrawer>(null);
   const [editingAccountId, setEditingAccountId] = useState('');
+  const [transferToReverse, setTransferToReverse] = useState<string>('');
+  const [reversalReason, setReversalReason] = useState('');
+  const [reversing, setReversing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -258,6 +263,70 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
         <Surface className="treasury-panel">
           <div className="treasury-section-heading">
             <div>
+              <span className="treasury-kicker">Traslados</span>
+              <h2>Transferencias entre cuentas</h2>
+              <p>
+                Un reverso compensa las dos cuentas a la vez. La transferencia original se conserva
+                siempre: nunca se reescribe ni se borra.
+              </p>
+            </div>
+          </div>
+          {data.transfers.length ? (
+            <div className="treasury-table-scroll">
+              <table className="treasury-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                    <th>Concepto</th>
+                    <th className="treasury-table__amount">Monto</th>
+                    <th aria-label="Acciones" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.transfers.map((transfer) => (
+                    <tr key={transfer.id}>
+                      <td>{formatTreasuryDate(transfer.occurred_on)}</td>
+                      <td>
+                        {accountsById.get(transfer.from_account_id)?.name ?? 'Cuenta retirada'}
+                      </td>
+                      <td>{accountsById.get(transfer.to_account_id)?.name ?? 'Cuenta retirada'}</td>
+                      <td>{transfer.description}</td>
+                      <td className="treasury-table__amount">
+                        {formatTreasuryAmount(transfer.amount, transfer.currency_code)}
+                      </td>
+                      <td>
+                        {manage ? (
+                          <Button
+                            onClick={() => {
+                              setReversalReason('');
+                              setTransferToReverse(transfer.id);
+                            }}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            Reversar
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState
+              description="Cuando traslades fondos entre cuentas, aparecerán aquí con su reverso disponible."
+              icon={<ReportsIcon size={28} />}
+              title="Todavía no hay transferencias"
+            />
+          )}
+        </Surface>
+
+        <Surface className="treasury-panel">
+          <div className="treasury-section-heading">
+            <div>
               <span className="treasury-kicker">Conciliación</span>
               <h2>Períodos</h2>
             </div>
@@ -374,6 +443,45 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           />
         )}
       </Surface>
+
+      {transferToReverse ? (
+        <ConfirmDialog
+          busy={reversing}
+          busyLabel="Reversando…"
+          confirmLabel="Reversar transferencia"
+          description="Habitta creará un movimiento compensatorio en cada cuenta. La transferencia original se conserva en el historial."
+          onCancel={() => setTransferToReverse('')}
+          onConfirm={async () => {
+            if (reversalReason.trim().length < 2) return;
+            setReversing(true);
+            try {
+              await reverseTreasuryTransfer(
+                condominiumId,
+                session,
+                transferToReverse,
+                reversalReason.trim(),
+              );
+              setTransferToReverse('');
+              await afterWrite('Transferencia reversada.');
+            } finally {
+              setReversing(false);
+            }
+          }}
+          title="Reversar transferencia"
+        >
+          <label className="treasury-reversal-reason">
+            <span>Motivo del reverso</span>
+            <textarea
+              className="input"
+              minLength={2}
+              onChange={(event) => setReversalReason(event.target.value)}
+              placeholder="Explica por qué se reversa esta transferencia"
+              required
+              value={reversalReason}
+            />
+          </label>
+        </ConfirmDialog>
+      ) : null}
 
       {drawer === 'account' ? (
         <AccountDrawer

@@ -152,6 +152,18 @@ export const createTreasuryTransfer = async (
   });
 };
 
+export const reverseTreasuryTransfer = (
+  condominiumId: string,
+  session: Session,
+  transferId: string,
+  reason: string,
+) =>
+  apiRequest<{ transfer_id: string; already_reversed: boolean }>(
+    `${base(condominiumId)}/transfers/${transferId}/reverse`,
+    session,
+    { method: 'POST', body: JSON.stringify({ reason }) },
+  );
+
 export const reverseTreasuryMovement = (
   condominiumId: string,
   session: Session,

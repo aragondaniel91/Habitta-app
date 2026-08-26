@@ -72,6 +72,28 @@ const treasuryFailures: Record<string, TreasuryFailure> = {
     publicMessage:
       'Esta cuenta ya registró movimientos, así que su moneda y su tipo no se pueden cambiar. Puedes corregir el nombre, el banco y la referencia.',
   },
+  'treasury transfer not found': {
+    status: 409,
+    error: 'treasury_transfer_unavailable',
+    publicMessage: 'La transferencia ya no está disponible. Actualiza la información.',
+  },
+  'invalid treasury reversal': {
+    status: 422,
+    error: 'treasury_reversal_invalid',
+    publicMessage: 'Escribe el motivo del reverso (entre 2 y 500 caracteres).',
+  },
+  'treasury account is inactive': {
+    status: 409,
+    error: 'treasury_account_inactive',
+    publicMessage:
+      'Una de las cuentas de la transferencia está archivada. Reactívala antes de reversar.',
+  },
+  'movement requires a dedicated reversal flow': {
+    status: 409,
+    error: 'treasury_movement_needs_transfer_reversal',
+    publicMessage:
+      'Este movimiento pertenece a una transferencia. Reversa la transferencia completa para que ambas cuentas queden consistentes.',
+  },
   'treasury account still holds a balance': {
     status: 409,
     error: 'treasury_account_has_balance',
@@ -283,6 +305,17 @@ treasuryRoutes.post('/:id/treasury/transfers', async (c) => {
     request_key: payload.idempotencyKey,
   });
   return responseJson(c, response, 201);
+});
+
+treasuryRoutes.post('/:id/treasury/transfers/:transferId/reverse', async (c) => {
+  const payload = await body(c, treasuryReversalSchema);
+  if (payload instanceof Response) return payload;
+  const response = await rpc(c, 'reverse_treasury_transfer', {
+    target_condominium: condominiumId(c),
+    target_transfer: uuidSchema.parse(c.req.param('transferId')),
+    reversal_reason: payload.reason,
+  });
+  return responseJson(c, response, 200);
 });
 
 treasuryRoutes.get('/:id/treasury/reconciliations', async (c) => {
