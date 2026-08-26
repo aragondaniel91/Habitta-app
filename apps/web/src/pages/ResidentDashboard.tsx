@@ -10,7 +10,7 @@ import {
   VoteIcon,
 } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
-import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, InfoHint, Skeleton, Surface } from '../components/ui';
 import { apiRequest } from '../lib/api';
 import {
   formatDashboardAmount,
@@ -237,8 +237,13 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       ) : null}
 
       <section aria-label="Resumen financiero" className="resident-dashboard__hero-grid">
-        <Surface className="resident-dashboard__balance-card">
-          <span className="resident-dashboard__eyebrow">Saldo pendiente</span>
+        <Surface className="resident-dashboard__balance-card" data-tone="navy">
+          <div className="resident-dashboard__card-top">
+            <span className="resident-dashboard__card-icon">
+              <FeesIcon size={20} />
+            </span>
+            <span>Saldo pendiente</span>
+          </div>
           {summaries.length ? (
             <div className="resident-dashboard__balances">
               {summaries.map((summary) => (
@@ -256,8 +261,11 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
               <strong>Sin saldos pendientes</strong>
             </div>
           )}
-          <p>
-            Habitta mantiene cada moneda separada; nunca mezcla saldos USD, VES u otras monedas.
+          <p className="resident-dashboard__card-note">
+            Cada moneda por separado
+            <InfoHint label="Cómo se agrupan las monedas">
+              Habitta mantiene cada moneda separada; nunca mezcla saldos USD, VES u otras monedas.
+            </InfoHint>
           </p>
           {paymentsRoute ? (
             <Button
@@ -272,8 +280,13 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           ) : null}
         </Surface>
 
-        <Surface className="resident-dashboard__next-due">
-          <span className="resident-dashboard__eyebrow">Próxima cuota pendiente</span>
+        <Surface className="resident-dashboard__next-due" data-tone="blue">
+          <div className="resident-dashboard__card-top">
+            <span className="resident-dashboard__card-icon">
+              <CheckCircleIcon size={20} />
+            </span>
+            <span>Próxima cuota pendiente</span>
+          </div>
           {nextDue ? (
             <>
               <div className="resident-dashboard__next-due-heading">

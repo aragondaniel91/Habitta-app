@@ -4,11 +4,11 @@
 }
 
 .resident-dashboard__warning {
-  border: 1px solid var(--color-border, var(--border));
-  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   padding: 0.8rem 1rem;
-  background: var(--color-surface-subtle, var(--surface-subtle));
-  color: var(--color-text-secondary, var(--muted));
+  background: var(--surface-subtle);
+  color: var(--muted);
 }
 
 .resident-dashboard__hero-grid,
@@ -28,20 +28,55 @@
 .resident-dashboard__balance-card,
 .resident-dashboard__next-due {
   display: grid;
-  gap: 1rem;
-  align-content: start;
+  min-height: 168px;
+  gap: 0.85rem;
+  align-content: space-between;
+  padding: 1.2rem;
+  box-shadow: 0 5px 18px rgb(13 27 42 / 0.055);
 }
 
 .resident-dashboard__balance-card p {
   margin: 0;
-  color: var(--color-text-secondary, var(--muted));
+  color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.45;
 }
 
+.resident-dashboard__card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.resident-dashboard__card-icon {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.resident-dashboard__balance-card[data-tone='navy'] .resident-dashboard__card-icon {
+  background: var(--border);
+  color: var(--navy);
+}
+
+.resident-dashboard__card-note {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
 .resident-dashboard__eyebrow,
 .resident-dashboard__section-heading span {
-  color: var(--color-text-secondary, var(--muted));
+  color: var(--muted);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -60,9 +95,17 @@
   gap: 0.75rem;
 }
 
+/*
+ * The outstanding amount per currency is the same role the administrative dashboard shows in its
+ * metric cards, so it gets the same treatment. It used to be larger, in the body face, with its
+ * own letter-spacing, which is what made the two dashboards read as different products.
+ */
 .resident-dashboard__balances strong {
-  font-size: clamp(1.35rem, 3vw, 2rem);
-  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+  color: var(--text-strong);
+  font-family: var(--font-heading);
+  font-size: clamp(1.25rem, 1.8vw, 1.65rem);
+  line-height: 1.15;
 }
 
 .resident-dashboard__all-clear {
@@ -93,7 +136,7 @@
 }
 
 .resident-dashboard__next-due-heading span {
-  color: var(--color-text-secondary, var(--muted));
+  color: var(--muted);
   font-size: 0.88rem;
 }
 
@@ -141,7 +184,7 @@
   min-height: 3.6rem;
   padding: 0.65rem 0;
   border: 0;
-  border-bottom: 1px solid var(--color-border, var(--border));
+  border-bottom: 1px solid var(--border);
   background: transparent;
   color: inherit;
   text-align: left;
@@ -150,12 +193,12 @@
 .resident-dashboard__stack button {
   width: 100%;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .resident-dashboard__stack button:hover,
 .resident-dashboard__stack button:focus-visible {
-  background: var(--color-surface-subtle, var(--surface-subtle));
+  background: var(--surface-subtle);
   outline: none;
 }
 
@@ -170,8 +213,8 @@
   place-items: center;
   width: 2.1rem;
   height: 2.1rem;
-  border-radius: 10px;
-  background: var(--color-surface-subtle, var(--surface-subtle));
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
 }
 
 .resident-dashboard__stack button > span[data-priority='urgent'] {
@@ -198,7 +241,7 @@
 
 .resident-dashboard__list small,
 .resident-dashboard__stack small {
-  color: var(--color-text-secondary, var(--muted));
+  color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -226,8 +269,8 @@
   gap: 0.55rem;
   min-height: 3rem;
   padding: 0.7rem 0.8rem;
-  border: 1px solid var(--color-border, var(--border));
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -237,7 +280,7 @@
 
 .resident-dashboard__quick-grid button:hover,
 .resident-dashboard__quick-grid button:focus-visible {
-  background: var(--color-surface-subtle, var(--surface-subtle));
+  background: var(--surface-subtle);
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
