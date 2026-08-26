@@ -28,7 +28,7 @@ export function ChargeConceptManagerDrawer({
   onClose,
   onRefresh,
 }: Props) {
-  const [view, setView] = useState<View>('catalog');
+  const [view, setView] = useState<View>('create');
   const [selectedConceptId, setSelectedConceptId] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -283,7 +283,7 @@ export function ChargeConceptManagerDrawer({
         </Field>
         <FormActions>
           <Button onClick={backToCatalog} type="button" variant="secondary">
-            Volver
+            {editing ? 'Volver al catálogo' : 'Ver conceptos existentes'}
           </Button>
           <Button disabled={loading} type="submit">
             {loading ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear concepto'}
