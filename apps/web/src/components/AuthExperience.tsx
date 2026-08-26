@@ -230,7 +230,7 @@ export function OnboardingWizard({
             ) : null}
 
             {step === 'details' ? (
-              <form className="onboarding-form" onSubmit={continueToReview}>
+              <form className="onboarding-form ux-form" onSubmit={continueToReview}>
                 <div>
                   <span className="access-kicker">Datos principales</span>
                   <h2>

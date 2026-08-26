@@ -319,7 +319,7 @@ export function ResidentInvitationExperience({ rawToken }: Props) {
                   </div>
 
                   {mode === 'sign-in' ? (
-                    <form className="access-form" onSubmit={signIn}>
+                    <form className="access-form ux-form" onSubmit={signIn}>
                       <Field label="Correo electrónico">
                         <input className="input" readOnly value={preview.email} />
                       </Field>
@@ -339,7 +339,7 @@ export function ResidentInvitationExperience({ rawToken }: Props) {
                       </Button>
                     </form>
                   ) : (
-                    <form className="access-form" onSubmit={register}>
+                    <form className="access-form ux-form" onSubmit={register}>
                       <Field label="Nombre y apellido">
                         <input
                           autoComplete="name"

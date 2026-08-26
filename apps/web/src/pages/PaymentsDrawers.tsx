@@ -140,7 +140,10 @@ function PaymentMethodsView({
           </article>
         ))}
       </div>
-      <form className="payments-form payments-method-form" onSubmit={(event) => void submit(event)}>
+      <form
+        className="payments-form payments-method-form ux-form"
+        onSubmit={(event) => void submit(event)}
+      >
         <div className="payments-form__section-heading">
           <strong>Agregar método</strong>
           <span>Publica instrucciones claras para residentes y administradores.</span>

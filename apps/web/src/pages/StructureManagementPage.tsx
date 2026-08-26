@@ -620,7 +620,10 @@ export function StructureManagementPage({
           title={editorTitle}
         >
           {editor.kind === 'building' ? (
-            <form onSubmit={(event) => void saveBuilding(event, editor.building)}>
+            <form
+              className="ux-form"
+              onSubmit={(event) => void saveBuilding(event, editor.building)}
+            >
               <DialogBody>
                 <Field
                   hint="Ejemplos: Torre A, Edificio Norte, Bloque 3."
@@ -652,7 +655,7 @@ export function StructureManagementPage({
               </DialogFooter>
             </form>
           ) : (
-            <form onSubmit={(event) => void saveUnit(event, editor.unit)}>
+            <form className="ux-form" onSubmit={(event) => void saveUnit(event, editor.unit)}>
               <DialogBody>
                 <FormGrid>
                   <Field
@@ -773,7 +776,7 @@ export function StructureManagementPage({
           size="md"
           title="Definir tipo de propiedad"
         >
-          <form onSubmit={(event) => void remediateTopology(event)}>
+          <form className="ux-form" onSubmit={(event) => void remediateTopology(event)}>
             <DialogBody>
               <Field label="Tipo de propiedad">
                 <Select

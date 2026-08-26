@@ -726,7 +726,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
           title={editor.mode === 'create' ? 'Crear acuerdo' : 'Editar acuerdo'}
           wide
         >
-          <form className="action-items-form" onSubmit={(event) => void save(event)}>
+          <form className="action-items-form ux-form" onSubmit={(event) => void save(event)}>
             <Field
               hint={
                 editor.mode === 'edit'

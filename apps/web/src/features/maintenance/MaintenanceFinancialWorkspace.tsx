@@ -355,7 +355,7 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
 
             {!['completed', 'cancelled'].includes(selectedWorkOrder.status) ? (
               <form
-                className="maintenance-financial-form"
+                className="maintenance-financial-form ux-form"
                 onSubmit={(event) => void createQuote(event)}
               >
                 <div className="maintenance-financial-form__grid">

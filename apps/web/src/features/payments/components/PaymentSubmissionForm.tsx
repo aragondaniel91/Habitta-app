@@ -17,7 +17,7 @@ export function PaymentSubmissionForm({
     await onSave(Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>);
   };
   return (
-    <form onSubmit={(event) => void submit(event)}>
+    <form className="ux-form" onSubmit={(event) => void submit(event)}>
       {!payment && (
         <select name="unitId" required>
           {units.map((unit) => (

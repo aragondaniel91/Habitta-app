@@ -181,6 +181,7 @@ export function ReceivablesPanel({
       </div>
       <h3>Concepto</h3>
       <form
+        className="ux-form"
         onSubmit={(e) => {
           e.preventDefault();
           const d = formData(e);
@@ -201,6 +202,7 @@ export function ReceivablesPanel({
       </form>
       <h3>Cargo manual</h3>
       <form
+        className="ux-form"
         onSubmit={(e) => {
           e.preventDefault();
           void post(`/v1/condominiums/${condominiumId}/receivables`, formData(e));
@@ -239,6 +241,7 @@ export function ReceivablesPanel({
       </form>
       <h3>Lote fijo</h3>
       <form
+        className="ux-form"
         onSubmit={async (e) => {
           e.preventDefault();
           const d = formData(e),
@@ -310,6 +313,7 @@ export function ReceivablesPanel({
       )}
       {reverseId && (
         <form
+          className="ux-form"
           onSubmit={(e) => {
             e.preventDefault();
             void post(`/v1/condominiums/${condominiumId}/receivables/${reverseId}/reverse`, {

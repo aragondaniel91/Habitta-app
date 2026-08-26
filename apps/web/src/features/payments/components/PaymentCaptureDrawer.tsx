@@ -71,7 +71,7 @@ export function PaymentCaptureDrawer({
   return (
     <Drawer eyebrow="Captura guiada" onClose={onClose} prefix="payments" title="Registrar pago">
       {!createdPayment ? (
-        <form className="payments-form" onSubmit={(event) => void submit(event)}>
+        <form className="payments-form ux-form" onSubmit={(event) => void submit(event)}>
           {message ? <div className="payments-form__message">{message}</div> : null}
           {!methods.some((item) => item.is_active) ? (
             <div className="payments-form__notice">
