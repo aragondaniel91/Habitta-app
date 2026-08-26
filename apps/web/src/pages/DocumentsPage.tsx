@@ -15,6 +15,8 @@ import {
   createCommunityDocument,
   createCommunityDocumentCategory,
   createCommunityDocumentFolder,
+  updateCommunityDocumentCategory,
+  updateCommunityDocumentFolder,
   downloadCommunityDocumentVersion,
   linkCommunityDocument,
   listCommunityDocumentCategories,
@@ -261,6 +263,9 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
     [folders],
   );
   const folderRows = useMemo(() => folderDepthRows(folders), [folders]);
+  const [editingFolderId, setEditingFolderId] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState('');
+  const [catalogActive, setCatalogActive] = useState(true);
 
   const filteredDocuments = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('es');
@@ -308,11 +313,15 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
     setError('');
     if (next === 'document') resetDocumentComposer();
     if (next === 'folder') {
+      setEditingFolderId('');
+      setCatalogActive(true);
       setFolderName('');
       setFolderDescription('');
       setFolderParentId(selectedFolderId);
     }
     if (next === 'category') {
+      setEditingCategoryId('');
+      setCatalogActive(true);
       setCategoryName('');
       setCategoryDescription('');
       setCategoryAudience('management');
@@ -364,23 +373,59 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
     }
   };
 
+  const selectFolderToEdit = (folderId: string) => {
+    setEditingFolderId(folderId);
+    setError('');
+    const folder = folders.find((item) => item.id === folderId);
+    setCatalogActive(folder ? folder.is_active : true);
+    setFolderName(folder?.name ?? '');
+    setFolderDescription(folder?.description ?? '');
+    setFolderParentId(folder?.parent_folder_id ?? '');
+  };
+
+  const selectCategoryToEdit = (categoryId: string) => {
+    setEditingCategoryId(categoryId);
+    setError('');
+    const category = categories.find((item) => item.id === categoryId);
+    setCatalogActive(category ? category.is_active : true);
+    setCategoryName(category?.name ?? '');
+    setCategoryDescription(category?.description ?? '');
+    setCategoryAudience(category?.default_audience ?? 'management');
+    setCategoryRetention(
+      category?.default_retention_days ? String(category.default_retention_days) : '',
+    );
+  };
+
   const saveFolder = async (event: FormEvent) => {
     event.preventDefault();
     if (!folderName.trim()) return;
     setSaving(true);
     setError('');
     try {
-      await createCommunityDocumentFolder(condominiumId, session, {
-        name: folderName.trim(),
-        description: folderDescription.trim() || undefined,
-        parentFolderId: folderParentId || undefined,
-      });
+      if (editingFolderId) {
+        await updateCommunityDocumentFolder(condominiumId, session, editingFolderId, {
+          name: folderName.trim(),
+          description: folderDescription.trim() || undefined,
+          parentFolderId: folderParentId || undefined,
+          isActive: catalogActive,
+        });
+      } else {
+        await createCommunityDocumentFolder(condominiumId, session, {
+          name: folderName.trim(),
+          description: folderDescription.trim() || undefined,
+          parentFolderId: folderParentId || undefined,
+        });
+      }
       setComposer(null);
-      setNotice('Carpeta creada.');
+      setNotice(editingFolderId ? 'Carpeta actualizada.' : 'Carpeta creada.');
       await loadLibrary();
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo crear la carpeta.',
+        requestError instanceof Error
+          ? requestError.message
+          : editingFolderId
+            ? 'No se pudo actualizar la carpeta.'
+            : 'No se pudo crear la carpeta.',
       );
     } finally {
       setSaving(false);
@@ -393,18 +438,32 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
     setSaving(true);
     setError('');
     try {
-      await createCommunityDocumentCategory(condominiumId, session, {
-        name: categoryName.trim(),
-        description: categoryDescription.trim() || undefined,
-        defaultAudience: categoryAudience,
-        defaultRetentionDays: categoryRetention ? Number(categoryRetention) : undefined,
-      });
+      if (editingCategoryId) {
+        await updateCommunityDocumentCategory(condominiumId, session, editingCategoryId, {
+          name: categoryName.trim(),
+          description: categoryDescription.trim() || undefined,
+          defaultAudience: categoryAudience,
+          defaultRetentionDays: categoryRetention ? Number(categoryRetention) : undefined,
+          isActive: catalogActive,
+        });
+      } else {
+        await createCommunityDocumentCategory(condominiumId, session, {
+          name: categoryName.trim(),
+          description: categoryDescription.trim() || undefined,
+          defaultAudience: categoryAudience,
+          defaultRetentionDays: categoryRetention ? Number(categoryRetention) : undefined,
+        });
+      }
       setComposer(null);
-      setNotice('Categoría creada.');
+      setNotice(editingCategoryId ? 'Categoría actualizada.' : 'Categoría creada.');
       await loadLibrary();
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo crear la categoría.',
+        requestError instanceof Error
+          ? requestError.message
+          : editingCategoryId
+            ? 'No se pudo actualizar la categoría.'
+            : 'No se pudo crear la categoría.',
       );
     } finally {
       setSaving(false);
@@ -532,10 +591,10 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
             canManageDocuments ? (
               <div className="documents-header-actions">
                 <Button onClick={() => openComposer('folder')} size="sm" variant="secondary">
-                  Nueva carpeta
+                  Carpetas
                 </Button>
                 <Button onClick={() => openComposer('category')} size="sm" variant="secondary">
-                  Nueva categoría
+                  Categorías
                 </Button>
                 <Button onClick={() => openComposer('document')} size="sm">
                   Nuevo documento
@@ -575,8 +634,12 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                   {composer === 'document'
                     ? 'Nuevo documento'
                     : composer === 'folder'
-                      ? 'Nueva carpeta'
-                      : 'Nueva categoría'}
+                      ? editingFolderId
+                        ? 'Editar carpeta'
+                        : 'Nueva carpeta'
+                      : editingCategoryId
+                        ? 'Editar categoría'
+                        : 'Nueva categoría'}
                 </h2>
               </div>
               <Button disabled={saving} onClick={() => setComposer(null)} size="sm" variant="ghost">
@@ -690,6 +753,24 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
             {composer === 'folder' ? (
               <form className="documents-form ux-form" onSubmit={saveFolder}>
                 <FormGrid>
+                  <div data-span="full">
+                    <Field
+                      hint="Elige una carpeta existente para corregirla, o crea una nueva."
+                      label="Qué quieres hacer"
+                    >
+                      <Select
+                        onChange={(event) => selectFolderToEdit(event.target.value)}
+                        value={editingFolderId}
+                      >
+                        <option value="">Crear una carpeta nueva</option>
+                        {folders.map((folder) => (
+                          <option key={folder.id} value={folder.id}>
+                            {folder.is_active ? folder.name : `${folder.name} (archivada)`}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
                   <Field label="Nombre">
                     <input
                       className="input"
@@ -723,9 +804,23 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                     </Field>
                   </div>
                 </FormGrid>
+                {editingFolderId ? (
+                  <Field
+                    hint="Una carpeta archivada deja de ofrecerse y conserva sus documentos."
+                    label="Estado"
+                  >
+                    <Select
+                      onChange={(event) => setCatalogActive(event.target.value === 'active')}
+                      value={catalogActive ? 'active' : 'archived'}
+                    >
+                      <option value="active">Activa</option>
+                      <option value="archived">Archivada</option>
+                    </Select>
+                  </Field>
+                ) : null}
                 <FormActions>
                   <Button disabled={saving || !folderName.trim()} type="submit">
-                    {saving ? 'Guardando…' : 'Crear carpeta'}
+                    {saving ? 'Guardando…' : editingFolderId ? 'Guardar cambios' : 'Crear carpeta'}
                   </Button>
                 </FormActions>
               </form>
@@ -734,6 +829,24 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
             {composer === 'category' ? (
               <form className="documents-form ux-form" onSubmit={saveCategory}>
                 <FormGrid>
+                  <div data-span="full">
+                    <Field
+                      hint="Elige una categoría existente para corregirla, o crea una nueva."
+                      label="Qué quieres hacer"
+                    >
+                      <Select
+                        onChange={(event) => selectCategoryToEdit(event.target.value)}
+                        value={editingCategoryId}
+                      >
+                        <option value="">Crear una categoría nueva</option>
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.is_active ? category.name : `${category.name} (archivada)`}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
                   <Field label="Nombre">
                     <input
                       className="input"

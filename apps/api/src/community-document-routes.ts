@@ -125,6 +125,107 @@ const ensureManager = async (c: CommunityDocumentContext, condominiumId: string)
   return (await response.json()) === true;
 };
 
+type AppContext = CommunityDocumentContext;
+
+type CatalogFailure = { status: 403 | 409 | 422; error: string; publicMessage: string };
+
+/** The catalog guards need to explain themselves; a generic 400 leaves the operator guessing. */
+const catalogFailures: Record<string, CatalogFailure> = {
+  'community document manager required': {
+    status: 403,
+    error: 'community_documents_forbidden',
+    publicMessage: 'No tienes permisos para administrar el catálogo de documentos.',
+  },
+  'document category unavailable': {
+    status: 409,
+    error: 'document_category_unavailable',
+    publicMessage: 'La categoría ya no está disponible. Actualiza la información.',
+  },
+  'document folder unavailable': {
+    status: 409,
+    error: 'document_folder_unavailable',
+    publicMessage: 'La carpeta ya no está disponible. Actualiza la información.',
+  },
+  'invalid category name': {
+    status: 422,
+    error: 'document_category_name_invalid',
+    publicMessage: 'Escribe un nombre de categoría de hasta 120 caracteres.',
+  },
+  'invalid folder name': {
+    status: 422,
+    error: 'document_folder_name_invalid',
+    publicMessage: 'Escribe un nombre de carpeta de hasta 120 caracteres.',
+  },
+  'invalid retention days': {
+    status: 422,
+    error: 'document_retention_invalid',
+    publicMessage: 'La retención debe ser un número de días mayor que cero.',
+  },
+  'active parent folder required': {
+    status: 409,
+    error: 'document_parent_folder_inactive',
+    publicMessage: 'La carpeta superior seleccionada no está activa.',
+  },
+  'folder cannot contain itself': {
+    status: 422,
+    error: 'document_folder_cycle',
+    publicMessage:
+      'Una carpeta no puede quedar dentro de sí misma ni de una de sus subcarpetas. Elige otra carpeta superior.',
+  },
+  'document category still in use': {
+    status: 409,
+    error: 'document_category_in_use',
+    publicMessage:
+      'Todavía hay documentos activos en esta categoría. Muévelos o archívalos antes de archivarla.',
+  },
+  'document folder still in use': {
+    status: 409,
+    error: 'document_folder_in_use',
+    publicMessage:
+      'Esta carpeta todavía tiene documentos o subcarpetas activas. Vacíala antes de archivarla.',
+  },
+};
+
+export function catalogFailureFromPostgrest(payload: unknown): CatalogFailure | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const message = (payload as { message?: unknown }).message;
+  if (typeof message !== 'string') return null;
+  return catalogFailures[message] ?? null;
+}
+
+const catalogResult = async (c: AppContext, response: Response) => {
+  const payload = await response
+    .clone()
+    .json()
+    .catch(() => null);
+  if (response.ok) return c.json(payload, 200);
+
+  const failure = catalogFailureFromPostgrest(payload);
+  if (failure) {
+    return c.json({ error: failure.error, publicMessage: failure.publicMessage }, failure.status);
+  }
+  if (response.status === 401 || response.status === 403) {
+    return c.json({ error: 'community_documents_forbidden' }, 403);
+  }
+  if (response.status >= 500) return c.json({ error: 'community_documents_upstream' }, 502);
+  return c.json({ error: 'community_documents_operation_failed' }, 400);
+};
+
+const categoryUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).optional(),
+  defaultAudience: audienceSchema.optional(),
+  defaultRetentionDays: z.number().int().positive().optional(),
+  isActive: z.boolean(),
+});
+
+const folderUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  parentFolderId: z.string().uuid().optional(),
+  description: z.string().trim().max(1000).optional(),
+  isActive: z.boolean(),
+});
+
 export const communityDocumentRoutes = new Hono<CommunityDocumentEnvironment>();
 
 communityDocumentRoutes.get('/:condominiumId/community-documents/categories', async (c) => {
@@ -427,3 +528,48 @@ communityDocumentRoutes.get('/:condominiumId/community-documents/download-events
   );
   return c.json(await response.json(), response.ok ? 200 : 400);
 });
+
+communityDocumentRoutes.patch(
+  '/:condominiumId/community-documents/categories/:categoryId',
+  async (c) => {
+    const condominiumId = uuidSchema.safeParse(c.req.param('condominiumId'));
+    const categoryId = uuidSchema.safeParse(c.req.param('categoryId'));
+    if (!condominiumId.success || !categoryId.success)
+      return c.json({ error: 'Invalid identifier' }, 400);
+    const parsed = categoryUpdateSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+    const response = await callRpc(c, 'update_community_document_category', {
+      target_condominium_id: condominiumId.data,
+      target_category_id: categoryId.data,
+      target_name: parsed.data.name,
+      target_description: parsed.data.description ?? null,
+      target_default_audience: parsed.data.defaultAudience ?? 'management',
+      target_default_retention_days: parsed.data.defaultRetentionDays ?? null,
+      target_is_active: parsed.data.isActive,
+    });
+    return catalogResult(c, response);
+  },
+);
+
+communityDocumentRoutes.patch(
+  '/:condominiumId/community-documents/folders/:folderId',
+  async (c) => {
+    const condominiumId = uuidSchema.safeParse(c.req.param('condominiumId'));
+    const folderId = uuidSchema.safeParse(c.req.param('folderId'));
+    if (!condominiumId.success || !folderId.success)
+      return c.json({ error: 'Invalid identifier' }, 400);
+    const parsed = folderUpdateSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+    const response = await callRpc(c, 'update_community_document_folder', {
+      target_condominium_id: condominiumId.data,
+      target_folder_id: folderId.data,
+      target_name: parsed.data.name,
+      target_parent_folder_id: parsed.data.parentFolderId ?? null,
+      target_description: parsed.data.description ?? null,
+      target_is_active: parsed.data.isActive,
+    });
+    return catalogResult(c, response);
+  },
+);
