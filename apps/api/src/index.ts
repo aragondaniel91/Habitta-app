@@ -45,6 +45,7 @@ import { treasuryRoutes } from './treasury-routes';
 import { peopleRelationshipRoutes } from './people-relationships-routes';
 import { recurringDuesRoutes } from './recurring-dues-routes';
 import { unitsDirectoryRoutes } from './units-directory-routes';
+import { tenancyRoutes } from './tenancy-routes';
 import { withinRateLimit } from './http-security';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
@@ -79,6 +80,7 @@ app.use('/v1/*', async (c, n) => {
   c.set('userId', ((await r.json()) as { id: string }).id);
   await n();
 });
+app.route('/', tenancyRoutes);
 app.route('/v1/condominiums', adminInvitationRoutes);
 app.route('/v1/condominiums', operationsRoutes);
 app.route('/v1/condominiums', importRoutes);

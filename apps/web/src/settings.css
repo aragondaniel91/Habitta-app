@@ -610,3 +610,29 @@
     grid-template-columns: minmax(0, 1fr) repeat(2, 46px);
   }
 }
+
+.settings-identity-card .settings-account-details {
+  margin: 0.6rem 0 0.9rem;
+}
+
+.settings-inline-alert {
+  border: 1px solid #f4d6a3;
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.9rem;
+  background: #fff8e8;
+  color: #8a5b0a;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.settings-inline-alert[data-tone='success'] {
+  border-color: #bfe3c8;
+  background: #f2fbf4;
+  color: #1f6b39;
+}
+
+.settings-drawer-intro {
+  margin: 0 0 0.9rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
