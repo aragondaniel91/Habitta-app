@@ -41,6 +41,24 @@ export const createTreasuryAccount = (
     body: JSON.stringify(input),
   });
 
+export const updateTreasuryAccount = (
+  condominiumId: string,
+  session: Session,
+  accountId: string,
+  input: {
+    name: string;
+    accountType: string;
+    currencyCode: string;
+    bankName?: string;
+    accountReference?: string;
+    isActive: boolean;
+  },
+) =>
+  apiRequest<TreasuryAccount>(`${base(condominiumId)}/accounts/${accountId}`, session, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+
 const authorizeTreasuryOverdraft = (
   condominiumId: string,
   session: Session,

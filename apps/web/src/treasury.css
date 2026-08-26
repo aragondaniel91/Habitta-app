@@ -283,3 +283,14 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.treasury-form__note {
+  margin: 0 0 0.4rem;
+  border: 1px solid #f4d6a3;
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  background: #fff8e8;
+  color: #8a5b0a;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
