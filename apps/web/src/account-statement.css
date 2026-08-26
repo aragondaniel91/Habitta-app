@@ -133,12 +133,12 @@
 
 .account-statement-solvency {
   justify-content: flex-start;
-  background: color-mix(in srgb, #b42318 4%, var(--surface));
+  background: color-mix(in srgb, var(--red) 4%, var(--surface));
 }
 
 .account-statement-solvency[data-eligible] {
-  border-color: color-mix(in srgb, #0f8a4b 28%, var(--border-subtle));
-  background: color-mix(in srgb, #0f8a4b 5%, var(--surface));
+  border-color: color-mix(in srgb, var(--green-dark) 28%, var(--border-subtle));
+  background: color-mix(in srgb, var(--green-dark) 5%, var(--surface));
 }
 
 .account-statement-solvency__icon {

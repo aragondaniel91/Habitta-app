@@ -6,23 +6,6 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --font-heading: Poppins, Inter, ui-sans-serif, system-ui, sans-serif;
-  --navy: #0d1b2a;
-  --navy-soft: #12263a;
-  --blue: #1b4f72;
-  --blue-soft: #e6f0fa;
-  --green: #28a745;
-  --green-dark: #20873a;
-  --green-soft: #e9f7ed;
-  --red: #b4232c;
-  --red-soft: #fff0f1;
-  --background: #f5f7fa;
-  --surface: #ffffff;
-  --surface-subtle: #fafbfc;
-  --text: #1f2937;
-  --text-strong: #17202b;
-  --muted: #667085;
-  --border: #e4e7ec;
-  --border-strong: #d0d5dd;
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
@@ -30,20 +13,6 @@
   --shadow-lg: 0 18px 44px rgb(13 27 42 / 0.16);
   --sidebar-width: 272px;
   --topbar-height: 72px;
-}
-
-[data-theme='dark'] {
-  color-scheme: dark;
-  --background: #0b1420;
-  --surface: #111f2d;
-  --surface-subtle: #162535;
-  --text: #eef3f7;
-  --text-strong: #f7fafc;
-  --muted: #aebbc8;
-  --border: #2a3b4c;
-  --border-strong: #4d6072;
-  --blue-soft: #17344c;
-  --green-soft: #153a25;
 }
 
 * {
@@ -130,7 +99,7 @@ p {
   border-radius: var(--radius-md);
   padding: 0.65rem 1rem;
   background: var(--blue);
-  color: #fff;
+  color: var(--surface);
   font-weight: 700;
   line-height: 1;
 }
@@ -345,8 +314,8 @@ p {
   align-items: center;
   border-radius: 999px;
   padding: 0.25rem 0.625rem;
-  background: #f0f2f5;
-  color: #374151;
+  background: var(--surface-subtle);
+  color: var(--text);
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -393,7 +362,7 @@ p {
   flex-direction: column;
   overflow: hidden;
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
 }
 
 .sidebar__brand {
@@ -413,7 +382,7 @@ p {
   place-items: center;
   border-radius: var(--radius-md);
   background: var(--green);
-  color: #fff;
+  color: var(--surface);
 }
 
 .brand-copy {
@@ -486,16 +455,16 @@ p {
 
 .nav-item:hover {
   background: rgb(255 255 255 / 0.07);
-  color: #fff;
+  color: var(--surface);
 }
 
 .nav-item[aria-current='page'] {
   background: rgb(40 167 69 / 0.18);
-  color: #fff;
+  color: var(--surface);
 }
 
 .nav-item[aria-current='page'] svg {
-  color: #78d58b;
+  color: var(--green-border);
 }
 
 .sidebar-collapse {
@@ -602,7 +571,7 @@ p {
   width: clamp(210px, 24vw, 320px);
   min-height: 40px;
   border-color: transparent;
-  background: #f0f2f5;
+  background: var(--surface-subtle);
   font-size: 0.875rem;
   font-weight: 700;
 }
@@ -624,7 +593,7 @@ p {
   border-radius: 999px;
   padding: 0 0.25rem;
   background: var(--green);
-  color: #fff;
+  color: var(--surface);
   font-size: 0.65rem;
   font-weight: 800;
 }
@@ -647,7 +616,7 @@ p {
 }
 
 .profile-trigger:hover {
-  background: #f0f2f5;
+  background: var(--surface-subtle);
 }
 
 .avatar {
@@ -748,7 +717,7 @@ p {
 }
 
 .alert[data-tone='error'] {
-  border-color: #f3c5c9;
+  border-color: var(--red-border);
   background: var(--red-soft);
   color: var(--red);
 }
@@ -932,7 +901,7 @@ p {
   display: block;
   overflow: hidden;
   border-radius: var(--radius-sm);
-  background: #f0f2f5;
+  background: var(--surface-subtle);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -1071,7 +1040,7 @@ p {
   gap: 3rem;
   padding: clamp(2rem, 6vw, 5rem);
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
 }
 
 .auth-brand {
@@ -1085,7 +1054,7 @@ p {
 .auth-brand-panel h1 {
   max-width: 760px;
   margin: 1rem 0 1.25rem;
-  color: #fff;
+  color: var(--surface);
   font-size: clamp(2.35rem, 5vw, 4.7rem);
   line-height: 1.05;
 }
@@ -1096,7 +1065,7 @@ p {
 }
 
 .auth-eyebrow {
-  color: #78d58b;
+  color: var(--green-border);
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.09em;
@@ -1138,7 +1107,7 @@ p {
   justify-content: center;
   gap: 0.75rem;
   background: var(--navy);
-  color: #fff;
+  color: var(--surface);
   font-family: var(--font-heading);
 }
 
@@ -1194,7 +1163,7 @@ p {
     flex-direction: column;
     overflow: hidden;
     background: var(--navy);
-    color: #fff;
+    color: var(--surface);
     transform: translateX(-102%);
     transition: transform 180ms ease;
   }
@@ -1250,7 +1219,7 @@ p {
     flex-direction: column;
     overflow: hidden;
     background: var(--navy);
-    color: #fff;
+    color: var(--surface);
     transform: translateX(-102%);
     transition: transform 180ms ease;
   }

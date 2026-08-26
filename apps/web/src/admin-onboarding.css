@@ -80,7 +80,7 @@
 .admin-onboarding-progress li[data-active] > span {
   border-color: var(--blue);
   background: var(--blue);
-  color: #fff;
+  color: var(--surface);
 }
 
 .admin-onboarding-progress li[data-complete] > span {

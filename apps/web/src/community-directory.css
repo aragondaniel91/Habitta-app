@@ -36,10 +36,10 @@
 
 .directory-inline-alert,
 .directory-form-message {
-  border: 1px solid #d8e5f3;
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 0.75rem 0.9rem;
-  background: #f3f8fd;
+  background: var(--surface-subtle);
   color: var(--navy);
   font-size: 0.76rem;
   font-weight: 650;
@@ -67,23 +67,23 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 14px;
-  background: linear-gradient(145deg, var(--blue-soft), #f7fbff);
+  background: linear-gradient(145deg, var(--blue-soft), var(--surface-subtle));
   color: var(--blue);
   box-shadow: inset 0 0 0 1px rgb(32 102 164 / 0.08);
 }
 
 .directory-metric:nth-child(2) .directory-metric__icon {
-  background: linear-gradient(145deg, var(--green-soft), #f7fff9);
+  background: linear-gradient(145deg, var(--green-soft), var(--surface));
   color: var(--green-dark);
 }
 
 .directory-metric:nth-child(3) .directory-metric__icon {
-  background: linear-gradient(145deg, #f2edff, #fbfaff);
+  background: linear-gradient(145deg, var(--surface-subtle), var(--surface));
   color: #6b51b5;
 }
 
 .directory-metric:nth-child(4) .directory-metric__icon {
-  background: linear-gradient(145deg, #edf1f5, #fafbfd);
+  background: linear-gradient(145deg, var(--border), var(--surface));
   color: var(--navy);
 }
 
@@ -343,7 +343,7 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 13px;
-  background: linear-gradient(145deg, #e7f0fa, #f6faff);
+  background: linear-gradient(145deg, var(--blue-soft), var(--surface-subtle));
   color: var(--navy);
   font-size: 0.72rem;
   font-weight: 850;
@@ -585,7 +585,7 @@
 }
 
 .directory-assignment-form {
-  background: linear-gradient(180deg, #fbfdff, #f6f9fc);
+  background: linear-gradient(180deg, var(--surface), var(--surface-subtle));
 }
 
 .directory-subheading {
