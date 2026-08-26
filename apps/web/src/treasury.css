@@ -64,7 +64,7 @@
 
 .treasury-section-heading h2 {
   margin: 0.2rem 0 0;
-  font-size: 1.05rem;
+  font-size: var(--ux-heading-section);
 }
 
 .treasury-section-heading p {
@@ -269,7 +269,7 @@
 
 .treasury-drawer__header h2 {
   margin: 0.2rem 0 0;
-  font-size: 1.15rem;
+  font-size: var(--ux-heading-drawer);
 }
 
 .treasury-form {

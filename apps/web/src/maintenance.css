@@ -379,7 +379,7 @@
 
 .maintenance-plan-card h3 {
   margin: 0.9rem 0 0.3rem;
-  font-size: 1rem;
+  font-size: var(--ux-heading-sub);
 }
 
 .maintenance-plan-card > p {
@@ -538,7 +538,7 @@
 }
 
 .maintenance-detail__section h3 {
-  font-size: 0.95rem;
+  font-size: var(--ux-heading-sub);
 }
 
 .maintenance-detail__hint {

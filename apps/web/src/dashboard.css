@@ -159,7 +159,7 @@
 
 .dashboard-section-heading h2 {
   margin: 0.22rem 0 0.1rem;
-  font-size: 1.05rem;
+  font-size: var(--ux-heading-section);
 }
 
 .dashboard-section-heading p {

@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
 import { ArrowRightIcon } from './icons';
 
@@ -24,6 +25,84 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 export function Badge({ className, tone = 'neutral', ...props }: BadgeProps) {
   return (
     <span {...props} className={['badge', className].filter(Boolean).join(' ')} data-tone={tone} />
+  );
+}
+
+type InfoHintProps = {
+  /** Names what the hint explains. It is the button's accessible name, so write it as a topic. */
+  label: string;
+  children: ReactNode;
+  tone?: 'info' | 'warning';
+  className?: string;
+};
+
+/**
+ * Explanatory copy that used to sit permanently under a heading, moved behind a small marker.
+ *
+ * The text is still there for whoever needs it and gone for whoever does not. It opens on hover
+ * and on focus for pointer and keyboard, and toggles on click so it also works on touch, where
+ * there is no hover at all.
+ */
+export function InfoHint({ label, children, tone = 'info', className }: InfoHintProps) {
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const panelId = useId();
+
+  useEffect(() => {
+    if (!pinned) return undefined;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setPinned(false);
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setPinned(false);
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [pinned]);
+
+  return (
+    <span
+      className={['info-hint', className].filter(Boolean).join(' ')}
+      onBlur={() => {
+        if (!pinned) setOpen(false);
+      }}
+      onFocus={() => setOpen(true)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => {
+        if (!pinned) setOpen(false);
+      }}
+      ref={containerRef}
+    >
+      <button
+        aria-controls={panelId}
+        aria-expanded={open}
+        aria-label={label}
+        className="info-hint__marker"
+        data-tone={tone}
+        onClick={() => {
+          const next = !pinned;
+          setPinned(next);
+          setOpen(next || open);
+          if (!next) setOpen(false);
+        }}
+        type="button"
+      >
+        <span aria-hidden="true">{tone === 'warning' ? '!' : '?'}</span>
+      </button>
+      <span className="info-hint__panel" data-open={open} id={panelId} role="tooltip">
+        {children}
+      </span>
+    </span>
   );
 }
 

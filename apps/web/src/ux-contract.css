@@ -7,7 +7,10 @@
   --ux-text-sm: 0.8rem; /* supporting copy */
   --ux-text-md: 0.875rem; /* labels and body copy */
   --ux-text-control: 0.9375rem; /* text the user types into */
-  --ux-text-lg: 1rem; /* section headings */
+  --ux-text-lg: 1rem; /* card headings */
+  --ux-heading-section: 1.05rem; /* h2 of a panel or section */
+  --ux-heading-sub: 0.95rem; /* h3 inside a section */
+  --ux-heading-drawer: 1.18rem; /* h2 of a drawer or dialog */
 
   --ux-control-height: 48px;
   --ux-control-radius: 0.75rem;
@@ -339,7 +342,7 @@
 
 .ux-section-card__header h3 {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: var(--ux-heading-sub);
 }
 
 .ux-section-card__header p {
@@ -491,5 +494,94 @@
 
   .ux-form .form-actions > .button {
     width: 100%;
+  }
+}
+
+/*
+ * Explanatory copy behind a marker.
+ *
+ * These paragraphs used to sit permanently under every heading. Read once, they became noise on
+ * every later visit, and they pushed the actual content down the page. The text is unchanged and
+ * still reachable; it just no longer competes with the data.
+ */
+.info-hint {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 0.4rem;
+}
+
+.info-hint__marker {
+  display: grid;
+  width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.info-hint__marker:hover,
+.info-hint__marker[aria-expanded='true'] {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.info-hint__marker:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(27 79 114 / 0.24);
+}
+
+.info-hint__marker[data-tone='warning'] {
+  border-color: color-mix(in srgb, var(--red) 45%, transparent);
+  color: var(--red);
+}
+
+.info-hint__panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.45rem);
+  left: 50%;
+  width: max-content;
+  max-width: min(320px, 78vw);
+  border: 1px solid var(--border);
+  border-radius: var(--ux-control-radius);
+  background: var(--surface);
+  box-shadow: 0 12px 28px rgb(13 27 42 / 0.16);
+  padding: 0.6rem 0.7rem;
+  color: var(--text);
+  font-size: var(--ux-text-xs);
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+  transform: translateX(-50%);
+}
+
+.info-hint__panel[data-open='false'] {
+  display: none;
+}
+
+/* Near the right edge the panel would overflow the viewport, so it anchors to its marker. */
+.info-hint--end .info-hint__panel {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+@media (max-width: 720px) {
+  .info-hint__panel {
+    max-width: min(280px, 84vw);
   }
 }

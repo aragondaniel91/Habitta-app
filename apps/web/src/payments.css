@@ -215,7 +215,7 @@
 }
 
 .payments-section-heading h2 {
-  font-size: 1.05rem;
+  font-size: var(--ux-heading-section);
 }
 
 .payments-section-heading p {
