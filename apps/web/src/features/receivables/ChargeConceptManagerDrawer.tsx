@@ -260,20 +260,18 @@ export function ChargeConceptManagerDrawer({
             />
           </Field>
         </FormGrid>
-        <Field
-          label="Estado"
-          hint={
-            editing
-              ? 'Un concepto usado por un plan recurrente activo no puede desactivarse.'
-              : undefined
-          }
-        >
-          <Select defaultValue={concept?.is_active === false ? 'false' : 'true'} name="isActive">
-            <option value="true">Activo</option>
-            <option value="false">Inactivo</option>
-          </Select>
-        </Field>
-        <FormActions>
+        {editing ? (
+          <Field
+            label="Estado"
+            hint="Un concepto usado por un plan recurrente activo no puede desactivarse."
+          >
+            <Select defaultValue={concept?.is_active === false ? 'false' : 'true'} name="isActive">
+              <option value="true">Activo</option>
+              <option value="false">Inactivo</option>
+            </Select>
+          </Field>
+        ) : null}
+        <FormActions sticky>
           <Button onClick={backToCatalog} type="button" variant="secondary">
             {editing ? 'Volver al catálogo' : 'Ver conceptos existentes'}
           </Button>
