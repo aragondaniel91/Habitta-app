@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(27);
 
 select has_function(
   'public',
@@ -137,6 +137,45 @@ select throws_ok(
   '42501',
   'permission denied for table community_document_folders',
   'authenticated clients cannot bypass the RPC with a direct folder update'
+);
+
+-- Guards the API translates for the administrator but that nothing exercised at runtime.
+
+select throws_ok(
+  $$select public.update_community_document_category('36310000-0000-4000-8000-000000000001','36399999-0000-4000-8000-000000000999','Nombre','desc','management',null,null)$$,
+  'P0001',
+  'document category unavailable',
+  'a category id outside this condominium is refused by name'
+);
+select throws_ok(
+  $$select public.update_community_document_folder('36310000-0000-4000-8000-000000000001','36399999-0000-4000-8000-000000000998','Nombre',null,'desc',null)$$,
+  'P0001',
+  'document folder unavailable',
+  'a folder id outside this condominium is refused by name'
+);
+select throws_ok(
+  $$select public.update_community_document_folder('36310000-0000-4000-8000-000000000001',(select id from public.community_document_folders where name='Raiz'),'   ',null,'desc',null)$$,
+  'P0001',
+  'invalid folder name',
+  'a folder cannot be renamed to blank'
+);
+select throws_ok(
+  $$select public.update_community_document_category('36310000-0000-4000-8000-000000000001',(select id from public.community_document_categories where name='Actas de asamblea'),'Actas de asamblea','desc','management',-5,null)$$,
+  'P0001',
+  'invalid retention days',
+  'retention cannot be negative'
+);
+
+-- Archiving a category that still classifies live documents would orphan them silently.
+select lives_ok(
+  $$select public.create_community_document('36310000-0000-4000-8000-000000000001','Acta viva','Documento activo',(select id from public.community_document_folders where name='Nieta movida'),(select id from public.community_document_categories where name='Actas de asamblea'),'management',null)$$,
+  'a live document is filed under the category'
+);
+select throws_ok(
+  $$select public.update_community_document_category('36310000-0000-4000-8000-000000000001',(select id from public.community_document_categories where name='Actas de asamblea'),'Actas de asamblea','desc','management',null,false)$$,
+  'P0001',
+  'document category still in use',
+  'a category classifying live documents cannot be archived'
 );
 
 select * from finish();

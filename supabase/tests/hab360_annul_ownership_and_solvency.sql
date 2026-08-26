@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(27);
 
 select has_function(
   'public',
@@ -167,6 +167,42 @@ select throws_ok(
   '42501',
   'permission denied for table solvency_certificates',
   'annulment never opens the certificate itself to client rewriting'
+);
+
+-- Guards the API translates for the administrator but that nothing exercised at runtime.
+
+select throws_ok(
+  $$select public.revert_unit_ownership_transfer('36410000-0000-4000-8000-000000000001','36499999-0000-4000-8000-000000000999','Traspaso inexistente')$$,
+  'P0001',
+  'ownership transfer not found',
+  'a transfer id outside this condominium is refused by name'
+);
+select throws_ok(
+  $$select public.annul_solvency_certificate('36410000-0000-4000-8000-000000000001','36499999-0000-4000-8000-000000000998','Certificado inexistente')$$,
+  'P0001',
+  'solvency certificate not found',
+  'a certificate id outside this condominium is refused by name'
+);
+select throws_ok(
+  $$select public.annul_solvency_certificate('36410000-0000-4000-8000-000000000001',(select id from public.solvency_certificates limit 1),'no')$$,
+  'P0001',
+  'invalid solvency annulment',
+  'an annulment still requires a written reason even on an annulled certificate'
+);
+
+-- A unit whose first transfer has no prior owners cannot be reverted: there is nothing to restore.
+insert into public.units (id, condominium_id, building_id, code, type, ownership_percentage, created_by)
+values ('36430000-0000-4000-8000-000000000002', '36410000-0000-4000-8000-000000000001', '36420000-0000-4000-8000-000000000001', 'O-02', 'apartment', 100, '00000000-0000-0000-0000-000000036401');
+
+select lives_ok(
+  $$select public.transfer_unit_ownership('36410000-0000-4000-8000-000000000001','36430000-0000-4000-8000-000000000002',current_date - 1,'[{"person_id":"36440000-0000-4000-8000-000000000001","ownership_percentage":100,"is_primary_contact":true}]'::jsonb,null,'Primer duenio')$$,
+  'a unit receives its first owner'
+);
+select throws_ok(
+  $$select public.revert_unit_ownership_transfer('36410000-0000-4000-8000-000000000001',(select id from public.ownership_transfers where notes='Primer duenio'),'Sin nada que restaurar')$$,
+  'P0001',
+  'ownership transfer has no previous owners to restore',
+  'the first transfer of a unit cannot be reverted into an owner that never existed'
 );
 
 select * from finish();
