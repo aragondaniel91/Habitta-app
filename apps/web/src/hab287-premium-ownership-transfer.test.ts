@@ -7,12 +7,22 @@ const count = (value: string, needle: string) => value.split(needle).length - 1;
 const panel = source('./features/receivables/OwnershipTransferPanel.tsx');
 const css = source('./hab186-financial-integrity.css');
 
+/**
+ * The form-parity counts below are about the transfer form itself. Counting the whole file also
+ * swept in controls from other regions of the panel, so HAB-360's revert dialog broke an assertion
+ * that was never about it. Scope the slice to the form instead of loosening the expectation.
+ */
+const transferForm = panel.slice(
+  panel.indexOf('className="ownership-transfer-form ux-form"'),
+  panel.indexOf('</form>'),
+);
+
 describe('HAB-287 premium ownership-transfer form parity', () => {
   it('opts the transfer workflow into the premium shared form contract', () => {
     expect(panel).toContain('className="ownership-transfer-form ux-form"');
     expect(panel).toContain('<FormGrid className="ownership-transfer-owner-fields">');
-    expect(count(panel, 'className="input"')).toBe(3);
-    expect(count(panel, '<FormActions>')).toBe(1);
+    expect(count(transferForm, 'className="input"')).toBe(3);
+    expect(count(transferForm, '<FormActions>')).toBe(1);
     expect(panel).not.toContain('className="ownership-transfer-actions"');
     expect(css).not.toContain('.ownership-transfer-actions');
   });

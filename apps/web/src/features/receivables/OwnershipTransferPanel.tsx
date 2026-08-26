@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Badge, Button, Field, Select } from '../../components/ui';
 import { apiRequest } from '../../lib/api';
+import { ConfirmDialog } from '../../components/Dialog';
 
 type Person = {
   id: string;
@@ -26,6 +27,7 @@ type OwnershipTransfer = {
   supporting_document_reference: string | null;
   notes: string | null;
   created_at: string;
+  reverts_transfer_id: string | null;
 };
 
 type OwnerRow = {
@@ -159,6 +161,40 @@ export function OwnershipTransferPanel({
       setMessage(error instanceof Error ? error.message : 'No se pudo registrar la transferencia.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const [transferToRevert, setTransferToRevert] = useState<OwnershipTransfer | null>(null);
+  const [revertReason, setRevertReason] = useState('');
+  const [reverting, setReverting] = useState(false);
+
+  const revertedTransferIds = new Set(
+    history.map((transfer) => transfer.reverts_transfer_id).filter(Boolean) as string[],
+  );
+  const latestTransferId = history[0]?.id ?? '';
+
+  const revertTransfer = async () => {
+    if (!transferToRevert || revertReason.trim().length < 3) return;
+    setReverting(true);
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/units/${unitId}/ownership-transfers/${transferToRevert.id}/revert`,
+        session,
+        { method: 'POST', body: JSON.stringify({ reason: revertReason.trim() }) },
+      );
+      const nextHistory = await apiRequest<OwnershipTransfer[]>(
+        `/v1/condominiums/${condominiumId}/units/${unitId}/ownership-transfers`,
+        session,
+      );
+      setHistory(nextHistory);
+      setTransferToRevert(null);
+      setRevertReason('');
+      setMessage('Traspaso revertido. El traspaso original se conserva en el historial.');
+      onTransferred();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No se pudo revertir el traspaso.');
+    } finally {
+      setReverting(false);
     }
   };
 
@@ -336,17 +372,61 @@ export function OwnershipTransferPanel({
       {history.length ? (
         <div className="ownership-transfer-history">
           <strong>Últimas transferencias</strong>
-          {history.slice(0, 3).map((transfer) => (
-            <div key={transfer.id}>
-              <span>{transfer.effective_date}</span>
-              <small>
-                {transfer.previous_owners_snapshot.map((owner) => owner.name).join(', ') ||
-                  'Sin propietario previo'}{' '}
-                → {transfer.new_owners_snapshot.map((owner) => owner.name).join(', ')}
-              </small>
-            </div>
-          ))}
+          {history.slice(0, 3).map((transfer) => {
+            const isCompensating = Boolean(transfer.reverts_transfer_id);
+            const alreadyReverted = revertedTransferIds.has(transfer.id);
+            const canRevert =
+              !isCompensating && !alreadyReverted && transfer.id === latestTransferId;
+            return (
+              <div key={transfer.id}>
+                <span>{transfer.effective_date}</span>
+                <small>
+                  {transfer.previous_owners_snapshot.map((owner) => owner.name).join(', ') ||
+                    'Sin propietario previo'}{' '}
+                  → {transfer.new_owners_snapshot.map((owner) => owner.name).join(', ')}
+                </small>
+                {isCompensating ? <Badge tone="neutral">Reverso</Badge> : null}
+                {alreadyReverted ? <Badge tone="neutral">Revertido</Badge> : null}
+                {canRevert ? (
+                  <Button
+                    onClick={() => {
+                      setRevertReason('');
+                      setTransferToRevert(transfer);
+                    }}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Revertir
+                  </Button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
+      ) : null}
+
+      {transferToRevert ? (
+        <ConfirmDialog
+          busy={reverting}
+          busyLabel="Revirtiendo…"
+          confirmLabel="Revertir traspaso"
+          description="Habitta devolverá la unidad a los propietarios anteriores con un traspaso compensatorio. El traspaso original se conserva en el historial."
+          onCancel={() => setTransferToRevert(null)}
+          onConfirm={() => void revertTransfer()}
+          title="Revertir traspaso de propiedad"
+        >
+          <label className="ownership-revert-reason">
+            <span>Motivo del reverso</span>
+            <textarea
+              className="input"
+              minLength={3}
+              onChange={(event) => setRevertReason(event.target.value)}
+              placeholder="Explica por qué se revierte este traspaso"
+              required
+              value={revertReason}
+            />
+          </label>
+        </ConfirmDialog>
       ) : null}
     </section>
   );

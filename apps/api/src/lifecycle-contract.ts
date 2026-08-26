@@ -247,18 +247,16 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     entity: 'solvency certificate',
     create: '/:id/units/:unitId/solvency-certificates',
     classification: 'history',
-    correction: null,
-    knownGap: '#360',
-    note: 'Immutable by design, but a certificate issued in error has no annulment and stays publicly verifiable.',
+    correction: '/:id/units/:unitId/solvency-certificates/:certificateId/annul',
+    note: 'HAB-360: the certificate stays frozen; annulment is written once and public verification stops vouching for it.',
   },
   {
     module: 'units',
     entity: 'ownership transfer',
     create: '/:id/units/:unitId/ownership-transfers',
     classification: 'history',
-    correction: null,
-    knownGap: '#360',
-    note: 'protect_ownership_transfer_history freezes the record with no reversal path.',
+    correction: '/:id/units/:unitId/ownership-transfers/:transferId/revert',
+    note: 'HAB-360: closes the rows the transfer opened and starts fresh ones for the previous owners; only the newest transfer can be reverted.',
   },
 
   // ---------------------------------------------------------------- operations
