@@ -35,11 +35,20 @@
   max-width: 760px;
 }
 
-.recurring-dues-actions {
+.recurring-dues-actions,
+.recurring-dues-plan-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 8px;
+}
+
+.recurring-dues-actions {
+  justify-content: flex-end;
+}
+
+.recurring-dues-plan-actions {
+  align-items: center;
+  margin-top: 2px;
 }
 
 .recurring-dues-alert {

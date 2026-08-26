@@ -24,11 +24,12 @@ if (supabaseUrl) {
 
 type AuthSession = { access_token: string };
 type FinancialScope = { id: string; code: string };
-type RecurringPlan = { id: string; starts_on: string };
+type RecurringPlan = { id: string; starts_on: string; amount: string | number; due_day: number };
 type RecurringRun = {
   id: string;
   status: string;
   period: string;
+  due_date: string;
   total_amount: string | number | null;
   distribution_snapshot: Array<{ unit_id: string; amount: string | number }> | null;
   charge_batch_id: string | null;
@@ -75,7 +76,7 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
     `Supabase local y fixture financiero requeridos: ${missingEnvironment.join(', ')}`,
   );
 
-  test('planifica, congela, aprueba y programa automáticamente el siguiente período', async ({
+  test('edita, congela, aprueba y programa sin reescribir historia publicada', async ({
     request,
   }, testInfo) => {
     const admin = await authenticate(request);
@@ -109,14 +110,37 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
       },
     );
 
+    const editedPlan = await rpc<RecurringPlan>(
+      request,
+      admin.access_token,
+      'update_recurring_charge_plan',
+      {
+        target: ids.condominium,
+        target_plan: plan.id,
+        target_concept: ids.chargeConcept,
+        target_scope: scope.id,
+        plan_name: `Cuota recurrente E2E editada ${runKey}`,
+        plan_distribution: 'fixed_per_unit',
+        plan_amount: '45.00',
+        plan_currency: 'USD',
+        plan_starts_on: '2026-09-01',
+        plan_issue_day: 1,
+        plan_due_day: 12,
+        plan_ends_on: null,
+      },
+    );
+    expect(Number(editedPlan.amount)).toBe(45);
+    expect(editedPlan.due_day).toBe(12);
+
     const initialRuns = await rows<RecurringRun>(
       request,
       admin.access_token,
-      `recurring_charge_runs?plan_id=eq.${plan.id}&period=eq.2026-09&select=id,status,period,total_amount,distribution_snapshot,charge_batch_id`,
+      `recurring_charge_runs?plan_id=eq.${plan.id}&period=eq.2026-09&select=id,status,period,due_date,total_amount,distribution_snapshot,charge_batch_id`,
     );
     expect(initialRuns).toHaveLength(1);
     const scheduled = initialRuns[0]!;
     expect(scheduled.status).toBe('scheduled');
+    expect(scheduled.due_date).toBe('2026-09-12');
     expect(scheduled.charge_batch_id).toBeNull();
 
     const prepared = await rpc<RecurringRun>(
@@ -126,7 +150,7 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
       { target_run: scheduled.id },
     );
     expect(prepared.status).toBe('pending_review');
-    expect(Number(prepared.total_amount)).toBe(84);
+    expect(Number(prepared.total_amount)).toBe(90);
     expect(prepared.distribution_snapshot).toHaveLength(2);
     expect(prepared.charge_batch_id).toBeNull();
 
@@ -145,17 +169,43 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
       `receivable_items?charge_batch_id=eq.${posted.charge_batch_id}&select=id,original_amount`,
     );
     expect(receivables).toHaveLength(2);
-    expect(receivables.reduce((sum, item) => sum + Number(item.original_amount), 0)).toBe(84);
+    expect(receivables.reduce((sum, item) => sum + Number(item.original_amount), 0)).toBe(90);
+
+    await rpc<RecurringPlan>(request, admin.access_token, 'update_recurring_charge_plan', {
+      target: ids.condominium,
+      target_plan: plan.id,
+      target_concept: ids.chargeConcept,
+      target_scope: scope.id,
+      plan_name: `Cuota recurrente E2E futura ${runKey}`,
+      plan_distribution: 'fixed_per_unit',
+      plan_amount: '50.00',
+      plan_currency: 'USD',
+      plan_starts_on: '2026-09-01',
+      plan_issue_day: 1,
+      plan_due_day: 14,
+      plan_ends_on: null,
+    });
+
+    const postedReceivablesAfterEdit = await rows<{ id: string; original_amount: string }>(
+      request,
+      admin.access_token,
+      `receivable_items?charge_batch_id=eq.${posted.charge_batch_id}&select=id,original_amount`,
+    );
+    expect(
+      postedReceivablesAfterEdit.reduce((sum, item) => sum + Number(item.original_amount), 0),
+    ).toBe(90);
 
     const allRuns = await rows<RecurringRun>(
       request,
       admin.access_token,
-      `recurring_charge_runs?plan_id=eq.${plan.id}&select=id,status,period,total_amount,distribution_snapshot,charge_batch_id&order=period.asc`,
+      `recurring_charge_runs?plan_id=eq.${plan.id}&select=id,status,period,due_date,total_amount,distribution_snapshot,charge_batch_id&order=period.asc`,
     );
     expect(allRuns.map((run) => [run.period, run.status])).toEqual([
       ['2026-09', 'posted'],
       ['2026-10', 'scheduled'],
     ]);
+    expect(allRuns[0]?.total_amount && Number(allRuns[0].total_amount)).toBe(90);
+    expect(allRuns[1]?.due_date).toBe('2026-10-14');
     expect(allRuns[1]?.charge_batch_id).toBeNull();
   });
 });

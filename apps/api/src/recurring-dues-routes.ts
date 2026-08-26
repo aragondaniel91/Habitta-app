@@ -136,6 +136,29 @@ const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
     publicMessage:
       'El concepto o el ámbito financiero ya no está disponible. Actualiza la información e intenta de nuevo.',
   },
+  'recurring plan unavailable': {
+    status: 409,
+    error: 'recurring_plan_unavailable',
+    publicMessage: 'La cuota recurrente ya no está disponible para edición. Actualiza la página.',
+  },
+  'recurring plan has pending review run': {
+    status: 409,
+    error: 'recurring_plan_pending_review',
+    publicMessage:
+      'Hay una cuota de este plan pendiente de revisión. Publícala o resuélvela antes de editar la configuración.',
+  },
+  'posted recurring history outside edited plan': {
+    status: 409,
+    error: 'recurring_plan_posted_history_conflict',
+    publicMessage:
+      'La nueva vigencia contradice un período ya publicado. Conserva las fechas históricas y aplica el cambio hacia adelante.',
+  },
+  'scheduled recurring period outside edited plan': {
+    status: 409,
+    error: 'recurring_plan_scheduled_period_conflict',
+    publicMessage:
+      'La nueva vigencia dejaría una cuota programada fuera del plan. Ajusta las fechas antes de guardar.',
+  },
   'invalid recurring period': {
     status: 422,
     error: 'recurring_period_invalid',
@@ -303,6 +326,35 @@ recurringDuesRoutes.post('/:id/recurring-charge-plans', async (c) => {
     plan_ends_on: parsed.endsOn ?? null,
   });
   return rpcResult(c, response, 201);
+});
+
+recurringDuesRoutes.patch('/:id/recurring-charge-plans/:planId', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const planId = uuidSchema.parse(c.req.param('planId'));
+  const parsed = await parseBody(c, planInputSchema);
+  if (parsed instanceof Response) return parsed;
+  if (
+    !(await scopedExists(
+      c,
+      `recurring_charge_plans?id=eq.${planId}&condominium_id=eq.${condominiumId}&select=id`,
+    ))
+  )
+    return c.json({ error: 'Recurring plan not found in condominium' }, 404);
+  const response = await rpc(c, 'update_recurring_charge_plan', {
+    target: condominiumId,
+    target_plan: planId,
+    target_concept: parsed.conceptId,
+    target_scope: parsed.financialScopeId,
+    plan_name: parsed.name,
+    plan_distribution: parsed.distribution,
+    plan_amount: parsed.amount,
+    plan_currency: parsed.currencyCode,
+    plan_starts_on: parsed.startsOn,
+    plan_issue_day: parsed.issueDay,
+    plan_due_day: parsed.dueDay,
+    plan_ends_on: parsed.endsOn ?? null,
+  });
+  return rpcResult(c, response, 200);
 });
 
 recurringDuesRoutes.get('/:id/recurring-charge-runs', async (c) => {

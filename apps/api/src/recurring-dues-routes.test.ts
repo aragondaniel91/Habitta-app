@@ -23,9 +23,11 @@ describe('HAB-185 recurring dues API contract', () => {
     expect(source).toContain("post('/:id/financial-scopes'");
     expect(source).toContain("get('/:id/recurring-charge-plans'");
     expect(source).toContain("post('/:id/recurring-charge-plans'");
+    expect(source).toContain("patch('/:id/recurring-charge-plans/:planId'");
     expect(source).toContain("get('/:id/recurring-charge-runs'");
     expect(source).toContain("rpc(c, 'create_financial_scope'");
     expect(source).toContain("rpc(c, 'create_recurring_charge_plan'");
+    expect(source).toContain("rpc(c, 'update_recurring_charge_plan'");
     expect(source).not.toMatch(
       /rest\(c,\s*`?(financial_scopes|recurring_charge_plans|recurring_charge_runs)[^)]*\{\s*method:\s*'(POST|PUT|PATCH|DELETE)'/s,
     );
@@ -139,5 +141,35 @@ describe('HAB-349 recurring numeric amount compatibility', () => {
     expect(normalizeRecurringMoneyInput(0)).toBe(0);
     expect(normalizeRecurringMoneyInput(Number.POSITIVE_INFINITY)).toBe(Number.POSITIVE_INFINITY);
     expect(normalizeRecurringMoneyInput(Number.MAX_SAFE_INTEGER)).toBe(Number.MAX_SAFE_INTEGER);
+  });
+});
+
+describe('HAB-352 recurring plan edits', () => {
+  it('uses a condominium-scoped PATCH route backed only by the secured update RPC', () => {
+    expect(source).toContain("patch('/:id/recurring-charge-plans/:planId'");
+    expect(source).toContain("rpc(c, 'update_recurring_charge_plan'");
+    expect(source).toContain('target_plan: planId');
+    expect(source).toContain('return rpcResult(c, response, 200)');
+  });
+
+  it('maps edit lifecycle conflicts to actionable safe messages', () => {
+    expect(
+      recurringDomainFailureFromPostgrest({ message: 'recurring plan has pending review run' }),
+    ).toEqual({
+      status: 409,
+      error: 'recurring_plan_pending_review',
+      publicMessage:
+        'Hay una cuota de este plan pendiente de revisión. Publícala o resuélvela antes de editar la configuración.',
+    });
+    expect(
+      recurringDomainFailureFromPostgrest({
+        message: 'posted recurring history outside edited plan',
+      }),
+    ).toMatchObject({ status: 409, error: 'recurring_plan_posted_history_conflict' });
+    expect(
+      recurringDomainFailureFromPostgrest({
+        message: 'scheduled recurring period outside edited plan',
+      }),
+    ).toMatchObject({ status: 409, error: 'recurring_plan_scheduled_period_conflict' });
   });
 });

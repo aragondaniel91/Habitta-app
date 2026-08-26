@@ -39,7 +39,7 @@ type RecurringPlan = {
   financial_scope_id: string;
   name: string;
   distribution: Distribution;
-  amount: string;
+  amount: string | number;
   currency_code: string;
   issue_day: number;
   due_day: number;
@@ -51,7 +51,7 @@ type RecurringPlan = {
 type Allocation = {
   unit_id: string;
   unit_code: string;
-  amount: string;
+  amount: string | number;
   participation_percentage?: string;
 };
 
@@ -64,7 +64,7 @@ type RecurringRun = {
   currency_code: string;
   status: RunStatus;
   distribution_snapshot: Allocation[] | null;
-  total_amount: string | null;
+  total_amount: string | number | null;
   charge_batch_id: string | null;
 };
 
@@ -123,7 +123,7 @@ const initialPlanForm = (concepts: ChargeConcept[], scopes: FinancialScope[]): P
     financialScopeId: scope?.id ?? '',
     name: concept?.name ? `${concept.name} mensual` : 'Cuota ordinaria mensual',
     distribution: 'participation_percentage',
-    amount: concept?.default_amount ?? '',
+    amount: String(concept?.default_amount ?? ''),
     currencyCode: concept?.default_currency_code ?? 'USD',
     startsOn: currentMonthStart(),
     endsOn: '',
@@ -131,6 +131,19 @@ const initialPlanForm = (concepts: ChargeConcept[], scopes: FinancialScope[]): P
     dueDay: '10',
   };
 };
+
+const planFormFromPlan = (plan: RecurringPlan): PlanForm => ({
+  conceptId: plan.concept_id,
+  financialScopeId: plan.financial_scope_id,
+  name: plan.name,
+  distribution: plan.distribution,
+  amount: String(plan.amount),
+  currencyCode: plan.currency_code,
+  startsOn: plan.starts_on,
+  endsOn: plan.ends_on ?? '',
+  issueDay: String(plan.issue_day),
+  dueDay: String(plan.due_day),
+});
 
 const addMonth = (period: string) => {
   const [year, month] = period.split('-').map(Number);
@@ -140,8 +153,8 @@ const addMonth = (period: string) => {
 
 const startPeriod = (startsOn: string) => startsOn.slice(0, 7);
 
-const money = (amount: string | null, currency: string) => {
-  if (!amount) return `— ${currency}`;
+const money = (amount: string | number | null, currency: string) => {
+  if (amount === null || amount === '') return `— ${currency}`;
   const value = Number(amount);
   return Number.isFinite(value)
     ? new Intl.NumberFormat('es-VE', {
@@ -183,6 +196,7 @@ export function RecurringDuesWorkspace({
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState('');
   const [planDrawerOpen, setPlanDrawerOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState('');
   const [scopeDrawerOpen, setScopeDrawerOpen] = useState(false);
   const [runToPost, setRunToPost] = useState<RecurringRun | null>(null);
   const [expandedRunId, setExpandedRunId] = useState('');
@@ -228,6 +242,7 @@ export function RecurringDuesWorkspace({
 
   useEffect(() => {
     setPlanDrawerOpen(false);
+    setEditingPlanId('');
     setScopeDrawerOpen(false);
     setRunToPost(null);
     setExpandedRunId('');
@@ -255,13 +270,25 @@ export function RecurringDuesWorkspace({
   );
   const unitById = useMemo(() => new Map(units.map((unit) => [unit.id, unit])), [units]);
 
+  const closePlanDrawer = () => {
+    setPlanDrawerOpen(false);
+    setEditingPlanId('');
+  };
+
   const openPlanDrawer = () => {
+    setEditingPlanId('');
     setPlanForm(initialPlanForm(concepts, activeScopes));
     setPlanDrawerOpen(true);
   };
 
+  const openEditPlanDrawer = (plan: RecurringPlan) => {
+    setEditingPlanId(plan.id);
+    setPlanForm(planFormFromPlan(plan));
+    setPlanDrawerOpen(true);
+  };
+
   useEffect(() => {
-    if (!planDrawerOpen || !activeConcepts.length) return;
+    if (!planDrawerOpen || editingPlanId || !activeConcepts.length) return;
     setPlanForm((current) => {
       if (activeConcepts.some((concept) => concept.id === current.conceptId)) return current;
       const concept =
@@ -271,11 +298,11 @@ export function RecurringDuesWorkspace({
         ...current,
         conceptId: concept.id,
         name: current.name === 'Cuota ordinaria mensual' ? `${concept.name} mensual` : current.name,
-        amount: concept.default_amount ?? current.amount,
+        amount: String(concept.default_amount ?? current.amount),
         currencyCode: concept.default_currency_code ?? current.currencyCode,
       };
     });
-  }, [activeConcepts, planDrawerOpen]);
+  }, [activeConcepts, editingPlanId, planDrawerOpen]);
 
   const saveScope = async (event: FormEvent) => {
     event.preventDefault();
@@ -308,14 +335,17 @@ export function RecurringDuesWorkspace({
     event.preventDefault();
     const validation = validateRecurringPlanDraft(planForm);
     if (!validation.valid) {
-      setError('Revisa los campos marcados antes de crear el plan.');
+      setError('Revisa los campos marcados antes de guardar el plan.');
       return;
     }
     setBusyId('plan');
     setError('');
+    const path = editingPlanId
+      ? `/v1/condominiums/${condominiumId}/recurring-charge-plans/${editingPlanId}`
+      : `/v1/condominiums/${condominiumId}/recurring-charge-plans`;
     try {
-      await apiRequest(`/v1/condominiums/${condominiumId}/recurring-charge-plans`, session, {
-        method: 'POST',
+      await apiRequest(path, session, {
+        method: editingPlanId ? 'PATCH' : 'POST',
         body: JSON.stringify({
           conceptId: planForm.conceptId,
           financialScopeId: planForm.financialScopeId,
@@ -329,13 +359,15 @@ export function RecurringDuesWorkspace({
           dueDay: Number(planForm.dueDay),
         }),
       });
-      setPlanDrawerOpen(false);
+      closePlanDrawer();
       await load();
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : 'No se pudo crear la cuota recurrente.',
+          : editingPlanId
+            ? 'No se pudieron guardar los cambios de la cuota recurrente.'
+            : 'No se pudo crear la cuota recurrente.',
       );
     } finally {
       setBusyId('');
@@ -607,6 +639,7 @@ export function RecurringDuesWorkspace({
               <div className="recurring-dues-plan-grid">
                 {activePlans.map((plan) => {
                   const scope = scopeById.get(plan.financial_scope_id);
+                  const hasPendingReview = pendingRuns.some((run) => run.plan_id === plan.id);
                   return (
                     <article key={plan.id}>
                       <div>
@@ -621,16 +654,31 @@ export function RecurringDuesWorkspace({
                       </p>
                       <b>{money(plan.amount, plan.currency_code)}</b>
                       {canManage ? (
-                        <Button
-                          disabled={busyId === `schedule:${plan.id}`}
-                          onClick={() => void scheduleNext(plan)}
-                          size="sm"
-                          variant="ghost"
-                        >
-                          {busyId === `schedule:${plan.id}`
-                            ? 'Programando…'
-                            : 'Programar siguiente período'}
-                        </Button>
+                        <div className="recurring-dues-plan-actions">
+                          <Button
+                            disabled={hasPendingReview}
+                            onClick={() => openEditPlanDrawer(plan)}
+                            size="sm"
+                            title={
+                              hasPendingReview
+                                ? 'Primero resuelve la cuota pendiente de revisión.'
+                                : 'Editar configuración de la cuota'
+                            }
+                            variant="secondary"
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            disabled={busyId === `schedule:${plan.id}`}
+                            onClick={() => void scheduleNext(plan)}
+                            size="sm"
+                            variant="ghost"
+                          >
+                            {busyId === `schedule:${plan.id}`
+                              ? 'Programando…'
+                              : 'Programar siguiente período'}
+                          </Button>
+                        </div>
                       ) : null}
                     </article>
                   );
@@ -807,15 +855,16 @@ export function RecurringDuesWorkspace({
       {planDrawerOpen ? (
         <Drawer
           eyebrow="Cuotas ordinarias"
-          onClose={() => setPlanDrawerOpen(false)}
+          onClose={closePlanDrawer}
           prefix="recurring-dues"
-          title="Nueva cuota recurrente"
+          title={editingPlanId ? 'Editar cuota ordinaria' : 'Nueva cuota recurrente'}
           wide
         >
           <form className="recurring-dues-form ux-form" onSubmit={(event) => void savePlan(event)}>
             <p className="recurring-dues-form__intro">
-              Habitta crea el primer período como programado. Nada se carga a las unidades hasta que
-              revises el reparto y publiques la ocurrencia.
+              {editingPlanId
+                ? 'Actualiza la configuración para períodos no publicados. La historia financiera ya publicada no se reescribe.'
+                : 'Habitta crea el primer período como programado. Nada se carga a las unidades hasta que revises el reparto y publiques la ocurrencia.'}
             </p>
             <FormSection
               actions={
@@ -1024,16 +1073,23 @@ export function RecurringDuesWorkspace({
             <div className="recurring-dues-safety-note">
               <strong>Control financiero</strong>
               <span>
-                Crear el plan no publica deuda. La distribución del período se congela en “Por
-                aprobar” y después exige una acción separada para entrar al libro.
+                {editingPlanId
+                  ? 'Los cambios afectan períodos no publicados. Las cuotas ya publicadas conservan sus importes, fechas y cuentas por cobrar originales.'
+                  : 'Crear el plan no publica deuda. La distribución del período se congela en “Por aprobar” y después exige una acción separada para entrar al libro.'}
               </span>
             </div>
             <FormActions sticky>
-              <Button onClick={() => setPlanDrawerOpen(false)} type="button" variant="secondary">
+              <Button onClick={closePlanDrawer} type="button" variant="secondary">
                 Cancelar
               </Button>
               <Button disabled={busyId === 'plan' || !planValidation.valid} type="submit">
-                {busyId === 'plan' ? 'Creando…' : 'Crear y programar'}
+                {busyId === 'plan'
+                  ? editingPlanId
+                    ? 'Guardando…'
+                    : 'Creando…'
+                  : editingPlanId
+                    ? 'Guardar cambios'
+                    : 'Crear y programar'}
               </Button>
             </FormActions>
           </form>

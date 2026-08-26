@@ -131,7 +131,8 @@ describe('HAB-185 recurring dues workspace contract', () => {
   });
 
   it('keeps PostgREST numeric concept defaults compatible with the recurring API money boundary', () => {
-    expect(workspaceSource).toContain('amount: concept?.default_amount ??');
+    expect(workspaceSource).toContain("amount: String(concept?.default_amount ?? '')");
+    expect(workspaceSource).toContain('amount: String(plan.amount)');
     expect(recurringApiSource).toContain('normalizeRecurringMoneyInput');
     expect(recurringApiSource).toContain('z.preprocess(\n  normalizeRecurringMoneyInput');
     expect(recurringApiSource).toContain('amount: moneySchema');
@@ -146,5 +147,40 @@ describe('HAB-185 recurring dues workspace contract', () => {
     expect(drawerSource).toContain("issueDate: String(values.get('issueDate') ?? '')");
     expect(drawerSource).toContain('`/v1/condominiums/${condominiumId}/receivables`');
     expect(drawerSource).toContain('<option key={unit.id} value={unit.id}>');
+  });
+});
+
+describe('HAB-352 recurring plan edit UX', () => {
+  it('keeps Edit visible on configured plans and reuses the plan drawer prefilled', () => {
+    expect(workspaceSource).toContain("const [editingPlanId, setEditingPlanId] = useState('')");
+    expect(workspaceSource).toContain('const planFormFromPlan = (plan: RecurringPlan): PlanForm');
+    expect(workspaceSource).toContain('const openEditPlanDrawer = (plan: RecurringPlan)');
+    expect(workspaceSource).toContain('setPlanForm(planFormFromPlan(plan))');
+    expect(workspaceSource).toContain('onClick={() => openEditPlanDrawer(plan)}');
+    expect(workspaceSource).toContain('Editar');
+    expect(workspaceCss).toContain('.recurring-dues-plan-actions');
+  });
+
+  it('switches the same save flow between POST create and PATCH edit', () => {
+    expect(workspaceSource).toContain("method: editingPlanId ? 'PATCH' : 'POST'");
+    expect(workspaceSource).toContain(
+      '`/v1/condominiums/${condominiumId}/recurring-charge-plans/${editingPlanId}`',
+    );
+    expect(workspaceSource).toContain(
+      "title={editingPlanId ? 'Editar cuota ordinaria' : 'Nueva cuota recurrente'}",
+    );
+    expect(workspaceSource).toContain("? 'Guardar cambios'");
+    expect(workspaceSource).toContain("setEditingPlanId('')");
+  });
+
+  it('communicates the immutable-history boundary and blocks ambiguous pending-review edits', () => {
+    expect(workspaceSource).toContain(
+      'Los cambios afectan períodos no publicados. Las cuotas ya publicadas conservan sus importes, fechas y cuentas por cobrar originales.',
+    );
+    expect(workspaceSource).toContain(
+      'const hasPendingReview = pendingRuns.some((run) => run.plan_id === plan.id)',
+    );
+    expect(workspaceSource).toContain('disabled={hasPendingReview}');
+    expect(workspaceSource).toContain('Primero resuelve la cuota pendiente de revisión.');
   });
 });
