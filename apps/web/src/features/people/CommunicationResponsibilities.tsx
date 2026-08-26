@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Badge, Button, Field, Select, Surface } from '../../components/ui';
+import { Badge, Button, Field, InfoHint, Select, Surface } from '../../components/ui';
 import { directoryUnitLabel, unitContextLabel } from './relationship-model';
 import { peopleApi } from './api';
 import type {
@@ -90,8 +90,12 @@ export function CommunicationResponsibilities({
       <div className="people-section__heading">
         <div>
           <span className="people-kicker">Comunicaciones</span>
-          <h3>Comunicaciones por unidad</h3>
-          <p>El saldo y los cargos siguen perteneciendo a la unidad.</p>
+          <h3>
+            Comunicaciones por unidad
+            <InfoHint label="Más información sobre comunicaciones por unidad">
+              El saldo y los cargos siguen perteneciendo a la unidad.
+            </InfoHint>
+          </h3>
         </div>
         <Badge tone="info">
           {assignments.filter((assignment) => !assignment.effective_to).length}

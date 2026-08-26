@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid } from '../../components/FormLayout';
-import { Button, Field, Surface } from '../../components/ui';
+import { Button, Field, InfoHint, Surface } from '../../components/ui';
 import { SettingsIcon } from '../../components/icons';
 import { apiRequest } from '../../lib/api';
 
@@ -204,11 +204,13 @@ export function CondominiumIdentityPanel({
         <div className="settings-section-heading">
           <div>
             <span className="settings-kicker">Identificación</span>
-            <h2>Datos del condominio</h2>
-            <p>
-              Estos datos aparecen en recibos, certificados de solvencia y comunicaciones.
-              Corrígelos aquí cuando cambien o si quedó un error en la configuración inicial.
-            </p>
+            <h2>
+              Datos del condominio
+              <InfoHint label="Más información sobre datos del condominio">
+                Estos datos aparecen en recibos, certificados de solvencia y comunicaciones.
+                Corrígelos aquí cuando cambien o si quedó un error en la configuración inicial.
+              </InfoHint>
+            </h2>
           </div>
           <SettingsIcon size={20} />
         </div>

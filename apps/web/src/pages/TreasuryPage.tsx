@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, ExpensesIcon, PaymentsIcon, ReportsIcon } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
 import { ConfirmDialog } from '../components/Dialog';
-import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, InfoHint, Skeleton, Surface } from '../components/ui';
 import {
   closeTreasuryReconciliation,
   createTreasuryAccount,
@@ -264,11 +264,13 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           <div className="treasury-section-heading">
             <div>
               <span className="treasury-kicker">Traslados</span>
-              <h2>Transferencias entre cuentas</h2>
-              <p>
-                Un reverso compensa las dos cuentas a la vez. La transferencia original se conserva
-                siempre: nunca se reescribe ni se borra.
-              </p>
+              <h2>
+                Transferencias entre cuentas
+                <InfoHint label="Más información sobre transferencias entre cuentas">
+                  Un reverso compensa las dos cuentas a la vez. La transferencia original se
+                  conserva siempre: nunca se reescribe ni se borra.
+                </InfoHint>
+              </h2>
             </div>
           </div>
           {data.transfers.length ? (
@@ -399,8 +401,12 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
         <div className="treasury-section-heading">
           <div>
             <span className="treasury-kicker">Libro</span>
-            <h2>Movimientos recientes</h2>
-            <p>Los saldos se derivan de estas filas; ninguna se modifica ni se elimina.</p>
+            <h2>
+              Movimientos recientes
+              <InfoHint label="Más información sobre movimientos recientes">
+                Los saldos se derivan de estas filas; ninguna se modifica ni se elimina.
+              </InfoHint>
+            </h2>
           </div>
         </div>
         {data.movements.length ? (

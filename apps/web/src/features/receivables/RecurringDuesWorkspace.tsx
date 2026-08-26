@@ -645,8 +645,12 @@ export function RecurringDuesWorkspace({
             >
               <div className="recurring-dues-section__title">
                 <div>
-                  <h3>Requieren revisión</h3>
-                  <p>El reparto ya está congelado; todavía no existe deuda nueva.</p>
+                  <h3>
+                    Requieren revisión
+                    <InfoHint label="Más información sobre requieren revisión">
+                      El reparto ya está congelado; todavía no existe deuda nueva.
+                    </InfoHint>
+                  </h3>
                 </div>
                 <Badge tone="warning">
                   {pendingRuns.length} pendiente{pendingRuns.length === 1 ? '' : 's'}
@@ -870,8 +874,12 @@ export function RecurringDuesWorkspace({
             >
               <div className="recurring-dues-section__title">
                 <div>
-                  <h3>Publicadas recientemente</h3>
-                  <p>Estos períodos son históricos e inmutables.</p>
+                  <h3>
+                    Publicadas recientemente
+                    <InfoHint label="Más información sobre publicadas recientemente">
+                      Estos períodos son históricos e inmutables.
+                    </InfoHint>
+                  </h3>
                 </div>
               </div>
               {recentRuns.map((run) => (

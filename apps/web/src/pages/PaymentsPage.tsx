@@ -9,7 +9,7 @@ import {
   SettingsIcon,
 } from '../components/icons';
 import { FinancialPagination } from '../components/FinancialPagination';
-import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, InfoHint, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { paymentApi } from '../features/payments/api';
 import { PaymentCaptureDrawer } from '../features/payments/components/PaymentCaptureDrawer';
@@ -447,8 +447,12 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           <div className="payments-section-heading">
             <div>
               <span className="payments-kicker">Validación</span>
-              <h2>Bandeja de revisión</h2>
-              <p>Prioriza los pagos enviados y abre su comprobante antes de aprobar.</p>
+              <h2>
+                Bandeja de revisión
+                <InfoHint label="Más información sobre bandeja de revisión">
+                  Prioriza los pagos enviados y abre su comprobante antes de aprobar.
+                </InfoHint>
+              </h2>
             </div>
             <Badge tone={data.reviewQueue.length ? 'warning' : 'success'}>
               {data.reviewQueueAvailable
@@ -499,8 +503,12 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           <div className="payments-section-heading">
             <div>
               <span className="payments-kicker">Canales de cobro</span>
-              <h2>Métodos disponibles</h2>
-              <p>Opciones activas para la moneda seleccionada.</p>
+              <h2>
+                Métodos disponibles
+                <InfoHint label="Más información sobre métodos disponibles">
+                  Opciones activas para la moneda seleccionada.
+                </InfoHint>
+              </h2>
             </div>
             <Button onClick={() => setDrawer({ type: 'methods' })} size="sm" variant="ghost">
               Configurar
@@ -540,8 +548,12 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
         <div className="payments-section-heading payments-section-heading--list">
           <div>
             <span className="payments-kicker">Historial</span>
-            <h2>Movimientos registrados</h2>
-            <p>Busca por unidad, pagador, referencia o método.</p>
+            <h2>
+              Movimientos registrados
+              <InfoHint label="Más información sobre movimientos registrados">
+                Busca por unidad, pagador, referencia o método.
+              </InfoHint>
+            </h2>
           </div>
           <span className="payments-result-count">
             {visiblePayments.length} visibles · {data.payments.length} de {data.paymentsPage.total}{' '}

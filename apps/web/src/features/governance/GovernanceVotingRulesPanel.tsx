@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Button, Field, Surface } from '../../components/ui';
+import { Button, Field, InfoHint, Surface } from '../../components/ui';
 import { FormGrid } from '../../components/FormLayout';
 import { apiRequest } from '../../lib/api';
 import type { GovernanceProposal } from '../../lib/governance';
@@ -93,11 +93,13 @@ export function GovernanceVotingRulesPanel({ condominiumId, session }: Props) {
       <div className="governance-voting-rules__header">
         <div>
           <small>Reglas de decisión</small>
-          <h2>Quórum y aprobación</h2>
-          <p>
-            El quórum mide participación. La aprobación requerida mide el porcentaje de votos
-            válidos emitidos a favor. Son reglas distintas y se congelan al abrir la votación.
-          </p>
+          <h2>
+            Quórum y aprobación
+            <InfoHint label="Más información sobre quórum y aprobación">
+              El quórum mide participación. La aprobación requerida mide el porcentaje de votos
+              válidos emitidos a favor. Son reglas distintas y se congelan al abrir la votación.
+            </InfoHint>
+          </h2>
         </div>
       </div>
 

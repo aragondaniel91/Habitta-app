@@ -110,6 +110,39 @@ describe('HAB-362 one design standard across every module', () => {
     expect(drifting).toEqual([]);
   });
 
+  it('moves the standing explanations behind a marker across the modules', () => {
+    const withHints = tsxFiles.filter(
+      (file) => !file.endsWith('.test.tsx') && readFileSync(file, 'utf8').includes('<InfoHint'),
+    );
+    expect(withHints.length).toBeGreaterThanOrEqual(15);
+    for (const module of [
+      'pages/ReportsPage.tsx',
+      'pages/PaymentsPage.tsx',
+      'pages/TreasuryPage.tsx',
+      'pages/DocumentsPage.tsx',
+      'pages/SettingsPage.tsx',
+      'features/people/PeoplePanel.tsx',
+    ]) {
+      expect(withHints.some((file) => relative(file).includes(module))).toBe(true);
+    }
+  });
+
+  it('names every hint for what it explains rather than repeating the heading', () => {
+    const unnamed: string[] = [];
+    for (const file of tsxFiles) {
+      if (file.endsWith('.test.tsx')) continue;
+      for (const hint of readFileSync(file, 'utf8').matchAll(/<InfoHint label="([^"]+)"/g)) {
+        const label = hint[1] ?? '';
+        // The button's accessible name has to say what pressing it reveals. Repeating the heading
+        // makes a screen reader announce the same words twice with no added meaning.
+        if (!/^(Cómo|Qué|Más información sobre) /.test(label)) {
+          unnamed.push(`${relative(file)} :: ${label}`);
+        }
+      }
+    }
+    expect(unnamed).toEqual([]);
+  });
+
   it('keeps the control contract the whole app now depends on', () => {
     expect(contract).toContain('--ux-control-height: 48px');
     expect(contract).toContain('min-height: var(--ux-control-height)');
