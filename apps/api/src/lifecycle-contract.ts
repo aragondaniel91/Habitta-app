@@ -146,7 +146,7 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     create: '/:id/recurring-charge-plans',
     classification: 'configuration',
     correction: '/:id/recurring-charge-plans/:planId',
-    note: 'HAB-352 edits the plan; HAB-359 still owes deactivation.',
+    note: 'HAB-352 edits the plan; HAB-359 stops it without deleting published periods.',
   },
   {
     module: 'fees',

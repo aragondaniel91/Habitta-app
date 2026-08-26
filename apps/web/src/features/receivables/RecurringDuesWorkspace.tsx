@@ -221,6 +221,7 @@ export function RecurringDuesWorkspace({
   const [scopeView, setScopeView] = useState<'catalog' | 'form'>('catalog');
   const [editingScopeId, setEditingScopeId] = useState('');
   const [runToPost, setRunToPost] = useState<RecurringRun | null>(null);
+  const [planToStop, setPlanToStop] = useState<RecurringPlan | null>(null);
   const [expandedRunId, setExpandedRunId] = useState('');
   const [scopeForm, setScopeForm] = useState<ScopeForm>(initialScopeForm);
   const [planForm, setPlanForm] = useState<PlanForm>(() => initialPlanForm(concepts, []));
@@ -277,6 +278,14 @@ export function RecurringDuesWorkspace({
   );
   const planValidation = useMemo(() => validateRecurringPlanDraft(planForm), [planForm]);
   const activePlans = plans.filter((plan) => plan.status === 'active');
+  // A stopped plan still owns published history, so it stays listed instead of vanishing.
+  const visiblePlans = [...plans].sort((left, right) =>
+    left.status === right.status
+      ? left.name.localeCompare(right.name)
+      : left.status === 'active'
+        ? -1
+        : 1,
+  );
   const pendingRuns = runs.filter((run) => run.status === 'pending_review');
   const scheduledRuns = runs.filter((run) => run.status === 'scheduled');
   const recentRuns = runs
@@ -497,6 +506,30 @@ export function RecurringDuesWorkspace({
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo programar el período.',
+      );
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const setPlanStatus = async (plan: RecurringPlan, isActive: boolean) => {
+    setBusyId(`status:${plan.id}`);
+    setError('');
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/recurring-charge-plans/${plan.id}/status`,
+        session,
+        { method: 'PATCH', body: JSON.stringify({ isActive }) },
+      );
+      setPlanToStop(null);
+      await load();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : isActive
+            ? 'No se pudo reactivar la cuota.'
+            : 'No se pudo detener la cuota.',
       );
     } finally {
       setBusyId('');
@@ -738,16 +771,19 @@ export function RecurringDuesWorkspace({
                 </p>
               </div>
             </div>
-            {activePlans.length ? (
+            {visiblePlans.length ? (
               <div className="recurring-dues-plan-grid">
-                {activePlans.map((plan) => {
+                {visiblePlans.map((plan) => {
                   const scope = scopeById.get(plan.financial_scope_id);
                   const hasPendingReview = pendingRuns.some((run) => run.plan_id === plan.id);
+                  const stopped = plan.status !== 'active';
                   return (
-                    <article key={plan.id}>
+                    <article data-stopped={stopped || undefined} key={plan.id}>
                       <div>
                         <strong>{plan.name}</strong>
-                        <Badge tone="success">Activo</Badge>
+                        <Badge tone={stopped ? 'neutral' : 'success'}>
+                          {stopped ? 'Detenida' : 'Activo'}
+                        </Badge>
                       </div>
                       <p>
                         {scope?.name ?? 'Ámbito no disponible'} ·{' '}
@@ -759,28 +795,56 @@ export function RecurringDuesWorkspace({
                       {canManage ? (
                         <div className="recurring-dues-plan-actions">
                           <Button
-                            disabled={hasPendingReview}
+                            disabled={hasPendingReview || stopped}
                             onClick={() => openEditPlanDrawer(plan)}
                             size="sm"
                             title={
-                              hasPendingReview
-                                ? 'Primero resuelve la cuota pendiente de revisión.'
-                                : 'Editar configuración de la cuota'
+                              stopped
+                                ? 'Reactiva la cuota para poder editar su configuración.'
+                                : hasPendingReview
+                                  ? 'Primero resuelve la cuota pendiente de revisión.'
+                                  : 'Editar configuración de la cuota'
                             }
                             variant="secondary"
                           >
                             Editar
                           </Button>
-                          <Button
-                            disabled={busyId === `schedule:${plan.id}`}
-                            onClick={() => void scheduleNext(plan)}
-                            size="sm"
-                            variant="ghost"
-                          >
-                            {busyId === `schedule:${plan.id}`
-                              ? 'Programando…'
-                              : 'Programar siguiente período'}
-                          </Button>
+                          {stopped ? null : (
+                            <Button
+                              disabled={busyId === `schedule:${plan.id}`}
+                              onClick={() => void scheduleNext(plan)}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              {busyId === `schedule:${plan.id}`
+                                ? 'Programando…'
+                                : 'Programar siguiente período'}
+                            </Button>
+                          )}
+                          {stopped ? (
+                            <Button
+                              disabled={busyId === `status:${plan.id}`}
+                              onClick={() => void setPlanStatus(plan, true)}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              {busyId === `status:${plan.id}` ? 'Reactivando…' : 'Reactivar'}
+                            </Button>
+                          ) : (
+                            <Button
+                              disabled={hasPendingReview || busyId === `status:${plan.id}`}
+                              onClick={() => setPlanToStop(plan)}
+                              size="sm"
+                              title={
+                                hasPendingReview
+                                  ? 'Primero resuelve la cuota pendiente de revisión.'
+                                  : 'Detener la cuota sin borrar lo ya publicado'
+                              }
+                              variant="ghost"
+                            >
+                              Detener
+                            </Button>
+                          )}
                         </div>
                       ) : null}
                     </article>
@@ -828,6 +892,23 @@ export function RecurringDuesWorkspace({
           onConfirm={() => void postRun(runToPost)}
           title="Aprobar y publicar cuota"
         />
+      ) : null}
+
+      {planToStop ? (
+        <ConfirmDialog
+          busy={busyId === `status:${planToStop.id}`}
+          busyLabel="Deteniendo…"
+          confirmLabel="Detener cuota"
+          description={`"${planToStop.name}" dejará de ofrecer nuevos períodos. Los períodos ya publicados conservan sus cargos, recibos y asientos.`}
+          onCancel={() => setPlanToStop(null)}
+          onConfirm={() => void setPlanStatus(planToStop, false)}
+          title="Detener cuota ordinaria"
+        >
+          <p role="note">
+            Los períodos programados que todavía no se han preparado se cancelan junto con la cuota.
+            Puedes reactivarla más adelante.
+          </p>
+        </ConfirmDialog>
       ) : null}
 
       {scopeDrawerOpen && scopeView === 'catalog' ? (

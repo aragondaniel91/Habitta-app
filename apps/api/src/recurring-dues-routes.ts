@@ -113,6 +113,7 @@ const planInputSchema = z
       });
   });
 
+const planStatusSchema = z.object({ isActive: z.boolean() });
 const runInputSchema = z.object({ period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) });
 const runQuerySchema = z.object({
   status: z.enum(['scheduled', 'pending_review', 'posted', 'cancelled']).optional(),
@@ -215,6 +216,11 @@ const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
     error: 'recurring_plan_scheduled_period_conflict',
     publicMessage:
       'La nueva vigencia dejaría una cuota programada fuera del plan. Ajusta las fechas antes de guardar.',
+  },
+  'invalid recurring plan status': {
+    status: 422,
+    error: 'recurring_plan_status_invalid',
+    publicMessage: 'Indica si la cuota recurrente queda activa o detenida.',
   },
   'invalid recurring period': {
     status: 422,
@@ -435,6 +441,26 @@ recurringDuesRoutes.patch('/:id/recurring-charge-plans/:planId', async (c) => {
     plan_issue_day: parsed.issueDay,
     plan_due_day: parsed.dueDay,
     plan_ends_on: parsed.endsOn ?? null,
+  });
+  return rpcResult(c, response, 200);
+});
+
+recurringDuesRoutes.patch('/:id/recurring-charge-plans/:planId/status', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const planId = uuidSchema.parse(c.req.param('planId'));
+  const parsed = await parseBody(c, planStatusSchema);
+  if (parsed instanceof Response) return parsed;
+  if (
+    !(await scopedExists(
+      c,
+      `recurring_charge_plans?id=eq.${planId}&condominium_id=eq.${condominiumId}&select=id`,
+    ))
+  )
+    return c.json({ error: 'Recurring plan not found in condominium' }, 404);
+  const response = await rpc(c, 'set_recurring_charge_plan_status', {
+    target: condominiumId,
+    target_plan: planId,
+    plan_active: parsed.isActive,
   });
   return rpcResult(c, response, 200);
 });

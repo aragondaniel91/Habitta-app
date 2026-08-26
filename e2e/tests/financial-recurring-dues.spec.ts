@@ -378,4 +378,119 @@ test.describe('Cuotas ordinarias recurrentes autenticadas', () => {
     );
     expect(archiveBlocked.message).toBe('active recurring plan requires financial scope');
   });
+  test('detiene una cuota recurrente sin borrar lo ya publicado', async ({ request }, testInfo) => {
+    const admin = await authenticate(request);
+    const runKey = `stop-${testInfo.workerIndex}-${testInfo.retry}`;
+
+    const scope = await rpc<FinancialScope>(request, admin.access_token, 'create_financial_scope', {
+      target: ids.condominium,
+      scope_code: `e2e-stop-${runKey}`,
+      scope_name: `E2E detener ${runKey}`,
+      scope_kind: 'custom',
+      target_building: null,
+      target_units: [ids.unitA101],
+    });
+
+    const plan = await rpc<RecurringPlan>(
+      request,
+      admin.access_token,
+      'create_recurring_charge_plan',
+      {
+        target: ids.condominium,
+        target_concept: ids.chargeConcept,
+        target_scope: scope.id,
+        plan_name: `Cuota detenible E2E ${runKey}`,
+        plan_distribution: 'fixed_per_unit',
+        plan_amount: '25.00',
+        plan_currency: 'USD',
+        plan_starts_on: '2026-09-01',
+        plan_issue_day: 1,
+        plan_due_day: 10,
+        plan_ends_on: null,
+      },
+    );
+
+    const [scheduledA] = await rows<RecurringRun>(
+      request,
+      admin.access_token,
+      `recurring_charge_runs?plan_id=eq.${plan.id}&period=eq.2026-09&select=id,status,period,due_date,total_amount,distribution_snapshot,charge_batch_id`,
+    );
+    await rpc<RecurringRun>(request, admin.access_token, 'prepare_recurring_charge_run', {
+      target_run: scheduledA!.id,
+    });
+
+    // A reviewed period must not be stopped from underneath the reviewer.
+    const blocked = await rpcExpectingFailure(
+      request,
+      admin.access_token,
+      'set_recurring_charge_plan_status',
+      { target: ids.condominium, target_plan: plan.id, plan_active: false },
+    );
+    expect(blocked.message).toBe('recurring plan has pending review run');
+
+    const postedA = await rpc<RecurringRun>(
+      request,
+      admin.access_token,
+      'post_recurring_charge_run',
+      { target_run: scheduledA!.id },
+    );
+    expect(Number(postedA.total_amount)).toBe(25);
+
+    await rpc<RecurringRun>(request, admin.access_token, 'schedule_recurring_charge_run', {
+      target_plan: plan.id,
+      target_period: '2026-10',
+    });
+
+    await rpc<RecurringPlan>(request, admin.access_token, 'set_recurring_charge_plan_status', {
+      target: ids.condominium,
+      target_plan: plan.id,
+      plan_active: false,
+    });
+
+    const runsAfterStop = await rows<RecurringRun>(
+      request,
+      admin.access_token,
+      `recurring_charge_runs?plan_id=eq.${plan.id}&select=id,status,period,due_date,total_amount,distribution_snapshot,charge_batch_id&order=period.asc`,
+    );
+    expect(runsAfterStop.map((run) => [run.period, run.status])).toEqual([
+      ['2026-09', 'posted'],
+      ['2026-10', 'cancelled'],
+    ]);
+    expect(Number(runsAfterStop[0]!.total_amount)).toBe(25);
+    expect(runsAfterStop[0]!.charge_batch_id).toBe(postedA.charge_batch_id);
+
+    const receivablesA = await rows<{ id: string; original_amount: string }>(
+      request,
+      admin.access_token,
+      `receivable_items?charge_batch_id=eq.${postedA.charge_batch_id}&select=id,original_amount`,
+    );
+    expect(receivablesA.reduce((sum, item) => sum + Number(item.original_amount), 0)).toBe(25);
+
+    const scheduleAfterStop = await rpcExpectingFailure(
+      request,
+      admin.access_token,
+      'schedule_recurring_charge_run',
+      { target_plan: plan.id, target_period: '2026-11' },
+    );
+    expect(scheduleAfterStop.message).toBe('period outside active plan');
+
+    // With no active plan left, HAB-355's archive guard finally lets the scope go.
+    await rpc<FinancialScope>(request, admin.access_token, 'update_financial_scope', {
+      target: ids.condominium,
+      target_scope: scope.id,
+      scope_code: `e2e-stop-${runKey}`,
+      scope_name: `E2E detener ${runKey}`,
+      scope_kind: 'custom',
+      target_building: null,
+      target_units: [ids.unitA101],
+      scope_active: false,
+    });
+
+    const [archived] = await rows<{ is_active: boolean }>(
+      request,
+      admin.access_token,
+      `financial_scopes?id=eq.${scope.id}&select=is_active`,
+    );
+    expect(archived!.is_active).toBe(false);
+  });
 });

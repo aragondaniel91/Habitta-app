@@ -202,6 +202,25 @@ const patchScope = (body: unknown) =>
     } as never,
   );
 
+const PLAN = '00000000-0000-4000-8000-000000000359';
+
+const patchPlanStatus = (body: unknown) =>
+  securityApp.fetch(
+    new Request(
+      `http://api.test/v1/condominiums/${CONDOMINIUM}/recurring-charge-plans/${PLAN}/status`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer token', 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    ),
+    {
+      SUPABASE_URL: 'https://supabase.test',
+      SUPABASE_ANON_KEY: 'anon',
+      APP_ENV: 'production',
+    } as never,
+  );
+
 const validScopeBody = {
   code: 'general',
   name: 'Condominio general',
@@ -318,5 +337,73 @@ describe('HAB-355 financial scope edit API contract', () => {
 
     const buildingWithoutId = await patchScope({ ...validScopeBody, kind: 'building' });
     expect(buildingWithoutId.status).toBe(400);
+  });
+});
+
+describe('HAB-359 recurring plan status API contract', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('exposes a guarded status transition that only reaches the protected RPC', () => {
+    expect(source).toContain("patch('/:id/recurring-charge-plans/:planId/status'");
+    expect(source).toContain("rpc(c, 'set_recurring_charge_plan_status'");
+    expect(source).toContain('plan_active: parsed.isActive');
+    expect(source).toContain(
+      'recurring_charge_plans?id=eq.${planId}&condominium_id=eq.${condominiumId}&select=id',
+    );
+    expect(source).not.toMatch(
+      /rest\(c,\s*`?recurring_charge_plans[^)]*\{\s*method:\s*'(POST|PUT|PATCH|DELETE)'/s,
+    );
+  });
+
+  it('requires an explicit boolean instead of guessing the transition', async () => {
+    withUpstream(() => new Response(JSON.stringify([{ id: PLAN }]), { status: 200 }));
+
+    const missing = await patchPlanStatus({});
+    expect(missing.status).toBe(400);
+
+    const wrongType = await patchPlanStatus({ isActive: 'yes' });
+    expect(wrongType.status).toBe(400);
+  });
+
+  it('rejects a plan from another condominium before calling the RPC', async () => {
+    const calls: string[] = [];
+    withUpstream((url) => {
+      calls.push(url);
+      return new Response('[]', { status: 200 });
+    });
+
+    const response = await patchPlanStatus({ isActive: false });
+
+    expect(response.status).toBe(404);
+    expect(calls.some((url) => url.includes('rpc/set_recurring_charge_plan_status'))).toBe(false);
+  });
+
+  it('explains every stop conflict without leaking database internals', async () => {
+    const cases = [
+      ['recurring plan has pending review run', 409, 'recurring_plan_pending_review'],
+      ['recurring plan unavailable', 409, 'recurring_plan_unavailable'],
+      ['concept or financial scope unavailable', 409, 'recurring_plan_dependency_unavailable'],
+      ['invalid recurring plan status', 422, 'recurring_plan_status_invalid'],
+    ] as const;
+
+    for (const [message, status, error] of cases) {
+      vi.restoreAllMocks();
+      withUpstream((url) =>
+        url.includes('rpc/set_recurring_charge_plan_status')
+          ? new Response(JSON.stringify({ code: 'P0001', message, details: null, hint: null }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          : new Response(JSON.stringify([{ id: PLAN }]), { status: 200 }),
+      );
+
+      const response = await patchPlanStatus({ isActive: false });
+      const payload = (await response.json()) as { error: string; publicMessage?: string };
+
+      expect(response.status).toBe(status);
+      expect(payload.error).toBe(error);
+      expect(payload.publicMessage).toBeTypeOf('string');
+      expect(payload.publicMessage).not.toMatch(/duplicate key|constraint|P0001|pg_/i);
+    }
   });
 });
