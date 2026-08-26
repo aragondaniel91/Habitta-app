@@ -294,3 +294,19 @@
   font-size: 0.76rem;
   font-weight: 600;
 }
+
+.treasury-reversal-reason {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.treasury-reversal-reason span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.treasury-reversal-reason textarea {
+  min-height: 84px;
+  resize: vertical;
+}

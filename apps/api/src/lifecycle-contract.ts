@@ -199,9 +199,8 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     entity: 'treasury transfer',
     create: '/:id/treasury/transfers',
     classification: 'history',
-    correction: null,
-    knownGap: '#360',
-    note: 'Movements can be reversed but the transfer that produced them cannot.',
+    correction: '/:id/treasury/transfers/:transferId/reverse',
+    note: 'HAB-360: compensates both legs in one statement, so the two accounts can never drift apart.',
   },
   {
     module: 'treasury',
@@ -214,10 +213,9 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     module: 'treasury',
     entity: 'overdraft authorization',
     create: '/:id/treasury/overdraft-authorizations',
-    classification: 'history',
+    classification: 'derived',
     correction: null,
-    knownGap: '#360',
-    note: 'An authorization granted by mistake cannot be revoked.',
+    note: 'Not a gap: the authorization is a token matched at movement time by request key, amount and author. Unused it authorizes nothing; once used, the correction is reversing the movement it allowed.',
   },
 
   // ---------------------------------------------------------------- financial policy
@@ -410,5 +408,13 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
   },
 ];
 
-/** Entities an administrator can create today with no safe way to correct them. */
-export const lifecycleGaps = () => LIFECYCLE_CONTRACT.filter((entry) => entry.correction === null);
+/**
+ * Entities an administrator can create today with no safe way to correct them.
+ *
+ * `derived` entries are excluded on purpose: they are produced by the system from other data, so
+ * there is nothing to correct directly and demanding an issue for them would be noise.
+ */
+export const lifecycleGaps = () =>
+  LIFECYCLE_CONTRACT.filter(
+    (entry) => entry.correction === null && entry.classification !== 'derived',
+  );
