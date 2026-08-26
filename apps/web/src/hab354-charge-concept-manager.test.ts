@@ -6,7 +6,9 @@ const source = (relative: string) => readFileSync(new URL(relative, import.meta.
 const manager = source('./features/receivables/ChargeConceptManagerDrawer.tsx');
 const wrapper = source('./pages/ReceivablesDrawers.tsx');
 const receivables = source('./lib/receivables.ts');
-const migration = source('../../../supabase/migrations/20260826001000_hab354_charge_concept_edit.sql');
+const migration = source(
+  '../../../supabase/migrations/20260826001000_hab354_charge_concept_edit.sql',
+);
 
 describe('HAB-354 charge concept lifecycle contract', () => {
   it('routes the concept workflow to a reusable catalog with visible editing', () => {
@@ -28,7 +30,7 @@ describe('HAB-354 charge concept lifecycle contract', () => {
 
   it('prefills editing safely when PostgREST returns numeric defaults as JSON numbers', () => {
     expect(receivables).toContain('default_amount?: string | number;');
-    expect(manager).toContain("const amountValue = (value: string | number | undefined)");
+    expect(manager).toContain('const amountValue = (value: string | number | undefined)');
     expect(manager).toContain('defaultValue={amountValue(concept?.default_amount)}');
     expect(manager).toContain("defaultValue={concept?.default_currency_code ?? ''}");
   });
