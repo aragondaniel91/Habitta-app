@@ -123,7 +123,7 @@
 .resident-dashboard__section-heading h2,
 .resident-dashboard__quick-access h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--ux-heading-section);
 }
 
 .resident-dashboard__list,

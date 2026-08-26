@@ -133,7 +133,7 @@
 
 .community-section-heading h2 {
   overflow-wrap: anywhere;
-  font-size: 1.05rem;
+  font-size: var(--ux-heading-section);
 }
 
 .community-section-heading p {

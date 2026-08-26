@@ -284,7 +284,7 @@
 .structure-building-card h2 {
   margin: 20px 0 6px;
   color: #0d1b2a;
-  font-size: 20px;
+  font-size: var(--ux-heading-section);
   letter-spacing: -0.03em;
 }
 
@@ -347,7 +347,7 @@
 .structure-dialog__header h2 {
   margin: 5px 0 0;
   color: #0d1b2a;
-  font-size: 24px;
+  font-size: var(--ux-heading-drawer);
   letter-spacing: -0.035em;
 }
 

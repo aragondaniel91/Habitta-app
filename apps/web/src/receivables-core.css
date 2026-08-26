@@ -224,7 +224,7 @@
 .receivables-section-heading h2,
 .receivables-workspace__heading h2 {
   margin-top: 0.18rem;
-  font-size: 1.02rem;
+  font-size: var(--ux-heading-section);
 }
 
 .receivables-aging-bar {

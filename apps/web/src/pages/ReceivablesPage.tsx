@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowRightIcon, CheckCircleIcon, FeesIcon, ReportsIcon } from '../components/icons';
 import { FinancialPagination } from '../components/FinancialPagination';
-import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, InfoHint, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { canManage, useCondominiumRoles } from '../lib/roles';
@@ -388,8 +388,12 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
 
       <div className="receivables-currency-row">
         <div>
-          <strong>Vista financiera</strong>
-          <span>Nunca se combinan valores de monedas diferentes.</span>
+          <strong>
+            Vista financiera
+            <InfoHint label="Cómo se agrupan las monedas">
+              Nunca se combinan valores de monedas diferentes.
+            </InfoHint>
+          </strong>
         </div>
         {currencies.length ? (
           <CurrencyTabs

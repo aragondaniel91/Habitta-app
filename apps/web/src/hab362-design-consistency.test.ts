@@ -77,6 +77,39 @@ describe('HAB-362 one design standard across every module', () => {
     expect(passwordCss).toContain('padding-right: 5.25rem');
   });
 
+  it('gives every heading role one size across the modules', () => {
+    // Before this, the same visual role drifted per module: a section title ran from 1.02rem to
+    // 20px, and a drawer title from 1.08rem to 24px. Roles stay distinct; sizes stop drifting.
+    for (const token of ['--ux-heading-section', '--ux-heading-sub', '--ux-heading-drawer']) {
+      expect(contract).toContain(`${token}:`);
+    }
+
+    const sheets = readdirSync(srcDir).filter((name) => name.endsWith('.css'));
+    const drifting: string[] = [];
+    for (const name of sheets) {
+      const css = readFileSync(join(srcDir, name), 'utf8');
+      for (const rule of css.matchAll(/([^{}]*?)\{([^}]*)\}/g)) {
+        const selector = (rule[1] ?? '').replace(/\s+/g, ' ').trim();
+        // Section, card and drawer titles. Page and overview titles keep their own larger scale.
+        const isHeading = /(^|[\s>])h[23]\s*$/.test((selector.split(',')[0] ?? '').trim());
+        const isTitleRole =
+          /(section-heading|drawer__header|drawer__heading|card__title-row|-card|__section|section-card__header)/.test(
+            selector,
+          );
+        // The public access and onboarding screens are single-purpose pages whose card *is* the
+        // page. Their title is a hero, already consistent across those screens, and shrinking it
+        // to a section size would be wrong rather than consistent.
+        const isPublicHero = /(access-card|access-confirmation|onboarding-card)/.test(selector);
+        if (!isHeading || !isTitleRole || isPublicHero) continue;
+        const value = /font-size:\s*([^;]+)/.exec(rule[2] ?? '')?.[1];
+        if (!value) continue;
+        if (!value.includes('var(--ux-heading-'))
+          drifting.push(`${name} :: ${selector} :: ${value.trim()}`);
+      }
+    }
+    expect(drifting).toEqual([]);
+  });
+
   it('keeps the control contract the whole app now depends on', () => {
     expect(contract).toContain('--ux-control-height: 48px');
     expect(contract).toContain('min-height: var(--ux-control-height)');

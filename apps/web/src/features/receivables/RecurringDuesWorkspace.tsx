@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../../components/Dialog';
 import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid, FormSection } from '../../components/FormLayout';
-import { Badge, Button, EmptyState, Field, Select, Surface } from '../../components/ui';
+import { Badge, Button, EmptyState, Field, InfoHint, Select, Surface } from '../../components/ui';
 import { FeesIcon } from '../../components/icons';
 import { apiRequest } from '../../lib/api';
 import type { ChargeConcept } from '../../lib/receivables';
@@ -585,11 +585,13 @@ export function RecurringDuesWorkspace({
       <div className="recurring-dues-heading">
         <div>
           <span className="receivables-kicker">Operación mensual</span>
-          <h2>Cuotas ordinarias recurrentes</h2>
-          <p>
-            Configura la cuota una vez. Cada período se programa, se congela para revisión y solo
-            entra en cartera después de una aprobación explícita.
-          </p>
+          <h2>
+            Cuotas ordinarias recurrentes
+            <InfoHint label="Cómo funcionan las cuotas ordinarias recurrentes">
+              Configura la cuota una vez. Cada período se programa, se congela para revisión y solo
+              entra en cartera después de una aprobación explícita.
+            </InfoHint>
+          </h2>
         </div>
         {canManage ? (
           <div className="recurring-dues-actions">
@@ -724,10 +726,13 @@ export function RecurringDuesWorkspace({
             <section className="recurring-dues-section" aria-label="Cuotas programadas">
               <div className="recurring-dues-section__title">
                 <div>
-                  <h3>Próximas cuotas programadas</h3>
-                  <p>
-                    Preparar congela las unidades y alícuotas del período para que puedan revisarse.
-                  </p>
+                  <h3>
+                    Próximas cuotas programadas
+                    <InfoHint label="Qué hace preparar un período">
+                      Preparar congela las unidades y alícuotas del período para que puedan
+                      revisarse.
+                    </InfoHint>
+                  </h3>
                 </div>
               </div>
               <div className="recurring-dues-compact-list">
@@ -764,11 +769,13 @@ export function RecurringDuesWorkspace({
           <section className="recurring-dues-section" aria-label="Planes recurrentes">
             <div className="recurring-dues-section__title">
               <div>
-                <h3>Planes configurados</h3>
-                <p>
-                  El monto significa presupuesto total cuando se distribuye por alícuota y monto por
-                  unidad cuando es fijo.
-                </p>
+                <h3>
+                  Planes configurados
+                  <InfoHint label="Qué significa el monto de un plan">
+                    El monto significa presupuesto total cuando se distribuye por alícuota y monto
+                    por unidad cuando es fijo.
+                  </InfoHint>
+                </h3>
               </div>
             </div>
             {visiblePlans.length ? (

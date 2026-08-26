@@ -461,7 +461,7 @@
   text-transform: uppercase;
 }
 .requests-drawer__header h2 {
-  font-size: 1.18rem;
+  font-size: var(--ux-heading-drawer);
   letter-spacing: -0.025em;
   margin: 0.2rem 0 0;
 }

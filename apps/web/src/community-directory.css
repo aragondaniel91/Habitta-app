@@ -473,7 +473,7 @@
 .directory-drawer__heading h2 {
   margin: 0.15rem 0 0.15rem;
   color: var(--text-strong);
-  font-size: 1.35rem;
+  font-size: var(--ux-heading-drawer);
 }
 
 .directory-drawer__heading p {
@@ -606,7 +606,7 @@
 .directory-subheading h3 {
   margin: 0.15rem 0 0;
   color: var(--text-strong);
-  font-size: 0.92rem;
+  font-size: var(--ux-heading-sub);
 }
 
 .directory-relation-list {

@@ -15,7 +15,7 @@
 .admin-onboarding-section-heading h3 {
   margin: 0;
   color: var(--text-strong);
-  font-size: 1rem;
+  font-size: var(--ux-heading-sub);
 }
 
 .admin-onboarding-section-heading p {
