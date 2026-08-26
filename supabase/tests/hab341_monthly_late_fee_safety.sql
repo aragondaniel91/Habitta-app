@@ -1,5 +1,5 @@
 begin;
-select plan(9);
+select plan(12);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('73410000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@hab341.test','x',now(),now());
@@ -10,8 +10,12 @@ insert into public.organizations(id,name,created_by) values
 insert into public.condominiums(id,organization_id,name,created_by) values
 ('73412000-0000-0000-0000-000000000001','73411000-0000-0000-0000-000000000001','HAB341 Condo','73410000-0000-0000-0000-000000000001');
 
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
+('73410000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','board@hab341.test','x',now(),now());
+
 insert into public.condominium_memberships(condominium_id,user_id,role) values
-('73412000-0000-0000-0000-000000000001','73410000-0000-0000-0000-000000000001','condominium_admin');
+('73412000-0000-0000-0000-000000000001','73410000-0000-0000-0000-000000000001','condominium_admin'),
+('73412000-0000-0000-0000-000000000001','73410000-0000-0000-0000-000000000002','board_member');
 
 insert into public.units(id,condominium_id,code,type,created_by) values
 ('73413000-0000-0000-0000-000000000001','73412000-0000-0000-0000-000000000001','A-1','apartment','73410000-0000-0000-0000-000000000001');
@@ -81,6 +85,31 @@ select is(
   2::bigint,
   'only two monthly late-fee items exist after August and September'
 );
+
+-- Guards the API translates for the administrator. HAB-373 mapped both; prove the schema raises
+-- them rather than trusting the map to still match.
+
+select throws_ok(
+  $$select public.apply_late_fees('73412000-0000-0000-0000-000000000001',null)$$,
+  'P0001',
+  'late fee generation date required',
+  'a run without a date is refused before anything is written'
+);
+
+select set_config('request.jwt.claim.sub','73410000-0000-0000-0000-000000000002',true);
+select throws_ok(
+  $$select public.apply_late_fees('73412000-0000-0000-0000-000000000001','2026-09-15')$$,
+  'P0001',
+  'late fee generation denied',
+  'a board member cannot raise late fees'
+);
+select throws_ok(
+  $$select public.preview_late_fees('73412000-0000-0000-0000-000000000001','2026-09-15')$$,
+  'P0001',
+  'late fee generation denied',
+  'nor preview them'
+);
+select set_config('request.jwt.claim.sub','73410000-0000-0000-0000-000000000001',true);
 
 select * from finish();
 rollback;
