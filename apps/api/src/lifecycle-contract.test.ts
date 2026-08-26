@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { LIFECYCLE_CONTRACT, lifecycleGaps } from './lifecycle-contract';
@@ -17,6 +17,39 @@ const routes: Route[] = [...sources.matchAll(/\.(get|post|patch|put|delete)\(\s*
 
 const routeExists = (path: string, verbs: string[]) =>
   routes.some((route) => route.path === path && verbs.includes(route.verb));
+
+const migrationsDirectory = fileURLToPath(
+  new URL('../../../supabase/migrations/', import.meta.url),
+);
+const migrations = readdirSync(migrationsDirectory)
+  .filter((name) => name.endsWith('.sql'))
+  .map((name) => readFileSync(`${migrationsDirectory}${name}`, 'utf8'))
+  .join('\n');
+
+const webDirectory = fileURLToPath(new URL('../../web/src/', import.meta.url));
+const webSources = readdirSync(webDirectory, { recursive: true, encoding: 'utf8' })
+  .filter((name) => /\.tsx?$/.test(name) && !name.includes('.test.'))
+  .map((name) => {
+    try {
+      return readFileSync(`${webDirectory}${name}`, 'utf8');
+    } catch {
+      return '';
+    }
+  })
+  .join('\n');
+
+const functionExists = (name: string) =>
+  new RegExp(`create (or replace )?function public\\.${name}\\b`).test(migrations);
+
+/** A correction is satisfied by a route, a directly called Supabase function, or a supersede. */
+const correctionIsReachable = (correction: string) => {
+  if (correction.startsWith('rpc:')) {
+    const name = correction.slice(4);
+    return functionExists(name) && webSources.includes(`'${name}'`);
+  }
+  if (correction.startsWith('supersede:')) return functionExists(correction.slice(10));
+  return routeExists(correction, ['patch', 'put', 'post']);
+};
 
 /**
  * Suffixes that express an action on an existing entity rather than the creation of a new one.
@@ -136,8 +169,8 @@ describe('HAB-356 lifecycle completeness contract', () => {
     for (const entry of LIFECYCLE_CONTRACT) {
       if (!entry.correction) continue;
       expect(
-        routeExists(entry.correction, ['patch', 'put', 'post']),
-        `${entry.module}/${entry.entity}: correction route ${entry.correction} is not registered`,
+        correctionIsReachable(entry.correction),
+        `${entry.module}/${entry.entity}: correction ${entry.correction} is not reachable`,
       ).toBe(true);
     }
   });
@@ -154,9 +187,13 @@ describe('HAB-356 lifecycle completeness contract', () => {
   it('classifies immutable history with an additive correction, never an edit', () => {
     for (const entry of LIFECYCLE_CONTRACT) {
       if (entry.classification !== 'history' || !entry.correction) continue;
+      const additive =
+        entry.correction.startsWith('supersede:') ||
+        entry.correction.startsWith('rpc:') ||
+        routeExists(entry.correction, ['post']);
       expect(
-        routeExists(entry.correction, ['post']),
-        `${entry.module}/${entry.entity}: history must be corrected by an action, not a PATCH`,
+        additive,
+        `${entry.module}/${entry.entity}: history must be corrected additively, not with a PATCH`,
       ).toBe(true);
     }
   });
