@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import { ChargeConceptManagerDrawer } from '../features/receivables/ChargeConceptManagerDrawer';
 import { FinancialAdministrationDrawer } from '../features/receivables/FinancialAdministrationDrawer';
 import { ReceivablesDrawerHost as ReceivablesDrawerHostImpl } from './ReceivablesDrawersImpl';
 
@@ -25,6 +26,18 @@ export function ReceivablesDrawerHost({
         onClose={onClose}
         session={session}
         units={units}
+      />
+    );
+  }
+
+  if (mode === 'concept') {
+    return (
+      <ChargeConceptManagerDrawer
+        concepts={props.concepts}
+        condominiumId={condominiumId}
+        onClose={onClose}
+        onRefresh={props.onRefresh}
+        session={session}
       />
     );
   }
