@@ -9,7 +9,7 @@ import {
   ReportsIcon,
   UnitsIcon,
 } from '../components/icons';
-import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, InfoHint, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import {
@@ -524,8 +524,12 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
           <div className="reports-section-heading">
             <div>
               <span className="reports-kicker">Evolución mensual</span>
-              <h2>Cargos vs cobros</h2>
-              <p>Compara obligaciones emitidas con pagos aprobados durante el período.</p>
+              <h2>
+                Cargos vs cobros
+                <InfoHint label="Más información sobre cargos vs cobros">
+                  Compara obligaciones emitidas con pagos aprobados durante el período.
+                </InfoHint>
+              </h2>
             </div>
             <div className="reports-panel-actions">
               <Badge tone="info">{selectedCurrency}</Badge>
@@ -559,8 +563,12 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
           <div className="reports-section-heading">
             <div>
               <span className="reports-kicker">Riesgo de cartera</span>
-              <h2>Antigüedad de saldos</h2>
-              <p>Distribución de lo pendiente según días de atraso.</p>
+              <h2>
+                Antigüedad de saldos
+                <InfoHint label="Más información sobre antigüedad de saldos">
+                  Distribución de lo pendiente según días de atraso.
+                </InfoHint>
+              </h2>
             </div>
             <Button
               disabled={!agingBuckets.length}
@@ -606,8 +614,12 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
           <div className="reports-section-heading">
             <div>
               <span className="reports-kicker">Flujo de pagos</span>
-              <h2>Estados del período</h2>
-              <p>Volumen y monto por etapa de validación.</p>
+              <h2>
+                Estados del período
+                <InfoHint label="Más información sobre estados del período">
+                  Volumen y monto por etapa de validación.
+                </InfoHint>
+              </h2>
             </div>
             <Button
               disabled={!report.statuses.length}
@@ -679,8 +691,12 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
         <div className="reports-section-heading reports-section-heading--units">
           <div>
             <span className="reports-kicker">Detalle por unidad</span>
-            <h2>Desempeño de cobranza</h2>
-            <p>Cargos y cobros del período, con cartera pendiente y vencida actual.</p>
+            <h2>
+              Desempeño de cobranza
+              <InfoHint label="Más información sobre desempeño de cobranza">
+                Cargos y cobros del período, con cartera pendiente y vencida actual.
+              </InfoHint>
+            </h2>
           </div>
           <Button onClick={exportCsv} size="sm" variant="secondary">
             Descargar detalle

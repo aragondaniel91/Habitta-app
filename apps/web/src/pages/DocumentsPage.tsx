@@ -5,7 +5,16 @@ import { ConfirmDialog } from '../components/Dialog';
 import { FormActions, FormGrid } from '../components/FormLayout';
 import { ArrowRightIcon, CheckCircleIcon, CommunityIcon, ReportsIcon } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
-import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  InfoHint,
+  Select,
+  Skeleton,
+  Surface,
+} from '../components/ui';
 import { useCondominiumRoles } from '../lib/roles';
 import type { CondominiumRole } from '../lib/roles';
 import {
@@ -1118,8 +1127,12 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                 <section className="documents-detail-section">
                   <div className="documents-subheading">
                     <div>
-                      <h3>Versiones</h3>
-                      <p>El historial es inmutable; una corrección crea una versión nueva.</p>
+                      <h3>
+                        Versiones
+                        <InfoHint label="Más información sobre versiones">
+                          El historial es inmutable; una corrección crea una versión nueva.
+                        </InfoHint>
+                      </h3>
                     </div>
                     <Badge tone="neutral">{versions.length}</Badge>
                   </div>
@@ -1185,8 +1198,12 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
                 <section className="documents-detail-section">
                   <div className="documents-subheading">
                     <div>
-                      <h3>Registros relacionados</h3>
-                      <p>Conecta el archivo con el contexto operativo que lo originó.</p>
+                      <h3>
+                        Registros relacionados
+                        <InfoHint label="Más información sobre registros relacionados">
+                          Conecta el archivo con el contexto operativo que lo originó.
+                        </InfoHint>
+                      </h3>
                     </div>
                     <Badge tone="neutral">{links.length}</Badge>
                   </div>

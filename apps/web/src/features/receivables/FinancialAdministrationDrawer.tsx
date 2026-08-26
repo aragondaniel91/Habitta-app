@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
 import { FeesIcon, ReportsIcon, SettingsIcon } from '../../components/icons';
-import { Button, Surface } from '../../components/ui';
+import { Button, InfoHint, Surface } from '../../components/ui';
 import type { ReceivableUnit } from '../../lib/receivables';
 import { canManage, useCondominiumRoles } from '../../lib/roles';
 import { AccountStatementDrawer } from './AccountStatementDrawer';
@@ -84,12 +84,14 @@ export function FinancialAdministrationDrawer({
               <Surface className="financial-integrity-card">
                 <div>
                   <span className="receivables-kicker">Cuenta de la unidad</span>
-                  <h2>Estado de cuenta, solvencia y propiedad</h2>
-                  <p>
-                    Selecciona una unidad para consultar movimientos y saldos por moneda, evaluar o
-                    emitir solvencia y, con permisos de gestión, registrar una transferencia de
-                    propiedad con fecha efectiva.
-                  </p>
+                  <h2>
+                    Estado de cuenta, solvencia y propiedad
+                    <InfoHint label="Más información sobre estado de cuenta, solvencia y propiedad">
+                      Selecciona una unidad para consultar movimientos y saldos por moneda, evaluar
+                      o emitir solvencia y, con permisos de gestión, registrar una transferencia de
+                      propiedad con fecha efectiva.
+                    </InfoHint>
+                  </h2>
                 </div>
                 <div className="account-statement-section-heading">
                   <div>
@@ -105,11 +107,13 @@ export function FinancialAdministrationDrawer({
                 <Surface className="financial-integrity-card">
                   <div>
                     <span className="receivables-kicker">Reglas del condominio</span>
-                    <h2>Política de moneda y solvencia</h2>
-                    <p>
-                      Define moneda contable, monedas aceptadas, conversión desactivada o limitada a
-                      tasas aprobadas, fuentes de tasa y criterio para emitir solvencias.
-                    </p>
+                    <h2>
+                      Política de moneda y solvencia
+                      <InfoHint label="Más información sobre política de moneda y solvencia">
+                        Define moneda contable, monedas aceptadas, conversión desactivada o limitada
+                        a tasas aprobadas, fuentes de tasa y criterio para emitir solvencias.
+                      </InfoHint>
+                    </h2>
                   </div>
                   <div className="account-statement-section-heading">
                     <div>
@@ -126,11 +130,13 @@ export function FinancialAdministrationDrawer({
                 <Surface className="financial-integrity-card">
                   <div>
                     <span className="receivables-kicker">Política financiera</span>
-                    <h2>Configuración protegida</h2>
-                    <p>
-                      Tu rol puede consultar la cuenta de las unidades habilitadas, pero no
-                      modificar monedas, tasas aprobadas ni criterios de solvencia.
-                    </p>
+                    <h2>
+                      Configuración protegida
+                      <InfoHint label="Más información sobre configuración protegida">
+                        Tu rol puede consultar la cuenta de las unidades habilitadas, pero no
+                        modificar monedas, tasas aprobadas ni criterios de solvencia.
+                      </InfoHint>
+                    </h2>
                   </div>
                   <div className="account-statement-section-heading">
                     <div>

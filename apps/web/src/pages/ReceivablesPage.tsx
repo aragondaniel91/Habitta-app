@@ -440,8 +440,12 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
           <div className="receivables-section-heading">
             <div>
               <span className="receivables-kicker">Antigüedad</span>
-              <h2>Edad de la cartera</h2>
-              <p>Visualiza cuánto está al día y cuánto necesita gestión de cobranza.</p>
+              <h2>
+                Edad de la cartera
+                <InfoHint label="Más información sobre edad de la cartera">
+                  Visualiza cuánto está al día y cuánto necesita gestión de cobranza.
+                </InfoHint>
+              </h2>
             </div>
             {selectedCurrency ? <Badge tone="info">{selectedCurrency}</Badge> : null}
           </div>
@@ -473,8 +477,12 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
           <div className="receivables-section-heading">
             <div>
               <span className="receivables-kicker">Estado</span>
-              <h2>Composición de cargos</h2>
-              <p>Volumen de obligaciones según los cargos cargados en esta vista.</p>
+              <h2>
+                Composición de cargos
+                <InfoHint label="Más información sobre composición de cargos">
+                  Volumen de obligaciones según los cargos cargados en esta vista.
+                </InfoHint>
+              </h2>
             </div>
           </div>
           <div className="receivables-status-list">
