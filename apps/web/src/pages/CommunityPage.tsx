@@ -10,7 +10,7 @@ import {
   RequestsIcon,
   UnitsIcon,
 } from '../components/icons';
-import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, InfoHint, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { canManage, useCondominiumRoles } from '../lib/roles';
@@ -270,8 +270,12 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
           <div className="community-section-heading">
             <div>
               <span className="community-kicker">Calidad del directorio</span>
-              <h2>Salud de los contactos</h2>
-              <p>Qué tan preparada está la comunidad para recibir comunicaciones.</p>
+              <h2>
+                Salud de los contactos
+                <InfoHint label="Más información sobre salud de los contactos">
+                  Qué tan preparada está la comunidad para recibir comunicaciones.
+                </InfoHint>
+              </h2>
             </div>
             <Badge tone={directoryComplete ? 'success' : 'warning'}>
               {directoryComplete ? 'Completo' : 'Requiere atención'}
@@ -393,8 +397,12 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
           <div className="community-section-heading">
             <div>
               <span className="community-kicker">Comunicación</span>
-              <h2>Accesos comunitarios</h2>
-              <p>Continúa hacia los flujos especializados.</p>
+              <h2>
+                Accesos comunitarios
+                <InfoHint label="Más información sobre accesos comunitarios">
+                  Continúa hacia los flujos especializados.
+                </InfoHint>
+              </h2>
             </div>
           </div>
           <div className="community-action-list">

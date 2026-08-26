@@ -9,7 +9,16 @@ import {
   PeopleIcon,
   SettingsIcon,
 } from '../components/icons';
-import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  InfoHint,
+  Select,
+  Skeleton,
+  Surface,
+} from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { CondominiumDangerZone } from '../features/settings/CondominiumDangerZone';
 import { CondominiumIdentityPanel } from '../features/settings/CondominiumIdentityPanel';
@@ -336,8 +345,12 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
             <div className="settings-section-heading">
               <div>
                 <span className="settings-kicker">Reglas del condominio</span>
-                <h2>Automatización de recordatorios</h2>
-                <p>Controles globales que definen cuándo Habitta prepara las notificaciones.</p>
+                <h2>
+                  Automatización de recordatorios
+                  <InfoHint label="Más información sobre automatización de recordatorios">
+                    Controles globales que definen cuándo Habitta prepara las notificaciones.
+                  </InfoHint>
+                </h2>
               </div>
               <Badge tone={data.settingsAvailable ? 'success' : 'warning'}>
                 {data.settingsAvailable ? 'Administrable' : 'Solo lectura'}
@@ -404,8 +417,12 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
             <div className="settings-section-heading">
               <div>
                 <span className="settings-kicker">Preferencias personales</span>
-                <h2>Canales por evento</h2>
-                <p>Elige qué eventos llegan dentro de Habitta y cuáles también solicitan correo.</p>
+                <h2>
+                  Canales por evento
+                  <InfoHint label="Más información sobre canales por evento">
+                    Elige qué eventos llegan dentro de Habitta y cuáles también solicitan correo.
+                  </InfoHint>
+                </h2>
               </div>
               <div className="settings-channel-legend">
                 <span>En app</span>

@@ -9,7 +9,16 @@ import {
   PaymentsIcon,
   PeopleIcon,
 } from '../components/icons';
-import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  InfoHint,
+  Select,
+  Skeleton,
+  Surface,
+} from '../components/ui';
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { ExpenseCaptureDrawer } from '../features/expenses/ExpenseCaptureDrawer';
@@ -187,8 +196,12 @@ function CatalogsPanel({
     <div className="expenses-catalogs">
       {error ? <div className="expenses-inline-alert">{error}</div> : null}
       <section>
-        <h3>Categorías</h3>
-        <p>Clasifican los egresos sin afectar la contabilidad de cuotas o pagos.</p>
+        <h3>
+          Categorías
+          <InfoHint label="Más información sobre categorías">
+            Clasifican los egresos sin afectar la contabilidad de cuotas o pagos.
+          </InfoHint>
+        </h3>
         <div className="expenses-catalog-create">
           <input
             className="input"
@@ -214,8 +227,12 @@ function CatalogsPanel({
         </div>
       </section>
       <section>
-        <h3>Proveedores</h3>
-        <p>Directorio básico para relacionar gastos y soportes.</p>
+        <h3>
+          Proveedores
+          <InfoHint label="Más información sobre proveedores">
+            Directorio básico para relacionar gastos y soportes.
+          </InfoHint>
+        </h3>
         <div className="expenses-catalog-create">
           <input
             className="input"

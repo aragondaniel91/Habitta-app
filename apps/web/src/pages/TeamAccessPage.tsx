@@ -4,7 +4,16 @@ import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../components/Dialog';
 import { FormActions, FormGrid } from '../components/FormLayout';
 import { CheckCircleIcon, PeopleIcon, SettingsIcon } from '../components/icons';
-import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  InfoHint,
+  Select,
+  Skeleton,
+  Surface,
+} from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import {
   ADMINISTRATIVE_ROLE_OPTIONS,
@@ -391,8 +400,12 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
             <div className="settings-section-heading">
               <div>
                 <span className="settings-kicker">Nueva invitación</span>
-                <h2>Invitar administrador</h2>
-                <p>El rol y el condominio se asignan al aceptar el enlace seguro.</p>
+                <h2>
+                  Invitar administrador
+                  <InfoHint label="Más información sobre invitar administrador">
+                    El rol y el condominio se asignan al aceptar el enlace seguro.
+                  </InfoHint>
+                </h2>
               </div>
               <SettingsIcon size={22} />
             </div>
@@ -461,8 +474,12 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
             <div className="settings-section-heading">
               <div>
                 <span className="settings-kicker">Acceso actual</span>
-                <h2>Miembros del equipo</h2>
-                <p>Cambia roles, suspende temporalmente o retira accesos sin borrar cuentas.</p>
+                <h2>
+                  Miembros del equipo
+                  <InfoHint label="Más información sobre miembros del equipo">
+                    Cambia roles, suspende temporalmente o retira accesos sin borrar cuentas.
+                  </InfoHint>
+                </h2>
               </div>
               <Badge tone="success">{activeMembers} activos</Badge>
             </div>
@@ -590,8 +607,12 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
           <div className="settings-section-heading">
             <div>
               <span className="settings-kicker">Trazabilidad</span>
-              <h2>Historial de invitaciones</h2>
-              <p>Consulta estado, rol y expiración de cada invitación administrativa.</p>
+              <h2>
+                Historial de invitaciones
+                <InfoHint label="Más información sobre historial de invitaciones">
+                  Consulta estado, rol y expiración de cada invitación administrativa.
+                </InfoHint>
+              </h2>
             </div>
           </div>
 

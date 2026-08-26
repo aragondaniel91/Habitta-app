@@ -4,7 +4,7 @@ import { ExpensesIcon, ReportsIcon } from '../components/icons';
 import { Drawer } from '../components/Drawer';
 import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
-import { Badge, Button, EmptyState, Select, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, InfoHint, Select, Skeleton, Surface } from '../components/ui';
 import { apiRequest } from '../lib/api';
 import type { ExpenseCategory } from '../lib/expenses';
 import { canManage, useCondominiumRoles } from '../lib/roles';
@@ -683,8 +683,12 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
                 <ReportsIcon size={20} />
               </span>
               <div>
-                <h2>Ejecución real vs. presupuesto</h2>
-                <p>Solo gastos aprobados o pagados del período. Sin conversión entre monedas.</p>
+                <h2>
+                  Ejecución real vs. presupuesto
+                  <InfoHint label="Más información sobre ejecución real vs. presupuesto">
+                    Solo gastos aprobados o pagados del período. Sin conversión entre monedas.
+                  </InfoHint>
+                </h2>
               </div>
             </div>
             <Button

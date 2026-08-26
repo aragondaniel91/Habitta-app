@@ -5,7 +5,16 @@ import { ConfirmDialog } from '../../components/Dialog';
 import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid, FormSection } from '../../components/FormLayout';
 import { CheckCircleIcon, PeopleIcon, UnitsIcon } from '../../components/icons';
-import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../../components/ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  InfoHint,
+  Select,
+  Skeleton,
+  Surface,
+} from '../../components/ui';
 import { PageHeader } from '../../components/PageHeader';
 import {
   createResidentInvitation,
@@ -927,8 +936,12 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                   <div className="people-section__heading">
                     <div>
                       <span className="people-kicker">Propiedad</span>
-                      <h3>Unidades como propietario</h3>
-                      <p>Una persona puede tener varias unidades sin duplicar su identidad.</p>
+                      <h3>
+                        Unidades como propietario
+                        <InfoHint label="Más información sobre unidades como propietario">
+                          Una persona puede tener varias unidades sin duplicar su identidad.
+                        </InfoHint>
+                      </h3>
                     </div>
                     <Badge tone="info">{ownerships.filter((item) => !item.ends_at).length}</Badge>
                   </div>
@@ -1033,11 +1046,13 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                   <div className="people-section__heading">
                     <div>
                       <span className="people-kicker">Ocupación</span>
-                      <h3>Residencia y ocupantes</h3>
-                      <p>
-                        Registra al inquilino, propietario residente, familiar u ocupante
-                        autorizado.
-                      </p>
+                      <h3>
+                        Residencia y ocupantes
+                        <InfoHint label="Más información sobre residencia y ocupantes">
+                          Registra al inquilino, propietario residente, familiar u ocupante
+                          autorizado.
+                        </InfoHint>
+                      </h3>
                     </div>
                     <Badge tone="info">{occupancies.filter((item) => !item.ends_at).length}</Badge>
                   </div>
@@ -1133,8 +1148,12 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                   <div className="people-section__heading">
                     <div>
                       <span className="people-kicker">Responsabilidades</span>
-                      <h3>Relaciones con el condominio</h3>
-                      <p>Junta, administración, representación legal y contactos, con historia.</p>
+                      <h3>
+                        Relaciones con el condominio
+                        <InfoHint label="Más información sobre relaciones con el condominio">
+                          Junta, administración, representación legal y contactos, con historia.
+                        </InfoHint>
+                      </h3>
                     </div>
                     <Badge tone="info">
                       {condominiumRelationships.filter((item) => !item.ends_at).length}
@@ -1231,11 +1250,13 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                     <div className="people-section__heading">
                       <div>
                         <span className="people-kicker">Administración · privado</span>
-                        <h3>Notas internas</h3>
-                        <p>
-                          Solo personal autorizado para gestionar Personas puede ver estas notas.
-                          Nunca guardes contraseñas, tokens, datos de tarjeta ni otros secretos.
-                        </p>
+                        <h3>
+                          Notas internas
+                          <InfoHint label="Más información sobre notas internas">
+                            Solo personal autorizado para gestionar Personas puede ver estas notas.
+                            Nunca guardes contraseñas, tokens, datos de tarjeta ni otros secretos.
+                          </InfoHint>
+                        </h3>
                       </div>
                       <Badge tone="warning">Privado</Badge>
                     </div>
@@ -1288,11 +1309,13 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
                   <div className="people-section__heading">
                     <div>
                       <span className="people-kicker">Acceso digital</span>
-                      <h3>Invitar a Habitta</h3>
-                      <p>
-                        El acceso se concede solo desde una propiedad activa o una ocupación activa
-                        como inquilino.
-                      </p>
+                      <h3>
+                        Invitar a Habitta
+                        <InfoHint label="Más información sobre invitar a Habitta">
+                          El acceso se concede solo desde una propiedad activa o una ocupación
+                          activa como inquilino.
+                        </InfoHint>
+                      </h3>
                     </div>
                     <Badge tone={accessOptions.length ? 'success' : 'neutral'}>
                       {accessOptions.length ? 'Elegible' : 'Sin relación elegible'}
@@ -1500,8 +1523,12 @@ export function PeoplePanel({ condominiumId, condominiumName, session }: Props) 
           <div className="people-section__heading">
             <div>
               <span className="people-kicker">Carga masiva</span>
-              <h3>Importar personas por CSV</h3>
-              <p>Conservamos la previsualización y validación antes de confirmar la importación.</p>
+              <h3>
+                Importar personas por CSV
+                <InfoHint label="Más información sobre importar personas por CSV">
+                  Conservamos la previsualización y validación antes de confirmar la importación.
+                </InfoHint>
+              </h3>
             </div>
           </div>
           <div className="people-import__controls">

@@ -16,7 +16,7 @@ import {
 } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
 import type { IconProps } from '../components/icons';
-import { Badge, Button, EmptyState, Skeleton, Surface } from '../components/ui';
+import { Badge, Button, EmptyState, InfoHint, Skeleton, Surface } from '../components/ui';
 import { ApiRequestError, apiRequest } from '../lib/api';
 import {
   buildMonthlyFinancialSeries,
@@ -570,8 +570,12 @@ export function AdministrativeDashboard({
           <div className="dashboard-section-heading">
             <div>
               <span className="dashboard-section-kicker">Tendencia financiera</span>
-              <h2>Cobros vs cargos</h2>
-              <p>Compara cobros aprobados con cargos registrados durante los últimos seis meses.</p>
+              <h2>
+                Cobros vs cargos
+                <InfoHint label="Más información sobre cobros vs cargos">
+                  Compara cobros aprobados con cargos registrados durante los últimos seis meses.
+                </InfoHint>
+              </h2>
             </div>
             {currencies.length ? (
               <CurrencyTabs
@@ -778,8 +782,12 @@ export function AdministrativeDashboard({
         <div className="dashboard-section-heading">
           <div>
             <span className="dashboard-section-kicker">Trazabilidad</span>
-            <h2>Últimos movimientos</h2>
-            <p>Cargos y pagos recientes, sin mezclar monedas.</p>
+            <h2>
+              Últimos movimientos
+              <InfoHint label="Más información sobre últimos movimientos">
+                Cargos y pagos recientes, sin mezclar monedas.
+              </InfoHint>
+            </h2>
           </div>
         </div>
         {activity.length ? (

@@ -2,7 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, MaintenanceIcon, RequestsIcon, SettingsIcon } from '../components/icons';
-import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  InfoHint,
+  Select,
+  Skeleton,
+  Surface,
+} from '../components/ui';
 import { Drawer } from '../components/Drawer';
 import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
@@ -1330,8 +1339,12 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
           <div className="maintenance-table-toolbar">
             <div>
               <span>Mantenimiento programado</span>
-              <h2>Planes preventivos e inspecciones</h2>
-              <p>La próxima fecha avanza automáticamente al generar una orden.</p>
+              <h2>
+                Planes preventivos e inspecciones
+                <InfoHint label="Más información sobre planes preventivos e inspecciones">
+                  La próxima fecha avanza automáticamente al generar una orden.
+                </InfoHint>
+              </h2>
             </div>
             <div className="maintenance-table-toolbar__actions">
               <Button disabled={generating} onClick={() => void generateDue()} variant="secondary">
@@ -1395,8 +1408,12 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
           <div className="maintenance-table-toolbar">
             <div>
               <span>Ejecución y seguimiento</span>
-              <h2>Órdenes de trabajo</h2>
-              <p>Controla prioridad, estado, proveedor e historial técnico.</p>
+              <h2>
+                Órdenes de trabajo
+                <InfoHint label="Más información sobre órdenes de trabajo">
+                  Controla prioridad, estado, proveedor e historial técnico.
+                </InfoHint>
+              </h2>
             </div>
             <Button onClick={() => setDrawer('work-order')}>+ Nueva orden</Button>
           </div>
