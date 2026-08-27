@@ -170,37 +170,42 @@ jobs:
           # Disabling replication triggers only for the import keeps dump ordering portable; the
           # next step performs explicit post-restore referential and financial invariant checks.
           #
-          # HAB-417: data.sql is loaded on its own, and auth-data.sql is not loaded at all.
+          # HAB-417: exactly one loader per kind of data, and no managed schema among them.
           #
-          # The backup step's comment asserts that "the standard Supabase dump intentionally
-          # excludes managed schemas such as auth". The CLI does not behave that way: data.sql
-          # carries 22 `COPY "auth"` blocks, exactly the same 22 tables auth-data.sql contains.
-          # Loading both therefore inserted every Auth row twice, and the second pass failed with
-          # `duplicate key value violates unique constraint "users_pkey"`. Nobody had seen it
-          # because the restore died earlier, on the schema, for the unrelated reason this branch
-          # also fixes.
+          # data.sql now carries only the schemas Habitta owns, because the backup dumps it by
+          # allowlist. Auth data therefore appears once, in auth-data.sql, and is restored onto
+          # whatever Auth DDL the target already runs -- we recover Habitta's users, we do not
+          # impose Habitta's copy of Supabase's internal Auth schema.
           #
-          # auth-data.sql stays in the backup and stays checksum-validated. It is now used as an
-          # independent witness rather than as a second loader: if a future CLI release really does
-          # start excluding auth from data.sql, the count check below fails loudly instead of
-          # quietly restoring a database with no users.
+          # Before this, an unrestricted data dump carried auth as well, so loading auth-data.sql
+          # and then data.sql inserted every user twice and failed with `duplicate key value
+          # violates unique constraint "users_pkey"`. The independent witness is
+          # source-metrics.tsv, whose counts come from separate queries at backup time and are
+          # compared in the next step -- a better check than re-reading the file we just loaded.
+          #
+          # storage and supabase_functions are deliberately absent. See docs/disaster-recovery.md.
+          for managed in storage supabase_functions vault graphql realtime; do
+            if grep -qE "^COPY \"$managed\"\\." "$EXTRACTED/data.sql"; then
+              printf 'Refusing to restore: data.sql carries the managed schema %s\n' "$managed" >&2
+              exit 1
+            fi
+            if grep -qE "^CREATE SCHEMA (IF NOT EXISTS )?\"$managed\"" "$EXTRACTED/schema.sql"; then
+              printf 'Refusing to restore: schema.sql recreates the managed schema %s\n' "$managed" >&2
+              exit 1
+            fi
+          done
+
+          {
+            printf '%s\n' 'SET session_replication_role = replica;'
+            cat "$EXTRACTED/auth-data.sql"
+            printf '%s\n' 'SET session_replication_role = origin;'
+          } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/schema.sql"
           {
             printf '%s\n' 'SET session_replication_role = replica;'
             cat "$EXTRACTED/data.sql"
             printf '%s\n' 'SET session_replication_role = origin;'
           } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
-
-          # Rows between the auth.users COPY header and its terminating backslash-dot.
-          EXPECTED_AUTH_USERS="$(awk '/^COPY "auth"\."users"/{flag=1;next} /^\\\.$/{flag=0} flag' \
-            "$EXTRACTED/auth-data.sql" | grep -c . || true)"
-          RESTORED_AUTH_USERS="$(psql "$RESTORE_URL" -Atqc 'select count(*) from auth.users;')"
-          if [ "$EXPECTED_AUTH_USERS" != "$RESTORED_AUTH_USERS" ]; then
-            printf 'Auth user count mismatch: auth-data.sql holds %s, restore produced %s\n' \
-              "$EXPECTED_AUTH_USERS" "$RESTORED_AUTH_USERS" >&2
-            exit 1
-          fi
-          printf 'Auth users restored and cross-checked against auth-data.sql: %s\n' "$RESTORED_AUTH_USERS"
       - name: Verify restored Auth and financial invariants
         run: |
           set -euo pipefail
@@ -266,9 +271,73 @@ jobs:
             }
           done < "$GITHUB_WORKSPACE/.restore/plain/invariants.tsv"
 
+          # HAB-417: a drill that passes over an empty database proves nothing, so the restored
+          # state has to be non-trivial before any of the checks above count as evidence. Zero
+          # users and zero condominiums would satisfy every equality and every invariant.
+          psql "$RESTORE_URL" -X -qAt -v ON_ERROR_STOP=1 <<'SQL' > "$GITHUB_WORKSPACE/.restore/plain/substance.tsv"
+          select 'auth_users' || E'\t' || count(*) from auth.users;
+          select 'condominiums' || E'\t' || count(*) from public.condominiums;
+          select 'units' || E'\t' || count(*) from public.units;
+          select 'subscriptions' || E'\t' || count(*) from public.subscriptions;
+          SQL
+
+          while IFS=$'\t' read -r population rows; do
+            [[ "$rows" =~ ^[0-9]+$ ]]
+            test "$rows" -gt 0 || {
+              printf 'Restore is not evidence: %s restored with no rows\n' "$population" >&2
+              exit 1
+            }
+          done < "$GITHUB_WORKSPACE/.restore/plain/substance.tsv"
+
+          # The structural guarantees, each one something the reset depends on afterwards.
+          psql "$RESTORE_URL" -X -qAt -v ON_ERROR_STOP=1 <<'SQL' > "$GITHUB_WORKSPACE/.restore/plain/structure.tsv"
+          -- The private schema that used to survive the cleanup and break the restore.
+          select 'habitta_internal_missing' || E'\t' || (count(*) = 0)::int
+            from pg_namespace where nspname = 'habitta_internal';
+          select 'purge_authorizations_missing' || E'\t' || (count(*) = 0)::int
+            from pg_tables where schemaname = 'habitta_internal'
+              and tablename = 'condominium_purge_authorizations';
+          -- Row level security is the whole tenant boundary; a restore that loses it is not a
+          -- restore we could put customers back on.
+          select 'public_tables_without_rls' || E'\t' || count(*)
+            from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;
+          -- Critical functions, named individually so a partial restore cannot pass.
+          select 'critical_functions_missing' || E'\t' || (4 - count(distinct p.proname))
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname in ('request_condominium_deletion', 'resolve_entitlements',
+                               'my_entitlements', 'is_unit_condominium_purge_authorized');
+          -- The commercial foundation has to come back with the rest of the application.
+          select 'commercial_tables_missing' || E'\t' || (4 - count(*))
+            from pg_tables where schemaname = 'public'
+              and tablename in ('plans', 'capabilities', 'subscriptions', 'subscription_terms');
+          SQL
+
+          while IFS=$'\t' read -r guarantee failures; do
+            [[ "$failures" =~ ^-?[0-9]+$ ]]
+            test "$failures" -eq 0 || {
+              printf 'Restore structural guarantee failed: %s (%s)\n' "$guarantee" "$failures" >&2
+              exit 1
+            }
+          done < "$GITHUB_WORKSPACE/.restore/plain/structure.tsv"
+
+          # Migrations are consistent when the target's applied set matches what this repository
+          # declares -- the restore rebuilds data onto a schema the pipeline produced, and a drift
+          # here means the two have diverged.
+          REPO_MIGRATIONS="$(find supabase/migrations -name '*.sql' -type f | wc -l | tr -d ' ')"
+          APPLIED_MIGRATIONS="$(psql "$RESTORE_URL" -Atqc 'select count(*) from supabase_migrations.schema_migrations;')"
+          test "$REPO_MIGRATIONS" -eq "$APPLIED_MIGRATIONS" || {
+            printf 'Migration drift: repository declares %s, target applied %s\n' \
+              "$REPO_MIGRATIONS" "$APPLIED_MIGRATIONS" >&2
+            exit 1
+          }
+
           TABLE_COUNT="$(psql "$RESTORE_URL" -Atqc "select count(*) from pg_tables where schemaname = 'public';")"
           test "$TABLE_COUNT" -gt 0
-          printf 'Restore verified: %s public tables; Auth and financial aggregate counts match source.\n' "$TABLE_COUNT"
+          RESTORED_USERS="$(awk -F '\t' '$1 == "auth_users" { print $2 }' "$RESTORED")"
+          printf 'Restore verified: %s public tables, %s Auth users, %s migrations; financial invariants and structural guarantees all pass.\n' \
+            "$TABLE_COUNT" "$RESTORED_USERS" "$APPLIED_MIGRATIONS"
       - name: Remove restored plaintext and local database
         if: always()
         run: |

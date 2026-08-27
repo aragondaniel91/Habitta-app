@@ -72,18 +72,53 @@ jobs:
           mkdir -p .backup/plain .backup/out
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
-          # The standard Supabase dump intentionally excludes managed schemas such as auth.
-          # Keep the portable public/application backup and add an explicit auth data dump so
-          # recovery evidence includes users and their related Auth rows without copying auth DDL.
+          # HAB-417: back up the schemas Habitta owns, by allowlist, plus Auth data separately.
+          #
+          # The previous comment here claimed the standard dump "intentionally excludes managed
+          # schemas such as auth". It does not: an unrestricted data dump carried auth, storage and
+          # supabase_functions alongside ours. That produced two defects at restore time -- Auth
+          # rows loaded twice, and storage tables whose columns do not exist on a target running a
+          # different Supabase release. The two `-x storage.*` exclusions that used to live here
+          # were the first two symptoms of the second problem, and chasing internal tables one at a
+          # time is a list that never stops growing.
+          #
+          # The allowlist is derived, never written down. `supabase db dump` with no --schema
+          # already emits exactly the schemas Habitta owns, so the CREATE SCHEMA statements in
+          # schema.sql are the CLI's own answer to "what is ours". Data is then dumped for exactly
+          # those schemas plus public. A migration that introduces the next private schema is
+          # included automatically; a Supabase release that introduces the next managed table is
+          # irrelevant.
+          #
+          # Auth is the deliberate exception. Supabase owns the schema, but Habitta's users are
+          # part of our recovery objective -- 136 foreign keys point at auth.users -- so auth data
+          # is dumped on its own and restored onto whatever Auth DDL the target already runs.
+          # See docs/disaster-recovery.md.
           supabase db dump --linked --role-only -f .backup/plain/roles.sql
           supabase db dump --linked -f .backup/plain/schema.sql
+
+          OWNED_SCHEMAS="public"
+          for schema in $(grep -oE '^CREATE SCHEMA (IF NOT EXISTS )?"[^"]+"' .backup/plain/schema.sql \
+            | grep -oE '"[^"]+"$' | tr -d '"' | sort -u); do
+            OWNED_SCHEMAS="$OWNED_SCHEMAS,$schema"
+          done
+          printf 'Backing up owned schemas: %s\n' "$OWNED_SCHEMAS"
+
           supabase db dump --linked --data-only --use-copy \
-            -x 'storage.buckets_vectors' \
-            -x 'storage.vector_indexes' \
+            --schema "$OWNED_SCHEMAS" \
             -f .backup/plain/data.sql
           supabase db dump --linked --schema auth --data-only --use-copy \
             -x 'auth.schema_migrations' \
             -f .backup/plain/auth-data.sql
+
+          # The separation above is a contract, so it is asserted rather than trusted. A data dump
+          # that carries a managed schema means the CLI changed behaviour underneath us, and the
+          # backup must fail here rather than at restore time months later.
+          for managed in auth storage supabase_functions vault graphql realtime; do
+            if grep -qE "^COPY \"$managed\"\\." .backup/plain/data.sql; then
+              echo "data.sql unexpectedly carries the managed schema $managed" >&2
+              exit 1
+            fi
+          done
 
           # Link writes a pooler URL with a password placeholder. Use PGPASSWORD so the database
           # password never appears in a command line, artifact or log. The metrics contain counts
