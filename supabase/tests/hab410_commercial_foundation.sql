@@ -1,5 +1,5 @@
 begin;
-select plan(48);
+select plan(54);
 
 -- ------------------------------------------------------------------ shape
 
@@ -309,5 +309,57 @@ select is(
 );
 reset role;
 
+-- ------------------------------------------------------------------ resolution: the term gap
+
+-- A subscription can be alive while no term covers today: one closes and its successor has not
+-- started. This is the state that must fail closed, and the one easiest to get wrong, because
+-- every field involved is silently null unless the resolver says otherwise.
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
+  ('41000000-0000-0000-0000-0000000000f1','00000000-0000-0000-0000-000000000000','authenticated','authenticated','f1@hab410.test','x',now(),now());
+insert into public.organizations(id,name,created_by) values
+  ('41100000-0000-4000-8000-0000000000f1','Org F','41000000-0000-0000-0000-0000000000f1');
+insert into public.condominiums(id,organization_id,name,created_by) values
+  ('41200000-0000-4000-8000-0000000000f1','41100000-0000-4000-8000-0000000000f1','Condo F','41000000-0000-0000-0000-0000000000f1');
+insert into public.subscriptions(id,condominium_id,status) values
+  ('41300000-0000-4000-8000-0000000000f1','41200000-0000-4000-8000-0000000000f1','active');
+insert into public.subscription_terms(subscription_id,plan_code,contracted_period_amount,billing_period,origin,catalog_reference_amount,effective_from,effective_to) values
+  ('41300000-0000-4000-8000-0000000000f1','pro',79.00,'monthly','catalog',79.00,current_date - 60, current_date - 1);
+
+select is(
+  (public.resolve_entitlements('41200000-0000-4000-8000-0000000000f1')) ->> 'has_term',
+  'false',
+  'a subscription whose term lapsed reports that it has no term'
+);
+select is(
+  (public.resolve_entitlements('41200000-0000-4000-8000-0000000000f1')) ->> 'may_operate',
+  'false',
+  'a lapsed term does not let the tenant keep operating'
+);
+select is(
+  (public.resolve_entitlements('41200000-0000-4000-8000-0000000000f1')) ->> 'unlimited_units',
+  'false',
+  'no contract never reads as unlimited'
+);
+-- The specific shape of the bug: `not null` is null, so a null here would slip through every
+-- guard written as `where not within_limit` -- including the one in the tenant migration.
+select is(
+  (public.resolve_entitlements('41200000-0000-4000-8000-0000000000f1')) ->> 'within_limit',
+  'false',
+  'within_limit is false rather than null, so a negated guard actually catches it'
+);
+select is(
+  (public.resolve_entitlements('41200000-0000-4000-8000-0000000000f1')) -> 'capabilities',
+  '[]'::jsonb,
+  'a lapsed term grants nothing'
+);
+
+-- The same property for a condominium that never had a subscription at all.
+select is(
+  (public.resolve_entitlements('41200000-0000-4000-8000-00000000000b')) ->> 'has_term',
+  'true',
+  'a subscribed condominium reports that it does have a term'
+);
+
 select * from finish();
+
 rollback;

@@ -139,7 +139,11 @@ begin
     -- from having contracted everything.
     return jsonb_build_object(
       'found', false,
+      'has_term', false,
       'capabilities', '[]'::jsonb,
+      'unlimited_units', false,
+      'unit_limit', 0,
+      'within_limit', false,
       'may_operate', false
     );
   end if;
@@ -150,6 +154,27 @@ begin
     and t.effective_from <= current_date
     and (t.effective_to is null or t.effective_to > current_date)
   limit 1;
+
+  if term.id is null then
+    -- Una suscripción sin término vigente hoy no ha contratado nada hoy. Ocurre en cuanto un
+    -- término se cierra y su sucesor todavía no empieza, y hay que responderlo cerrado por la
+    -- misma razón que el caso anterior: dejar `unit_limit` en null haría que "sin contrato" se
+    -- leyera igual que "ilimitado", que es precisamente lo que este diseño no permite. Y un
+    -- `within_limit` nulo es peor que uno falso, porque `not null` no es verdadero: un tenant en
+    -- esta situación se colaría por cualquier guarda escrita como `where not within_limit`.
+    return jsonb_build_object(
+      'found', true,
+      'condominium_id', target_condominium,
+      'has_term', false,
+      'status', subscription.status,
+      'commercial_status', subscription.commercial_status,
+      'capabilities', '[]'::jsonb,
+      'unlimited_units', false,
+      'unit_limit', 0,
+      'within_limit', false,
+      'may_operate', false
+    );
+  end if;
 
   select * into plan from public.plans p where p.code = term.plan_code;
 
@@ -166,6 +191,7 @@ begin
 
   return jsonb_build_object(
     'found', true,
+    'has_term', true,
     'condominium_id', target_condominium,
     'plan_code', term.plan_code,
     'plan_name', plan.name,
