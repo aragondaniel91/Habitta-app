@@ -27,6 +27,7 @@ select is(
        -- Token-gated by design: you read the invitation before you have an account.
        'get_admin_invitation_preview',
        'get_resident_invitation_preview',
+       'get_customer_invitation_preview',
        -- Pure predicates over ids the caller already supplied. They return a boolean and write
        -- nothing, and are used from checks and triggers rather than as endpoints.
        'announcement_audience_valid',
@@ -49,10 +50,11 @@ select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname='public' and p.proname in (
      'verify_solvency_certificate','get_admin_invitation_preview','get_resident_invitation_preview',
+     'get_customer_invitation_preview',
      'announcement_audience_valid','is_valid_assembly_action_assignee','is_valid_maintenance_assignee',
      'is_valid_service_request_assignee','create_governance_proposal_v2','preview_payment_allocation',
      'capture_assembly_eligibility')),
-  10::bigint,
+  11::bigint,
   'every allowlisted exemption still names a real function'
 );
 
