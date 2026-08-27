@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(22);
 
 select has_table('public','customer_invitations','the new-customer invitation exists');
 select has_function('public','create_customer_invitation',array['text','text','text','text','timestamptz'],'issuing RPC exists');
@@ -112,6 +112,37 @@ select throws_ok(
   format($q$select public.accept_customer_invitation('%s')$q$, current_setting('hab400.token')),
   'P0001','invalid invitation',
   'a redeemed invitation cannot be replayed'
+);
+
+-- HAB-402. An invitation sent to a mistyped address stays live until it expires, and whoever owns
+-- that inbox can redeem it. Resending only helps when the address was right.
+set local role authenticated;
+select set_config('request.jwt.claim.role','authenticated',true);
+select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000001',true);
+select set_config('hab400.wrong',(select public.create_customer_invitation('erroneo@tecleado.test','pro',null,null,null) ->> 'id'),true);
+
+select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000003',true);
+select throws_ok(
+  format($q$select public.revoke_customer_invitation('%s'::uuid,'intento')$q$, current_setting('hab400.wrong')),
+  'P0001','platform administrator required',
+  'an ordinary account cannot revoke a customer invitation'
+);
+
+select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000001',true);
+select lives_ok(
+  format($q$select public.revoke_customer_invitation('%s'::uuid,'Direccion mal tecleada')$q$, current_setting('hab400.wrong')),
+  'the operator retires an invitation sent to the wrong address'
+);
+select throws_ok(
+  format($q$select public.revoke_customer_invitation('%s'::uuid,null)$q$, current_setting('hab400.wrong')),
+  'P0001','customer invitation is not pending',
+  'a revoked invitation cannot be revoked twice'
+);
+reset role;
+select is(
+  (select status::text from public.customer_invitations where id = current_setting('hab400.wrong')::uuid),
+  'revoked',
+  'the record is retired, never deleted, so the mistake stays auditable'
 );
 
 select * from finish();
