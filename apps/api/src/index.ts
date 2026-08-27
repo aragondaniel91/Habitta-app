@@ -38,6 +38,7 @@ import {
   uuidSchema,
 } from '@habitta/validation';
 import { adminInvitationRoutes } from './admin-invitations';
+import { customerInvitationRoutes } from './customer-invitation-routes';
 import { operationsRoutes } from './operations-routes';
 import { importRoutes } from './import-routes';
 import { privateDocumentRoutes } from './private-document-routes';
@@ -82,6 +83,7 @@ app.use('/v1/*', async (c, n) => {
 });
 app.route('/', tenancyRoutes);
 app.route('/v1/condominiums', adminInvitationRoutes);
+app.route('/v1/platform', customerInvitationRoutes);
 app.route('/v1/condominiums', operationsRoutes);
 app.route('/v1/condominiums', importRoutes);
 app.route('/v1/condominiums', privateDocumentRoutes);

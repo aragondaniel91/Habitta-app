@@ -119,6 +119,14 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     correction: 'rpc:revoke_admin_invitation',
     note: 'Called directly from TeamAccessPage through supabase-js, not through the Worker.',
   },
+  {
+    module: 'onboarding',
+    entity: 'customer invitation',
+    create: '/customer-invitations',
+    classification: 'lifecycle',
+    correction: '/customer-invitations/:invitationId/revoke',
+    note: 'Issued by the platform team before any condominium exists. Resending supersedes the previous token; revoking retires one sent to the wrong address.',
+  },
 
   // ---------------------------------------------------------------- fees
   {
