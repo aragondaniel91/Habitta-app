@@ -31,6 +31,17 @@ test('ejecuta el E2E financiero de verdad y ante cambios en la API', async () =>
   expect(workflow).not.toContain('run: pnpm --filter @habitta/e2e');
   expect(workflow).toContain('npm install --prefix e2e');
   expect(workflow).toContain('npm --prefix e2e run test:financial');
-  expect(workflow).toContain("- 'apps/api/**'");
-  expect(workflow).toContain("- 'packages/**'");
+  /*
+   * The guarantee this pinned is that a change to the Worker or the shared packages cannot land
+   * without the financial suite running. HAB-401 moved the path list out of the `paths:` trigger
+   * and into the job, because a required check with a `paths:` trigger never reports on a change
+   * that does not match it and blocks the merge forever. The guarantee is unchanged; only where it
+   * is written moved, so assert it where it now lives.
+   */
+  expect(workflow).toContain('apps/api/');
+  expect(workflow).toContain('packages/');
+  expect(workflow).toContain('id: scope');
+  // And the job must still run on every pull request, or it cannot report at all.
+  expect(workflow).toMatch(/on:\s+pull_request:/);
+  expect(workflow.slice(0, workflow.indexOf('jobs:'))).not.toContain('paths:');
 });
