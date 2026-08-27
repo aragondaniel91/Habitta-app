@@ -169,17 +169,38 @@ jobs:
           # roles.sql is checksum-validated backup evidence. Local Supabase owns platform roles.
           # Disabling replication triggers only for the import keeps dump ordering portable; the
           # next step performs explicit post-restore referential and financial invariant checks.
-          {
-            printf '%s\n' 'SET session_replication_role = replica;'
-            cat "$EXTRACTED/auth-data.sql"
-            printf '%s\n' 'SET session_replication_role = origin;'
-          } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
+          #
+          # HAB-417: data.sql is loaded on its own, and auth-data.sql is not loaded at all.
+          #
+          # The backup step's comment asserts that "the standard Supabase dump intentionally
+          # excludes managed schemas such as auth". The CLI does not behave that way: data.sql
+          # carries 22 `COPY "auth"` blocks, exactly the same 22 tables auth-data.sql contains.
+          # Loading both therefore inserted every Auth row twice, and the second pass failed with
+          # `duplicate key value violates unique constraint "users_pkey"`. Nobody had seen it
+          # because the restore died earlier, on the schema, for the unrelated reason this branch
+          # also fixes.
+          #
+          # auth-data.sql stays in the backup and stays checksum-validated. It is now used as an
+          # independent witness rather than as a second loader: if a future CLI release really does
+          # start excluding auth from data.sql, the count check below fails loudly instead of
+          # quietly restoring a database with no users.
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/schema.sql"
           {
             printf '%s\n' 'SET session_replication_role = replica;'
             cat "$EXTRACTED/data.sql"
             printf '%s\n' 'SET session_replication_role = origin;'
           } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
+
+          # Rows between the auth.users COPY header and its terminating backslash-dot.
+          EXPECTED_AUTH_USERS="$(awk '/^COPY "auth"\."users"/{flag=1;next} /^\\\.$/{flag=0} flag' \
+            "$EXTRACTED/auth-data.sql" | grep -c . || true)"
+          RESTORED_AUTH_USERS="$(psql "$RESTORE_URL" -Atqc 'select count(*) from auth.users;')"
+          if [ "$EXPECTED_AUTH_USERS" != "$RESTORED_AUTH_USERS" ]; then
+            printf 'Auth user count mismatch: auth-data.sql holds %s, restore produced %s\n' \
+              "$EXPECTED_AUTH_USERS" "$RESTORED_AUTH_USERS" >&2
+            exit 1
+          fi
+          printf 'Auth users restored and cross-checked against auth-data.sql: %s\n' "$RESTORED_AUTH_USERS"
       - name: Verify restored Auth and financial invariants
         run: |
           set -euo pipefail
