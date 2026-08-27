@@ -61,8 +61,7 @@ jobs:
           bash supabase/tests/hab322_concurrency.sh 2>&1 | tee hab322-concurrency.log
 
       - name: Upload Supabase logs
-        if: steps.scope.outputs.relevant == 'true'
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: supabase-test-logs
@@ -73,6 +72,5 @@ jobs:
           if-no-files-found: ignore
 
       - name: Stop local Supabase services
-        if: steps.scope.outputs.relevant == 'true'
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         run: supabase stop --no-backup

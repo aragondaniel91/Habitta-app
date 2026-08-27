@@ -60,8 +60,7 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         run: npm --prefix e2e run test:public
       - name: Upload Playwright report
-        if: steps.scope.outputs.relevant == 'true'
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-public-report

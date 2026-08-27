@@ -114,14 +114,12 @@ jobs:
         run: npm --prefix e2e run test:financial
 
       - name: Reset financial fixture
-        if: steps.scope.outputs.relevant == 'true'
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         continue-on-error: true
         run: npm --prefix e2e run fixture:reset
 
       - name: Upload financial E2E diagnostics
-        if: steps.scope.outputs.relevant == 'true'
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: financial-e2e-diagnostics
@@ -134,6 +132,5 @@ jobs:
           retention-days: 14
 
       - name: Stop local Supabase services
-        if: steps.scope.outputs.relevant == 'true'
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         run: supabase stop --no-backup
