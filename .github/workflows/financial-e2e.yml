@@ -2,18 +2,6 @@ name: Financial E2E
 
 on:
   pull_request:
-    paths:
-      - 'e2e/**'
-      - 'supabase/**'
-      - 'apps/api/**'
-      - 'packages/**'
-      - 'apps/web/src/features/payments/**'
-      - 'apps/web/src/features/receivables/**'
-      - 'apps/web/src/pages/PaymentsDrawers.tsx'
-      - 'apps/web/src/pages/PaymentsDrawersCore.tsx'
-      - 'apps/web/src/pages/PaymentsPage.tsx'
-      - 'apps/web/src/pages/ExpensesPage.tsx'
-      - 'apps/web/src/components/Dialog.tsx'
       # Shared by every module, financial pages included, and asserted on by
       # financial-form-layout.spec.ts. A change here could not reach this gate before.
       - 'apps/web/src/components/PageHeader.tsx'
@@ -22,18 +10,6 @@ on:
       - '.github/workflows/financial-e2e.yml'
   push:
     branches: [main]
-    paths:
-      - 'e2e/**'
-      - 'supabase/**'
-      - 'apps/api/**'
-      - 'packages/**'
-      - 'apps/web/src/features/payments/**'
-      - 'apps/web/src/features/receivables/**'
-      - 'apps/web/src/pages/PaymentsDrawers.tsx'
-      - 'apps/web/src/pages/PaymentsDrawersCore.tsx'
-      - 'apps/web/src/pages/PaymentsPage.tsx'
-      - 'apps/web/src/pages/ExpensesPage.tsx'
-      - 'apps/web/src/components/Dialog.tsx'
       # Shared by every module, financial pages included, and asserted on by
       # financial-form-layout.spec.ts. A change here could not reach this gate before.
       - 'apps/web/src/components/PageHeader.tsx'
@@ -56,33 +32,62 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # This check is required by the branch ruleset, so it has to report a conclusion on every
+      # pull request. A `paths:` trigger does not run at all when nothing matches, and a required
+      # check that never runs blocks the merge forever -- which is exactly what happened to a
+      # SQL-only pull request once protection was switched on. The filter moved in here instead:
+      # the job always reports, and does the expensive work only when it is relevant.
+      - name: Decide whether this change needs the suite
+        id: scope
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            echo 'relevant=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags origin "$GITHUB_BASE_REF"
+          CHANGED=$(git diff --name-only "origin/$GITHUB_BASE_REF"...HEAD)
+          if echo "$CHANGED" | grep -qE '^(e2e/|supabase/|apps/api/|packages/|apps/web/src/features/payments/|apps/web/src/features/receivables/|apps/web/src/pages/Payments|apps/web/src/pages/ExpensesPage\.tsx|apps/web/src/components/Dialog\.tsx|apps/web/src/components/PageHeader\.tsx|apps/web/src/page-header\.css|apps/web/src/ux-contract\.css|\.github/workflows/financial-e2e\.yml)'; then
+            echo 'relevant=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'relevant=false' >> "$GITHUB_OUTPUT"
+            echo "No files in this change touch the financial end-to-end suite; reporting success without running it."
+          fi
 
       - name: Set up pnpm
+        if: steps.scope.outputs.relevant == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 10.12.1
 
       - name: Set up Node.js
+        if: steps.scope.outputs.relevant == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
       - name: Install dependencies
+        if: steps.scope.outputs.relevant == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Set up Supabase CLI
+        if: steps.scope.outputs.relevant == 'true'
         uses: supabase/setup-cli@v2
         with:
           version: 2.84.2
           github-token: ${{ github.token }}
 
       - name: Start local Supabase and apply migrations
+        if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
           supabase start --debug 2>&1 | tee supabase-start.log
 
       - name: Export local Supabase credentials
+        if: steps.scope.outputs.relevant == 'true'
         run: |
           supabase status -o env > supabase.env
           set -a
@@ -96,29 +101,37 @@ jobs:
       # e2e lives outside the pnpm workspace, so `pnpm --filter @habitta/e2e` matched nothing and
       # exited 0 without running anything. npm --prefix is the form playwright.yml already proves.
       - name: Install E2E dependencies
+        if: steps.scope.outputs.relevant == 'true'
         run: npm install --prefix e2e --no-package-lock --ignore-scripts --no-audit --no-fund
 
       - name: Typecheck E2E suite
+        if: steps.scope.outputs.relevant == 'true'
         run: pnpm exec tsc -p e2e/tsconfig.json --noEmit
 
       - name: Validate financial fixture contract
+        if: steps.scope.outputs.relevant == 'true'
         run: npm --prefix e2e run fixture:validate
 
       - name: Provision isolated financial fixture
+        if: steps.scope.outputs.relevant == 'true'
         run: npm --prefix e2e run fixture:provision
 
       - name: Install Chromium
+        if: steps.scope.outputs.relevant == 'true'
         run: npm --prefix e2e exec -- playwright install --with-deps chromium
 
       - name: Run authenticated financial lifecycle
+        if: steps.scope.outputs.relevant == 'true'
         run: npm --prefix e2e run test:financial
 
       - name: Reset financial fixture
+        if: steps.scope.outputs.relevant == 'true'
         if: always()
         continue-on-error: true
         run: npm --prefix e2e run fixture:reset
 
       - name: Upload financial E2E diagnostics
+        if: steps.scope.outputs.relevant == 'true'
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -132,5 +145,6 @@ jobs:
           retention-days: 14
 
       - name: Stop local Supabase services
+        if: steps.scope.outputs.relevant == 'true'
         if: always()
         run: supabase stop --no-backup

@@ -2,14 +2,8 @@ name: Supabase Database Tests
 
 on:
   pull_request:
-    paths:
-      - 'supabase/**'
-      - '.github/workflows/supabase-tests.yml'
   push:
     branches: [main]
-    paths:
-      - 'supabase/**'
-      - '.github/workflows/supabase-tests.yml'
 
 jobs:
   pgtap:
@@ -17,29 +11,57 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # This check is required by the branch ruleset, so it has to report a conclusion on every
+      # pull request. A `paths:` trigger does not run at all when nothing matches, and a required
+      # check that never runs blocks the merge forever -- which is exactly what happened to a
+      # SQL-only pull request once protection was switched on. The filter moved in here instead:
+      # the job always reports, and does the expensive work only when it is relevant.
+      - name: Decide whether this change needs the suite
+        id: scope
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            echo 'relevant=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags origin "$GITHUB_BASE_REF"
+          CHANGED=$(git diff --name-only "origin/$GITHUB_BASE_REF"...HEAD)
+          if echo "$CHANGED" | grep -qE '^(supabase/|\.github/workflows/supabase-tests\.yml)'; then
+            echo 'relevant=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'relevant=false' >> "$GITHUB_OUTPUT"
+            echo "No files in this change touch the database tests; reporting success without running it."
+          fi
 
       - name: Set up Supabase CLI
+        if: steps.scope.outputs.relevant == 'true'
         uses: supabase/setup-cli@v2
         with:
           version: 2.84.2
           github-token: ${{ github.token }}
 
       - name: Start local database and apply migrations
+        if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
           supabase db start --debug 2>&1 | tee supabase-db-start.log
 
       - name: Run pgTAP tests
+        if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
           supabase test db 2>&1 | tee supabase-test-db.log
 
       - name: Run HAB-322 cross-tenant concurrency regression
+        if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
           bash supabase/tests/hab322_concurrency.sh 2>&1 | tee hab322-concurrency.log
 
       - name: Upload Supabase logs
+        if: steps.scope.outputs.relevant == 'true'
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -51,5 +73,6 @@ jobs:
           if-no-files-found: ignore
 
       - name: Stop local Supabase services
+        if: steps.scope.outputs.relevant == 'true'
         if: always()
         run: supabase stop --no-backup
