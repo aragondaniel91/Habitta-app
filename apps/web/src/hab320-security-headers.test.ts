@@ -13,6 +13,13 @@ describe('HAB-320 main web security headers', () => {
 
     expect(value).toContain("frame-ancestors 'none'");
     expect(value).toContain('X-Frame-Options: DENY');
+    /*
+     * Without HSTS the first request of a session can be downgraded to plaintext, which is a real
+     * exposure for a product carrying bank details and personal records. `preload` is deliberately
+     * absent: it is a one-way door that also requires submitting the domain to the browser preload
+     * list, so it is the owner's decision rather than a side effect of adding the header.
+     */
+    expect(value).toContain('Strict-Transport-Security: max-age=31536000; includeSubDomains');
     expect(value).toContain('X-Content-Type-Options: nosniff');
     expect(value).toContain('Referrer-Policy: strict-origin-when-cross-origin');
     expect(value).toContain(
