@@ -72,7 +72,22 @@ export const runDevelopmentSmoke = async ({
     return ['cors_preflight_invalid'];
   if (JSON.stringify({ deliveryId: 'synthetic' }) !== '{"deliveryId":"synthetic"}')
     return ['queue_message_invalid'];
-  if (webUrl && !(await request(webUrl)).ok) return ['web_unavailable'];
+  if (webUrl) {
+    const web = await request(webUrl);
+    if (!web.ok) {
+      /*
+       * A domain sitting behind Cloudflare Access answers an unauthenticated request with a
+       * challenge, not with the app. Reported as `web_unavailable` it looks like a deployment or
+       * DNS problem and sends whoever reads it to check bindings that are perfectly fine -- which
+       * is exactly where issue #165 spent its time. Name it for what it is, and do not retry: an
+       * access policy will not converge no matter how long the smoke waits.
+       */
+      const challenged =
+        (web.headers.get('WWW-Authenticate') ?? '').includes('Cloudflare-Access') ||
+        (web.headers.get('Location') ?? '').includes('cloudflareaccess.com');
+      return [challenged ? 'web_behind_access' : 'web_unavailable'];
+    }
+  }
   return [];
 };
 
