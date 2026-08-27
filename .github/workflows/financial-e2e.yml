@@ -2,20 +2,9 @@ name: Financial E2E
 
 on:
   pull_request:
-      # Shared by every module, financial pages included, and asserted on by
-      # financial-form-layout.spec.ts. A change here could not reach this gate before.
-      - 'apps/web/src/components/PageHeader.tsx'
-      - 'apps/web/src/page-header.css'
-      - 'apps/web/src/ux-contract.css'
-      - '.github/workflows/financial-e2e.yml'
+    branches: [main]
   push:
     branches: [main]
-      # Shared by every module, financial pages included, and asserted on by
-      # financial-form-layout.spec.ts. A change here could not reach this gate before.
-      - 'apps/web/src/components/PageHeader.tsx'
-      - 'apps/web/src/page-header.css'
-      - 'apps/web/src/ux-contract.css'
-      - '.github/workflows/financial-e2e.yml'
 
 permissions:
   contents: read
