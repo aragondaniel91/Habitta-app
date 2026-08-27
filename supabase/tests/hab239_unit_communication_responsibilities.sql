@@ -48,7 +48,10 @@ select lives_ok($$select public.set_unit_communication_assignment('23920000-0000
 select is((select financial_role::text from public.unit_communication_assignments where person_id='23940000-0000-0000-0000-000000000006' and effective_to is null),null,'general-only assignment has no financial role');
 select throws_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000001','23940000-0000-0000-0000-000000000005','primary',false)$$,'P0001','communication_assignment_not_found','cross-condominium person fails closed');
 select throws_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000001','23940000-0000-0000-0000-000000000007','primary',false)$$,'P0001','communication_assignment_person_inactive','inactive person cannot receive an active assignment');
+reset role;
+set local role service_role;
 select is((select array_agg(person_id order by person_id)::text from public.resolve_unit_financial_recipients('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000001','2026-08-21 02:30:00+00')),'{23940000-0000-0000-0000-000000000002,23940000-0000-0000-0000-000000000003}','financial event resolves only primary and additional, never unrelated or general-only');
+set local role authenticated;
 
 select lives_ok($$select public.create_receivable_item('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000001','23950000-0000-0000-0000-000000000001','Explicit recipients',1,'USD','2026-08-20','2026-08-21')$$,'explicit receivable event is created');
 reset role;
@@ -63,7 +66,10 @@ select set_config('request.jwt.claim.sub','23900000-0000-0000-0000-000000000001'
 select lives_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000001','23940000-0000-0000-0000-000000000002','none',false)$$,'additional assignment can be ended without deleting history');
 select lives_ok($$select public.set_unit_communication_assignment('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000001','23940000-0000-0000-0000-000000000003','none',false)$$,'last financial assignment can be ended and fallback is restored');
 reset role;
+reset role;
+set local role service_role;
 select is((select array_agg(person_id order by person_id)::text from public.resolve_unit_financial_recipients('23920000-0000-0000-0000-000000000001','23930000-0000-0000-0000-000000000001','2026-08-21 02:30:00+00')),'{23940000-0000-0000-0000-000000000002,23940000-0000-0000-0000-000000000003}','general-only never enables explicit-financial mode and Caracas local date excludes the next-day occupant');
+set local role authenticated;
 select is((select count(*) from public.unit_communication_assignments where unit_id='23930000-0000-0000-0000-000000000001' and effective_to is null and financial_role is not null),0::bigint,'only historical financial assignments remain after operational removal');
 select ok(position('delete from public.unit_communication_assignments' in lower(pg_get_functiondef('public.set_unit_communication_assignment(uuid,uuid,uuid,text,boolean)'::regprocedure)))=0,'assignment history is never deleted by the setter');
 
