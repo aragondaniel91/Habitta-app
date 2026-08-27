@@ -124,9 +124,41 @@ jobs:
           create schema public authorization postgres;
           grant usage on schema public to postgres, anon, authenticated, service_role;
           SQL
-          EXISTING_APP_TABLES="$(psql "$RESTORE_URL" -Atqc "select count(*) from pg_tables where schemaname = 'public';")"
+
+          # HAB-417: clear every schema the backup will recreate, not just `public`.
+          #
+          # `supabase db start` applies the repository's migrations, so the target already holds
+          # whatever schemas those migrations create. Dropping only `public` left
+          # `habitta_internal` in place; the dump's `CREATE TABLE IF NOT EXISTS` then silently
+          # skipped an existing table and the `ALTER TABLE ... ADD CONSTRAINT ... PRIMARY KEY`
+          # that follows failed with "multiple primary keys are not allowed". The drill had been
+          # proving that `public` restores, and nothing else.
+          #
+          # The list comes from the dump rather than from a name written here, so a migration that
+          # introduces the next schema does not quietly reintroduce this blind spot.
+          EXTRACTED="$GITHUB_WORKSPACE/.restore/plain/extracted"
+          BACKUP_SCHEMAS="$(grep -oE '^CREATE SCHEMA (IF NOT EXISTS )?"[^"]+"' "$EXTRACTED/schema.sql" \
+            | grep -oE '"[^"]+"$' | tr -d '"' | sort -u)"
+
+          for schema in $BACKUP_SCHEMAS; do
+            # A backup must never be able to talk this drill into dropping a Supabase-managed
+            # schema. If one is ever named, stop rather than obey.
+            case "$schema" in
+              public|auth|storage|vault|extensions|graphql|graphql_public|realtime|_realtime|net|supabase_functions|supabase_migrations|pg_*|information_schema)
+                echo "Refusing to drop managed schema named by the backup: $schema" >&2
+                exit 1
+                ;;
+            esac
+            psql "$RESTORE_URL" -v ON_ERROR_STOP=1 \
+              -c "drop schema if exists \"$schema\" cascade;"
+            printf 'Dropped schema carried by the backup: %s\n' "$schema"
+          done
+
+          # Emptiness is asserted over every schema the restore touches, for the same reason: a
+          # check that only counts `public` is how the previous blind spot stayed invisible.
+          REMAINING="$(psql "$RESTORE_URL" -Atqc "select count(*) from pg_tables where schemaname = 'public'$(for s in $BACKUP_SCHEMAS; do printf " or schemaname = '%s'" "$s"; done);")"
           EXISTING_AUTH_USERS="$(psql "$RESTORE_URL" -Atqc 'select count(*) from auth.users;')"
-          test "$EXISTING_APP_TABLES" -eq 0
+          test "$REMAINING" -eq 0
           test "$EXISTING_AUTH_USERS" -eq 0
           printf 'Clean isolated restore target prepared.\n'
       - name: Restore Auth, schema and application data
