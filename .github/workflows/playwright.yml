@@ -3,18 +3,8 @@ name: Playwright Browser Tests
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'apps/web/**'
-      - 'e2e/**'
-      - '.github/workflows/playwright.yml'
-      - 'pnpm-lock.yaml'
   push:
     branches: [main]
-    paths:
-      - 'apps/web/**'
-      - 'e2e/**'
-      - '.github/workflows/playwright.yml'
-      - 'pnpm-lock.yaml'
 
 jobs:
   public-browser:
@@ -22,25 +12,55 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # This check is required by the branch ruleset, so it has to report a conclusion on every
+      # pull request. A `paths:` trigger does not run at all when nothing matches, and a required
+      # check that never runs blocks the merge forever -- which is exactly what happened to a
+      # SQL-only pull request once protection was switched on. The filter moved in here instead:
+      # the job always reports, and does the expensive work only when it is relevant.
+      - name: Decide whether this change needs the suite
+        id: scope
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            echo 'relevant=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags origin "$GITHUB_BASE_REF"
+          CHANGED=$(git diff --name-only "origin/$GITHUB_BASE_REF"...HEAD)
+          if echo "$CHANGED" | grep -qE '^(apps/web/|e2e/|pnpm-lock\.yaml|\.github/workflows/playwright\.yml)'; then
+            echo 'relevant=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'relevant=false' >> "$GITHUB_OUTPUT"
+            echo "No files in this change touch the browser suite; reporting success without running it."
+          fi
       - uses: pnpm/action-setup@v4
+        if: steps.scope.outputs.relevant == 'true'
         with:
           version: 10.12.1
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.relevant == 'true'
         with:
           node-version: 22
           cache: pnpm
       - name: Install application dependencies
+        if: steps.scope.outputs.relevant == 'true'
         run: pnpm install --frozen-lockfile
       - name: Install Playwright test dependencies
+        if: steps.scope.outputs.relevant == 'true'
         run: npm install --prefix e2e --no-package-lock --ignore-scripts --no-audit --no-fund
       - name: Typecheck Playwright configuration
+        if: steps.scope.outputs.relevant == 'true'
         run: pnpm exec tsc -p e2e/tsconfig.json --noEmit
       - name: Install Chromium
+        if: steps.scope.outputs.relevant == 'true'
         run: npm --prefix e2e exec -- playwright install --with-deps chromium
       - name: Run public browser suite
+        if: steps.scope.outputs.relevant == 'true'
         run: npm --prefix e2e run test:public
       - name: Upload Playwright report
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-public-report
