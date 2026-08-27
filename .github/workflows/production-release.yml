@@ -73,8 +73,20 @@ jobs:
           node scripts/release/validate-production-release.mjs
           test "$VITE_API_BASE_URL" = "$CLOUDFLARE_WORKER_PROD_URL"
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
-            test "$INPUT_CONFIRMATION" = DEPLOY-HABITTA-PRODUCTION
-            test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
+            # Surrounding whitespace is stripped before comparing. A trailing space pasted into the
+            # dispatch form is invisible in the UI and made `test` exit 1 with no message at all,
+            # which cost a release and read like a broken workflow. The phrase itself must still
+            # match exactly, so nothing about the gate is relaxed -- only the footgun is removed.
+            CONFIRMATION="$(printf '%s' "$INPUT_CONFIRMATION" | tr -d '[:space:]')"
+            CONFIRM_PROJECT_REF="$(printf '%s' "$INPUT_CONFIRM_PROJECT_REF" | tr -d '[:space:]')"
+            if [ "$CONFIRMATION" != DEPLOY-HABITTA-PRODUCTION ]; then
+              echo "Refusing to release: confirmation phrase does not match DEPLOY-HABITTA-PRODUCTION." >&2
+              exit 1
+            fi
+            if [ "$CONFIRM_PROJECT_REF" != "$SUPABASE_PROJECT_REF" ]; then
+              echo "Refusing to release: confirm_project_ref does not match this environment's Supabase project." >&2
+              exit 1
+            fi
           fi
           git fetch origin main
           SHA=$(git rev-parse HEAD)
