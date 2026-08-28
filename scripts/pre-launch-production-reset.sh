@@ -216,18 +216,38 @@ else
       *) check 'SUPABASE_URL belongs to the expected project' fail "does not name $EXPECTED_PROJECT_REF" ;;
     esac
 
-    # Supabase writes the project ref into the host on a direct connection and into the role name
-    # through Supavisor, so either one proves it. `current_user` comes from the server rather than
-    # from the environment, which is what makes this about the connection actually in use.
+    # Direct connections identify the project in PGHOST. Shared Supavisor session-mode
+    # connections identify the tenant in the login username instead. Supavisor authenticates
+    # `postgres.<project-ref>` and then exposes the backend Postgres role as plain `postgres`, so
+    # `current_user` alone cannot carry the tenant id. A successful query above plus the official
+    # pooler hostname, session-mode port and exact tenant-qualified PGUSER together prove which
+    # Supavisor tenant accepted this connection.
     effective_user="$(q 'select current_user')"
     pg_identity='no'
-    case "${PGHOST:-}" in *"$EXPECTED_PROJECT_REF"*) pg_identity='host' ;; esac
-    case "$effective_user" in *"$EXPECTED_PROJECT_REF"*) pg_identity='pooler role' ;; esac
+
+    case "${PGHOST:-}" in
+      *"$EXPECTED_PROJECT_REF"*)
+        pg_identity='direct host'
+        ;;
+      aws-*.pooler.supabase.com)
+        if [ "${PGPORT:-}" = '5432' ] \
+          && [ "${PGUSER:-}" = "postgres.$EXPECTED_PROJECT_REF" ] \
+          && [ "$effective_user" = 'postgres' ]; then
+          pg_identity='authenticated Supavisor session tenant'
+        fi
+        ;;
+    esac
+
+    # Keep compatibility if Supabase ever exposes a project-qualified server role.
+    case "$effective_user" in
+      *"$EXPECTED_PROJECT_REF"*) pg_identity='server role' ;;
+    esac
+
     if [ "$pg_identity" != 'no' ]; then
       check 'the database connection belongs to the expected project' ok "proved by $pg_identity"
     else
       check 'the database connection belongs to the expected project' fail \
-        "neither PGHOST nor the connected role names $EXPECTED_PROJECT_REF"
+        "neither the direct host, authenticated Supavisor session tenant, nor connected role identifies $EXPECTED_PROJECT_REF"
     fi
   fi
 
