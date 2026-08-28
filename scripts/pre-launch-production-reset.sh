@@ -303,11 +303,17 @@ else
     drill_conclusion="$(gh run view "$EXPECTED_DRILL_RUN_ID" --json conclusion -q .conclusion 2>/dev/null || echo unknown)"
     if [ "$drill_conclusion" = 'success' ]; then
       check 'restore drill is green' ok "run $EXPECTED_DRILL_RUN_ID"
-      if gh run view "$EXPECTED_DRILL_RUN_ID" --log 2>/dev/null | grep -qF "$EXPECTED_BACKUP_KEY"; then
-        check 'that drill restored this exact backup' ok
+      drill_log="$WORK/restore-drill.log"
+      if gh run view "$EXPECTED_DRILL_RUN_ID" --log > "$drill_log" 2>/dev/null; then
+        if grep -F "$EXPECTED_BACKUP_KEY" "$drill_log" >/dev/null; then
+          check 'that drill restored this exact backup' ok
+        else
+          check 'that drill restored this exact backup' fail \
+            "run $EXPECTED_DRILL_RUN_ID does not mention $EXPECTED_BACKUP_KEY"
+        fi
       else
         check 'that drill restored this exact backup' fail \
-          "run $EXPECTED_DRILL_RUN_ID does not mention $EXPECTED_BACKUP_KEY"
+          "could not read logs for run $EXPECTED_DRILL_RUN_ID"
       fi
     else
       check 'restore drill is green' fail "run $EXPECTED_DRILL_RUN_ID is $drill_conclusion"
