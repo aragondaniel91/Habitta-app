@@ -424,24 +424,52 @@ if [ "$REHEARSAL" != 'true' ] || [ -n "$OWNER_CREDENTIALS_FILE" ]; then
   # actually read the file. Each platform is asked in its own terms.
   case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*)
-      command -v icacls >/dev/null 2>&1 || abort 'icacls is required to verify the credentials file is private.'
+      command -v powershell.exe >/dev/null 2>&1 || abort 'powershell.exe is required to verify the credentials file is private.'
       windows_path="$(cygpath -w "$OWNER_CREDENTIALS_FILE")"
-      # Every principal on the ACL, minus the three that are always allowed to be there: the
-      # operator, the local SYSTEM account, and the Administrators group.
-      outsiders="$(icacls "$windows_path" 2>/dev/null \
-        | grep -oE '[^ ]+:\([A-Za-z,()]*\)' \
-        | sed 's/:(.*//' \
-        | grep -vE "\\\\${USERNAME}\$|^NT AUTHORITY\\\\SYSTEM\$|^BUILTIN\\\\" || true)"
+
+      # Decided on canonical SIDs, never on names. Windows is localised -- this machine reports
+      # `BUILTIN\Administradores` -- so comparing names compares against the installer's language.
+      # A pattern like `^BUILTIN\` is worse still: it silently accepts `BUILTIN\Users` and
+      # `BUILTIN\Guests`, which between them are every account on the machine.
+      #
+      # Exactly three principals may appear: the operator, the local SYSTEM account (S-1-5-18) and
+      # the local Administrators group (S-1-5-32-544). Any other Allow entry fails, whatever rights
+      # it carries -- a credentials file has no business granting anything to anybody else, so
+      # there is no rights parsing here to get subtly wrong. Inherited entries are covered, because
+      # Get-Acl reports the effective ACL rather than only what was set on the file itself.
+      cat > "$WORK/acl.ps1" <<'ACLPS'
+param([string]$Path)
+$ErrorActionPreference = 'Stop'
+$allowed = @(
+  [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value,
+  'S-1-5-18',
+  'S-1-5-32-544'
+)
+foreach ($entry in (Get-Acl -LiteralPath $Path).Access) {
+  if ($entry.AccessControlType -ne 'Allow') { continue }
+  try { $sid = $entry.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value }
+  catch { $sid = $entry.IdentityReference.Value }
+  if ($allowed -notcontains $sid) {
+    Write-Output ($sid + '  ' + $entry.IdentityReference.Value)
+  }
+}
+ACLPS
+
+      outsiders="$(powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass \
+        -File "$(cygpath -w "$WORK/acl.ps1")" -Path "$windows_path" 2>/dev/null | tr -d '\r' | grep -v '^$' || true)"
+
       if [ -n "$outsiders" ]; then
         say ''
-        say 'The credentials file can be read by accounts other than yours:'
-        printf '  %s\n' $outsiders
+        say 'The credentials file grants access to accounts other than yours:'
+        printf '  %s\n' "$outsiders"
         say ''
         say 'Restrict it, then run again:'
-        say "  icacls \"$windows_path\" /inheritance:r /grant:r \"%USERNAME%:(R)\""
+        say "  icacls \"$windows_path\" /inheritance:r"
+        say "  icacls \"$windows_path\" /grant:r \"%USERNAME%:(R,W)\""
+        say '  (add SYSTEM or Administrators back only if you actually need them)'
         abort 'OWNER_CREDENTIALS_FILE is readable by other accounts.'
       fi
-      check 'credentials file is private' ok 'no principals beyond you, SYSTEM and Administrators'
+      check 'credentials file is private' ok 'only you, SYSTEM and Administrators, matched by SID'
       ;;
     *)
       perms="$(stat -c '%a' "$OWNER_CREDENTIALS_FILE" 2>/dev/null || stat -f '%Lp' "$OWNER_CREDENTIALS_FILE" 2>/dev/null || echo '')"
