@@ -51,8 +51,9 @@
 # read from stdin, which is why no -H carrying a token appears either.
 #
 #   PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE   the production database
+#   EXPECTED_PROJECT_REF                          kgsfaahixbcwcmykmhat for production
 #   HABITTA_API_BASE_URL                          the production worker
-#   HABITTA_OWNER_ACCESS_TOKEN                    a JWT for the organization owner
+#   OWNER_CREDENTIALS_FILE                        organization id -> owner JWT, mode 0600
 #   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY       Auth Admin API, for deleting accounts
 #   SURVIVOR_ALLOWLIST                            path to the allowlist file, never committed
 #
@@ -69,6 +70,8 @@ REHEARSAL="${REHEARSAL:-false}"
 REHEARSAL_EXECUTE="${REHEARSAL_EXECUTE:-false}"
 CONFIRM="${CONFIRM:-}"
 SURVIVOR_ALLOWLIST="${SURVIVOR_ALLOWLIST:-}"
+EXPECTED_PROJECT_REF="${EXPECTED_PROJECT_REF:-}"
+OWNER_CREDENTIALS_FILE="${OWNER_CREDENTIALS_FILE:-}"
 EXPECTED_MAIN_SHA="${EXPECTED_MAIN_SHA:-}"
 EXPECTED_BACKUP_KEY="${EXPECTED_BACKUP_KEY:-}"
 EXPECTED_DRILL_RUN_ID="${EXPECTED_DRILL_RUN_ID:-}"
@@ -132,6 +135,20 @@ api_call() {
   } | curl -K -
 }
 
+# The subject of a JWT, read without verifying it. This is not authentication -- it answers "which
+# account does this token claim to be" so ownership can be checked against the database before any
+# network call. Production additionally validates the token remotely, where the signature counts.
+jwt_subject() {
+  local payload
+  payload="$(printf '%s' "$1" | cut -d. -f2 | tr '_-' '/+')"
+  case $(( ${#payload} % 4 )) in
+    2) payload="$payload==" ;;
+    3) payload="$payload=" ;;
+  esac
+  printf '%s' "$payload" | base64 -d 2>/dev/null \
+    | grep -oE '"sub":"[^"]*"' | head -n1 | sed 's/.*:"//; s/"$//' || true
+}
+
 # A SQL uuid[] built from the first column of a frozen set. Deleting by these arrays -- rather than
 # by re-running the query that produced them -- is what makes the reviewed set the only set that
 # can be destroyed.
@@ -185,13 +202,39 @@ check 'database reachable' ok
 if [ "$REHEARSAL" = 'true' ]; then
   note 'rehearsal mode - production identity, backup and drill checks are skipped'
 else
-  for required in HABITTA_API_BASE_URL HABITTA_OWNER_ACCESS_TOKEN SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+  for required in HABITTA_API_BASE_URL OWNER_CREDENTIALS_FILE SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY EXPECTED_PROJECT_REF; do
     if [ -n "${!required:-}" ]; then check "$required is set" ok; else check "$required is set" fail 'required'; fi
   done
 
-  # The database and the API must be the same project, and a substring of a URL does not prove it.
-  # Ask the Auth Admin API about an account the database also knows and require both to agree on
-  # its address. Two systems that agree about a specific account are the same system.
+  # Both halves of the connection must belong to the expected project, and they are checked
+  # separately because they can disagree. A database restored from a production backup carries
+  # production's data while living somewhere else entirely; pointed at production's Auth API, every
+  # other check in this script would pass while the deletions landed on the wrong database.
+  if [ -n "$EXPECTED_PROJECT_REF" ]; then
+    case "${SUPABASE_URL:-}" in
+      *"$EXPECTED_PROJECT_REF"*) check 'SUPABASE_URL belongs to the expected project' ok "$EXPECTED_PROJECT_REF" ;;
+      *) check 'SUPABASE_URL belongs to the expected project' fail "does not name $EXPECTED_PROJECT_REF" ;;
+    esac
+
+    # Supabase writes the project ref into the host on a direct connection and into the role name
+    # through Supavisor, so either one proves it. `current_user` comes from the server rather than
+    # from the environment, which is what makes this about the connection actually in use.
+    effective_user="$(q 'select current_user')"
+    pg_identity='no'
+    case "${PGHOST:-}" in *"$EXPECTED_PROJECT_REF"*) pg_identity='host' ;; esac
+    case "$effective_user" in *"$EXPECTED_PROJECT_REF"*) pg_identity='pooler role' ;; esac
+    if [ "$pg_identity" != 'no' ]; then
+      check 'the database connection belongs to the expected project' ok "proved by $pg_identity"
+    else
+      check 'the database connection belongs to the expected project' fail \
+        "neither PGHOST nor the connected role names $EXPECTED_PROJECT_REF"
+    fi
+  fi
+
+  # The second, complementary defence. The checks above prove each half is *declared* to belong to
+  # the expected project; this one proves the two halves are actually the same system, by asking
+  # the Auth Admin API about an account the database also knows and requiring both to agree on its
+  # address. Declaration and behaviour can disagree, so both are checked.
   if [ -n "${SUPABASE_URL:-}" ] && [ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
     probe_id="${survivors[0]}"
     db_email="$(q "select coalesce(email,'') from auth.users where id = '$probe_id'")"
@@ -361,6 +404,133 @@ both "  receivable items      $(q 'select count(*) from public.receivable_items'
 both "  payments              $(q 'select count(*) from public.payments')"
 both "  deletion jobs already $jobs_baseline"
 
+# ------------------------------------------- owner credentials, one per frozen organization
+
+# Production holds condominiums owned by different people, so a single token cannot delete them
+# all. Each organization needs its own owner credential, and every one of them is proved usable
+# here -- before anything is written -- because discovering a missing token halfway through leaves
+# production half reset.
+declare -A owner_token=()
+
+if [ "$REHEARSAL" != 'true' ] || [ -n "$OWNER_CREDENTIALS_FILE" ]; then
+  if [ -z "$OWNER_CREDENTIALS_FILE" ] || [ ! -f "$OWNER_CREDENTIALS_FILE" ]; then
+    abort 'OWNER_CREDENTIALS_FILE must point at a file mapping organization ids to owner tokens.'
+  fi
+
+  # The file holds bearer tokens, so no account other than the operator may read it. The property
+  # is checked, not the notation: on Windows `chmod 600` cannot clear the group and other bits at
+  # all -- it reports 644 no matter what -- so demanding that exact mode would make this script
+  # unrunnable on the machine it is meant to be run from, while proving nothing about who can
+  # actually read the file. Each platform is asked in its own terms.
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+      command -v icacls >/dev/null 2>&1 || abort 'icacls is required to verify the credentials file is private.'
+      windows_path="$(cygpath -w "$OWNER_CREDENTIALS_FILE")"
+      # Every principal on the ACL, minus the three that are always allowed to be there: the
+      # operator, the local SYSTEM account, and the Administrators group.
+      outsiders="$(icacls "$windows_path" 2>/dev/null \
+        | grep -oE '[^ ]+:\([A-Za-z,()]*\)' \
+        | sed 's/:(.*//' \
+        | grep -vE "\\\\${USERNAME}\$|^NT AUTHORITY\\\\SYSTEM\$|^BUILTIN\\\\" || true)"
+      if [ -n "$outsiders" ]; then
+        say ''
+        say 'The credentials file can be read by accounts other than yours:'
+        printf '  %s\n' $outsiders
+        say ''
+        say 'Restrict it, then run again:'
+        say "  icacls \"$windows_path\" /inheritance:r /grant:r \"%USERNAME%:(R)\""
+        abort 'OWNER_CREDENTIALS_FILE is readable by other accounts.'
+      fi
+      check 'credentials file is private' ok 'no principals beyond you, SYSTEM and Administrators'
+      ;;
+    *)
+      perms="$(stat -c '%a' "$OWNER_CREDENTIALS_FILE" 2>/dev/null || stat -f '%Lp' "$OWNER_CREDENTIALS_FILE" 2>/dev/null || echo '')"
+      [ -n "$perms" ] || abort 'Cannot read the mode of OWNER_CREDENTIALS_FILE.'
+      # Group and other must have nothing. Stricter than "equals 0600", which would reject 0400.
+      if [ $(( 8#$perms & 8#077 )) -ne 0 ]; then
+        abort "OWNER_CREDENTIALS_FILE is readable by group or others (mode $perms). Use chmod 600."
+      fi
+      check 'credentials file is private' ok "mode $perms"
+      ;;
+  esac
+
+  while IFS=$'\t' read -r cred_org cred_token; do
+    case "$cred_org" in ''|'#'*) continue ;; esac
+    [ -n "$cred_token" ] || abort "Credential line for $cred_org has no token."
+    if [ -n "${owner_token[$cred_org]:-}" ]; then
+      abort "Two credentials for organization $cred_org. Which one is meant is not a guess to make."
+    fi
+    owner_token["$cred_org"]="$cred_token"
+  done < "$OWNER_CREDENTIALS_FILE"
+
+  both ''
+  both '  Owner credentials, one per organization owning a condominium:'
+
+  # Only organizations that actually own a frozen condominium need a credential.
+  while IFS=$'\t' read -r _cid coid _cname; do
+    [ -n "$coid" ] || continue
+    printf '%s\n' "$coid"
+  done < "$WORK/condominiums.tsv" | sort -u > "$WORK/organizations-needing-credentials.tsv"
+
+  # Loaded into an array rather than read from a redirect: commands inside the loop can consume
+  # stdin, which silently truncates the iteration and would leave organizations unchecked.
+  mapfile -t needing_credentials < "$WORK/organizations-needing-credentials.tsv"
+  for need_org in "${needing_credentials[@]}"; do
+    [ -n "$need_org" ] || continue
+    token="${owner_token[$need_org]:-}"
+    if [ -z "$token" ]; then
+      check "owner credential available for $need_org" fail 'no credential in the file'
+      continue
+    fi
+
+    subject="$(jwt_subject "$token")"
+    if [ -z "$subject" ]; then
+      check "owner credential available for $need_org" fail 'the token carries no subject'
+      continue
+    fi
+
+    # The decisive check, and the one that catches a token pasted against the wrong organization:
+    # the account the token claims to be must actually own this organization. Ownership is read
+    # from the database, not from the token.
+    owns="$(q "select count(*) from public.organization_memberships
+               where organization_id = '$need_org' and user_id = '$subject'
+                 and role = 'organization_owner'")"
+    if [ "$owns" -ne 1 ]; then
+      check "owner credential available for $need_org" fail \
+        'the account behind this token is not an organization_owner of it'
+      continue
+    fi
+
+    if [ "$REHEARSAL" = 'true' ]; then
+      check "owner credential available for $need_org" ok 'ownership confirmed, not validated remotely'
+    else
+      # In production the signature matters, so the token is validated where it can be: an expired
+      # or forged token fails here rather than midway through the deletions.
+      probe="$(api_call GET "$SUPABASE_URL/auth/v1/user" \
+        "Authorization: Bearer $token" "apikey: $SUPABASE_SERVICE_ROLE_KEY" || true)"
+      probe_status="$(printf '%s' "$probe" | tail -n1)"
+      probe_sub="$(printf '%s' "$probe" | sed '$d' | grep -oE '"id":"[^"]*"' | head -n1 | sed 's/.*:"//; s/"$//' || true)"
+      if [ "$probe_status" = '200' ] && [ "$probe_sub" = "$subject" ]; then
+        check "owner credential available for $need_org" ok 'valid and owns this organization'
+      else
+        check "owner credential available for $need_org" fail "the API rejected it (HTTP $probe_status)"
+      fi
+    fi
+  done
+
+  # A credential for an organization nothing in the plan needs is a sign the file describes a
+  # different run. Say so rather than ignoring it.
+  for cred_org in "${!owner_token[@]}"; do
+    if ! grep -qx "$cred_org" "$WORK/organizations-needing-credentials.tsv"; then
+      check "credential for $cred_org matches the plan" fail 'no frozen condominium belongs to it'
+    fi
+  done
+
+  if [ "$failures" -gt 0 ]; then
+    abort "$failures credential check(s) failed. Nothing was written."
+  fi
+fi
+
 heading "Phase 1 - the frozen plan"
 
 both ''
@@ -457,7 +627,12 @@ both '  the worker removes exactly the R2 keys the purge reports. No table is em
 deleted_tenants=0
 deleted_objects=0
 
-while IFS=$'\t' read -r condo_id condo_org condo_name; do
+# Loaded into arrays rather than read through a redirect: a command inside these loops can consume
+# stdin and silently truncate the iteration. A loop that quietly does nothing is the worst failure
+# available to a script whose whole job is to act on exactly the reviewed set.
+mapfile -t frozen_condominiums < "$WORK/condominiums.tsv"
+for frozen_row in "${frozen_condominiums[@]}"; do
+  IFS=$'	' read -r condo_id condo_org condo_name <<< "$frozen_row"
   [ -n "$condo_id" ] || continue
   both ''
   both "  deleting $condo_name ($condo_id)"
@@ -488,8 +663,16 @@ SQL
        from public.condominiums c where c.id = '$condo_id'" > "$WORK/body.json"
     chmod 600 "$WORK/body.json"
 
+    # The credential for this condominium's own organization, taken from the frozen row. Falling
+    # back to another organization's token would be asking the API to enforce what this script was
+    # supposed to have established.
+    condo_token="${owner_token[$condo_org]:-}"
+    if [ -z "$condo_token" ]; then
+      abort "No owner credential for organization $condo_org. Stopping with the remaining tenants untouched."
+    fi
+
     response="$(api_call POST "$HABITTA_API_BASE_URL/v1/condominiums/$condo_id/danger-zone/delete" \
-      "Authorization: Bearer $HABITTA_OWNER_ACCESS_TOKEN" \
+      "Authorization: Bearer $condo_token" \
       'Content-Type: application/json' "$WORK/body.json" || true)"
     status="$(printf '%s' "$response" | tail -n1)"
     body="$(printf '%s' "$response" | sed '$d')"
@@ -511,7 +694,7 @@ SQL
 
   deleted_tenants=$((deleted_tenants + 1))
   deleted_objects=$((deleted_objects + ${objects:-0}))
-done < "$WORK/condominiums.tsv"
+done
 
 remaining="$(q 'select count(*) from public.condominiums')"
 if [ "$remaining" -ne 0 ]; then
@@ -547,7 +730,9 @@ both ''
 both '  Acting on the list frozen in phase 1, not on a fresh query.'
 
 deleted_users=0
-while IFS=$'\t' read -r user_id user_email; do
+mapfile -t frozen_users < "$WORK/deletable-users.tsv"
+for frozen_row in "${frozen_users[@]}"; do
+  IFS=$'	' read -r user_id user_email <<< "$frozen_row"
   [ -n "$user_id" ] || continue
   if [ "$REHEARSAL_EXECUTE" = 'true' ]; then
     both "    would delete $user_id ${user_email:-} (rehearsal makes no Auth call)"
@@ -563,7 +748,7 @@ while IFS=$'\t' read -r user_id user_email; do
   fi
   both "    deleted $user_id ${user_email:-}"
   deleted_users=$((deleted_users + 1))
-done < "$WORK/deletable-users.tsv"
+done
 
 # --------------------------------------------------------------------------------- phase 5
 
@@ -629,7 +814,8 @@ check 'one new tombstone per deleted tenant' \
   "$( [ "$new_jobs" -eq "$deleted_tenants" ] && echo ok || echo fail )" \
   "$new_jobs new, $deleted_tenants deleted"
 
-while IFS=$'\t' read -r condo_id condo_org condo_name; do
+for frozen_row in "${frozen_condominiums[@]}"; do
+  IFS=$'	' read -r condo_id condo_org condo_name <<< "$frozen_row"
   [ -n "$condo_id" ] || continue
   # Matched on the frozen condominium id, restricted to jobs this run created, and required to
   # still name the organization -- which is the property the migration in this branch protects.
@@ -639,7 +825,7 @@ while IFS=$'\t' read -r condo_id condo_org condo_name; do
                    and j.id <> all($baseline_sql)")"
   check "tombstone for $condo_name" "$( [ "$matching" -eq 1 ] && echo ok || echo fail )" \
     "$matching matching job(s)"
-done < "$WORK/condominiums.tsv"
+done
 
 incomplete="$(q "select count(*) from public.condominium_deletion_jobs
                  where id <> all($baseline_sql) and storage_cleanup_status <> 'completed'")"

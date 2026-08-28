@@ -45,3 +45,4 @@ yarn-error.log*
 # Pre-launch reset evidence stays local; it names accounts and tenants
 .reset-report/
 survivors*.txt
+owner-credentials*
