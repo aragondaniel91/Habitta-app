@@ -19,6 +19,15 @@ values
   ('20520000-0000-4000-8000-000000000001', '20510000-0000-4000-8000-000000000001', 'Residencia HAB 205 A', '20500000-0000-4000-8000-000000000001'),
   ('20520000-0000-4000-8000-000000000002', '20510000-0000-4000-8000-000000000002', 'Residencia HAB 205 B', '20500000-0000-4000-8000-000000000003');
 
+-- HAB-419 regression: the residence being deleted uses the same topology that exposed
+-- the Production purge failure. Exactly one building must remain configured until the
+-- units have been removed.
+update public.condominiums
+set property_topology = 'single_building',
+    declared_unit_count = 2,
+    declared_building_count = 1
+where id = '20520000-0000-4000-8000-000000000001';
+
 insert into public.organization_memberships(organization_id, user_id, role)
 values
   ('20510000-0000-4000-8000-000000000001', '20500000-0000-4000-8000-000000000001', 'organization_owner'),
