@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(13);
 
 -- HAB-414: organization classification is commercial metadata owned by the platform.
 -- It is deliberately separate from tenant authorization and from subscription enforcement.
@@ -59,7 +59,7 @@ select ok(
 
 insert into auth.users(id, instance_id, aud, role, email, encrypted_password, created_at, updated_at) values
   ('41400000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'owner-a@hab414.test', 'x', now(), now()),
-  ('41400000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'owner-b@hab414.test', 'x', now(), now());
+  ('41400000-0000-4000-8000-000000000002', '00000000-0000-0000-8000-000000000000', 'authenticated', 'authenticated', 'owner-b@hab414.test', 'x', now(), now());
 
 insert into public.organizations(id, name, created_by)
 values ('41410000-0000-4000-8000-000000000001', 'Default Customer', '41400000-0000-4000-8000-000000000001');
