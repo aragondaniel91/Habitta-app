@@ -35,15 +35,14 @@ export async function loadCommercialSummary(condominiumId: string) {
 }
 
 export function commercialStatusLabel(status: CommercialSummary['status']) {
-  return (
-    {
-      trialing: 'Prueba gratuita',
-      active: 'Activa',
-      past_due: 'Pago vencido',
-      suspended: 'Suspendida',
-      cancelled: 'Cancelada',
-    }[status ?? ''] ?? 'Sin suscripción'
-  );
+  if (!status) return 'Sin suscripción';
+  return {
+    trialing: 'Prueba gratuita',
+    active: 'Activa',
+    past_due: 'Pago vencido',
+    suspended: 'Suspendida',
+    cancelled: 'Cancelada',
+  }[status];
 }
 
 export function commercialBenefitLabel(summary: CommercialSummary) {
