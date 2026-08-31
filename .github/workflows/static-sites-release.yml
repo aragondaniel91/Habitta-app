@@ -94,27 +94,47 @@ jobs:
           };
           JS
 
-      - name: Deploy Pages surface
+      - name: Prepare Pages verification context
         run: |
           set -euo pipefail
           SHA=$(git rev-parse HEAD)
+          echo "RELEASE_COMMIT=$SHA" >> "$GITHUB_ENV"
+          echo "CLOUDFLARE_PAGES_PROJECT_NAME=$PAGES_PROJECT" >> "$GITHUB_ENV"
+          echo "CLOUDFLARE_PAGES_PROD_URL=$EXPECTED_URL" >> "$GITHUB_ENV"
+
+      - name: Deploy Pages surface
+        run: |
+          set -euo pipefail
           pnpm --filter @habitta/api exec wrangler pages deploy "$GITHUB_WORKSPACE/$DEPLOY_DIR" \
             --project-name "$PAGES_PROJECT" \
             --branch "$PAGES_BRANCH" \
-            --commit-hash "$SHA" \
-            --commit-message "static-$INPUT_TARGET-$SHA"
+            --commit-hash "$RELEASE_COMMIT" \
+            --commit-message "static-$INPUT_TARGET-$RELEASE_COMMIT"
 
-      - name: Smoke canonical domain
+      - name: Probe canonical domain
         run: |
           set -euo pipefail
+          last_status=000
           for attempt in $(seq 1 12); do
-            if curl -fsS "$EXPECTED_URL" >/dev/null; then
-              echo "Healthy: $EXPECTED_URL"
-              exit 0
-            fi
+            last_status="$(curl --connect-timeout 5 --max-time 15 -sS -o /dev/null -w '%{http_code}' "$EXPECTED_URL" || true)"
+            case "$last_status" in
+              2??|3??)
+                echo "Healthy HTTP response: $EXPECTED_URL ($last_status)"
+                exit 0
+                ;;
+              403)
+                if [[ "$INPUT_TARGET" == admin-* ]]; then
+                  echo "Admin canonical domain denied this GitHub runner with HTTP 403; requiring Cloudflare control-plane verification next."
+                  exit 0
+                fi
+                ;;
+            esac
             if [ "$attempt" -lt 12 ]; then
               sleep 5
             fi
           done
-          echo "Canonical domain did not become healthy: $EXPECTED_URL" >&2
+          echo "Canonical domain returned an unexpected status: $EXPECTED_URL ($last_status)" >&2
           exit 1
+
+      - name: Verify Pages control plane
+        run: node scripts/release/verify-production-pages-control-plane.mjs

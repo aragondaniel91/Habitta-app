@@ -30,6 +30,28 @@ describe('production release workflow hardening', () => {
     expect(workflow).not.toContain('HABITTA_DEV_PROJECT_REF');
   });
 
+  it('verifies static Pages releases without treating arbitrary edge failures as healthy', async () => {
+    const workflow = await readFile(
+      new URL('.github/workflows/static-sites-release.yml', root),
+      'utf8',
+    );
+
+    expect(workflow).toContain('Prepare Pages verification context');
+    expect(workflow).toContain('CLOUDFLARE_PAGES_PROJECT_NAME=$PAGES_PROJECT');
+    expect(workflow).toContain('CLOUDFLARE_PAGES_PROD_URL=$EXPECTED_URL');
+    expect(workflow).toContain('curl --connect-timeout 5 --max-time 15');
+    expect(workflow).toContain('if [[ "$INPUT_TARGET" == admin-* ]]');
+    expect(workflow).toContain(
+      'Admin canonical domain denied this GitHub runner with HTTP 403; requiring Cloudflare control-plane verification next.',
+    );
+    expect(workflow).toContain('Verify Pages control plane');
+    expect(workflow).toContain('node scripts/release/verify-production-pages-control-plane.mjs');
+    expect(workflow).toContain(
+      'Canonical domain returned an unexpected status: $EXPECTED_URL ($last_status)',
+    );
+    expect(workflow).not.toContain('curl -fsS "$EXPECTED_URL"');
+  });
+
   it('keeps Supabase identity out of the static production Wrangler vars', async () => {
     const wrangler = await readFile(new URL('apps/api/wrangler.jsonc', root), 'utf8');
     const prodSection = wrangler.slice(wrangler.indexOf('"prod": {'));
