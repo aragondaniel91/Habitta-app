@@ -12,12 +12,7 @@ import type {
   Receivable,
 } from '../features/payments/types';
 import { apiRequest } from '../lib/api';
-import {
-  collectAllPages,
-  financialPagePath,
-  mergePageItems,
-  pageInfo,
-} from '../lib/pagination';
+import { collectAllPages, financialPagePath, mergePageItems, pageInfo } from '../lib/pagination';
 import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import { PaymentsDrawerHost, type PaymentsDrawerMode } from './PaymentsDrawers';
 import { ResidentPaymentsView } from './ResidentPaymentsView';
@@ -97,11 +92,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
           apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
           methodsPromise,
           apiRequest<PaginatedResponse<Payment>>(
-            financialPagePath(
-              `/v1/condominiums/${condominiumId}/payments`,
-              1,
-              PAYMENTS_PAGE_SIZE,
-            ),
+            financialPagePath(`/v1/condominiums/${condominiumId}/payments`, 1, PAYMENTS_PAGE_SIZE),
             session,
           ),
           receivablesPromise,
@@ -117,9 +108,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
         });
       } catch (requestError) {
         setError(
-          requestError instanceof Error
-            ? requestError.message
-            : 'No se pudieron cargar tus pagos.',
+          requestError instanceof Error ? requestError.message : 'No se pudieron cargar tus pagos.',
         );
       } finally {
         if (!background) setLoading(false);
