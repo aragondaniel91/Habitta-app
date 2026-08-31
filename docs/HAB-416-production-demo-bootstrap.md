@@ -7,7 +7,7 @@ This runbook creates exactly one synthetic Habitta demo tenant after HAB-414 and
 1. Merge the reviewed HAB-416 PR only when CI, Supabase/pgTAP, Playwright, and Financial E2E are green on the same SHA.
 2. Deploy that merged SHA through `.github/workflows/production-release.yml` only.
 3. Confirm the production release, Worker smoke, Pages/API smoke, and migration step are green.
-4. Run `scripts/bootstrap-production-demo.sh` in plan-only mode against Production.
+4. Run `bash scripts/bootstrap-production-demo.sh` in plan-only mode against Production.
 5. Review the plan and Production aggregate state.
 6. Run the same script with explicit apply confirmation.
 7. Run the commercial placement report and the post-bootstrap checks below.
@@ -42,7 +42,7 @@ The repository is public. Never put any credential in a command argument, Git fi
 The script expects the normal PostgreSQL `PG*` environment variables plus:
 
 - `EXPECTED_PROJECT_REF`
-- `EXPECTED_DEPLOYED_SHA` (strongly recommended; required by the production procedure below)
+- `EXPECTED_DEPLOYED_SHA` (required by the Production procedure)
 - `HABITTA_API_BASE_URL`
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY` (apply only)
@@ -62,7 +62,7 @@ EXPECTED_PROJECT_REF=<non-production-ref> \
 EXPECTED_DEPLOYED_SHA=<deployed-test-sha> \
 HABITTA_API_BASE_URL=<test-worker-url> \
 SUPABASE_URL=<test-supabase-url> \
-./scripts/bootstrap-production-demo.sh
+bash scripts/bootstrap-production-demo.sh
 ```
 
 After the plan is reviewed, run the same isolated environment with `APPLY=true`, `CONFIRM=BOOTSTRAP-HABITTA-PRODUCTION-DEMO`, the Auth keys, and a local mode-600 credential file. Run it a second time: the second execution must converge without creating duplicate organization/buildings/units/people/assignments.
@@ -76,7 +76,7 @@ Prerequisites:
 - Migration `20260831000000_hab416_nonbillable_account_types.sql` is present in Production.
 - Production still has exactly one platform admin, zero customer organizations, zero demo organizations before first apply, zero subscriptions, and zero payments.
 
-Run with `APPLY=false` (default). The script prints only aggregate/check status and never credentials or UUIDs.
+Run with `APPLY=false` (default) and set `EXPECTED_DEPLOYED_SHA` to the exact merged SHA. The script prints only aggregate/check status and never credentials or UUIDs.
 
 ## Production apply pass
 
