@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(31);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at)
 values
@@ -24,7 +24,6 @@ insert into public.condominium_memberships(condominium_id,user_id,role) values
   ('42410000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000004243','tenant');
 insert into public.platform_admins(user_id) values ('00000000-0000-0000-0000-000000004242');
 
--- Ordinary authenticated users cannot invoke platform commercial writes.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004243',true);
 select throws_ok(
@@ -33,7 +32,6 @@ select throws_ok(
   'ordinary tenant cannot create commercial offers'
 );
 
--- Platform Admin can define a bounded coupon.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004242',true);
 select lives_ok(
@@ -51,14 +49,12 @@ select is(
   'offer list preserves duration'
 );
 
--- Demo/internal account types remain outside subscriptions even through trusted platform RPCs.
 select throws_ok(
   $$select public.platform_start_30_day_trial('42410000-0000-0000-0000-000000000002','esencial','monthly')$$,
   '23514', 'commercial activation is only permitted for customer organizations',
   'demo condominium cannot receive a trial subscription'
 );
 
--- Customer A receives exactly a 30-day, non-auto-billing trial.
 select lives_ok(
   $$select public.platform_start_30_day_trial('42410000-0000-0000-0000-000000000001','esencial','monthly')$$,
   'platform admin can start a customer trial'
@@ -84,7 +80,6 @@ select is(
   'trial preserves the catalogue contract amount instead of rewriting it to zero'
 );
 
--- Automatic billing cannot be enabled by implication.
 select throws_ok(
   $$select public.platform_activate_subscription('42410000-0000-0000-0000-000000000001',null,null,true)$$,
   '23514', 'automatic billing requires explicit consent and payment method readiness',
@@ -100,7 +95,6 @@ select ok(
   'activation records confirmed active commercial state without automatic billing'
 );
 
--- Coupon application snapshots the effective price and leaves the base contract untouched.
 select lives_ok(
   $$select public.platform_apply_commercial_offer('42410000-0000-0000-0000-000000000001','launch25',current_date)$$,
   'coupon code matching is normalized and can be applied'
@@ -121,7 +115,6 @@ select is(
   'coupon duration is represented as an explicit finite interval'
 );
 
--- HAB-424 deliberately forbids stacking.
 select lives_ok(
   $$select public.platform_create_commercial_offer('SECOND10','percentage',10,1,current_date,null,null,'Second offer')$$,
   'second offer definition can exist'
@@ -137,7 +130,6 @@ select throws_ok(
   'gifted access cannot stack over an active coupon'
 );
 
--- A gift after the coupon window is explicit free commercial time and still creates no finance rows.
 select lives_ok(
   $$select public.platform_gift_months('42410000-0000-0000-0000-000000000001',1,(current_date + interval '3 months')::date,'Customer success gift')$$,
   'gift can start after the prior adjustment ends'
@@ -158,7 +150,6 @@ select is(
   'commercial adjustments do not manufacture receivables'
 );
 
--- Customer-facing commercial summary is available only to the owner/admin boundary, not residents.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004241',true);
 select is(
@@ -175,7 +166,6 @@ select throws_ok(
   'tenant cannot read negotiated subscription pricing'
 );
 
--- Expired trials fail closed before bookkeeping and then deterministically transition to suspended.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004242',true);
 select lives_ok(
