@@ -24,6 +24,7 @@ insert into public.condominium_memberships(condominium_id,user_id,role) values
   ('42410000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000004243','tenant');
 insert into public.platform_admins(user_id) values ('00000000-0000-0000-0000-000000004242');
 
+-- Prove the client boundary first: an ordinary tenant cannot operate the commercial system.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004243',true);
 select throws_ok(
@@ -32,6 +33,8 @@ select throws_ok(
   'ordinary tenant cannot create commercial offers'
 );
 
+-- Platform-admin RPCs run as the real client role. Internal table assertions below switch back to
+-- postgres deliberately; granting raw subscription/adjustment reads to authenticated would weaken RLS.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004242',true);
 select lives_ok(
@@ -48,17 +51,18 @@ select is(
   3,
   'offer list preserves duration'
 );
-
 select throws_ok(
   $$select public.platform_start_30_day_trial('42410000-0000-0000-0000-000000000002','esencial','monthly')$$,
   '23514', 'commercial activation is only permitted for customer organizations',
   'demo condominium cannot receive a trial subscription'
 );
-
 select lives_ok(
   $$select public.platform_start_30_day_trial('42410000-0000-0000-0000-000000000001','esencial','monthly')$$,
   'platform admin can start a customer trial'
 );
+
+set local role postgres;
+reset request.jwt.claim.sub;
 select is(
   (select status::text from public.subscriptions where condominium_id='42410000-0000-0000-0000-000000000001'),
   'trialing',
@@ -80,6 +84,8 @@ select is(
   'trial preserves the catalogue contract amount instead of rewriting it to zero'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004242',true);
 select throws_ok(
   $$select public.platform_activate_subscription('42410000-0000-0000-0000-000000000001',null,null,true)$$,
   '23514', 'automatic billing requires explicit consent and payment method readiness',
@@ -89,16 +95,24 @@ select lives_ok(
   $$select public.platform_activate_subscription('42410000-0000-0000-0000-000000000001',null,null,false)$$,
   'manual/provider-independent activation is explicit and does not enable auto billing'
 );
+
+set local role postgres;
+reset request.jwt.claim.sub;
 select ok(
   (select status='active' and commercial_status='confirmed' and not auto_bill_enabled
      from public.subscriptions where condominium_id='42410000-0000-0000-0000-000000000001'),
   'activation records confirmed active commercial state without automatic billing'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004242',true);
 select lives_ok(
   $$select public.platform_apply_commercial_offer('42410000-0000-0000-0000-000000000001','launch25',current_date)$$,
   'coupon code matching is normalized and can be applied'
 );
+
+set local role postgres;
+reset request.jwt.claim.sub;
 select is(
   (select effective_period_amount from public.subscription_adjustments a join public.subscriptions s on s.id=a.subscription_id where s.condominium_id='42410000-0000-0000-0000-000000000001' and a.source='coupon'),
   21.75::numeric,
@@ -115,6 +129,8 @@ select is(
   'coupon duration is represented as an explicit finite interval'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000004242',true);
 select lives_ok(
   $$select public.platform_create_commercial_offer('SECOND10','percentage',10,1,current_date,null,null,'Second offer')$$,
   'second offer definition can exist'
@@ -129,11 +145,13 @@ select throws_ok(
   '23P01', null,
   'gifted access cannot stack over an active coupon'
 );
-
 select lives_ok(
   $$select public.platform_gift_months('42410000-0000-0000-0000-000000000001',1,(current_date + interval '3 months')::date,'Customer success gift')$$,
   'gift can start after the prior adjustment ends'
 );
+
+set local role postgres;
+reset request.jwt.claim.sub;
 select is(
   (select effective_period_amount from public.subscription_adjustments a join public.subscriptions s on s.id=a.subscription_id where s.condominium_id='42410000-0000-0000-0000-000000000001' and a.source='gift'),
   0.00::numeric,
