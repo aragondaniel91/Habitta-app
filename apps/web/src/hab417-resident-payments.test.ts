@@ -41,7 +41,9 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
   });
 
   it('keeps draft and correction states actionable but never exposes reviewer actions', () => {
-    expect(residentPaymentsView).toContain("if (status === 'correction_requested') return 'Corregir pago';");
+    expect(residentPaymentsView).toContain(
+      "if (status === 'correction_requested') return 'Corregir pago';",
+    );
     expect(residentPaymentsView).toContain("if (status === 'draft') return 'Continuar';");
     expect(residentPaymentsView).toContain("return 'Ver recibo';");
     expect(residentPaymentsView).not.toContain('Iniciar revisión');
@@ -51,7 +53,9 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
 
   it('keeps tenant-only presentation aligned with the database restriction', () => {
     expect(roles).toContain("if (route.key === 'payments' && isTenantOnly(roles)) return false;");
-    expect(roles).toContain("export const RESIDENT_ROLES: CondominiumRole[] = ['owner', 'tenant'];");
+    expect(roles).toContain(
+      "export const RESIDENT_ROLES: CondominiumRole[] = ['owner', 'tenant'];",
+    );
   });
 
   it('keeps the resident honest about balances and payment validation', () => {
