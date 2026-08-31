@@ -29,12 +29,13 @@ insert into public.units(id,condominium_id,building_id,code,type,status,created_
   ('42230000-0000-0000-0000-000000000003','42210000-0000-0000-0000-000000000002','42220000-0000-0000-0000-000000000002','B-01','apartment','active','00000000-0000-0000-0000-000000004221');
 
 insert into public.subscriptions(
-  id, condominium_id, status, commercial_status, trial_ends_at, current_period_end
+  id, condominium_id, status, commercial_status, trial_starts_at, trial_ends_at, current_period_end
 ) values (
   '42240000-0000-0000-0000-000000000001',
   '42210000-0000-0000-0000-000000000001',
   'trialing',
   'confirmed',
+  now(),
   now() + interval '30 days',
   current_date + 30
 );
