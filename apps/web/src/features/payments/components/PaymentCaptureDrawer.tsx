@@ -85,9 +85,7 @@ export function PaymentCaptureDrawer({
   const finish = async () => {
     if (!savedPayment || saving) return;
     if (!submitOnComplete) {
-      await onComplete(
-        proofSaved ? 'Pago y comprobante guardados.' : 'Borrador de pago guardado.',
-      );
+      await onComplete(proofSaved ? 'Pago y comprobante guardados.' : 'Borrador de pago guardado.');
       return;
     }
 
@@ -162,9 +160,7 @@ export function PaymentCaptureDrawer({
             >
               <option value="">Seleccionar método</option>
               {methods
-                .filter(
-                  (method) => method.is_active || method.id === payment?.payment_method_id,
-                )
+                .filter((method) => method.is_active || method.id === payment?.payment_method_id)
                 .map((method) => (
                   <option key={method.id} value={method.id}>
                     {method.display_name} · {method.currency_code}
@@ -224,7 +220,10 @@ export function PaymentCaptureDrawer({
               required={selectedMethod?.requires_reference}
             />
           </Field>
-          <Field label="Información adicional" hint="Opcional. La administración podrá verla al revisar.">
+          <Field
+            label="Información adicional"
+            hint="Opcional. La administración podrá verla al revisar."
+          >
             <textarea
               className="payments-textarea"
               defaultValue={payment?.notes}
