@@ -70,7 +70,6 @@
 .resident-payments__currency-tabs button[data-active] {
   background: var(--surface);
   color: var(--text-strong);
-  box-shadow: var(--shadow-xs);
 }
 
 .resident-payments__hero-grid {
