@@ -267,7 +267,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
           onClose={() => setDrawer(null)}
           onComplete={onChanged}
           onDraftCreated={() => load(true)}
-          payment={capturePayment}
+          {...(capturePayment ? { payment: capturePayment } : {})}
           session={session}
           submitOnComplete
           units={data.units}
