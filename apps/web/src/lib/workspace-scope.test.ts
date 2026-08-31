@@ -38,9 +38,7 @@ describe('scopeWorkspaceToMemberships', () => {
     });
     expect(result.platformOnly).toBe(false);
     expect(result.organizations).toEqual([{ id: 'org-b', name: 'B' }]);
-    expect(result.condominiums).toEqual([
-      { id: 'condo-b', name: 'B1', organization_id: 'org-b' },
-    ]);
+    expect(result.condominiums).toEqual([{ id: 'condo-b', name: 'B1', organization_id: 'org-b' }]);
   });
 
   it('lets an organization owner see every condominium in their organization only', () => {
@@ -50,8 +48,6 @@ describe('scopeWorkspaceToMemberships', () => {
     });
     expect(result.platformOnly).toBe(false);
     expect(result.organizations).toEqual([{ id: 'org-a', name: 'A' }]);
-    expect(result.condominiums).toEqual([
-      { id: 'condo-a', name: 'A1', organization_id: 'org-a' },
-    ]);
+    expect(result.condominiums).toEqual([{ id: 'condo-a', name: 'A1', organization_id: 'org-a' }]);
   });
 });
