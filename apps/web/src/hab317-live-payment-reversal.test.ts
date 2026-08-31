@@ -1,7 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const pageUrl = new URL('./pages/PaymentsPage.tsx', import.meta.url);
+// HAB-417 split the payments route in two. Administrative reversal belongs to the administrative
+// surface and must never appear on the resident one, so this reads both.
+const pageUrl = new URL('./pages/AdminPaymentsPage.tsx', import.meta.url);
+const residentUrl = new URL('./pages/ResidentPaymentsView.tsx', import.meta.url);
 const drawersUrl = new URL('./pages/PaymentsDrawers.tsx', import.meta.url);
 
 async function source(url: URL) {
@@ -16,6 +19,11 @@ describe('HAB-317 live approved-payment reversal', () => {
     expect(page).toContain("setDrawer({ type: 'receipt', payment, receipt })");
     expect(drawers).toContain("import { ConfirmDialog } from '../components/Dialog'");
     expect(drawers).toContain("payment.status === 'approved' && manage");
+
+    // The resident never gets an administrative reversal control.
+    const resident = await readFile(residentUrl, 'utf8');
+    expect(resident).not.toContain('/reverse');
+    expect(resident).not.toContain('reversal_reason');
     expect(drawers).toContain('Reversar pago aprobado');
     expect(drawers).toContain(`/v1/condominiums/\${condominiumId}/payments/\${payment.id}/reverse`);
   });

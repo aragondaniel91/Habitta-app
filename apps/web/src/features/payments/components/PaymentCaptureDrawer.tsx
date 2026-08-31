@@ -89,6 +89,14 @@ export function PaymentCaptureDrawer({
       return;
     }
 
+    // Sending a payment to review is a state transition, so its precondition lives here rather
+    // than only in the button's disabled state. A guard that exists solely in the markup is one
+    // re-render away from not existing.
+    if (requiresProof && !proofSaved && !editing) {
+      setMessage('Adjunta el comprobante antes de enviar el pago a validación.');
+      return;
+    }
+
     setSaving(true);
     setMessage('');
     try {

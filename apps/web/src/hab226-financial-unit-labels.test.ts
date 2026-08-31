@@ -19,7 +19,16 @@ describe('HAB-226 topology-safe financial unit labels', () => {
     expect(paymentCaptureSource).toContain('<Select name="unitId" required>');
     expect(paymentCaptureSource).toContain('<option key={unit.id} value={unit.id}>');
     expect(paymentCaptureSource).toContain('unitReferenceLabel({');
-    expect(paymentCaptureSource).toContain('body: JSON.stringify({ ...values, idempotencyKey');
+    // The identity rules, stated as rules. The previous line matched the exact formatting of the
+    // request body, so prettier moving a brace read as a financial regression. What must hold is
+    // that creation carries an idempotency key and editing does not mint a new identity.
+    expect(paymentCaptureSource).toMatch(
+      /\(payment \? \{\} : \{ idempotencyKey: idempotencyKey\.current \}\)/,
+    );
+    expect(paymentCaptureSource).toContain('const idempotencyKey = useRef(crypto.randomUUID())');
+    // The label is presentation. Identity is always the unit's UUID.
+    expect(paymentCaptureSource).not.toMatch(/unitId:\s*unitReferenceLabel/);
+    expect(paymentCaptureSource).not.toContain('value={unitReferenceLabel');
     expect(paymentCaptureSource).not.toContain('unitLabel:');
   });
 
