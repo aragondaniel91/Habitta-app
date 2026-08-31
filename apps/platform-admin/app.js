@@ -1,7 +1,7 @@
 // No bundler, no dependencies: this surface is deployed as raw static files (see
 // .github/workflows/static-sites-release.yml), so it talks to Supabase's REST/Auth HTTP API
 // directly with fetch(). Every real permission is enforced in Postgres; this browser surface has
-// no service-role credential and HAB-422 remains deliberately read-only.
+// no service-role credential.
 const config = window.HABITTA_ADMIN_CONFIG;
 const SESSION_KEY = 'habitta-admin-session';
 
@@ -15,6 +15,7 @@ const overviewStatus = document.querySelector('#overview-status');
 const searchInput = document.querySelector('#search-input');
 const accountFilter = document.querySelector('#account-filter');
 const statusFilter = document.querySelector('#status-filter');
+const topbar = document.querySelector('.topbar');
 
 const metricOrganizations = document.querySelector('#metric-organizations');
 const metricCustomers = document.querySelector('#metric-customers');
@@ -26,6 +27,7 @@ const metricTrialsSoon = document.querySelector('#metric-trials-soon');
 const metricNoSubscription = document.querySelector('#metric-no-subscription');
 
 let overviewRows = [];
+let commercialLink = null;
 
 function getSession() {
   try {
@@ -41,6 +43,25 @@ function setSession(session) {
 
 function clearSession() {
   sessionStorage.removeItem(SESSION_KEY);
+}
+
+function showCommercialLink() {
+  if (commercialLink || !topbar) return;
+  commercialLink = document.createElement('a');
+  commercialLink.href = '/commercial.html';
+  commercialLink.className = 'secondary-button';
+  commercialLink.textContent = 'Comercial';
+  commercialLink.style.display = 'inline-flex';
+  commercialLink.style.alignItems = 'center';
+  commercialLink.style.textDecoration = 'none';
+  const badgeElement = topbar.querySelector('.badge');
+  if (badgeElement) badgeElement.before(commercialLink);
+  else topbar.append(commercialLink);
+}
+
+function hideCommercialLink() {
+  commercialLink?.remove();
+  commercialLink = null;
 }
 
 async function signIn(email, password) {
@@ -317,11 +338,13 @@ function renderOverview(rows) {
 function showDashboard() {
   loginView.hidden = true;
   dashboardView.hidden = false;
+  showCommercialLink();
 }
 
 function showLogin(message) {
   clearSession();
   overviewRows = [];
+  hideCommercialLink();
   loginView.hidden = false;
   dashboardView.hidden = true;
   loginError.textContent = message ?? '';
@@ -335,6 +358,7 @@ async function loadDashboard(session) {
       overviewBody.innerHTML = '';
       overviewStatus.textContent =
         'Tu cuenta inició sesión correctamente, pero no tiene el rol de administrador de plataforma.';
+      hideCommercialLink();
       return;
     }
     const rows = await fetchOverview(session.access_token);

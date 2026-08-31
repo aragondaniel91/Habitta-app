@@ -9,6 +9,7 @@ import {
   retryCondominiumStorageCleanup,
 } from './condominium-deletion';
 import type { CondominiumDeletionCapability } from './condominium-deletion';
+import { CommercialSummaryCard } from './CommercialSummaryCard';
 import './danger-zone.css';
 
 type Props = {
@@ -89,6 +90,8 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
 
   return (
     <>
+      <CommercialSummaryCard condominiumId={condominiumId} />
+
       <Surface className="settings-panel danger-zone">
         <div className="settings-section-heading danger-zone__heading">
           <div>
