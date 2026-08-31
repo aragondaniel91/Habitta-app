@@ -84,11 +84,15 @@ export function CommercialSummaryCard({ condominiumId }: { condominiumId: string
       <dl className="settings-account-details">
         <div>
           <dt>Precio actual</dt>
-          <dd>{currentPrice}/{period}</dd>
+          <dd>
+            {currentPrice}/{period}
+          </dd>
         </div>
         <div>
           <dt>Precio contratado</dt>
-          <dd>{formatMoney(summary.contracted_period_amount, currency)}/{period}</dd>
+          <dd>
+            {formatMoney(summary.contracted_period_amount, currency)}/{period}
+          </dd>
         </div>
         <div>
           <dt>{trial ? 'Fin de prueba' : 'Próxima fecha'}</dt>
@@ -96,7 +100,9 @@ export function CommercialSummaryCard({ condominiumId }: { condominiumId: string
         </div>
         <div>
           <dt>Próximo precio</dt>
-          <dd>{nextPrice}/{period}</dd>
+          <dd>
+            {nextPrice}/{period}
+          </dd>
         </div>
         {summary.adjustment_ends_at ? (
           <div>
