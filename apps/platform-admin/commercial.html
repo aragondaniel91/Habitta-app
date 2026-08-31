@@ -27,90 +27,440 @@
         --border: #dfe6ee;
         --shadow: 0 18px 60px rgb(13 27 42 / 0.08);
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
         min-height: 100vh;
         background: var(--background);
         color: var(--text);
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
       }
-      button, input, select, textarea { font: inherit; }
-      button { cursor: pointer; }
-      a { color: inherit; text-decoration: none; }
-      [hidden] { display: none !important; }
-      .shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 56px; }
-      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
-      .brand { display: flex; align-items: center; gap: 12px; }
-      .mark { width: 42px; height: 42px; }
-      .brand-copy strong { display: block; color: var(--navy); }
-      .brand-copy span { display: block; margin-top: 2px; color: var(--muted); font-size: .78rem; }
-      .nav { display: flex; gap: 8px; align-items: center; }
-      .nav a, .nav button { min-height: 38px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--muted); font-weight: 750; }
-      .nav a[aria-current="page"] { background: var(--navy); border-color: var(--navy); color: #fff; }
-      .heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
-      .eyebrow { margin-bottom: 8px; color: var(--blue); font-size: .7rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
-      h1, h2, h3, p { margin-top: 0; }
-      h1 { margin-bottom: 8px; color: var(--navy); font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.045em; }
-      h2 { margin-bottom: 5px; color: var(--navy); font-size: 1.05rem; }
-      p { color: var(--muted); line-height: 1.55; }
-      .heading p { max-width: 800px; margin-bottom: 0; }
-      .metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
-      .metric { padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: #fff; }
-      .metric span { color: var(--muted); font-size: .76rem; font-weight: 750; }
-      .metric strong { display: block; margin-top: 8px; color: var(--navy); font-size: 1.8rem; }
-      .grid { display: grid; grid-template-columns: minmax(0,1.45fr) minmax(340px,.55fr); gap: 18px; align-items: start; }
-      .surface { border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
-      .surface-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
-      .surface-header p { margin: 3px 0 0; font-size: .8rem; }
-      .body { padding: 20px; }
-      .form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
-      label { display: grid; gap: 6px; color: var(--navy); font-size: .76rem; font-weight: 800; }
-      label.full { grid-column: 1 / -1; }
-      input, select, textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); padding: 10px 11px; outline: none; }
-      input, select { min-height: 42px; }
-      textarea { min-height: 76px; resize: vertical; }
-      input:focus, select:focus, textarea:focus { border-color: #8cb7d3; box-shadow: 0 0 0 3px rgb(27 79 114 / .1); }
-      .button { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 800; }
-      .button--primary { border: 0; background: var(--blue); color: #fff; }
-      .button--secondary { border: 1px solid var(--border); background: #fff; color: var(--text); }
-      .button--danger { border: 1px solid #f0c7c3; background: var(--red-soft); color: var(--red); }
-      .button:disabled { cursor: not-allowed; opacity: .5; }
-      .form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 16px; }
-      .table-wrap { overflow-x: auto; }
-      table { width: 100%; min-width: 1040px; border-collapse: collapse; font-size: .79rem; }
-      th, td { padding: 12px 13px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
-      th { background: #fbfcfd; color: var(--muted); font-size: .66rem; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
-      tbody tr:last-child td { border-bottom: 0; }
-      td strong { color: var(--navy); }
-      .secondary { display: block; margin-top: 3px; color: var(--muted); font-size: .7rem; }
-      .badge { display: inline-flex; align-items: center; min-height: 25px; padding: 0 8px; border-radius: 999px; font-size: .68rem; font-weight: 850; white-space: nowrap; }
-      .badge--green { background: var(--green-soft); color: var(--green); }
-      .badge--blue { background: var(--blue-soft); color: var(--blue); }
-      .badge--amber { background: var(--amber-soft); color: var(--amber); }
-      .badge--red { background: var(--red-soft); color: var(--red); }
-      .badge--purple { background: var(--purple-soft); color: var(--purple); }
-      .badge--neutral { background: #f0f3f6; color: #617080; }
-      .actions { display: flex; flex-wrap: wrap; gap: 6px; }
-      .mini { min-height: 31px; border-radius: 8px; border: 1px solid var(--border); background: #fff; padding: 0 9px; color: var(--blue); font-size: .7rem; font-weight: 800; }
-      .offers { display: grid; gap: 10px; }
-      .offer { padding: 14px; border: 1px solid var(--border); border-radius: 13px; background: #fff; }
-      .offer-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-      .offer strong { color: var(--navy); }
-      .offer p { margin: 7px 0 0; font-size: .76rem; }
-      .offer-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
-      .status { min-height: 42px; padding: 11px 20px; border-top: 1px solid var(--border); background: #fbfcfd; color: var(--muted); font-size: .76rem; }
-      .status[data-tone="error"] { color: var(--red); }
-      .status[data-tone="success"] { color: var(--green); }
-      dialog { width: min(560px, calc(100% - 28px)); border: 0; border-radius: 18px; padding: 0; box-shadow: 0 28px 90px rgb(13 27 42 / .25); }
-      dialog::backdrop { background: rgb(13 27 42 / .42); }
-      .dialog-head { padding: 20px; border-bottom: 1px solid var(--border); }
-      .dialog-head h2 { margin-bottom: 4px; }
-      .dialog-head p { margin: 0; font-size: .8rem; }
-      .dialog-body { padding: 20px; }
-      .notice { padding: 12px 14px; border-radius: 11px; background: var(--blue-soft); color: var(--blue); font-size: .77rem; line-height: 1.45; }
-      @media (max-width: 1050px) { .grid { grid-template-columns: 1fr; } .metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-      @media (max-width: 680px) { .shell { width: min(100% - 24px,1480px); padding-top: 16px; } .topbar, .heading { align-items: flex-start; flex-direction: column; } .nav { width: 100%; flex-wrap: wrap; } .metrics, .form-grid { grid-template-columns: 1fr; } }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .shell {
+        width: min(1480px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 28px 0 56px;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 28px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .mark {
+        width: 42px;
+        height: 42px;
+      }
+      .brand-copy strong {
+        display: block;
+        color: var(--navy);
+      }
+      .brand-copy span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+      .nav {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .nav a,
+      .nav button {
+        min-height: 38px;
+        padding: 0 13px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--muted);
+        font-weight: 750;
+      }
+      .nav a[aria-current='page'] {
+        background: var(--navy);
+        border-color: var(--navy);
+        color: #fff;
+      }
+      .heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 20px;
+      }
+      .eyebrow {
+        margin-bottom: 8px;
+        color: var(--blue);
+        font-size: 0.7rem;
+        font-weight: 850;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+      h1 {
+        margin-bottom: 8px;
+        color: var(--navy);
+        font-size: clamp(2rem, 4vw, 3rem);
+        letter-spacing: -0.045em;
+      }
+      h2 {
+        margin-bottom: 5px;
+        color: var(--navy);
+        font-size: 1.05rem;
+      }
+      p {
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      .heading p {
+        max-width: 800px;
+        margin-bottom: 0;
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+      .metric {
+        padding: 18px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: #fff;
+      }
+      .metric span {
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 750;
+      }
+      .metric strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--navy);
+        font-size: 1.8rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.55fr);
+        gap: 18px;
+        align-items: start;
+      }
+      .surface {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .surface-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .surface-header p {
+        margin: 3px 0 0;
+        font-size: 0.8rem;
+      }
+      .body {
+        padding: 20px;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--navy);
+        font-size: 0.76rem;
+        font-weight: 800;
+      }
+      label.full {
+        grid-column: 1 / -1;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--text);
+        padding: 10px 11px;
+        outline: none;
+      }
+      input,
+      select {
+        min-height: 42px;
+      }
+      textarea {
+        min-height: 76px;
+        resize: vertical;
+      }
+      input:focus,
+      select:focus,
+      textarea:focus {
+        border-color: #8cb7d3;
+        box-shadow: 0 0 0 3px rgb(27 79 114 / 0.1);
+      }
+      .button {
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 10px;
+        font-weight: 800;
+      }
+      .button--primary {
+        border: 0;
+        background: var(--blue);
+        color: #fff;
+      }
+      .button--secondary {
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text);
+      }
+      .button--danger {
+        border: 1px solid #f0c7c3;
+        background: var(--red-soft);
+        color: var(--red);
+      }
+      .button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+      .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 9px;
+        margin-top: 16px;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        min-width: 1040px;
+        border-collapse: collapse;
+        font-size: 0.79rem;
+      }
+      th,
+      td {
+        padding: 12px 13px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: middle;
+      }
+      th {
+        background: #fbfcfd;
+        color: var(--muted);
+        font-size: 0.66rem;
+        font-weight: 850;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      td strong {
+        color: var(--navy);
+      }
+      .secondary {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 0.7rem;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 25px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 850;
+        white-space: nowrap;
+      }
+      .badge--green {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+      .badge--blue {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+      .badge--amber {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+      .badge--red {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+      .badge--purple {
+        background: var(--purple-soft);
+        color: var(--purple);
+      }
+      .badge--neutral {
+        background: #f0f3f6;
+        color: #617080;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .mini {
+        min-height: 31px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #fff;
+        padding: 0 9px;
+        color: var(--blue);
+        font-size: 0.7rem;
+        font-weight: 800;
+      }
+      .offers {
+        display: grid;
+        gap: 10px;
+      }
+      .offer {
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 13px;
+        background: #fff;
+      }
+      .offer-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+      }
+      .offer strong {
+        color: var(--navy);
+      }
+      .offer p {
+        margin: 7px 0 0;
+        font-size: 0.76rem;
+      }
+      .offer-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 9px;
+      }
+      .status {
+        min-height: 42px;
+        padding: 11px 20px;
+        border-top: 1px solid var(--border);
+        background: #fbfcfd;
+        color: var(--muted);
+        font-size: 0.76rem;
+      }
+      .status[data-tone='error'] {
+        color: var(--red);
+      }
+      .status[data-tone='success'] {
+        color: var(--green);
+      }
+      dialog {
+        width: min(560px, calc(100% - 28px));
+        border: 0;
+        border-radius: 18px;
+        padding: 0;
+        box-shadow: 0 28px 90px rgb(13 27 42 / 0.25);
+      }
+      dialog::backdrop {
+        background: rgb(13 27 42 / 0.42);
+      }
+      .dialog-head {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .dialog-head h2 {
+        margin-bottom: 4px;
+      }
+      .dialog-head p {
+        margin: 0;
+        font-size: 0.8rem;
+      }
+      .dialog-body {
+        padding: 20px;
+      }
+      .notice {
+        padding: 12px 14px;
+        border-radius: 11px;
+        background: var(--blue-soft);
+        color: var(--blue);
+        font-size: 0.77rem;
+        line-height: 1.45;
+      }
+      @media (max-width: 1050px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 680px) {
+        .shell {
+          width: min(100% - 24px, 1480px);
+          padding-top: 16px;
+        }
+        .topbar,
+        .heading {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .nav {
+          width: 100%;
+          flex-wrap: wrap;
+        }
+        .metrics,
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body>
@@ -131,26 +481,52 @@
         <div>
           <div class="eyebrow">Activación comercial</div>
           <h1>Trials, ofertas y acceso regalado</h1>
-          <p>Controla los primeros pilotos sin falsificar pagos. El contrato base permanece intacto y cada beneficio queda como un ajuste temporal y auditable.</p>
+          <p>
+            Controla los primeros pilotos sin falsificar pagos. El contrato base permanece intacto y
+            cada beneficio queda como un ajuste temporal y auditable.
+          </p>
         </div>
       </div>
 
       <div class="metrics">
-        <article class="metric"><span>Clientes</span><strong id="metric-customers">—</strong></article>
-        <article class="metric"><span>Trials activos</span><strong id="metric-trials">—</strong></article>
-        <article class="metric"><span>Suscripciones activas</span><strong id="metric-active">—</strong></article>
-        <article class="metric"><span>Ofertas activas</span><strong id="metric-offers">—</strong></article>
+        <article class="metric">
+          <span>Clientes</span><strong id="metric-customers">—</strong>
+        </article>
+        <article class="metric">
+          <span>Trials activos</span><strong id="metric-trials">—</strong>
+        </article>
+        <article class="metric">
+          <span>Suscripciones activas</span><strong id="metric-active">—</strong>
+        </article>
+        <article class="metric">
+          <span>Ofertas activas</span><strong id="metric-offers">—</strong>
+        </article>
       </div>
 
       <div class="grid">
         <section class="surface">
           <div class="surface-header">
-            <div><h2>Clientes y pilotos</h2><p>Las acciones aparecen solo para organizaciones customer.</p></div>
-            <button class="button button--secondary" id="refresh-button" type="button">Actualizar</button>
+            <div>
+              <h2>Clientes y pilotos</h2>
+              <p>Las acciones aparecen solo para organizaciones customer.</p>
+            </div>
+            <button class="button button--secondary" id="refresh-button" type="button">
+              Actualizar
+            </button>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Cliente</th><th>Unidades</th><th>Plan</th><th>Estado</th><th>Precio</th><th>Beneficio</th><th>Acciones</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Unidades</th>
+                  <th>Plan</th>
+                  <th>Estado</th>
+                  <th>Precio</th>
+                  <th>Beneficio</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
               <tbody id="customer-body"></tbody>
             </table>
           </div>
@@ -158,22 +534,62 @@
         </section>
 
         <aside class="surface">
-          <div class="surface-header"><div><h2>Crear oferta</h2><p>Código reutilizable con vigencia y límite opcional.</p></div></div>
+          <div class="surface-header">
+            <div>
+              <h2>Crear oferta</h2>
+              <p>Código reutilizable con vigencia y límite opcional.</p>
+            </div>
+          </div>
           <div class="body">
             <form id="offer-form">
               <div class="form-grid">
-                <label>Código<input name="code" maxlength="32" placeholder="LANZAMIENTO25" required /></label>
-                <label>Tipo<select name="kind"><option value="percentage">Porcentaje</option><option value="fixed">Monto fijo USD</option></select></label>
-                <label>Valor<input min="0.01" name="value" step="0.01" type="number" required /></label>
-                <label>Duración<select name="duration"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">12 meses</option></select></label>
+                <label
+                  >Código<input name="code" maxlength="32" placeholder="LANZAMIENTO25" required
+                /></label>
+                <label
+                  >Tipo<select name="kind">
+                    <option value="percentage">Porcentaje</option>
+                    <option value="fixed">Monto fijo USD</option>
+                  </select></label
+                >
+                <label
+                  >Valor<input min="0.01" name="value" step="0.01" type="number" required
+                /></label>
+                <label
+                  >Duración<select name="duration">
+                    <option value="1">1 mes</option>
+                    <option value="2">2 meses</option>
+                    <option value="3">3 meses</option>
+                    <option value="6">6 meses</option>
+                    <option value="12">12 meses</option>
+                  </select></label
+                >
                 <label>Válido hasta<input name="validUntil" type="date" /></label>
-                <label>Máx. usos<input min="1" name="maxRedemptions" placeholder="Sin límite" type="number" /></label>
-                <label class="full">Nota<textarea name="note" placeholder="Ej. Oferta de lanzamiento para primeros pilotos"></textarea></label>
+                <label
+                  >Máx. usos<input
+                    min="1"
+                    name="maxRedemptions"
+                    placeholder="Sin límite"
+                    type="number"
+                /></label>
+                <label class="full"
+                  >Nota<textarea
+                    name="note"
+                    placeholder="Ej. Oferta de lanzamiento para primeros pilotos"
+                  ></textarea>
+                </label>
               </div>
-              <div class="form-actions"><button class="button button--primary" type="submit">Crear oferta</button></div>
+              <div class="form-actions">
+                <button class="button button--primary" type="submit">Crear oferta</button>
+              </div>
             </form>
           </div>
-          <div class="surface-header"><div><h2>Ofertas</h2><p>Deshabilitar no altera redenciones ya aplicadas.</p></div></div>
+          <div class="surface-header">
+            <div>
+              <h2>Ofertas</h2>
+              <p>Deshabilitar no altera redenciones ya aplicadas.</p>
+            </div>
+          </div>
           <div class="body offers" id="offer-list"></div>
           <div class="status" id="offer-status">Cargando ofertas…</div>
         </aside>
@@ -182,13 +598,20 @@
 
     <dialog id="action-dialog">
       <form id="action-form" method="dialog">
-        <div class="dialog-head"><h2 id="dialog-title">Acción comercial</h2><p id="dialog-copy"></p></div>
+        <div class="dialog-head">
+          <h2 id="dialog-title">Acción comercial</h2>
+          <p id="dialog-copy"></p>
+        </div>
         <div class="dialog-body">
           <div class="notice" id="dialog-notice"></div>
-          <div class="form-grid" id="dialog-fields" style="margin-top:14px"></div>
+          <div class="form-grid" id="dialog-fields" style="margin-top: 14px"></div>
           <div class="form-actions">
-            <button class="button button--secondary" id="dialog-cancel" type="button">Cancelar</button>
-            <button class="button button--primary" id="dialog-submit" type="submit">Confirmar</button>
+            <button class="button button--secondary" id="dialog-cancel" type="button">
+              Cancelar
+            </button>
+            <button class="button button--primary" id="dialog-submit" type="submit">
+              Confirmar
+            </button>
           </div>
         </div>
       </form>
