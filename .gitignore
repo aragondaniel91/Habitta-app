@@ -46,3 +46,7 @@ yarn-error.log*
 .reset-report/
 survivors*.txt
 owner-credentials*
+
+# HAB-416 synthetic demo credentials are generated locally with mode 0600 and never committed.
+hab416-demo-credentials*
+.demo-credentials*
