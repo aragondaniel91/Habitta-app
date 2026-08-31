@@ -47,7 +47,9 @@ const paymentActionLabel = (status: string) => {
 
 const paymentStatusDetail = (payment: Payment) => {
   if (payment.status === 'correction_requested') {
-    return payment.correction_reason || 'La administración solicitó una corrección antes de validar.';
+    return (
+      payment.correction_reason || 'La administración solicitó una corrección antes de validar.'
+    );
   }
   if (payment.status === 'rejected') {
     return payment.rejection_reason || 'La administración rechazó este pago.';
@@ -255,7 +257,9 @@ export function ResidentPaymentsView({
                   </span>
                   <div>
                     <strong>{method.display_name}</strong>
-                    <small>{method.instructions || 'Sigue las instrucciones de la administración.'}</small>
+                    <small>
+                      {method.instructions || 'Sigue las instrucciones de la administración.'}
+                    </small>
                   </div>
                   <div className="resident-payments__method-badges">
                     {method.requires_reference ? <Badge tone="info">Referencia</Badge> : null}
@@ -280,8 +284,8 @@ export function ResidentPaymentsView({
               <h2>Mis movimientos</h2>
             </div>
             <span className="resident-payments__count">
-              {visiblePayments.length} visibles · {data.payments.length} de {data.paymentsPage.total}{' '}
-              cargados
+              {visiblePayments.length} visibles · {data.payments.length} de{' '}
+              {data.paymentsPage.total} cargados
             </span>
           </div>
 
