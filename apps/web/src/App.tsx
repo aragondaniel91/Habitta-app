@@ -16,6 +16,7 @@ import {
   type Membership,
   type MembershipResponse,
 } from './lib/roles';
+import { scopeWorkspaceToMemberships } from './lib/workspace-scope';
 import { APP_ROUTES, DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
 import { supabase } from './supabase';
 
@@ -115,6 +116,7 @@ export default function App() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [platformOnly, setPlatformOnly] = useState(false);
   const [selectedCondominiumId, setSelectedCondominiumId] = useState('');
   const [addingCondominium, setAddingCondominium] = useState(false);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
@@ -145,6 +147,7 @@ export default function App() {
         setOrganizations([]);
         setCondominiums([]);
         setMemberships([]);
+        setPlatformOnly(false);
         setSelectedCondominiumId('');
         setAddingCondominium(false);
         setContextMessage(null);
@@ -163,18 +166,24 @@ export default function App() {
         apiRequest<Condominium[]>('/v1/condominiums', activeSession),
         apiRequest<MembershipResponse>('/v1/memberships', activeSession),
       ]);
-      setOrganizations(organizationItems);
-      setCondominiums(condominiumItems);
+      const scopedWorkspace = scopeWorkspaceToMemberships(
+        organizationItems,
+        condominiumItems,
+        membershipResponse,
+      );
+      setOrganizations(scopedWorkspace.organizations);
+      setCondominiums(scopedWorkspace.condominiums);
       setMemberships(membershipResponse.condominiums);
+      setPlatformOnly(scopedWorkspace.platformOnly);
       setSelectedCondominiumId((current) => {
         if (
           preferredCondominiumId &&
-          condominiumItems.some((item) => item.id === preferredCondominiumId)
+          scopedWorkspace.condominiums.some((item) => item.id === preferredCondominiumId)
         ) {
           return preferredCondominiumId;
         }
-        if (condominiumItems.some((item) => item.id === current)) return current;
-        return condominiumItems[0]?.id ?? '';
+        if (scopedWorkspace.condominiums.some((item) => item.id === current)) return current;
+        return scopedWorkspace.condominiums[0]?.id ?? '';
       });
     } catch (error) {
       setContextMessage({
@@ -189,6 +198,17 @@ export default function App() {
   useEffect(() => {
     if (session && !passwordRecoveryMode && !adminInvitationToken) void loadWorkspace(session);
   }, [session, passwordRecoveryMode, adminInvitationToken, loadWorkspace]);
+
+  useEffect(() => {
+    if (!platformOnly) return;
+    if (window.location.hostname === 'app.mihabitta.com') {
+      window.location.replace('https://admin.mihabitta.com');
+      return;
+    }
+    if (window.location.hostname === 'habitta-web-dev.pages.dev') {
+      window.location.replace('https://admin-preview.mihabitta.com');
+    }
+  }, [platformOnly]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -217,7 +237,6 @@ export default function App() {
     setCurrentRoute(route);
     setUnitStructureView(false);
   };
-
   const signOut = () => void supabase?.auth.signOut();
 
   const completePasswordRecovery = () => {
@@ -264,6 +283,16 @@ export default function App() {
     );
   }
   if (workspaceLoading) return <OnboardingLoading />;
+
+  if (platformOnly) {
+    return (
+      <WorkspaceLoadError
+        message="Esta cuenta pertenece a Platform Admin y no tiene un rol tenant. Usa admin.mihabitta.com para operar la plataforma."
+        onRetry={() => window.location.assign('https://admin.mihabitta.com')}
+        onSignOut={signOut}
+      />
+    );
+  }
 
   if (contextMessage?.tone === 'error' && !organizations.length && !condominiums.length) {
     return (
