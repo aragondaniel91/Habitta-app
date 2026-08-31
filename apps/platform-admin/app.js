@@ -110,13 +110,15 @@ function accountLabel(value) {
 }
 
 function statusLabel(value) {
-  return {
-    trialing: 'Prueba',
-    active: 'Activa',
-    past_due: 'Pago vencido',
-    suspended: 'Suspendida',
-    cancelled: 'Cancelada',
-  }[value] ?? 'Sin suscripción';
+  return (
+    {
+      trialing: 'Prueba',
+      active: 'Activa',
+      past_due: 'Pago vencido',
+      suspended: 'Suspendida',
+      cancelled: 'Cancelada',
+    }[value] ?? 'Sin suscripción'
+  );
 }
 
 function badge(text, tone) {
