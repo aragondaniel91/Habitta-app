@@ -227,6 +227,30 @@
         margin-bottom: 22px;
       }
 
+      /* Same shape as the commercial console, so moving between the two areas does not feel like
+         moving between two products. */
+      .nav {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 22px;
+      }
+      .nav a,
+      .nav button {
+        min-height: 38px;
+        padding: 0 13px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--muted);
+        font-weight: 750;
+      }
+      .nav a[aria-current='page'] {
+        background: var(--navy);
+        border-color: var(--navy);
+        color: #fff;
+      }
+
       .eyebrow {
         margin-bottom: 8px;
         color: var(--blue);
@@ -481,6 +505,11 @@
           flex-direction: column;
         }
 
+        .nav {
+          width: 100%;
+          flex-wrap: wrap;
+        }
+
         .metrics-grid,
         .attention-grid,
         .filters {
@@ -532,6 +561,15 @@
       </section>
 
       <section hidden id="dashboard-view">
+        <!-- Inside the dashboard section on purpose: it stays hidden until there is a session, so
+             the login screen never shows administrative navigation. The logout control moved here
+             from the heading rather than being duplicated -- there is exactly one #logout-button. -->
+        <nav class="nav" aria-label="Platform Admin">
+          <a aria-current="page" href="/">Operación</a>
+          <a href="/commercial.html">Comercial</a>
+          <button id="logout-button" type="button">Cerrar sesión</button>
+        </nav>
+
         <div class="dashboard-heading">
           <div>
             <div class="eyebrow">Resumen de plataforma</div>
@@ -541,7 +579,6 @@
               Demo e interno permanecen explícitamente fuera de facturación.
             </p>
           </div>
-          <button class="secondary-button" id="logout-button" type="button">Cerrar sesión</button>
         </div>
 
         <div class="metrics-grid" aria-label="Métricas de plataforma">
@@ -640,8 +677,8 @@
         </section>
 
         <p class="read-only-note">
-          HAB-422 mantiene esta consola en solo lectura. Trial, cupones, descuentos y meses regalados
-          se habilitarán aquí únicamente mediante operaciones auditadas de HAB-419.
+          Operación mantiene una vista de solo lectura. Trials, ofertas y beneficios comerciales
+          auditados se administran desde <a href="/commercial.html">Comercial</a>.
         </p>
       </section>
     </div>
