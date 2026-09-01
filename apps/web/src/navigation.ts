@@ -215,6 +215,9 @@ export const APP_ROUTES = [
     section: 'comunidad',
     icon: CommunityIcon,
     scope: ['Directorio', 'Documentos', 'Información compartida'],
+    // This page renders condominium-wide directory/contact metrics. HAB-418 deliberately keeps
+    // family/authorized access on resident-safe surfaces until a separate residential community
+    // overview exists; partial RLS rows must never be presented as whole-condominium statistics.
     roles: [
       'condominium_admin',
       'accountant',
@@ -223,8 +226,6 @@ export const APP_ROUTES = [
       'board_member',
       'owner',
       'tenant',
-      'family_member',
-      'authorized_occupant',
     ],
   },
   {
