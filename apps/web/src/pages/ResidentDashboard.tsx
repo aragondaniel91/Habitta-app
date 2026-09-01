@@ -245,17 +245,10 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     [data?.proposals],
   );
 
-  if (loading && !data) return <ResidentDashboardLoading />;
-  if (!data) return null;
-
-  const paymentsRoute = showsFinancialContext ? routeByKey('payments') : undefined;
-  const feesRoute = showsFinancialContext ? routeByKey('fees') : undefined;
-  // Denied to family members and authorized occupants by Migration B, so the affordance does not
-  // exist for them -- no panel, no quick action, no button that leads to a refusal.
-  const requestsRoute = showsResidentOperations ? routeByKey('requests') : undefined;
-  const announcementsRoute = routeByKey('announcements');
-  const governanceRoute = showsResidentOperations ? routeByKey('governance') : undefined;
-
+  // Declared with the other hooks, above the early returns. It used to sit below them, so the
+  // loading render ran fewer hooks than the loaded one and React tore the page down with
+  // "Rendered more hooks than during the previous render" the moment the data arrived. No unit
+  // test caught it: the suite renders no DOM, so nothing ever reached the second render.
   // Who the person is here, in their own terms: which home, which unit, on what footing. The
   // dashboard already said which condominium; it never said which unit was theirs or whether they
   // hold it as owner or tenant, which is most of what makes a residential app feel like one.
@@ -285,6 +278,17 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
             : null;
     return { unit, standing, unitCount: unitLabels.length };
   }, [data?.units, roles]);
+
+  if (loading && !data) return <ResidentDashboardLoading />;
+  if (!data) return null;
+
+  const paymentsRoute = showsFinancialContext ? routeByKey('payments') : undefined;
+  const feesRoute = showsFinancialContext ? routeByKey('fees') : undefined;
+  // Denied to family members and authorized occupants by Migration B, so the affordance does not
+  // exist for them -- no panel, no quick action, no button that leads to a refusal.
+  const requestsRoute = showsResidentOperations ? routeByKey('requests') : undefined;
+  const announcementsRoute = routeByKey('announcements');
+  const governanceRoute = showsResidentOperations ? routeByKey('governance') : undefined;
 
   return (
     <div className="resident-dashboard">

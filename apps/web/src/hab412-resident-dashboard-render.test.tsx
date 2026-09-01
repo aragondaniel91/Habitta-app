@@ -70,6 +70,23 @@ describe('HAB-412 what a restricted resident may see', () => {
   });
 });
 
+describe('HAB-412 the dashboard obeys the rules of hooks', () => {
+  it('declares every hook before the early returns', () => {
+    // A `useMemo` below `if (loading && !data) return ...` runs on the loaded render and not on the
+    // loading one, so React tears the page down with "Rendered more hooks than during the previous
+    // render" the instant the data arrives. That shipped, and no unit test could see it: this suite
+    // renders no DOM, so nothing here ever reaches a second render. The authenticated browser spec
+    // caught it, and this keeps the ordering honest between runs of that much slower gate.
+    const firstEarlyReturn = dashboard.indexOf('if (loading && !data) return');
+    expect(firstEarlyReturn).toBeGreaterThan(0);
+
+    const afterReturns = dashboard.slice(firstEarlyReturn);
+    for (const hook of ['useMemo(', 'useState(', 'useEffect(', 'useCallback(']) {
+      expect(afterReturns).not.toContain(hook);
+    }
+  });
+});
+
 describe('HAB-412 navigation for the restricted residential roles', () => {
   for (const role of ['family_member', 'authorized_occupant'] as CondominiumRole[]) {
     it(`gives a ${role} a non-empty set of routes`, () => {
