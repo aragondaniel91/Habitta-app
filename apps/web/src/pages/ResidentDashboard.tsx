@@ -29,6 +29,7 @@ import {
 import type { GovernanceProposal } from '../lib/governance';
 import { formatGovernanceDate } from '../lib/governance';
 import { isTenantOnly, useCondominiumRoles } from '../lib/roles';
+import { unitReferenceLabel } from '../lib/unit-domain';
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
 import '../resident-dashboard.css';
@@ -40,7 +41,15 @@ type Props = {
   onNavigate: (route: AppRoute) => void;
 };
 
+/** Only what the header needs. The units endpoint returns more; this states what is read. */
+type ResidentUnit = {
+  id: string;
+  code: string;
+  building_name?: string | null;
+};
+
 type ResidentDashboardData = {
+  units: ResidentUnit[];
   summaries: ReceivableSummary[];
   receivables: DashboardReceivable[];
   payments: DashboardPayment[];
@@ -112,6 +121,10 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       ? Promise.resolve([] as DashboardPayment[])
       : apiRequest<DashboardPayment[]>(`${base}/payments`, session);
     const results = await Promise.allSettled([
+      // `can_read_unit` already limits this to the units the caller owns or occupies, so a
+      // resident receives their own and nothing else. No new endpoint, no client-side filtering
+      // standing in for authorization.
+      apiRequest<ResidentUnit[]>(`${base}/units`, session),
       apiRequest<ReceivableSummary[]>(`${base}/receivables/summary`, session),
       apiRequest<DashboardReceivable[]>(`${base}/receivables`, session),
       paymentsRequest,
@@ -120,8 +133,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       apiRequest<GovernanceProposal[]>(`${base}/governance-proposals`, session),
     ]);
 
-    const [summaries, receivables, payments, announcements, requests, proposals] = results;
+    const [units, summaries, receivables, payments, announcements, requests, proposals] = results;
     const failed: string[] = [];
+    // A missing unit is not worth a warning: the header simply says less.
     if (summaries.status === 'rejected') failed.push('saldos');
     if (receivables.status === 'rejected') failed.push('cuotas');
     if (payments.status === 'rejected') failed.push('pagos');
@@ -130,6 +144,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     if (proposals.status === 'rejected') failed.push('votaciones');
 
     setData({
+      units: units.status === 'fulfilled' ? units.value : [],
       summaries: summaries.status === 'fulfilled' ? summaries.value : [],
       receivables: receivables.status === 'fulfilled' ? receivables.value : [],
       payments: payments.status === 'fulfilled' ? payments.value : [],
@@ -217,6 +232,26 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
   const announcementsRoute = routeByKey('announcements');
   const governanceRoute = routeByKey('governance');
 
+  // Who the person is here, in their own terms: which home, which unit, on what footing. The
+  // dashboard already said which condominium; it never said which unit was theirs or whether they
+  // hold it as owner or tenant, which is most of what makes a residential app feel like one.
+  const residentContext = useMemo(() => {
+    const unitLabels = (data?.units ?? [])
+      .map((unit) =>
+        unitReferenceLabel({ code: unit.code, buildingName: unit.building_name ?? null }),
+      )
+      .filter(Boolean);
+    // Never the identifier. A unit without a readable code says nothing worth showing.
+    const unit =
+      unitLabels.length === 0
+        ? null
+        : unitLabels.length <= 2
+          ? unitLabels.join(' · ')
+          : `${unitLabels.slice(0, 2).join(' · ')} +${unitLabels.length - 2}`;
+    const standing = tenantOnly ? 'Inquilino' : roles.includes('owner') ? 'Propietario' : null;
+    return { unit, standing, unitCount: unitLabels.length };
+  }, [data?.units, roles, tenantOnly]);
+
   return (
     <div className="resident-dashboard">
       <PageHeader
@@ -229,6 +264,19 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         eyebrow="Mi hogar"
         title="Inicio"
       />
+
+      {residentContext.unit || residentContext.standing ? (
+        <div aria-label="Tu contexto residencial" className="resident-dashboard__context">
+          {residentContext.unit ? (
+            <Badge tone="info">
+              {residentContext.unitCount > 1 ? 'Tus unidades' : 'Tu unidad'}: {residentContext.unit}
+            </Badge>
+          ) : null}
+          {residentContext.standing ? (
+            <Badge tone="neutral">{residentContext.standing}</Badge>
+          ) : null}
+        </div>
+      ) : null}
 
       {warning ? (
         <div className="resident-dashboard__warning" role="status">

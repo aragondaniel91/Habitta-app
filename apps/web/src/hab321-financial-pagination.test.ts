@@ -5,7 +5,9 @@ const read = (path: string) => readFile(new URL(path, import.meta.url), 'utf8');
 
 describe('HAB-321 live financial pagination', () => {
   it('pages the live payments history and keeps complete reference data explicit', async () => {
-    const page = await read('./pages/PaymentsPage.tsx');
+    // Payment pagination lives with the administrative history after the HAB-417 split. The
+    // resident surface presents its own unit-scoped history and does not inherit this contract.
+    const page = await read('./pages/AdminPaymentsPage.tsx');
 
     expect(page).toContain('const PAYMENTS_PAGE_SIZE = 50');
     expect(page).toContain('PaginatedResponse<Payment>');

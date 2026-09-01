@@ -117,7 +117,11 @@ describe('HAB-362 one design standard across every module', () => {
     expect(withHints.length).toBeGreaterThanOrEqual(15);
     for (const module of [
       'pages/ReportsPage.tsx',
-      'pages/PaymentsPage.tsx',
+      // HAB-417 split the payments route into two experiences. Naming both keeps the contract on
+      // the surfaces that actually explain themselves to a person -- PaymentsPage is now a router
+      // with no copy of its own, and requiring a hint there would have asked for decoration.
+      'pages/AdminPaymentsPage.tsx',
+      'pages/ResidentPaymentsView.tsx',
       'pages/TreasuryPage.tsx',
       'pages/DocumentsPage.tsx',
       'pages/SettingsPage.tsx',

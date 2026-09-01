@@ -16,6 +16,8 @@ export function PaymentCaptureDrawer({
   units,
   buildingNameById,
   methods,
+  payment,
+  submitOnComplete = false,
   onClose,
   onDraftCreated,
   onComplete,
@@ -25,6 +27,8 @@ export function PaymentCaptureDrawer({
   units: { id: string; code: string; building_id?: string | null }[];
   buildingNameById: Record<string, string>;
   methods: PaymentMethod[];
+  payment?: Payment;
+  submitOnComplete?: boolean;
   onClose: () => void;
   onDraftCreated: () => Promise<void>;
   onComplete: (message: string) => Promise<void>;
@@ -32,17 +36,18 @@ export function PaymentCaptureDrawer({
   const idempotencyKey = useRef(crypto.randomUUID());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [createdPayment, setCreatedPayment] = useState<Payment>();
+  const [savedPayment, setSavedPayment] = useState<Payment>();
   const [proofSaved, setProofSaved] = useState(false);
   const [selectedMethodId, setSelectedMethodId] = useState(
-    methods.find((item) => item.is_active)?.id ?? '',
+    payment?.payment_method_id ?? methods.find((item) => item.is_active)?.id ?? '',
   );
   const selectedMethod = methods.find((item) => item.id === selectedMethodId);
   const requiresProof = Boolean(selectedMethod?.requires_proof);
+  const editing = Boolean(payment);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const saveDetails = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (createdPayment) return;
+    if (savedPayment) return;
     setSaving(true);
     setMessage('');
     try {
@@ -50,16 +55,25 @@ export function PaymentCaptureDrawer({
         string,
         string
       >;
-      const payment = await paymentApi<Payment>(
-        `/v1/condominiums/${condominiumId}/payments`,
+      const nextPayment = await paymentApi<Payment>(
+        payment
+          ? `/v1/condominiums/${condominiumId}/payments/${payment.id}`
+          : `/v1/condominiums/${condominiumId}/payments`,
         session,
         {
-          method: 'POST',
-          body: JSON.stringify({ ...values, idempotencyKey: idempotencyKey.current }),
+          method: payment ? 'PATCH' : 'POST',
+          body: JSON.stringify({
+            ...values,
+            ...(payment ? {} : { idempotencyKey: idempotencyKey.current }),
+          }),
         },
       );
-      setCreatedPayment(payment);
-      setMessage('Borrador creado. Ahora adjunta el comprobante antes de terminar.');
+      setSavedPayment(nextPayment);
+      setMessage(
+        payment
+          ? 'Corrección guardada. Puedes reemplazar el comprobante antes de volver a enviar.'
+          : 'Datos guardados. Adjunta el comprobante antes de terminar.',
+      );
       await onDraftCreated();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo guardar el pago.');
@@ -68,35 +82,83 @@ export function PaymentCaptureDrawer({
     }
   };
 
+  const finish = async () => {
+    if (!savedPayment || saving) return;
+    if (!submitOnComplete) {
+      await onComplete(proofSaved ? 'Pago y comprobante guardados.' : 'Borrador de pago guardado.');
+      return;
+    }
+
+    // Sending a payment to review is a state transition, so its precondition lives here rather
+    // than only in the button's disabled state. A guard that exists solely in the markup is one
+    // re-render away from not existing.
+    if (requiresProof && !proofSaved && !editing) {
+      setMessage('Adjunta el comprobante antes de enviar el pago a validación.');
+      return;
+    }
+
+    setSaving(true);
+    setMessage('');
+    try {
+      await paymentApi(
+        `/v1/condominiums/${condominiumId}/payments/${savedPayment.id}/submit`,
+        session,
+        { method: 'POST' },
+      );
+      await onComplete('Pago enviado a validación.');
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo enviar el pago. Verifica la referencia y el comprobante requerido.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <Drawer eyebrow="Captura guiada" onClose={onClose} prefix="payments" title="Registrar pago">
-      {!createdPayment ? (
-        <form className="payments-form ux-form" onSubmit={(event) => void submit(event)}>
+    <Drawer
+      eyebrow={editing ? 'Corrección de pago' : 'Registro guiado'}
+      onClose={onClose}
+      prefix="payments"
+      title={editing ? 'Corregir pago' : 'Registrar pago'}
+    >
+      {!savedPayment ? (
+        <form className="payments-form ux-form" onSubmit={(event) => void saveDetails(event)}>
           {message ? <div className="payments-form__message">{message}</div> : null}
+          {payment?.correction_reason ? (
+            <div className="payments-form__notice">
+              <strong>La administración solicitó una corrección:</strong>{' '}
+              {payment.correction_reason}
+            </div>
+          ) : null}
           {!methods.some((item) => item.is_active) ? (
             <div className="payments-form__notice">
-              Crea un método de pago antes de registrar movimientos.
+              No hay un método de pago activo disponible en este momento.
             </div>
           ) : null}
           <div aria-label="Progreso de captura" className="financial-capture-progress">
             <strong>1. Datos</strong>
             <span>2. Comprobante</span>
           </div>
-          <Field label="Unidad">
-            <Select name="unitId" required>
-              <option value="">Seleccionar unidad</option>
-              {units.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unitReferenceLabel({
-                    code: unit.code,
-                    buildingName: unit.building_id
-                      ? (buildingNameById[unit.building_id] ?? null)
-                      : null,
-                  })}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          {!payment ? (
+            <Field label="Unidad">
+              <Select name="unitId" required>
+                <option value="">Seleccionar unidad</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unitReferenceLabel({
+                      code: unit.code,
+                      buildingName: unit.building_id
+                        ? (buildingNameById[unit.building_id] ?? null)
+                        : null,
+                    })}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : null}
           <Field label="Método de pago" hint={selectedMethod?.instructions}>
             <Select
               name="paymentMethodId"
@@ -106,7 +168,7 @@ export function PaymentCaptureDrawer({
             >
               <option value="">Seleccionar método</option>
               {methods
-                .filter((method) => method.is_active)
+                .filter((method) => method.is_active || method.id === payment?.payment_method_id)
                 .map((method) => (
                   <option key={method.id} value={method.id}>
                     {method.display_name} · {method.currency_code}
@@ -116,20 +178,27 @@ export function PaymentCaptureDrawer({
           </Field>
           <FormGrid>
             <Field label="Fecha del pago">
-              <input className="input" name="paymentDate" required type="date" />
+              <input
+                className="input"
+                defaultValue={payment?.payment_date}
+                name="paymentDate"
+                required
+                type="date"
+              />
             </Field>
             <Field label="Moneda">
               <input
                 className="input"
                 name="originalCurrencyCode"
                 readOnly
-                value={selectedMethod?.currency_code ?? 'USD'}
+                value={selectedMethod?.currency_code ?? payment?.original_currency_code ?? 'USD'}
               />
             </Field>
           </FormGrid>
           <Field label="Monto">
             <input
               className="input"
+              defaultValue={payment?.original_amount}
               inputMode="decimal"
               name="originalAmount"
               pattern="^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$"
@@ -138,7 +207,13 @@ export function PaymentCaptureDrawer({
             />
           </Field>
           <Field label="Nombre del pagador">
-            <input className="input" name="payerName" placeholder="Nombre y apellido" required />
+            <input
+              className="input"
+              defaultValue={payment?.payer_name}
+              name="payerName"
+              placeholder="Nombre y apellido"
+              required
+            />
           </Field>
           <Field
             hint={
@@ -148,15 +223,20 @@ export function PaymentCaptureDrawer({
           >
             <input
               className="input"
+              defaultValue={payment?.reference}
               name="reference"
               required={selectedMethod?.requires_reference}
             />
           </Field>
-          <Field label="Notas internas">
+          <Field
+            label="Información adicional"
+            hint="Opcional. La administración podrá verla al revisar."
+          >
             <textarea
               className="payments-textarea"
+              defaultValue={payment?.notes}
               name="notes"
-              placeholder="Contexto adicional para la revisión"
+              placeholder="Dato útil para identificar o revisar el pago"
             />
           </Field>
           <FormActions className="financial-capture-footer" sticky>
@@ -176,10 +256,10 @@ export function PaymentCaptureDrawer({
           </div>
           {message ? <div className="payments-form__message">{message}</div> : null}
           <div className="financial-capture-summary">
-            <span>Borrador creado</span>
-            <strong>{createdPayment.payer_name}</strong>
+            <span>{editing ? 'Corrección guardada' : 'Datos del pago'}</span>
+            <strong>{savedPayment.payer_name}</strong>
             <small>
-              {createdPayment.original_amount} {createdPayment.original_currency_code}
+              {savedPayment.original_amount} {savedPayment.original_currency_code}
             </small>
           </div>
           <div className="payments-proof-section">
@@ -193,21 +273,23 @@ export function PaymentCaptureDrawer({
                 setMessage(nextMessage);
                 if (nextMessage === 'Comprobante guardado.') setProofSaved(true);
               }}
-              paymentId={createdPayment.id}
+              paymentId={savedPayment.id}
               session={session}
             />
           </div>
           <FormActions className="financial-capture-footer" sticky>
             <Button
-              disabled={requiresProof && !proofSaved}
-              onClick={() =>
-                void onComplete(
-                  proofSaved ? 'Pago y comprobante guardados.' : 'Borrador de pago guardado.',
-                )
-              }
+              disabled={saving || (requiresProof && !proofSaved && !editing)}
+              onClick={() => void finish()}
               type="button"
             >
-              Finalizar registro
+              {saving
+                ? submitOnComplete
+                  ? 'Enviando…'
+                  : 'Guardando…'
+                : submitOnComplete
+                  ? 'Enviar a validación'
+                  : 'Finalizar registro'}
             </Button>
           </FormActions>
         </div>
