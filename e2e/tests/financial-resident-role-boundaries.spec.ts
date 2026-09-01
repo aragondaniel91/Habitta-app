@@ -70,11 +70,18 @@ const assertRestrictedResident = async (
   // These are the only community modules HAB-418 deliberately exposes to restricted residents.
   await page.goto('/app/documents');
   await expect(page).toHaveURL(/\/app\/documents$/);
-  await expect(page.getByRole('heading', { name: 'Documentos' })).toBeVisible();
+  // Pinned to the page's own title. A bare name match is a substring match, so 'Documentos' also
+  // selected the empty-state heading 'No hay documentos para mostrar' and Playwright refused the
+  // ambiguity. Naming the level asserts the page rendered, which is what this line was for.
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Documentos', exact: true }),
+  ).toBeVisible();
 
   await page.goto('/app/announcements');
   await expect(page).toHaveURL(/\/app\/announcements$/);
-  await expect(page.getByRole('heading', { name: 'Anuncios' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Anuncios', exact: true }),
+  ).toBeVisible();
 
   // Financial, governance, request and directory-style community deep links are normalized to an
   // allowed URL, not merely hidden while the forbidden path remains in the address bar.
@@ -115,7 +122,9 @@ test.describe('HAB-418 restricted resident browser boundaries', () => {
   }) => {
     await signIn(page, emails.administrator);
     await page.goto('/app/people');
-    await expect(page.getByRole('heading', { name: 'Personas' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Personas', exact: true }),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: /Habitta E2E Family/ }).click();
     await page.getByRole('button', { name: 'Acceso digital' }).click();
