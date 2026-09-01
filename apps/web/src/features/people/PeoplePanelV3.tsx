@@ -834,7 +834,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   const renderDigitalAccess = () => (
     <div className="people-v3-tab-stack">
       <WorkspaceSection
-        description="El acceso se concede sólo desde una propiedad activa o una ocupación activa como inquilino."
+        description="El acceso se concede sólo desde una propiedad activa o una relación residencial activa y compatible con la unidad."
         title="Invitar a Habitta"
       >
         <form
@@ -849,6 +849,8 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
             >
               <option value="owner">Propietario</option>
               <option value="tenant">Inquilino</option>
+              <option value="family_member">Familiar</option>
+              <option value="authorized_occupant">Ocupante autorizado</option>
             </Select>
           </Field>
           <Field label="Unidad vinculada">
@@ -885,7 +887,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         ) : null}
         {selected?.email && !accessOptions.length ? (
           <InlineNotice tone="info">
-            Registra primero una propiedad activa o una ocupación activa de tipo Inquilino.
+            Registra primero una propiedad o una relación residencial activa compatible con la unidad.
           </InlineNotice>
         ) : null}
       </WorkspaceSection>
