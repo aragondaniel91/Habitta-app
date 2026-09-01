@@ -60,7 +60,7 @@ describe('people relationship presentation model', () => {
     expect(activeOccupancies(occupancies).map((item) => item.id)).toEqual(['t1']);
   });
 
-  it('offers resident access only from compatible active owner and tenant relationships', () => {
+  it('offers resident access from every active relationship that maps to a membership', () => {
     const unit = (id: string, code: string) => ({
       id,
       code,
@@ -101,6 +101,24 @@ describe('people relationship presentation model', () => {
         starts_at: '2026-01-01',
         units: unit('unit-d', '2D'),
       },
+      {
+        id: 'authorized-e',
+        person_id: 'person-1',
+        unit_id: 'unit-e',
+        occupancy_type: 'authorized_occupant',
+        starts_at: '2026-01-01',
+        units: unit('unit-e', '2E'),
+      },
+      {
+        // Living in a unit you own is already covered by the ownership above. Offering it again
+        // would ask an administrator to grant the same standing twice.
+        id: 'owner-occupant-a',
+        person_id: 'person-1',
+        unit_id: 'unit-a',
+        occupancy_type: 'owner_occupant',
+        starts_at: '2026-01-01',
+        units: unit('unit-a', '1A'),
+      },
     ] as Occupancy[];
 
     expect(residentAccessOptions(ownerships, occupancies)).toEqual([
@@ -115,6 +133,20 @@ describe('people relationship presentation model', () => {
         unitId: 'unit-c',
         unitLabel: 'Torre unit-c · 2C',
         relationshipId: 'tenant-c',
+      },
+      // HAB-412: these two used to be filtered out, so an administrator had no way to invite a
+      // family member or an authorized occupant even where the relationship existed.
+      {
+        role: 'family_member',
+        unitId: 'unit-d',
+        unitLabel: 'Torre unit-d · 2D',
+        relationshipId: 'family-d',
+      },
+      {
+        role: 'authorized_occupant',
+        unitId: 'unit-e',
+        unitLabel: 'Torre unit-e · 2E',
+        relationshipId: 'authorized-e',
       },
     ]);
   });

@@ -321,9 +321,14 @@ export default function App() {
   const visibleRoutes = allowedRoutes(APP_ROUTES, roles);
   // A deep link to a module this role cannot open lands on the first one it can, so the interface
   // never renders a module the API is going to refuse.
-  const activeRoute = canAccessRoute(currentRoute, roles)
-    ? currentRoute
-    : (visibleRoutes[0] ?? currentRoute);
+  //
+  // The fallback matters as much as the rule. `?? currentRoute` kept the forbidden route whenever
+  // `visibleRoutes` came back empty, which is exactly the case where the guard was needed most --
+  // a role with nothing allowed would have been left sitting on the module it may not open. An
+  // empty list now resolves to the dashboard, which every membership can reach.
+  const safeFallback =
+    visibleRoutes[0] ?? APP_ROUTES.find((route) => route.key === 'dashboard') ?? currentRoute;
+  const activeRoute = canAccessRoute(currentRoute, roles) ? currentRoute : safeFallback;
   let page;
 
   if (addingCondominium) {

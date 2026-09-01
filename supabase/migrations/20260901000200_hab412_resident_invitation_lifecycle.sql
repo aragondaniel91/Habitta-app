@@ -320,6 +320,10 @@ begin
         and u.status = 'active'
         and p.condominium_id = invite.condominium_id
         and p.status = 'active'
+        -- The person's current address, not the one frozen into the invitation. Changing the
+        -- email on the person record has to invalidate a token minted against the old one:
+        -- otherwise the invitation keeps pointing at an address the record no longer claims.
+        and lower(trim(p.email)) = lower(invite.email)
     ) then
       raise exception 'resident assignment is no longer active';
     end if;
@@ -404,6 +408,13 @@ begin
       and p.status = 'active'
       and uo.occupancy_type = old.occupancy_type
       and (uo.ends_at is null or uo.ends_at >= current_date)
+      -- A relationship that has not started yet is not one that keeps a membership alive. Tenant
+      -- keeps its existing semantics, which omit this check, because changing it would alter live
+      -- behaviour; the two roles introduced here get the strict reading they were promised.
+      and (
+        old.occupancy_type = 'tenant'::public.occupancy_type
+        or uo.starts_at <= current_date
+      )
       and u.condominium_id = old_condominium
       and u.status = 'active'
   ) then

@@ -77,6 +77,8 @@ export const APP_ROUTES = [
       'board_member',
       'owner',
       'tenant',
+      'family_member',
+      'authorized_occupant',
     ],
   },
   {
@@ -221,6 +223,8 @@ export const APP_ROUTES = [
       'board_member',
       'owner',
       'tenant',
+      'family_member',
+      'authorized_occupant',
     ],
   },
   {
@@ -242,6 +246,8 @@ export const APP_ROUTES = [
       'board_member',
       'owner',
       'tenant',
+      'family_member',
+      'authorized_occupant',
     ],
   },
   {
@@ -303,6 +309,8 @@ export const APP_ROUTES = [
       'board_member',
       'owner',
       'tenant',
+      'family_member',
+      'authorized_occupant',
     ],
   },
   {

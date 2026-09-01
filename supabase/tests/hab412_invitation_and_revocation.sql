@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(31);
 
 -- HAB-412: the invitation lifecycle, the revocation rules, and the read-only guards.
 --
@@ -297,10 +297,76 @@ select throws_ok(
             '41630000-0000-4000-8000-000000000001', 'x', 'y', '41600000-0000-4000-8000-000000000004')$$,
   null, null, 'a family-only user cannot insert a service request');
 
+-- Arguments in the order the function actually declares them: condominium, unit, category. The
+-- first version of this test had unit and category swapped, so it would have passed on argument
+-- validation even if the authorization had regressed to allowed. The expected message is named for
+-- the same reason: only the authorization refusal counts as evidence here.
 select throws_ok(
-  $$select public.create_service_request('41620000-0000-4000-8000-000000000001',
-      '41650000-0000-4000-8000-000000000001', '41630000-0000-4000-8000-000000000001', 'x', 'y', null)$$,
-  null, null, 'a family-only user cannot create a service request through the RPC');
+  $$select public.create_service_request(
+      '41620000-0000-4000-8000-000000000001',
+      '41630000-0000-4000-8000-000000000001',
+      '41650000-0000-4000-8000-000000000001',
+      'Fuga en el pasillo', 'Descripcion', 'normal', null)$$,
+  null,
+  'request access denied',
+  'a family-only user is refused service request creation by authorization, not by argument shape');
+
+-- ------------------------------------------------------------------ email changed under a live token
+--
+-- The invitation froze an address. If the person record now claims a different one, the token is
+-- pointing at something that no longer exists, and acceptance has to refuse.
+
+reset role;
+-- The address has to be free in this condominium before it can be reused, so the earlier holder
+-- releases it first.
+update public.people set email = 'nunca@hab412i.test' where id = '41640000-0000-4000-8000-000000000003';
+insert into public.people(id, condominium_id, first_name, last_name, status, email, created_by)
+values ('41640000-0000-4000-8000-00000000000e', '41620000-0000-4000-8000-000000000001', 'Mail', 'Cambia', 'active', 'aut@hab412i.test', '41600000-0000-4000-8000-000000000001');
+insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, created_by)
+values ('41630000-0000-4000-8000-000000000002', '41640000-0000-4000-8000-00000000000e', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001');
+
+set local role authenticated;
+select pg_temp.as_user('41600000-0000-4000-8000-000000000001');
+select set_config('hab412.mail_token',
+  pg_temp.invite('41640000-0000-4000-8000-00000000000e', '41630000-0000-4000-8000-000000000002', 'family_member'), true);
+
+reset role;
+update public.people set email = 'otra@hab412i.test' where id = '41640000-0000-4000-8000-00000000000e';
+set local role authenticated;
+select pg_temp.as_user('41600000-0000-4000-8000-000000000003');
+select throws_ok(
+  format($$select public.accept_invitation(%L)$$, current_setting('hab412.mail_token')),
+  null, null, 'a token cannot be accepted after the person email changed');
+
+-- ------------------------------------------------------------------ a future relation keeps nothing alive
+--
+-- Closing the last currently-active relationship must remove the membership even when another one
+-- is on the books for next month. Access is fail-closed either way, but a membership that outlives
+-- every active relationship is the wrong lifecycle and would read as access that still exists.
+
+reset role;
+-- Clear both people's relationships so the fresh pair below owns its unique key outright.
+delete from public.unit_occupancies
+where person_id in ('41640000-0000-4000-8000-00000000000e', '41640000-0000-4000-8000-000000000009');
+delete from public.condominium_memberships
+where user_id = '41600000-0000-4000-8000-000000000004' and role = 'family_member';
+
+insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, created_by) values
+  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000009', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001'),
+  ('41630000-0000-4000-8000-000000000002', '41640000-0000-4000-8000-000000000009', 'family_member', current_date + 20, '41600000-0000-4000-8000-000000000001');
+insert into public.condominium_memberships(condominium_id, user_id, role)
+values ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000004', 'family_member')
+on conflict do nothing;
+
+update public.unit_occupancies set ends_at = current_date - 1
+where person_id = '41640000-0000-4000-8000-000000000009'
+  and unit_id = '41630000-0000-4000-8000-000000000001';
+
+select is(
+  (select count(*)::integer from public.condominium_memberships
+   where user_id = '41600000-0000-4000-8000-000000000004' and role = 'family_member'),
+  0,
+  'a family relationship starting next month does not keep the membership alive today');
 
 reset role;
 select * from finish();

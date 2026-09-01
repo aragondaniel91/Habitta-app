@@ -23,7 +23,7 @@ export const occupancyLabels: Record<Occupancy['occupancy_type'], string> = {
   authorized_occupant: 'Ocupante autorizado',
 };
 
-export type ResidentAccessRole = 'owner' | 'tenant';
+export type ResidentAccessRole = 'owner' | 'tenant' | 'family_member' | 'authorized_occupant';
 export type ResidentInvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
 
 export const residentInvitationStatusLabels: Record<ResidentInvitationStatus, string> = {
@@ -81,10 +81,18 @@ export function residentAccessOptions(ownerships: Ownership[], occupancies: Occu
       unitLabel: unitContextLabel(item.units),
       relationshipId: item.id,
     })),
+    // Every occupancy type that maps to a residential membership. `owner_occupant` is absent on
+    // purpose: living in a unit you own is covered by the ownership above, and inviting somebody
+    // twice for the same standing is not a thing an administrator should be offered.
     ...activeOccupancies(occupancies)
-      .filter((item) => item.occupancy_type === 'tenant')
+      .filter(
+        (item) =>
+          item.occupancy_type === 'tenant' ||
+          item.occupancy_type === 'family_member' ||
+          item.occupancy_type === 'authorized_occupant',
+      )
       .map((item) => ({
-        role: 'tenant' as const,
+        role: item.occupancy_type as ResidentAccessRole,
         unitId: item.unit_id,
         unitLabel: unitContextLabel(item.units),
         relationshipId: item.id,

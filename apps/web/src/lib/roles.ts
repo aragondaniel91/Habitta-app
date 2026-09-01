@@ -80,6 +80,19 @@ export function canAccessResidentPayments(roles: CondominiumRole[]) {
   return !roles.every((role) => restricted.includes(role));
 }
 
+/**
+ * Whether this session may see the operational resident surfaces -- service requests and
+ * governance.
+ *
+ * Migration B denies both to family members and authorized occupants, so the dashboard neither
+ * fetches nor offers them. Owner, tenant and every staff role keep exactly what they had.
+ */
+export function canAccessResidentOperations(roles: CondominiumRole[]) {
+  if (!roles.length) return false;
+  const denied: CondominiumRole[] = ['family_member', 'authorized_occupant'];
+  return !roles.every((role) => denied.includes(role));
+}
+
 /** Mirrors the pilot database guard: tenant-only memberships are operationally read-only. */
 export function isTenantOnly(roles: CondominiumRole[]) {
   return roles.length > 0 && roles.every((role) => role === 'tenant');
