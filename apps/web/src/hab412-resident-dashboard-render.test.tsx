@@ -12,11 +12,7 @@ import { APP_ROUTES } from './navigation';
 // HAB-412: what each persona is allowed to see, and what the dashboard therefore renders.
 //
 // The rules that decide this are pure functions, so they are tested as functions rather than
-// through the markup. This workspace runs vitest in the node environment with no jsdom and no
-// testing-library, so a rendered `ResidentDashboard` only ever produces its loading skeleton --
-// the effect that loads the data never runs. A "renders no balance" assertion against that
-// skeleton passes because nothing rendered at all, which is worse than no test. The DOM-level
-// version of this needs a browser environment; see the PR body for what is and is not covered.
+// through the markup. Browser-level behavior is covered by the authenticated financial E2E fixture.
 
 const dashboard = readFileSync(new URL('./pages/ResidentDashboard.tsx', import.meta.url), 'utf8');
 const restricted: CondominiumRole[][] = [
@@ -34,8 +30,6 @@ describe('HAB-412 what a restricted resident may see', () => {
   });
 
   it('keeps owner, tenant and staff exactly as they were', () => {
-    // The negatives above only mean something if these hold: the surfaces still exist and are
-    // withheld from two roles, rather than removed from the product.
     expect(canAccessResidentPayments(['owner'])).toBe(true);
     expect(canAccessResidentOperations(['owner'])).toBe(true);
     expect(canAccessResidentOperations(['tenant'])).toBe(true);
@@ -45,11 +39,11 @@ describe('HAB-412 what a restricted resident may see', () => {
   });
 
   it('gates every financial and operational region of the dashboard on those two rules', () => {
-    // Each surface the review found rendering unconditionally, now behind its capability. The
-    // balance card and the next-due card sit inside the financial region, so the whole region is
-    // asserted rather than each heading.
     expect(dashboard).toContain('{showsFinancialContext ? (');
     expect(dashboard).toContain('aria-label="Tu acceso residencial"');
+    expect(dashboard).toContain(
+      "const feesRoute = showsFinancialContext ? routeByKey('fees') : undefined",
+    );
     expect(dashboard).toContain(
       "const requestsRoute = showsResidentOperations ? routeByKey('requests') : undefined",
     );
@@ -59,35 +53,40 @@ describe('HAB-412 what a restricted resident may see', () => {
     expect(dashboard).toContain('{showsResidentOperations ? (');
   });
 
-  it('never requests data the database would refuse', () => {
-    // Not merely hidden. A request whose only possible answer is "no" is still a request, and a
-    // rendered "Sin saldos pendientes" derived from an empty refusal states something false.
-    expect(dashboard).toContain('financial(apiRequest<ReceivableSummary[]>');
-    expect(dashboard).toContain('financial(apiRequest<DashboardReceivable[]>');
-    expect(dashboard).toContain('communityOnly(apiRequest<ServiceRequestRecord[]>');
-    expect(dashboard).toContain('communityOnly(apiRequest<GovernanceProposal[]>');
+  it('does not create denied requests before the capability check', () => {
+    // Passing apiRequest(...) directly into a gate is too late: function arguments are evaluated
+    // first, which starts fetch even if the gate then returns an empty promise. The gate therefore
+    // accepts a factory and invokes it only after authorization succeeds.
+    expect(dashboard).toContain('const financial = <T,>(request: () => Promise<T[]>) =>');
+    expect(dashboard).toContain('showsFinancialContext ? request() : Promise.resolve([] as T[])');
+    expect(dashboard).toContain('const communityOnly = <T,>(request: () => Promise<T[]>) =>');
+    expect(dashboard).toContain('showsResidentOperations ? request() : Promise.resolve([] as T[])');
+    expect(dashboard).toContain('financial(() => apiRequest<ReceivableSummary[]>');
+    expect(dashboard).toContain('financial(() => apiRequest<DashboardReceivable[]>');
+    expect(dashboard).toContain('communityOnly(() => apiRequest<ServiceRequestRecord[]>');
+    expect(dashboard).toContain('communityOnly(() =>');
+    expect(dashboard).not.toContain('financial(apiRequest<');
+    expect(dashboard).not.toContain('communityOnly(apiRequest<');
   });
 });
 
 describe('HAB-412 navigation for the restricted residential roles', () => {
   for (const role of ['family_member', 'authorized_occupant'] as CondominiumRole[]) {
     it(`gives a ${role} a non-empty set of routes`, () => {
-      // The empty list was the dangerous case: App.tsx fell back to the current route, preserving
-      // whatever forbidden deep link the person arrived on.
       const visible = allowedRoutes(APP_ROUTES, [role]);
       expect(visible.length).toBeGreaterThan(0);
       expect(visible.map((route) => route.key)).toContain('dashboard');
     });
 
     it(`refuses a ${role} every denied deep link`, () => {
-      for (const key of ['payments', 'fees', 'governance', 'requests']) {
+      for (const key of ['payments', 'fees', 'governance', 'requests', 'community']) {
         const route = APP_ROUTES.find((candidate) => candidate.key === key)!;
         expect(canAccessRoute(route, [role])).toBe(false);
       }
     });
 
-    it(`lets a ${role} reach the community surfaces it is allowed`, () => {
-      for (const key of ['dashboard', 'community', 'documents', 'announcements']) {
+    it(`lets a ${role} reach only the resident-safe community surfaces`, () => {
+      for (const key of ['dashboard', 'documents', 'announcements']) {
         const route = APP_ROUTES.find((candidate) => candidate.key === key)!;
         expect(canAccessRoute(route, [role])).toBe(true);
       }
