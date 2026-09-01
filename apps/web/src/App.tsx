@@ -239,6 +239,22 @@ export default function App() {
   };
   const signOut = () => void supabase?.auth.signOut();
 
+  // A denied deep link must be denied in both places the user can observe it: rendered content and
+  // the browser URL. Otherwise `/app/fees` can display Dashboard while the address bar still claims
+  // the user is on a financial module, and refresh/back navigation re-enters the forbidden route.
+  useEffect(() => {
+    if (!session || workspaceLoading || !selectedCondominiumId) return;
+    const activeRoles = rolesForCondominium(memberships, selectedCondominiumId);
+    if (!activeRoles.length || canAccessRoute(currentRoute, activeRoles)) return;
+
+    const fallback = allowedRoutes(APP_ROUTES, activeRoles)[0] ?? DEFAULT_ROUTE;
+    if (window.location.pathname !== fallback.path) {
+      window.history.replaceState({}, '', fallback.path);
+    }
+    setCurrentRoute((current) => (current.key === fallback.key ? current : fallback));
+    setUnitStructureView(false);
+  }, [currentRoute, memberships, selectedCondominiumId, session, workspaceLoading]);
+
   const completePasswordRecovery = () => {
     setPasswordRecoveryMode(false);
     window.history.replaceState({}, '', DEFAULT_ROUTE.path);
@@ -320,12 +336,7 @@ export default function App() {
   const residentOnly = roles.length > 0 && roles.every((role) => RESIDENT_ROLES.includes(role));
   const visibleRoutes = allowedRoutes(APP_ROUTES, roles);
   // A deep link to a module this role cannot open lands on the first one it can, so the interface
-  // never renders a module the API is going to refuse.
-  //
-  // The fallback matters as much as the rule. `?? currentRoute` kept the forbidden route whenever
-  // `visibleRoutes` came back empty, which is exactly the case where the guard was needed most --
-  // a role with nothing allowed would have been left sitting on the module it may not open. An
-  // empty list now resolves to the dashboard, which every membership can reach.
+  // never renders a module the API is going to refuse. The effect above also normalizes the URL.
   const safeFallback =
     visibleRoutes[0] ?? APP_ROUTES.find((route) => route.key === 'dashboard') ?? currentRoute;
   const activeRoute = canAccessRoute(currentRoute, roles) ? currentRoute : safeFallback;
@@ -514,8 +525,6 @@ export default function App() {
       />
     );
   } else {
-    // Exhaustive by construction: every AppRoute key above is handled, so TypeScript narrows
-    // currentRoute.key to never here and a new route cannot ship without its page.
     const unreachable: never = activeRoute.key;
     throw new Error(`Ruta sin página asignada: ${String(unreachable)}`);
   }
