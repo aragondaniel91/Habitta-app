@@ -67,6 +67,20 @@
       "condominium": "primary"
     },
     {
+      "key": "familyResident",
+      "email": "habitta-e2e-family@example.invalid",
+      "role": "family_member",
+      "condominium": "primary",
+      "unitCode": "E2E-A102"
+    },
+    {
+      "key": "authorizedResident",
+      "email": "habitta-e2e-authorized@example.invalid",
+      "role": "authorized_occupant",
+      "condominium": "primary",
+      "unitCode": "E2E-A102"
+    },
+    {
       "key": "isolationUser",
       "email": "habitta-e2e-isolation@example.invalid",
       "role": "administrator",

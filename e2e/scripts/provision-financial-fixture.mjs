@@ -35,6 +35,8 @@ const ids = {
   payerPerson: '44444444-4444-4444-8444-444444444441',
   additionalRecipientPerson: '44444444-4444-4444-8444-444444444442',
   unrelatedRecipientPerson: '44444444-4444-4444-8444-444444444443',
+  familyResidentPerson: '44444444-4444-4444-8444-444444444444',
+  authorizedResidentPerson: '44444444-4444-4444-8444-444444444445',
   payerOwnership: '55555555-5555-4555-8555-555555555551',
   chargeConcept: '66666666-6666-4666-8666-666666666661',
   paymentMethod: '77777777-7777-4777-8777-777777777771',
@@ -96,6 +98,8 @@ const reviewerId = usersByKey.get('reviewer')?.id;
 const payerId = usersByKey.get('payer')?.id;
 const additionalRecipientId = usersByKey.get('additionalRecipient')?.id;
 const unrelatedRecipientId = usersByKey.get('unrelatedRecipient')?.id;
+const familyResidentId = usersByKey.get('familyResident')?.id;
+const authorizedResidentId = usersByKey.get('authorizedResident')?.id;
 const isolationUserId = usersByKey.get('isolationUser')?.id;
 if (
   ![
@@ -104,6 +108,8 @@ if (
     payerId,
     additionalRecipientId,
     unrelatedRecipientId,
+    familyResidentId,
+    authorizedResidentId,
     isolationUserId,
   ].every(Boolean)
 ) {
@@ -137,6 +143,12 @@ await insert('condominium_memberships', [
   { condominium_id: ids.primaryCondominium, user_id: payerId, role: 'owner' },
   { condominium_id: ids.primaryCondominium, user_id: additionalRecipientId, role: 'owner' },
   { condominium_id: ids.primaryCondominium, user_id: unrelatedRecipientId, role: 'owner' },
+  { condominium_id: ids.primaryCondominium, user_id: familyResidentId, role: 'family_member' },
+  {
+    condominium_id: ids.primaryCondominium,
+    user_id: authorizedResidentId,
+    role: 'authorized_occupant',
+  },
   {
     condominium_id: ids.isolationCondominium,
     user_id: isolationUserId,
@@ -196,6 +208,24 @@ await insert('people', [
     email: fixture.users.find(({ key }) => key === 'unrelatedRecipient').email,
     created_by: adminId,
   },
+  {
+    id: ids.familyResidentPerson,
+    condominium_id: ids.primaryCondominium,
+    auth_user_id: familyResidentId,
+    first_name: 'Habitta',
+    last_name: 'E2E Family',
+    email: fixture.users.find(({ key }) => key === 'familyResident').email,
+    created_by: adminId,
+  },
+  {
+    id: ids.authorizedResidentPerson,
+    condominium_id: ids.primaryCondominium,
+    auth_user_id: authorizedResidentId,
+    first_name: 'Habitta',
+    last_name: 'E2E Authorized',
+    email: fixture.users.find(({ key }) => key === 'authorizedResident').email,
+    created_by: adminId,
+  },
 ]);
 
 await insert('unit_owners', {
@@ -208,14 +238,32 @@ await insert('unit_owners', {
   created_by: adminId,
 });
 
-await insert('unit_occupancies', {
-  unit_id: ids.primaryUnitA101,
-  person_id: ids.additionalRecipientPerson,
-  occupancy_type: 'tenant',
-  is_primary_contact: false,
-  starts_at: '2020-01-01',
-  created_by: adminId,
-});
+await insert('unit_occupancies', [
+  {
+    unit_id: ids.primaryUnitA101,
+    person_id: ids.additionalRecipientPerson,
+    occupancy_type: 'tenant',
+    is_primary_contact: false,
+    starts_at: '2020-01-01',
+    created_by: adminId,
+  },
+  {
+    unit_id: ids.primaryUnitA102,
+    person_id: ids.familyResidentPerson,
+    occupancy_type: 'family_member',
+    is_primary_contact: false,
+    starts_at: '2020-01-01',
+    created_by: adminId,
+  },
+  {
+    unit_id: ids.primaryUnitA102,
+    person_id: ids.authorizedResidentPerson,
+    occupancy_type: 'authorized_occupant',
+    is_primary_contact: false,
+    starts_at: '2020-01-01',
+    created_by: adminId,
+  },
+]);
 
 await insert('charge_concepts', {
   id: ids.chargeConcept,
@@ -278,6 +326,7 @@ console.log(
       users: Object.fromEntries([...usersByKey].map(([key, user]) => [key, user.email])),
       primaryCondominiumId: ids.primaryCondominium,
       primaryUnitId: ids.primaryUnitA101,
+      residentUnitId: ids.primaryUnitA102,
       receivableItemId: ids.receivableItem,
       paymentMethodId: ids.paymentMethod,
     },
