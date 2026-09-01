@@ -110,8 +110,6 @@ describe('people relationship presentation model', () => {
         units: unit('unit-e', '2E'),
       },
       {
-        // Living in a unit you own is already covered by the ownership above. Offering it again
-        // would ask an administrator to grant the same standing twice.
         id: 'owner-occupant-a',
         person_id: 'person-1',
         unit_id: 'unit-a',
@@ -121,7 +119,9 @@ describe('people relationship presentation model', () => {
       },
     ] as Occupancy[];
 
-    expect(residentAccessOptions(ownerships, occupancies)).toEqual([
+    expect(
+      residentAccessOptions(ownerships, occupancies, new Date('2026-09-01T12:00:00')),
+    ).toEqual([
       {
         role: 'owner',
         unitId: 'unit-a',
@@ -134,8 +134,6 @@ describe('people relationship presentation model', () => {
         unitLabel: 'Torre unit-c · 2C',
         relationshipId: 'tenant-c',
       },
-      // HAB-412: these two used to be filtered out, so an administrator had no way to invite a
-      // family member or an authorized occupant even where the relationship existed.
       {
         role: 'family_member',
         unitId: 'unit-d',
@@ -149,6 +147,44 @@ describe('people relationship presentation model', () => {
         relationshipId: 'authorized-e',
       },
     ]);
+  });
+
+  it('uses strict start and inclusive end dates for family and authorized invitation eligibility', () => {
+    const unit = (id: string) => ({ id, code: id, condominium_id: 'condo-1' });
+    const occupancies = [
+      {
+        id: 'future-family',
+        person_id: 'person-1',
+        unit_id: 'future-family-unit',
+        occupancy_type: 'family_member',
+        starts_at: '2026-09-02',
+        units: unit('future-family-unit'),
+      },
+      {
+        id: 'ending-authorized',
+        person_id: 'person-1',
+        unit_id: 'ending-authorized-unit',
+        occupancy_type: 'authorized_occupant',
+        starts_at: '2026-08-01',
+        ends_at: '2026-09-15',
+        units: unit('ending-authorized-unit'),
+      },
+      {
+        id: 'expired-family',
+        person_id: 'person-1',
+        unit_id: 'expired-family-unit',
+        occupancy_type: 'family_member',
+        starts_at: '2026-08-01',
+        ends_at: '2026-08-31',
+        units: unit('expired-family-unit'),
+      },
+    ] as Occupancy[];
+
+    expect(
+      residentAccessOptions([], occupancies, new Date('2026-09-01T12:00:00')).map(
+        (option) => option.relationshipId,
+      ),
+    ).toEqual(['ending-authorized']);
   });
 
   it('derives an expired invitation display state without mutating stored lifecycle state', () => {
