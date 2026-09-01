@@ -20,6 +20,7 @@ import type {
   Receivable,
 } from '../features/payments/types';
 import { ApiRequestError, apiRequest } from '../lib/api';
+import { unitReferenceLabel } from '../lib/unit-domain';
 import { canManage, useCondominiumRoles } from '../lib/roles';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import { collectAllPages, financialPagePath, mergePageItems, pageInfo } from '../lib/pagination';
@@ -238,6 +239,19 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     () =>
       Object.fromEntries((data?.buildings ?? []).map((building) => [building.id, building.name])),
     [data?.buildings],
+  );
+  // The administration may record a payment against any unit of the condominium; the drawer now
+  // receives them named rather than resolving buildings itself.
+  const captureUnitOptions = useMemo(
+    () =>
+      (data?.units ?? []).map((unit) => ({
+        id: unit.id,
+        label: unitReferenceLabel({
+          code: unit.code,
+          buildingName: unit.building_id ? (buildingNameById[unit.building_id] ?? null) : null,
+        }),
+      })),
+    [data?.units, buildingNameById],
   );
 
   useEffect(() => {
@@ -700,8 +714,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           onComplete={onChanged}
           onDraftCreated={() => load(true)}
           session={session}
-          units={data.units}
-          buildingNameById={buildingNameById}
+          units={captureUnitOptions}
         />
       ) : null}
 

@@ -6,15 +6,23 @@ import { FormActions, FormGrid } from '../../../components/FormLayout';
 import { Button, Field, Select } from '../../../components/ui';
 import '../../../financial-capture.css';
 import { paymentApi } from '../api';
-import { unitReferenceLabel } from '../../../lib/unit-domain';
 import type { Payment, PaymentMethod } from '../types';
+
+/**
+ * A unit this drawer is allowed to offer as a payment destination, already named.
+ *
+ * HAB-427: the caller decides which units belong here -- for a resident that is the units the
+ * database says they may pay for, which is not the same set as the units they can see. Passing
+ * names rather than rows means the drawer cannot accidentally widen that set, and cannot fall back
+ * to showing an identifier when a name is missing.
+ */
+export type PaymentUnitOption = { id: string; label: string };
 import { PaymentProofUploader } from './PaymentProofUploader';
 
 export function PaymentCaptureDrawer({
   condominiumId,
   session,
   units,
-  buildingNameById,
   methods,
   payment,
   submitOnComplete = false,
@@ -24,8 +32,7 @@ export function PaymentCaptureDrawer({
 }: {
   condominiumId: string;
   session: Session;
-  units: { id: string; code: string; building_id?: string | null }[];
-  buildingNameById: Record<string, string>;
+  units: PaymentUnitOption[];
   methods: PaymentMethod[];
   payment?: Payment;
   submitOnComplete?: boolean;
@@ -44,6 +51,9 @@ export function PaymentCaptureDrawer({
   const selectedMethod = methods.find((item) => item.id === selectedMethodId);
   const requiresProof = Boolean(selectedMethod?.requires_proof);
   const editing = Boolean(payment);
+  // Editing never moves a payment between units: the destination was decided when the draft was
+  // created, and changing it would re-point money that has already been reported.
+  const onlyUnit = units.length === 1 ? units[0] : undefined;
 
   const saveDetails = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -142,18 +152,30 @@ export function PaymentCaptureDrawer({
             <strong>1. Datos</strong>
             <span>2. Comprobante</span>
           </div>
-          {!payment ? (
+          {!payment && units.length === 0 ? (
+            <div className="payments-form__notice">
+              No hay ninguna unidad a la que puedas asignar un pago en este condominio.
+            </div>
+          ) : null}
+          {!payment && onlyUnit ? (
+            // One destination is not a choice. The unit is stated so the resident can see where
+            // the money is going, and travels with the form as a value rather than as an
+            // assumption the server would have to make on their behalf.
+            <div className="financial-capture-summary">
+              <span>Unidad</span>
+              <strong>{onlyUnit.label}</strong>
+              <input name="unitId" type="hidden" value={onlyUnit.id} />
+            </div>
+          ) : null}
+          {!payment && units.length > 1 ? (
             <Field label="Unidad">
-              <Select name="unitId" required>
+              {/* No preselection: with several properties, guessing which one the resident meant
+                  is how a payment ends up on the wrong unit. */}
+              <Select defaultValue="" name="unitId" required>
                 <option value="">Seleccionar unidad</option>
                 {units.map((unit) => (
                   <option key={unit.id} value={unit.id}>
-                    {unitReferenceLabel({
-                      code: unit.code,
-                      buildingName: unit.building_id
-                        ? (buildingNameById[unit.building_id] ?? null)
-                        : null,
-                    })}
+                    {unit.label}
                   </option>
                 ))}
               </Select>
@@ -243,7 +265,10 @@ export function PaymentCaptureDrawer({
             <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
               Cancelar
             </Button>
-            <Button disabled={saving || !selectedMethodId} type="submit">
+            <Button
+              disabled={saving || !selectedMethodId || (!editing && units.length === 0)}
+              type="submit"
+            >
               {saving ? 'Guardando…' : 'Continuar al comprobante'}
             </Button>
           </FormActions>

@@ -665,6 +665,16 @@ app.get('/v1/condominiums/:id/receivables/summary', async (c) => {
   });
   return c.json(await r.json(), r.ok ? 200 : 403);
 });
+// HAB-427: the resident's own units, one row per unit per currency. Same shape of route as the
+// summary above and the same authorization -- the caller's token, never the service role -- so the
+// RPC decides which units come back and this only forwards the answer.
+app.get('/v1/condominiums/:id/resident-financial-units', async (c) => {
+  const r = await rest(c, 'rpc/get_resident_financial_units', {
+    method: 'POST',
+    body: JSON.stringify({ target: uuidSchema.parse(c.req.param('id')) }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
 app.get('/v1/condominiums/:id/receivables/aging', async (c) => {
   const r = await rest(c, 'rpc/get_receivables_aging', {
     method: 'POST',

@@ -360,3 +360,48 @@
     text-align: left;
   }
 }
+
+.resident-payments__unit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.resident-payments__unit-row > div:first-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.resident-payments__unit-row span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.resident-payments__unit-select {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.resident-payments__unit-select label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.resident-payments__unit-select select {
+  min-height: 2.4rem;
+  min-width: 14rem;
+  max-width: 100%;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}

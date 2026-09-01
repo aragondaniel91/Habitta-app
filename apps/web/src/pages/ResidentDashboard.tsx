@@ -17,7 +17,21 @@ import {
   formatDashboardDate,
   sortReceivableSummaries,
 } from '../lib/dashboard';
-import type { DashboardPayment, DashboardReceivable, ReceivableSummary } from '../lib/dashboard';
+import type {
+  DashboardBuilding,
+  DashboardPayment,
+  DashboardReceivable,
+  ReceivableSummary,
+} from '../lib/dashboard';
+import {
+  currencyRows,
+  financialUnitOptions,
+  residentUnitLabel,
+  residentUnitLabels,
+  rowsForSelection,
+  unitBalanceStanding,
+} from '../lib/resident-units';
+import type { ResidentFinancialUnit } from '../lib/resident-units';
 import type { AnnouncementRecord } from '../lib/announcements';
 import { formatAnnouncementDate, priorityLabels } from '../lib/announcements';
 import type { ServiceRequestRecord } from '../lib/service-requests';
@@ -34,7 +48,6 @@ import {
   isTenantOnly,
   useCondominiumRoles,
 } from '../lib/roles';
-import { unitReferenceLabel } from '../lib/unit-domain';
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
 import '../resident-dashboard.css';
@@ -50,11 +63,16 @@ type Props = {
 type ResidentUnit = {
   id: string;
   code: string;
-  building_name?: string | null;
+  // `/units` selects the whole row, and the row carries `building_id`. The dashboard used to read
+  // `building_name`, which the endpoint has never returned, so every label quietly fell back to a
+  // bare code -- indistinguishable between Torre A 101 and Torre B 101.
+  building_id?: string | null;
 };
 
 type ResidentDashboardData = {
   units: ResidentUnit[];
+  buildings: DashboardBuilding[];
+  financialUnits: ResidentFinancialUnit[];
   summaries: ReceivableSummary[];
   receivables: DashboardReceivable[];
   payments: DashboardPayment[];
@@ -122,6 +140,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
   // so neither is fetched nor offered. Owner and tenant keep both exactly as before.
   const showsResidentOperations = canAccessResidentOperations(roles);
   const [data, setData] = useState<ResidentDashboardData | null>(null);
+  // '' means every unit. An owner of one unit never sees this; an owner of several starts on the
+  // consolidated view, because "what do I owe in total" is the question they open the app with.
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState('');
 
@@ -145,6 +166,14 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       // resident receives their own and nothing else. No new endpoint, no client-side filtering
       // standing in for authorization.
       apiRequest<ResidentUnit[]>(`${base}/units`, session),
+      // Only to name the units. Which buildings a resident may read is already decided by the
+      // database; this adds no access, it just turns an id into something a person recognizes.
+      apiRequest<DashboardBuilding[]>(`${base}/buildings`, session),
+      // Per unit and per currency, straight from the ledger. The consolidated card below still
+      // comes from the condominium summary; this is what makes a single property answerable.
+      financial(() =>
+        apiRequest<ResidentFinancialUnit[]>(`${base}/resident-financial-units`, session),
+      ),
       financial(() => apiRequest<ReceivableSummary[]>(`${base}/receivables/summary`, session)),
       financial(() => apiRequest<DashboardReceivable[]>(`${base}/receivables`, session)),
       paymentsRequest,
@@ -155,9 +184,20 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       ),
     ]);
 
-    const [units, summaries, receivables, payments, announcements, requests, proposals] = results;
+    const [
+      units,
+      buildings,
+      financialUnits,
+      summaries,
+      receivables,
+      payments,
+      announcements,
+      requests,
+      proposals,
+    ] = results;
     const failed: string[] = [];
-    // A missing unit is not worth a warning: the header simply says less.
+    // A missing unit or building name is not worth a warning: the header simply says less.
+    if (financialUnits.status === 'rejected') failed.push('saldos por unidad');
     if (summaries.status === 'rejected') failed.push('saldos');
     if (receivables.status === 'rejected') failed.push('cuotas');
     if (payments.status === 'rejected') failed.push('pagos');
@@ -167,6 +207,8 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
 
     setData({
       units: units.status === 'fulfilled' ? units.value : [],
+      buildings: buildings.status === 'fulfilled' ? buildings.value : [],
+      financialUnits: financialUnits.status === 'fulfilled' ? financialUnits.value : [],
       summaries: summaries.status === 'fulfilled' ? summaries.value : [],
       receivables: receivables.status === 'fulfilled' ? receivables.value : [],
       payments: payments.status === 'fulfilled' ? payments.value : [],
@@ -186,31 +228,74 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     void load();
   }, [load]);
 
+  const unitLabels = useMemo(
+    () => residentUnitLabels(data?.units ?? [], data?.buildings ?? []),
+    [data?.units, data?.buildings],
+  );
+  const financialUnits = useMemo(
+    () => financialUnitOptions(data?.financialUnits ?? [], unitLabels),
+    [data?.financialUnits, unitLabels],
+  );
+  // The selection only ever narrows what is already visible, so a stale id -- a unit sold between
+  // two loads -- falls back to the consolidated view rather than to an empty one.
+  const activeUnitId = useMemo(
+    () => (financialUnits.some((unit) => unit.id === selectedUnitId) ? selectedUnitId : ''),
+    [financialUnits, selectedUnitId],
+  );
+  const selectedRows = useMemo(
+    () => rowsForSelection(data?.financialUnits ?? [], activeUnitId),
+    [data?.financialUnits, activeUnitId],
+  );
+  // Consolidated, the summary function stays the authority. Narrowed to one unit, the per-unit
+  // rows do -- both read the same ledger, so the two never disagree about the same money.
   const summaries = useMemo(
-    () => sortReceivableSummaries(data?.summaries ?? []),
-    [data?.summaries],
+    () =>
+      activeUnitId
+        ? sortReceivableSummaries(
+            currencyRows(selectedRows).map((row) => ({
+              currency_code: row.currency_code,
+              net_outstanding: row.net_outstanding,
+              total_debits: row.total_debits,
+              total_credits: row.total_credits,
+            })),
+          )
+        : sortReceivableSummaries(data?.summaries ?? []),
+    [activeUnitId, selectedRows, data?.summaries],
+  );
+  // Grouped by unit for "Mis propiedades", in the same order as the selector.
+  const propertyCards = useMemo(
+    () =>
+      financialUnits.map((unit) => ({
+        ...unit,
+        balances: currencyRows(
+          (data?.financialUnits ?? []).filter((row) => row.unit_id === unit.id),
+        ),
+      })),
+    [financialUnits, data?.financialUnits],
   );
   const nextDue = useMemo(
     () =>
       [...(data?.receivables ?? [])]
         .filter(
           (item) =>
+            (!activeUnitId || item.unit_id === activeUnitId) &&
             Number(item.outstanding_amount) > 0 &&
             !['paid', 'settled', 'reversed'].includes(item.status),
         )
         .sort((left, right) => dueTime(left) - dueTime(right))[0],
-    [data?.receivables],
+    [data?.receivables, activeUnitId],
   );
   const recentPayments = useMemo(
     () =>
       [...(data?.payments ?? [])]
+        .filter((payment) => !activeUnitId || payment.unit_id === activeUnitId)
         .sort((left, right) =>
           (right.payment_date || right.created_at || '').localeCompare(
             left.payment_date || left.created_at || '',
           ),
         )
         .slice(0, 4),
-    [data?.payments],
+    [data?.payments, activeUnitId],
   );
   const importantAnnouncements = useMemo(
     () =>
@@ -253,18 +338,16 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
   // dashboard already said which condominium; it never said which unit was theirs or whether they
   // hold it as owner or tenant, which is most of what makes a residential app feel like one.
   const residentContext = useMemo(() => {
-    const unitLabels = (data?.units ?? [])
-      .map((unit) =>
-        unitReferenceLabel({ code: unit.code, buildingName: unit.building_name ?? null }),
-      )
+    const labels = (data?.units ?? [])
+      .map((unit) => residentUnitLabel(unitLabels, unit.id))
       .filter(Boolean);
     // Never the identifier. A unit without a readable code says nothing worth showing.
     const unit =
-      unitLabels.length === 0
+      labels.length === 0
         ? null
-        : unitLabels.length <= 2
-          ? unitLabels.join(' · ')
-          : `${unitLabels.slice(0, 2).join(' · ')} +${unitLabels.length - 2}`;
+        : labels.length <= 2
+          ? labels.join(' · ')
+          : `${labels.slice(0, 2).join(' · ')} +${labels.length - 2}`;
     // Named in the resident's own terms. Owner first: someone who owns and is also family is an
     // owner here, because that is the standing that carries capability.
     const standing = roles.includes('owner')
@@ -276,8 +359,8 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           : roles.includes('authorized_occupant')
             ? 'Ocupante autorizado'
             : null;
-    return { unit, standing, unitCount: unitLabels.length };
-  }, [data?.units, roles]);
+    return { unit, standing, unitCount: labels.length };
+  }, [data?.units, unitLabels, roles]);
 
   if (loading && !data) return <ResidentDashboardLoading />;
   if (!data) return null;
@@ -316,6 +399,24 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         </div>
       ) : null}
 
+      {showsFinancialContext && financialUnits.length > 1 ? (
+        <div className="resident-dashboard__unit-filter">
+          <label htmlFor="resident-unit-filter">Ver</label>
+          <select
+            id="resident-unit-filter"
+            onChange={(event) => setSelectedUnitId(event.target.value)}
+            value={activeUnitId}
+          >
+            <option value="">Todas mis unidades</option>
+            {financialUnits.map((unit) => (
+              <option key={unit.id} value={unit.id}>
+                {unit.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
       {warning ? (
         <div className="resident-dashboard__warning" role="status">
           {warning}
@@ -330,7 +431,11 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
                 <span className="resident-dashboard__card-icon">
                   <FeesIcon size={20} />
                 </span>
-                <span>Saldo pendiente</span>
+                <span>
+                  {activeUnitId
+                    ? `Saldo de ${residentUnitLabel(unitLabels, activeUnitId)}`
+                    : 'Saldo pendiente'}
+                </span>
               </div>
               {summaries.length ? (
                 <div className="resident-dashboard__balances">
@@ -427,6 +532,53 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           </Surface>
         </section>
       )}
+
+      {showsFinancialContext && propertyCards.length > 1 ? (
+        <section aria-label="Mis propiedades" className="resident-dashboard__properties">
+          <Surface className="resident-dashboard__panel">
+            <div className="resident-dashboard__section-heading">
+              <div>
+                <span>Mis propiedades</span>
+                <h2>Estado de cada unidad</h2>
+              </div>
+            </div>
+            <div className="resident-dashboard__property-grid">
+              {propertyCards.map((property) => (
+                <article key={property.id}>
+                  <strong>{property.label}</strong>
+                  {property.balances.length ? (
+                    <div className="resident-dashboard__property-balances">
+                      {property.balances.map((balance) => {
+                        const standing = unitBalanceStanding(balance.net_outstanding);
+                        return (
+                          <div key={`${property.id}-${balance.currency_code}`}>
+                            <span>
+                              {formatDashboardAmount(
+                                balance.net_outstanding,
+                                balance.currency_code,
+                              )}
+                            </span>
+                            <Badge tone={standing.tone}>{standing.label}</Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p>Sin movimientos registrados.</p>
+                  )}
+                  <Button onClick={() => setSelectedUnitId(property.id)} size="sm" variant="ghost">
+                    Ver solo esta unidad <ArrowRightIcon size={16} />
+                  </Button>
+                </article>
+              ))}
+            </div>
+            <p className="resident-dashboard__card-note">
+              Cada unidad y cada moneda por separado. Habitta nunca suma saldos de monedas
+              distintas.
+            </p>
+          </Surface>
+        </section>
+      ) : null}
 
       {showsFinancialContext ? (
         <section aria-label="Pagos recientes" className="resident-dashboard__payments-row">

@@ -13,6 +13,8 @@ import type { Payment, PaymentMethod, Receivable } from '../features/payments/ty
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import { paymentStatusLabels, paymentStatusTone, sortPayments } from '../lib/payments';
 import type { PageInfo } from '../lib/pagination';
+import { residentUnitLabel } from '../lib/resident-units';
+import type { ResidentFinancialUnit, ResidentUnitOption } from '../lib/resident-units';
 import '../resident-payments.css';
 
 type Unit = { id: string; code: string; building_id: string | null; status?: string };
@@ -31,8 +33,17 @@ type Props = {
   error: string;
   message: string;
   selectedCurrency: string;
+  selectedUnitId: string;
+  /** The ledger's answer for the units currently in view, one row per unit per currency. */
+  financialRows: ResidentFinancialUnit[];
+  /** Every unit the resident has a financial view of. */
+  unitOptions: ResidentUnitOption[];
+  unitLabels: Map<string, string>;
+  /** False when the database would refuse a payment for every unit in view. */
+  canRegisterPayment: boolean;
   loadingMorePayments: boolean;
   onCurrencyChange: (currency: string) => void;
+  onUnitChange: (unitId: string) => void;
   onLoadMore: () => void;
   onOpenPayment: (payment: Payment) => void;
   onRegisterPayment: () => void;
@@ -68,8 +79,14 @@ export function ResidentPaymentsView({
   error,
   message,
   selectedCurrency,
+  selectedUnitId,
+  financialRows,
+  unitOptions,
+  unitLabels,
+  canRegisterPayment,
   loadingMorePayments,
   onCurrencyChange,
+  onUnitChange,
   onLoadMore,
   onOpenPayment,
   onRegisterPayment,
@@ -91,7 +108,9 @@ export function ResidentPaymentsView({
   const activeMethods = data.methods.filter(
     (method) => method.is_active && method.currency_code === currency,
   );
-  const canRegister = data.methods.some((method) => method.is_active);
+  // Two conditions, and both are real: the condominium must offer a way to pay, and the resident
+  // must have somewhere to pay for. Either one missing means the button leads nowhere.
+  const canRegister = canRegisterPayment && data.methods.some((method) => method.is_active);
   const visiblePayments = useMemo(
     () =>
       sortPayments(data.payments).filter(
@@ -99,9 +118,15 @@ export function ResidentPaymentsView({
       ),
     [currency, data.payments],
   );
-  const outstanding = data.receivables
-    .filter((receivable) => receivable.currency_code === currency)
-    .reduce((total, receivable) => total + Number(receivable.outstanding_amount ?? 0), 0);
+  // From the ledger, per unit, not from the open receivables on this page.
+  //
+  // Summing `outstanding_amount` was wrong in both directions: it misses credits and overpayments
+  // that are not attached to any charge, and it only ever covered the receivables that happened to
+  // be loaded. Adding the per-unit rows of a single currency is safe -- they are the same currency
+  // and the same ledger -- and it agrees with what the dashboard shows.
+  const outstanding = financialRows
+    .filter((row) => row.currency_code === currency)
+    .reduce((total, row) => total + Number(row.net_outstanding ?? 0), 0);
   const inValidation = visiblePayments.filter((payment) =>
     ['submitted', 'under_review'].includes(payment.status),
   ).length;
@@ -136,6 +161,30 @@ export function ResidentPaymentsView({
         </div>
       ) : null}
 
+      {unitOptions.length > 1 ? (
+        <div className="resident-payments__unit-row">
+          <div>
+            <strong>Tus unidades</strong>
+            <span>Elige una propiedad para ver su saldo, sus cuotas y sus pagos.</span>
+          </div>
+          <div className="resident-payments__unit-select">
+            <label htmlFor="resident-payments-unit">Ver</label>
+            <select
+              id="resident-payments-unit"
+              onChange={(event) => onUnitChange(event.target.value)}
+              value={selectedUnitId}
+            >
+              <option value="">Todas mis unidades</option>
+              {unitOptions.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      ) : null}
+
       <div className="resident-payments__currency-row">
         <div>
           <strong>Tu cuenta por moneda</strong>
@@ -166,7 +215,11 @@ export function ResidentPaymentsView({
             <span>
               <FeesIcon size={20} />
             </span>
-            <small>Saldo pendiente</small>
+            <small>
+              {selectedUnitId
+                ? `Saldo de ${residentUnitLabel(unitLabels, selectedUnitId)}`
+                : 'Saldo pendiente'}
+            </small>
           </div>
           <strong>{formatDashboardAmount(outstanding, currency)}</strong>
           <p>
@@ -315,6 +368,11 @@ export function ResidentPaymentsView({
                         </Badge>
                       </div>
                       <span>
+                        {/* With one unit the answer is obvious and the label is noise. With
+                            several, a payment without its destination is unreadable. */}
+                        {!selectedUnitId && unitOptions.length > 1
+                          ? `${residentUnitLabel(unitLabels, payment.unit_id)} · `
+                          : ''}
                         {formatDashboardDate(payment.payment_date)}
                         {payment.reference ? ` · Ref. ${payment.reference}` : ''}
                       </span>
