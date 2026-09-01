@@ -67,3 +67,46 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
     expect(residentPaymentsView).toContain('La administración está revisando este pago.');
   });
 });
+
+describe('HAB-417 the resident dashboard says whose home this is', () => {
+  const dashboard = readFileSync(new URL('./pages/ResidentDashboard.tsx', import.meta.url), 'utf8');
+  const dashboardCss = readFileSync(new URL('./resident-dashboard.css', import.meta.url), 'utf8');
+
+  it('reads the resident own units without a new endpoint or a new permission', () => {
+    // `can_read_unit` already admits the active owner of a unit and its active tenant, so the
+    // existing units route returns a resident their own units and nothing else. The authorization
+    // stays in the database; the client does not filter and does not ask for anything new.
+    expect(dashboard).toContain('apiRequest<ResidentUnit[]>(`${base}/units`, session)');
+    expect(dashboard).not.toMatch(/units\?.*owner|filter\(\(unit\)/);
+  });
+
+  it('names the unit rather than showing its identifier', () => {
+    // Standing rule across the app: never put a UUID in front of a person when a readable code
+    // exists. The label comes from the shared helper every other financial surface uses.
+    expect(dashboard).toContain('unitReferenceLabel({');
+    expect(dashboard).not.toMatch(/\{unit\.id\}|residentContext\.unit\?\.id/);
+  });
+
+  it('states the residential standing without inventing a role', () => {
+    // Owner and tenant are the two residential roles the database has. The dashboard reports what
+    // the membership already says; it never derives a standing the backend would not recognise.
+    expect(dashboard).toContain(
+      "tenantOnly ? 'Inquilino' : roles.includes('owner') ? 'Propietario'",
+    );
+  });
+
+  it('degrades to the condominium alone when there is no unit to name', () => {
+    // A resident whose unit is not readable still gets a working home screen. A failed units
+    // request is not a warning either: the header simply says less.
+    expect(dashboard).toContain('residentContext.unit || residentContext.standing');
+    expect(dashboard).toContain("units.status === 'fulfilled' ? units.value : []");
+  });
+
+  it('keeps the context strip inside the Habitta design contract', () => {
+    // Same badge component and same spacing rhythm as the rest of the sheet, so the strip reads as
+    // part of the heading block rather than as a first card of its own.
+    expect(dashboard).toMatch(/<Badge tone="(info|neutral)">/);
+    expect(dashboardCss).toContain('.resident-dashboard__context');
+    expect(dashboard).not.toMatch(/style=\{\{/);
+  });
+});

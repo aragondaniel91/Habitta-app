@@ -334,3 +334,13 @@
     min-height: 3.4rem;
   }
 }
+
+/* The residential context strip: which unit, on what footing. Sits directly under the header and
+   uses the same gap rhythm as the hero grid below it, so it reads as part of the heading block
+   rather than as a first card. */
+.resident-dashboard__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
