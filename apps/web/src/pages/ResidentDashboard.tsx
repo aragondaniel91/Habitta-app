@@ -28,7 +28,7 @@ import {
 } from '../lib/service-requests';
 import type { GovernanceProposal } from '../lib/governance';
 import { formatGovernanceDate } from '../lib/governance';
-import { isTenantOnly, useCondominiumRoles } from '../lib/roles';
+import { canAccessResidentPayments, isTenantOnly, useCondominiumRoles } from '../lib/roles';
 import { unitReferenceLabel } from '../lib/unit-domain';
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
@@ -109,6 +109,10 @@ function ResidentDashboardLoading() {
 export function ResidentDashboard({ condominiumId, condominiumName, session, onNavigate }: Props) {
   const roles = useCondominiumRoles();
   const tenantOnly = isTenantOnly(roles);
+  // Family members and authorized occupants have no financial standing in the database, so the
+  // dashboard must not fetch or show balances for them either. Asking would return nothing; the
+  // point is not to offer an answer the backend would refuse.
+  const showsFinancialContext = canAccessResidentPayments(roles);
   const [data, setData] = useState<ResidentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState('');
@@ -117,7 +121,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     setLoading(true);
     setWarning('');
     const base = `/v1/condominiums/${condominiumId}`;
-    const paymentsRequest = tenantOnly
+    const paymentsRequest = !showsFinancialContext
       ? Promise.resolve([] as DashboardPayment[])
       : apiRequest<DashboardPayment[]>(`${base}/payments`, session);
     const results = await Promise.allSettled([
@@ -158,7 +162,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       );
     }
     setLoading(false);
-  }, [condominiumId, session, tenantOnly]);
+  }, [condominiumId, session, showsFinancialContext]);
 
   useEffect(() => {
     void load();
@@ -226,7 +230,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
   if (loading && !data) return <ResidentDashboardLoading />;
   if (!data) return null;
 
-  const paymentsRoute = tenantOnly ? undefined : routeByKey('payments');
+  const paymentsRoute = showsFinancialContext ? routeByKey('payments') : undefined;
   const feesRoute = routeByKey('fees');
   const requestsRoute = routeByKey('requests');
   const announcementsRoute = routeByKey('announcements');
@@ -248,9 +252,19 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         : unitLabels.length <= 2
           ? unitLabels.join(' · ')
           : `${unitLabels.slice(0, 2).join(' · ')} +${unitLabels.length - 2}`;
-    const standing = tenantOnly ? 'Inquilino' : roles.includes('owner') ? 'Propietario' : null;
+    // Named in the resident's own terms. Owner first: someone who owns and is also family is an
+    // owner here, because that is the standing that carries capability.
+    const standing = roles.includes('owner')
+      ? 'Propietario'
+      : roles.includes('tenant')
+        ? 'Inquilino'
+        : roles.includes('family_member')
+          ? 'Familiar'
+          : roles.includes('authorized_occupant')
+            ? 'Ocupante autorizado'
+            : null;
     return { unit, standing, unitCount: unitLabels.length };
-  }, [data?.units, roles, tenantOnly]);
+  }, [data?.units, roles]);
 
   return (
     <div className="resident-dashboard">
@@ -323,9 +337,13 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
               <PaymentsIcon size={18} />
               Pagar / Registrar pago
             </Button>
-          ) : tenantOnly ? (
-            <small>Los pagos no están delegados al inquilino en el modo piloto.</small>
-          ) : null}
+          ) : (
+            <small>
+              {tenantOnly
+                ? 'Los pagos no están delegados al inquilino en el modo piloto.'
+                : 'Tu acceso es residencial: la administración gestiona los pagos de la unidad.'}
+            </small>
+          )}
         </Surface>
 
         <Surface className="resident-dashboard__next-due" data-tone="blue">
@@ -366,7 +384,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         </Surface>
       </section>
 
-      {!tenantOnly ? (
+      {showsFinancialContext ? (
         <section aria-label="Pagos recientes" className="resident-dashboard__payments-row">
           <Surface className="resident-dashboard__panel">
             <div className="resident-dashboard__section-heading">
