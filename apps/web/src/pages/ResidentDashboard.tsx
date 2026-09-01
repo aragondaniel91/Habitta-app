@@ -129,12 +129,14 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     setLoading(true);
     setWarning('');
     const base = `/v1/condominiums/${condominiumId}`;
-    const financial = <T,>(request: Promise<T[]>) =>
-      showsFinancialContext ? request : Promise.resolve([] as T[]);
+    // Pass factories, not already-created promises. Calling apiRequest before the capability check
+    // starts fetch immediately even if the returned promise is later discarded.
+    const financial = <T,>(request: () => Promise<T[]>) =>
+      showsFinancialContext ? request() : Promise.resolve([] as T[]);
     // Migration B denies these two roles governance and service requests outright, so the
     // dashboard does not ask. A request whose only possible answer is "no" is still a request.
-    const communityOnly = <T,>(request: Promise<T[]>) =>
-      showsResidentOperations ? request : Promise.resolve([] as T[]);
+    const communityOnly = <T,>(request: () => Promise<T[]>) =>
+      showsResidentOperations ? request() : Promise.resolve([] as T[]);
     const paymentsRequest = !showsFinancialContext
       ? Promise.resolve([] as DashboardPayment[])
       : apiRequest<DashboardPayment[]>(`${base}/payments`, session);
@@ -143,12 +145,14 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       // resident receives their own and nothing else. No new endpoint, no client-side filtering
       // standing in for authorization.
       apiRequest<ResidentUnit[]>(`${base}/units`, session),
-      financial(apiRequest<ReceivableSummary[]>(`${base}/receivables/summary`, session)),
-      financial(apiRequest<DashboardReceivable[]>(`${base}/receivables`, session)),
+      financial(() => apiRequest<ReceivableSummary[]>(`${base}/receivables/summary`, session)),
+      financial(() => apiRequest<DashboardReceivable[]>(`${base}/receivables`, session)),
       paymentsRequest,
       apiRequest<AnnouncementRecord[]>(`${base}/announcements`, session),
-      communityOnly(apiRequest<ServiceRequestRecord[]>(`${base}/requests`, session)),
-      communityOnly(apiRequest<GovernanceProposal[]>(`${base}/governance-proposals`, session)),
+      communityOnly(() => apiRequest<ServiceRequestRecord[]>(`${base}/requests`, session)),
+      communityOnly(() =>
+        apiRequest<GovernanceProposal[]>(`${base}/governance-proposals`, session),
+      ),
     ]);
 
     const [units, summaries, receivables, payments, announcements, requests, proposals] = results;
@@ -245,7 +249,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
   if (!data) return null;
 
   const paymentsRoute = showsFinancialContext ? routeByKey('payments') : undefined;
-  const feesRoute = routeByKey('fees');
+  const feesRoute = showsFinancialContext ? routeByKey('fees') : undefined;
   // Denied to family members and authorized occupants by Migration B, so the affordance does not
   // exist for them -- no panel, no quick action, no button that leads to a refusal.
   const requestsRoute = showsResidentOperations ? routeByKey('requests') : undefined;
