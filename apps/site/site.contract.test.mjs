@@ -37,6 +37,21 @@ describe('HAB-428 public site contract', () => {
     expect(page).not.toMatch(/testimonio|clientes satisfechos|reseñas|estrellas|% de uptime/i);
   });
 
+  it('uses an accurate operational descriptor for Habitta Comunidad', () => {
+    expect(page).toMatch(/<p class="plan-badge">PARA LA OPERACIÓN DIARIA<\/p>/i);
+    expect(page).not.toMatch(/MÁS COMPLETO/i);
+  });
+
+  it('exposes the product composition as one labelled illustration', () => {
+    const composition = page.match(/<div class="product-composition"([^>]*)>/i);
+    expect(composition).not.toBeNull();
+    expect(composition?.[1]).toMatch(/role="img"/i);
+    expect(composition?.[1]).toMatch(/aria-label="[^"]+"/i);
+    expect(page).toMatch(/<div class="product-visual"\s+aria-hidden="true">/i);
+    expect(page).not.toMatch(/<button[^>]+tabindex="-1"/i);
+    expect(page).not.toMatch(/<button[^>]*>\s*(?:\+ Registrar pago|Ver estado de cuenta)/i);
+  });
+
   it('supports reduced motion and accessible interaction sizing', () => {
     expect(styles).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
     expect(styles).toContain('min-height: 48px');

@@ -247,6 +247,9 @@ h2 em {
   min-height: 488px;
   padding: 18px 0 0 18px;
 }
+.product-visual {
+  display: contents;
+}
 .orb {
   position: absolute;
   border-radius: 50%;
@@ -385,7 +388,7 @@ h2 em {
   margin: 2px 0 0;
   font-size: 20px;
 }
-.app-title button {
+.app-title .demo-button {
   padding: 6px 9px;
   border: 0;
   border-radius: 5px;
@@ -572,7 +575,7 @@ h2 em {
   font-size: 15px;
   color: #1d4e48;
 }
-.resident-card button {
+.resident-card .demo-button {
   display: flex;
   justify-content: space-between;
   width: 100%;
@@ -1631,7 +1634,7 @@ h2 em {
   .app-title h2 {
     font-size: 15px;
   }
-  .app-title button {
+  .app-title .demo-button {
     display: none;
   }
   .stat-grid {
