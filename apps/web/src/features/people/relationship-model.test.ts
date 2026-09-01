@@ -119,34 +119,34 @@ describe('people relationship presentation model', () => {
       },
     ] as Occupancy[];
 
-    expect(
-      residentAccessOptions(ownerships, occupancies, new Date('2026-09-01T12:00:00')),
-    ).toEqual([
-      {
-        role: 'owner',
-        unitId: 'unit-a',
-        unitLabel: 'Torre unit-a · 1A',
-        relationshipId: 'owner-a',
-      },
-      {
-        role: 'tenant',
-        unitId: 'unit-c',
-        unitLabel: 'Torre unit-c · 2C',
-        relationshipId: 'tenant-c',
-      },
-      {
-        role: 'family_member',
-        unitId: 'unit-d',
-        unitLabel: 'Torre unit-d · 2D',
-        relationshipId: 'family-d',
-      },
-      {
-        role: 'authorized_occupant',
-        unitId: 'unit-e',
-        unitLabel: 'Torre unit-e · 2E',
-        relationshipId: 'authorized-e',
-      },
-    ]);
+    expect(residentAccessOptions(ownerships, occupancies, new Date('2026-09-01T12:00:00'))).toEqual(
+      [
+        {
+          role: 'owner',
+          unitId: 'unit-a',
+          unitLabel: 'Torre unit-a · 1A',
+          relationshipId: 'owner-a',
+        },
+        {
+          role: 'tenant',
+          unitId: 'unit-c',
+          unitLabel: 'Torre unit-c · 2C',
+          relationshipId: 'tenant-c',
+        },
+        {
+          role: 'family_member',
+          unitId: 'unit-d',
+          unitLabel: 'Torre unit-d · 2D',
+          relationshipId: 'family-d',
+        },
+        {
+          role: 'authorized_occupant',
+          unitId: 'unit-e',
+          unitLabel: 'Torre unit-e · 2E',
+          relationshipId: 'authorized-e',
+        },
+      ],
+    );
   });
 
   it('uses strict start and inclusive end dates for family and authorized invitation eligibility', () => {

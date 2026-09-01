@@ -87,10 +87,7 @@ function invitationEligibleOccupancy(item: Occupancy, today: string) {
 
   // The two roles introduced by HAB-418 use the strict lifecycle that the database enforces:
   // not before starts_at, and through an inclusive ends_at when one exists.
-  if (
-    item.occupancy_type === 'family_member' ||
-    item.occupancy_type === 'authorized_occupant'
-  ) {
+  if (item.occupancy_type === 'family_member' || item.occupancy_type === 'authorized_occupant') {
     return item.starts_at <= today && (!item.ends_at || item.ends_at >= today);
   }
 

@@ -14,13 +14,19 @@ const ids = {
   primaryUnitA102: '33333333-3333-4333-8333-333333333332',
 };
 
+// Landing on /app/dashboard is what authentication means here, and nothing more. This helper also
+// signs in the administrator, whose dashboard is the administrative one and never carries the
+// resident "Inicio" heading -- so asserting it here made a resident-specific detail into a generic
+// auth contract. The historical financial specs authenticate the same way, on the URL alone.
+//
+// The heading is still asserted where it genuinely is the contract: the deep-link test below, which
+// requires a restricted resident to land on the resident home.
 const signIn = async (page: Page, email: string) => {
   await page.goto('/');
   await page.getByLabel('Correo electrónico').fill(email);
   await page.locator('input[type="password"][autocomplete="current-password"]').fill(password);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   await page.waitForURL(/\/app\/dashboard/);
-  await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
 };
 
 const forbiddenResidentApi = (url: string) => {
@@ -37,7 +43,8 @@ const assertRestrictedResident = async (
 ) => {
   const forbiddenRequests: string[] = [];
   page.on('request', (request) => {
-    if (forbiddenResidentApi(request.url())) forbiddenRequests.push(new URL(request.url()).pathname);
+    if (forbiddenResidentApi(request.url()))
+      forbiddenRequests.push(new URL(request.url()).pathname);
   });
 
   await signIn(page, email);
@@ -71,7 +78,13 @@ const assertRestrictedResident = async (
 
   // Financial, governance, request and directory-style community deep links are normalized to an
   // allowed URL, not merely hidden while the forbidden path remains in the address bar.
-  for (const path of ['/app/fees', '/app/payments', '/app/requests', '/app/governance', '/app/community']) {
+  for (const path of [
+    '/app/fees',
+    '/app/payments',
+    '/app/requests',
+    '/app/governance',
+    '/app/community',
+  ]) {
     await page.goto(path);
     await expect(page).toHaveURL(/\/app\/dashboard$/);
     await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();

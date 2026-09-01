@@ -887,7 +887,8 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         ) : null}
         {selected?.email && !accessOptions.length ? (
           <InlineNotice tone="info">
-            Registra primero una propiedad o una relación residencial activa compatible con la unidad.
+            Registra primero una propiedad o una relación residencial activa compatible con la
+            unidad.
           </InlineNotice>
         ) : null}
       </WorkspaceSection>
