@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { apiRequest } from './api';
 import { supabase } from '../supabase';
 
-export type ResidentRole = 'owner' | 'tenant';
+export type ResidentRole = 'owner' | 'tenant' | 'family_member' | 'authorized_occupant';
 
 export type ResidentInvitation = {
   id: string;
@@ -173,8 +173,23 @@ export async function acceptResidentInvitation(rawToken: string) {
   return result.data as ResidentInvitation;
 }
 
+const residentRoleLabels: Record<ResidentRole, string> = {
+  owner: 'Propietario',
+  tenant: 'Inquilino',
+  family_member: 'Familiar',
+  authorized_occupant: 'Ocupante autorizado',
+};
+
+/**
+ * Names a residential role for a person reading the screen.
+ *
+ * This used to be `role === 'owner' ? 'Propietario' : 'Inquilino'`, which was correct while owner
+ * and tenant were the only two. Once family members and authorized occupants exist, that shape
+ * silently labels both of them "Inquilino" -- a preview or history row telling somebody they
+ * granted a tenancy they did not grant. A record has no default to be wrong about.
+ */
 export function residentRoleLabel(role: ResidentRole) {
-  return role === 'owner' ? 'Propietario' : 'Inquilino';
+  return residentRoleLabels[role] ?? role;
 }
 
 export function residentDeliveryLabel(event?: ResidentInvitationDeliveryEvent) {

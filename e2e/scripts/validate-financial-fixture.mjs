@@ -29,7 +29,14 @@ if (unitCodes.some((code) => !code?.startsWith('E2E-'))) {
 }
 
 const users = fixture.users ?? [];
-const requiredUsers = new Set(['administrator', 'reviewer', 'payer', 'isolationUser']);
+const requiredUsers = new Set([
+  'administrator',
+  'reviewer',
+  'payer',
+  'familyResident',
+  'authorizedResident',
+  'isolationUser',
+]);
 for (const user of users) {
   requiredUsers.delete(user.key);
   if (!user.email?.endsWith('@example.invalid')) fail(`${user.key} must use example.invalid`);

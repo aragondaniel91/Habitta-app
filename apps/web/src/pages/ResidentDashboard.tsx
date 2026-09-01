@@ -28,7 +28,12 @@ import {
 } from '../lib/service-requests';
 import type { GovernanceProposal } from '../lib/governance';
 import { formatGovernanceDate } from '../lib/governance';
-import { isTenantOnly, useCondominiumRoles } from '../lib/roles';
+import {
+  canAccessResidentOperations,
+  canAccessResidentPayments,
+  isTenantOnly,
+  useCondominiumRoles,
+} from '../lib/roles';
 import { unitReferenceLabel } from '../lib/unit-domain';
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
@@ -109,6 +114,13 @@ function ResidentDashboardLoading() {
 export function ResidentDashboard({ condominiumId, condominiumName, session, onNavigate }: Props) {
   const roles = useCondominiumRoles();
   const tenantOnly = isTenantOnly(roles);
+  // Family members and authorized occupants have no financial standing in the database, so the
+  // dashboard must not fetch or show balances for them either. Asking would return nothing; the
+  // point is not to offer an answer the backend would refuse.
+  const showsFinancialContext = canAccessResidentPayments(roles);
+  // Requests and governance are denied to family members and authorized occupants by the database,
+  // so neither is fetched nor offered. Owner and tenant keep both exactly as before.
+  const showsResidentOperations = canAccessResidentOperations(roles);
   const [data, setData] = useState<ResidentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState('');
@@ -117,7 +129,15 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     setLoading(true);
     setWarning('');
     const base = `/v1/condominiums/${condominiumId}`;
-    const paymentsRequest = tenantOnly
+    // Pass factories, not already-created promises. Calling apiRequest before the capability check
+    // starts fetch immediately even if the returned promise is later discarded.
+    const financial = <T,>(request: () => Promise<T[]>) =>
+      showsFinancialContext ? request() : Promise.resolve([] as T[]);
+    // Migration B denies these two roles governance and service requests outright, so the
+    // dashboard does not ask. A request whose only possible answer is "no" is still a request.
+    const communityOnly = <T,>(request: () => Promise<T[]>) =>
+      showsResidentOperations ? request() : Promise.resolve([] as T[]);
+    const paymentsRequest = !showsFinancialContext
       ? Promise.resolve([] as DashboardPayment[])
       : apiRequest<DashboardPayment[]>(`${base}/payments`, session);
     const results = await Promise.allSettled([
@@ -125,12 +145,14 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       // resident receives their own and nothing else. No new endpoint, no client-side filtering
       // standing in for authorization.
       apiRequest<ResidentUnit[]>(`${base}/units`, session),
-      apiRequest<ReceivableSummary[]>(`${base}/receivables/summary`, session),
-      apiRequest<DashboardReceivable[]>(`${base}/receivables`, session),
+      financial(() => apiRequest<ReceivableSummary[]>(`${base}/receivables/summary`, session)),
+      financial(() => apiRequest<DashboardReceivable[]>(`${base}/receivables`, session)),
       paymentsRequest,
       apiRequest<AnnouncementRecord[]>(`${base}/announcements`, session),
-      apiRequest<ServiceRequestRecord[]>(`${base}/requests`, session),
-      apiRequest<GovernanceProposal[]>(`${base}/governance-proposals`, session),
+      communityOnly(() => apiRequest<ServiceRequestRecord[]>(`${base}/requests`, session)),
+      communityOnly(() =>
+        apiRequest<GovernanceProposal[]>(`${base}/governance-proposals`, session),
+      ),
     ]);
 
     const [units, summaries, receivables, payments, announcements, requests, proposals] = results;
@@ -158,7 +180,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       );
     }
     setLoading(false);
-  }, [condominiumId, session, tenantOnly]);
+  }, [condominiumId, session, showsFinancialContext, showsResidentOperations]);
 
   useEffect(() => {
     void load();
@@ -223,15 +245,10 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     [data?.proposals],
   );
 
-  if (loading && !data) return <ResidentDashboardLoading />;
-  if (!data) return null;
-
-  const paymentsRoute = tenantOnly ? undefined : routeByKey('payments');
-  const feesRoute = routeByKey('fees');
-  const requestsRoute = routeByKey('requests');
-  const announcementsRoute = routeByKey('announcements');
-  const governanceRoute = routeByKey('governance');
-
+  // Declared with the other hooks, above the early returns. It used to sit below them, so the
+  // loading render ran fewer hooks than the loaded one and React tore the page down with
+  // "Rendered more hooks than during the previous render" the moment the data arrived. No unit
+  // test caught it: the suite renders no DOM, so nothing ever reached the second render.
   // Who the person is here, in their own terms: which home, which unit, on what footing. The
   // dashboard already said which condominium; it never said which unit was theirs or whether they
   // hold it as owner or tenant, which is most of what makes a residential app feel like one.
@@ -248,9 +265,30 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         : unitLabels.length <= 2
           ? unitLabels.join(' · ')
           : `${unitLabels.slice(0, 2).join(' · ')} +${unitLabels.length - 2}`;
-    const standing = tenantOnly ? 'Inquilino' : roles.includes('owner') ? 'Propietario' : null;
+    // Named in the resident's own terms. Owner first: someone who owns and is also family is an
+    // owner here, because that is the standing that carries capability.
+    const standing = roles.includes('owner')
+      ? 'Propietario'
+      : roles.includes('tenant')
+        ? 'Inquilino'
+        : roles.includes('family_member')
+          ? 'Familiar'
+          : roles.includes('authorized_occupant')
+            ? 'Ocupante autorizado'
+            : null;
     return { unit, standing, unitCount: unitLabels.length };
-  }, [data?.units, roles, tenantOnly]);
+  }, [data?.units, roles]);
+
+  if (loading && !data) return <ResidentDashboardLoading />;
+  if (!data) return null;
+
+  const paymentsRoute = showsFinancialContext ? routeByKey('payments') : undefined;
+  const feesRoute = showsFinancialContext ? routeByKey('fees') : undefined;
+  // Denied to family members and authorized occupants by Migration B, so the affordance does not
+  // exist for them -- no panel, no quick action, no button that leads to a refusal.
+  const requestsRoute = showsResidentOperations ? routeByKey('requests') : undefined;
+  const announcementsRoute = routeByKey('announcements');
+  const governanceRoute = showsResidentOperations ? routeByKey('governance') : undefined;
 
   return (
     <div className="resident-dashboard">
@@ -284,89 +322,113 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         </div>
       ) : null}
 
-      <section aria-label="Resumen financiero" className="resident-dashboard__hero-grid">
-        <Surface className="resident-dashboard__balance-card" data-tone="navy">
-          <div className="resident-dashboard__card-top">
-            <span className="resident-dashboard__card-icon">
-              <FeesIcon size={20} />
-            </span>
-            <span>Saldo pendiente</span>
-          </div>
-          {summaries.length ? (
-            <div className="resident-dashboard__balances">
-              {summaries.map((summary) => (
-                <div key={summary.currency_code}>
-                  <Badge tone="info">{summary.currency_code}</Badge>
-                  <strong>
-                    {formatDashboardAmount(summary.net_outstanding, summary.currency_code)}
-                  </strong>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="resident-dashboard__all-clear">
-              <CheckCircleIcon size={22} />
-              <strong>Sin saldos pendientes</strong>
-            </div>
-          )}
-          <p className="resident-dashboard__card-note">
-            Cada moneda por separado
-            <InfoHint label="Cómo se agrupan las monedas">
-              Habitta mantiene cada moneda separada; nunca mezcla saldos USD, VES u otras monedas.
-            </InfoHint>
-          </p>
-          {paymentsRoute ? (
-            <Button
-              className="resident-dashboard__primary-action"
-              onClick={() => onNavigate(paymentsRoute)}
-            >
-              <PaymentsIcon size={18} />
-              Pagar / Registrar pago
-            </Button>
-          ) : tenantOnly ? (
-            <small>Los pagos no están delegados al inquilino en el modo piloto.</small>
-          ) : null}
-        </Surface>
-
-        <Surface className="resident-dashboard__next-due" data-tone="blue">
-          <div className="resident-dashboard__card-top">
-            <span className="resident-dashboard__card-icon">
-              <CheckCircleIcon size={20} />
-            </span>
-            <span>Próxima cuota pendiente</span>
-          </div>
-          {nextDue ? (
-            <>
-              <div className="resident-dashboard__next-due-heading">
-                <div>
-                  <strong>{nextDue.description}</strong>
-                  <span>
-                    {nextDue.due_date
-                      ? `Vence ${formatDashboardDate(nextDue.due_date)}`
-                      : 'Sin fecha de vencimiento'}
-                  </span>
-                </div>
-                <strong>
-                  {formatDashboardAmount(nextDue.outstanding_amount, nextDue.currency_code)}
-                </strong>
+      {showsFinancialContext ? (
+        <>
+          <section aria-label="Resumen financiero" className="resident-dashboard__hero-grid">
+            <Surface className="resident-dashboard__balance-card" data-tone="navy">
+              <div className="resident-dashboard__card-top">
+                <span className="resident-dashboard__card-icon">
+                  <FeesIcon size={20} />
+                </span>
+                <span>Saldo pendiente</span>
               </div>
-              {feesRoute ? (
-                <Button onClick={() => onNavigate(feesRoute)} size="sm" variant="ghost">
-                  Ver estado de cuenta <ArrowRightIcon size={16} />
+              {summaries.length ? (
+                <div className="resident-dashboard__balances">
+                  {summaries.map((summary) => (
+                    <div key={summary.currency_code}>
+                      <Badge tone="info">{summary.currency_code}</Badge>
+                      <strong>
+                        {formatDashboardAmount(summary.net_outstanding, summary.currency_code)}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="resident-dashboard__all-clear">
+                  <CheckCircleIcon size={22} />
+                  <strong>Sin saldos pendientes</strong>
+                </div>
+              )}
+              <p className="resident-dashboard__card-note">
+                Cada moneda por separado
+                <InfoHint label="Cómo se agrupan las monedas">
+                  Habitta mantiene cada moneda separada; nunca mezcla saldos USD, VES u otras
+                  monedas.
+                </InfoHint>
+              </p>
+              {paymentsRoute ? (
+                <Button
+                  className="resident-dashboard__primary-action"
+                  onClick={() => onNavigate(paymentsRoute)}
+                >
+                  <PaymentsIcon size={18} />
+                  Pagar / Registrar pago
                 </Button>
-              ) : null}
-            </>
-          ) : (
-            <EmptyState
-              description="Cuando exista una obligación pendiente aparecerá aquí."
-              icon={<CheckCircleIcon size={26} />}
-              title="No tienes cuotas pendientes"
-            />
-          )}
-        </Surface>
-      </section>
+              ) : (
+                <small>
+                  {tenantOnly
+                    ? 'Los pagos no están delegados al inquilino en el modo piloto.'
+                    : 'Tu acceso es residencial: la administración gestiona los pagos de la unidad.'}
+                </small>
+              )}
+            </Surface>
 
-      {!tenantOnly ? (
+            <Surface className="resident-dashboard__next-due" data-tone="blue">
+              <div className="resident-dashboard__card-top">
+                <span className="resident-dashboard__card-icon">
+                  <CheckCircleIcon size={20} />
+                </span>
+                <span>Próxima cuota pendiente</span>
+              </div>
+              {nextDue ? (
+                <>
+                  <div className="resident-dashboard__next-due-heading">
+                    <div>
+                      <strong>{nextDue.description}</strong>
+                      <span>
+                        {nextDue.due_date
+                          ? `Vence ${formatDashboardDate(nextDue.due_date)}`
+                          : 'Sin fecha de vencimiento'}
+                      </span>
+                    </div>
+                    <strong>
+                      {formatDashboardAmount(nextDue.outstanding_amount, nextDue.currency_code)}
+                    </strong>
+                  </div>
+                  {feesRoute ? (
+                    <Button onClick={() => onNavigate(feesRoute)} size="sm" variant="ghost">
+                      Ver estado de cuenta <ArrowRightIcon size={16} />
+                    </Button>
+                  ) : null}
+                </>
+              ) : (
+                <EmptyState
+                  description="Cuando exista una obligación pendiente aparecerá aquí."
+                  icon={<CheckCircleIcon size={26} />}
+                  title="No tienes cuotas pendientes"
+                />
+              )}
+            </Surface>
+          </section>
+        </>
+      ) : (
+        <section aria-label="Tu acceso residencial" className="resident-dashboard__hero-grid">
+          <Surface className="resident-dashboard__panel">
+            <div className="resident-dashboard__section-heading">
+              <div>
+                <span>Tu acceso</span>
+                <h2>Acceso residencial</h2>
+              </div>
+            </div>
+            <p>
+              Ves los anuncios y documentos de tu comunidad. La administración gestiona los pagos y
+              el estado de cuenta de la unidad.
+            </p>
+          </Surface>
+        </section>
+      )}
+
+      {showsFinancialContext ? (
         <section aria-label="Pagos recientes" className="resident-dashboard__payments-row">
           <Surface className="resident-dashboard__panel">
             <div className="resident-dashboard__section-heading">
@@ -457,88 +519,92 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           )}
         </Surface>
 
-        <Surface className="resident-dashboard__panel">
-          <div className="resident-dashboard__section-heading">
-            <div>
-              <span>Atención</span>
-              <h2>Solicitudes abiertas</h2>
+        {showsResidentOperations ? (
+          <Surface className="resident-dashboard__panel">
+            <div className="resident-dashboard__section-heading">
+              <div>
+                <span>Atención</span>
+                <h2>Solicitudes abiertas</h2>
+              </div>
+              {requestsRoute ? (
+                <Button onClick={() => onNavigate(requestsRoute)} size="sm" variant="ghost">
+                  Ver solicitudes
+                </Button>
+              ) : null}
             </div>
-            {requestsRoute ? (
-              <Button onClick={() => onNavigate(requestsRoute)} size="sm" variant="ghost">
-                Ver solicitudes
-              </Button>
-            ) : null}
-          </div>
-          {openRequests.length ? (
-            <div className="resident-dashboard__stack">
-              {openRequests.map((request) => (
-                <button
-                  key={request.id}
-                  onClick={() => requestsRoute && onNavigate(requestsRoute)}
-                  type="button"
-                >
-                  <span>
-                    <RequestsIcon size={18} />
-                  </span>
-                  <div>
-                    <strong>{request.title}</strong>
-                    <small>
-                      {request.request_number} · {requestStatusLabels[request.status]} ·{' '}
-                      {formatRequestDate(request.updated_at)}
-                    </small>
-                  </div>
-                  <ArrowRightIcon size={16} />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              description="Tus solicitudes visibles aparecerán aquí."
-              icon={<RequestsIcon size={26} />}
-              title="No tienes solicitudes abiertas"
-            />
-          )}
-        </Surface>
+            {openRequests.length ? (
+              <div className="resident-dashboard__stack">
+                {openRequests.map((request) => (
+                  <button
+                    key={request.id}
+                    onClick={() => requestsRoute && onNavigate(requestsRoute)}
+                    type="button"
+                  >
+                    <span>
+                      <RequestsIcon size={18} />
+                    </span>
+                    <div>
+                      <strong>{request.title}</strong>
+                      <small>
+                        {request.request_number} · {requestStatusLabels[request.status]} ·{' '}
+                        {formatRequestDate(request.updated_at)}
+                      </small>
+                    </div>
+                    <ArrowRightIcon size={16} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                description="Tus solicitudes visibles aparecerán aquí."
+                icon={<RequestsIcon size={26} />}
+                title="No tienes solicitudes abiertas"
+              />
+            )}
+          </Surface>
+        ) : null}
 
-        <Surface className="resident-dashboard__panel">
-          <div className="resident-dashboard__section-heading">
-            <div>
-              <span>Participación</span>
-              <h2>Votaciones pendientes</h2>
+        {showsResidentOperations ? (
+          <Surface className="resident-dashboard__panel">
+            <div className="resident-dashboard__section-heading">
+              <div>
+                <span>Participación</span>
+                <h2>Votaciones pendientes</h2>
+              </div>
+              {governanceRoute ? (
+                <Button onClick={() => onNavigate(governanceRoute)} size="sm" variant="ghost">
+                  Ver votaciones
+                </Button>
+              ) : null}
             </div>
-            {governanceRoute ? (
-              <Button onClick={() => onNavigate(governanceRoute)} size="sm" variant="ghost">
-                Ver votaciones
-              </Button>
-            ) : null}
-          </div>
-          {openVotes.length ? (
-            <div className="resident-dashboard__stack">
-              {openVotes.map((proposal) => (
-                <button
-                  key={proposal.id}
-                  onClick={() => governanceRoute && onNavigate(governanceRoute)}
-                  type="button"
-                >
-                  <span>
-                    <VoteIcon size={18} />
-                  </span>
-                  <div>
-                    <strong>{proposal.title}</strong>
-                    <small>Cierra {formatGovernanceDate(proposal.closes_at)}</small>
-                  </div>
-                  <ArrowRightIcon size={16} />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              description="Las propuestas abiertas para tu participación aparecerán aquí."
-              icon={<VoteIcon size={26} />}
-              title="Sin votaciones abiertas"
-            />
-          )}
-        </Surface>
+            {openVotes.length ? (
+              <div className="resident-dashboard__stack">
+                {openVotes.map((proposal) => (
+                  <button
+                    key={proposal.id}
+                    onClick={() => governanceRoute && onNavigate(governanceRoute)}
+                    type="button"
+                  >
+                    <span>
+                      <VoteIcon size={18} />
+                    </span>
+                    <div>
+                      <strong>{proposal.title}</strong>
+                      <small>Cierra {formatGovernanceDate(proposal.closes_at)}</small>
+                    </div>
+                    <ArrowRightIcon size={16} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                description="Las propuestas abiertas para tu participación aparecerán aquí."
+                icon={<VoteIcon size={26} />}
+                title="Sin votaciones abiertas"
+              />
+            )}
+          </Surface>
+        ) : null}
       </section>
 
       <Surface className="resident-dashboard__quick-access">

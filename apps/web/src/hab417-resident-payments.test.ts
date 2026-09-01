@@ -52,10 +52,20 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
   });
 
   it('keeps tenant-only presentation aligned with the database restriction', () => {
-    expect(roles).toContain("if (route.key === 'payments' && isTenantOnly(roles)) return false;");
+    // The route gate now asks its own question. `isTenantOnly` was the right test while tenants
+    // were the only restricted residents; family members and authorized occupants are refused the
+    // same way by the database and are not tenants, so a negation of "tenant-only" would have let
+    // them through.
     expect(roles).toContain(
-      "export const RESIDENT_ROLES: CondominiumRole[] = ['owner', 'tenant'];",
+      "if (route.key === 'payments' && !canAccessResidentPayments(roles)) return false;",
     );
+    expect(roles).toContain(
+      "const restricted: CondominiumRole[] = ['tenant', 'family_member', 'authorized_occupant'];",
+    );
+    // All four residential roles use the resident experience.
+    for (const role of ['owner', 'tenant', 'family_member', 'authorized_occupant']) {
+      expect(roles).toContain(`'${role}',`);
+    }
   });
 
   it('keeps the resident honest about balances and payment validation', () => {
@@ -88,11 +98,14 @@ describe('HAB-417 the resident dashboard says whose home this is', () => {
   });
 
   it('states the residential standing without inventing a role', () => {
-    // Owner and tenant are the two residential roles the database has. The dashboard reports what
-    // the membership already says; it never derives a standing the backend would not recognise.
-    expect(dashboard).toContain(
-      "tenantOnly ? 'Inquilino' : roles.includes('owner') ? 'Propietario'",
-    );
+    // The dashboard reports what the membership already says and never derives a standing the
+    // backend would not recognise. HAB-412 added two more residential roles, so all four are named
+    // -- and owner is tested first, because someone who owns and is also family is an owner here.
+    for (const label of ['Propietario', 'Inquilino', 'Familiar', 'Ocupante autorizado']) {
+      expect(dashboard).toContain(`'${label}'`);
+    }
+    expect(dashboard.indexOf("'Propietario'")).toBeLessThan(dashboard.indexOf("'Familiar'"));
+    expect(dashboard).toContain("roles.includes('owner')");
   });
 
   it('degrades to the condominium alone when there is no unit to name', () => {

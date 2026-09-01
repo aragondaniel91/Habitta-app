@@ -60,7 +60,7 @@ describe('people relationship presentation model', () => {
     expect(activeOccupancies(occupancies).map((item) => item.id)).toEqual(['t1']);
   });
 
-  it('offers resident access only from compatible active owner and tenant relationships', () => {
+  it('offers resident access from every active relationship that maps to a membership', () => {
     const unit = (id: string, code: string) => ({
       id,
       code,
@@ -101,22 +101,90 @@ describe('people relationship presentation model', () => {
         starts_at: '2026-01-01',
         units: unit('unit-d', '2D'),
       },
+      {
+        id: 'authorized-e',
+        person_id: 'person-1',
+        unit_id: 'unit-e',
+        occupancy_type: 'authorized_occupant',
+        starts_at: '2026-01-01',
+        units: unit('unit-e', '2E'),
+      },
+      {
+        id: 'owner-occupant-a',
+        person_id: 'person-1',
+        unit_id: 'unit-a',
+        occupancy_type: 'owner_occupant',
+        starts_at: '2026-01-01',
+        units: unit('unit-a', '1A'),
+      },
     ] as Occupancy[];
 
-    expect(residentAccessOptions(ownerships, occupancies)).toEqual([
+    expect(residentAccessOptions(ownerships, occupancies, new Date('2026-09-01T12:00:00'))).toEqual(
+      [
+        {
+          role: 'owner',
+          unitId: 'unit-a',
+          unitLabel: 'Torre unit-a · 1A',
+          relationshipId: 'owner-a',
+        },
+        {
+          role: 'tenant',
+          unitId: 'unit-c',
+          unitLabel: 'Torre unit-c · 2C',
+          relationshipId: 'tenant-c',
+        },
+        {
+          role: 'family_member',
+          unitId: 'unit-d',
+          unitLabel: 'Torre unit-d · 2D',
+          relationshipId: 'family-d',
+        },
+        {
+          role: 'authorized_occupant',
+          unitId: 'unit-e',
+          unitLabel: 'Torre unit-e · 2E',
+          relationshipId: 'authorized-e',
+        },
+      ],
+    );
+  });
+
+  it('uses strict start and inclusive end dates for family and authorized invitation eligibility', () => {
+    const unit = (id: string) => ({ id, code: id, condominium_id: 'condo-1' });
+    const occupancies = [
       {
-        role: 'owner',
-        unitId: 'unit-a',
-        unitLabel: 'Torre unit-a · 1A',
-        relationshipId: 'owner-a',
+        id: 'future-family',
+        person_id: 'person-1',
+        unit_id: 'future-family-unit',
+        occupancy_type: 'family_member',
+        starts_at: '2026-09-02',
+        units: unit('future-family-unit'),
       },
       {
-        role: 'tenant',
-        unitId: 'unit-c',
-        unitLabel: 'Torre unit-c · 2C',
-        relationshipId: 'tenant-c',
+        id: 'ending-authorized',
+        person_id: 'person-1',
+        unit_id: 'ending-authorized-unit',
+        occupancy_type: 'authorized_occupant',
+        starts_at: '2026-08-01',
+        ends_at: '2026-09-15',
+        units: unit('ending-authorized-unit'),
       },
-    ]);
+      {
+        id: 'expired-family',
+        person_id: 'person-1',
+        unit_id: 'expired-family-unit',
+        occupancy_type: 'family_member',
+        starts_at: '2026-08-01',
+        ends_at: '2026-08-31',
+        units: unit('expired-family-unit'),
+      },
+    ] as Occupancy[];
+
+    expect(
+      residentAccessOptions([], occupancies, new Date('2026-09-01T12:00:00')).map(
+        (option) => option.relationshipId,
+      ),
+    ).toEqual(['ending-authorized']);
   });
 
   it('derives an expired invitation display state without mutating stored lifecycle state', () => {

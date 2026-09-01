@@ -54,9 +54,14 @@ describe('HAB-370 the resident dashboard reads as the same product', () => {
   });
 
   it('keeps the resident view honest about what it may show', () => {
-    // Presentation only: the tenant restrictions this page enforces must survive the redesign.
-    expect(residentPage).toContain('const paymentsRoute = tenantOnly ? undefined :');
+    // Presentation only: the financial restrictions this page enforces must survive the redesign.
+    // HAB-412 widened the restricted set from tenants to every role the database refuses payment
+    // access to, so the gate is named for what it means rather than for one of the roles it covers
+    // -- `tenantOnly` would have admitted family members and authorized occupants, neither of whom
+    // is a tenant.
+    expect(residentPage).toContain('const paymentsRoute = showsFinancialContext ? routeByKey(');
     expect(residentPage).toContain('Los pagos no están delegados al inquilino en el modo piloto.');
-    expect(residentPage).toContain('{!tenantOnly ? (');
+    expect(residentPage).toContain('{showsFinancialContext ? (');
+    expect(residentPage).toContain('const paymentsRequest = !showsFinancialContext');
   });
 });

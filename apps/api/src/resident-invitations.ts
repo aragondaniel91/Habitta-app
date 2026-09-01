@@ -8,7 +8,10 @@ import type { NotificationBindings } from './notifications/types';
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
 
-type ResidentRole = 'owner' | 'tenant';
+// Mirrors the four residential roles `create_resident_invitation` accepts. Zod narrows the shape
+// of a request; PostgreSQL decides whether the relationship behind it exists, and the enum here is
+// never the authorization.
+type ResidentRole = 'owner' | 'tenant' | 'family_member' | 'authorized_occupant';
 
 export type ResidentInvitationDelivery = {
   status: 'disabled' | 'sent' | 'failed';
@@ -27,7 +30,7 @@ type UnitContext = {
 const invitationInputSchema = z.object({
   personId: z.string().uuid(),
   unitId: z.string().uuid(),
-  role: z.enum(['owner', 'tenant']),
+  role: z.enum(['owner', 'tenant', 'family_member', 'authorized_occupant']),
   expiresAt: z.string().datetime({ offset: true }).optional(),
 });
 
@@ -38,7 +41,7 @@ const residentInvitationRpcSchema = z.object({
     person_id: z.string().uuid(),
     unit_id: z.string().uuid(),
     email: z.string().email(),
-    intended_role: z.enum(['owner', 'tenant']),
+    intended_role: z.enum(['owner', 'tenant', 'family_member', 'authorized_occupant']),
     status: z.string(),
     expires_at: z.string(),
   }),
@@ -48,6 +51,8 @@ const residentInvitationRpcSchema = z.object({
 const roleLabels: Record<ResidentRole, string> = {
   owner: 'Propietario',
   tenant: 'Inquilino',
+  family_member: 'Familiar',
+  authorized_occupant: 'Ocupante autorizado',
 };
 
 const escapeHtml = (value: string) =>
