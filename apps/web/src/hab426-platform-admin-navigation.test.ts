@@ -48,6 +48,20 @@ describe('HAB-426 Platform Admin navigation', () => {
     expect(loginStart).toBeLessThan(navStart);
   });
 
+  it('renders the nav links without the browser underline, as the commercial view does', () => {
+    // commercial.html gets this from a global `a { text-decoration: none }` reset. index.html has
+    // no such reset, so the same markup rendered underlined on one page and plain on the other --
+    // two consoles again, over one declaration.
+    //
+    // Matched on collapsed whitespace so the assertion survives reformatting, and it accepts the
+    // property either in a rule of its own or in a shared block, as long as it reaches `.nav a`.
+    const css = operations.replace(/\s+/g, '');
+    expect(css).toMatch(/\.nava[^{}]*\{[^}]*text-decoration:none/);
+
+    // Scoped, not global: links elsewhere on the page keep their underline.
+    expect(css).not.toMatch(/(^|})a\{[^}]*text-decoration:none/);
+  });
+
   it('keeps the commercial view reachable and self-identifying', () => {
     expect(commercial).toContain('>Operación<');
     expect(commercial).toContain('>Comercial<');
