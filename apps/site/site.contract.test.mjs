@@ -42,4 +42,11 @@ describe('HAB-428 public site contract', () => {
     expect(styles).toContain('min-height: 48px');
     expect(styles).toContain(':focus-visible');
   });
+
+  it('loads its static assets from the site directory', () => {
+    expect(page).toContain('href="./styles.css"');
+    expect(page).toContain('src="./site.js"');
+    expect(page).toContain('src="./logo-mark.svg"');
+    expect(page).not.toMatch(/(?:href|src)="\/(?:styles\.css|site\.js|logo-mark\.svg)"/);
+  });
 });
