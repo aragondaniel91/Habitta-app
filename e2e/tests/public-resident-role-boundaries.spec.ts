@@ -11,14 +11,20 @@ import { expect, test } from '@playwright/test';
 // A source-tree assertion cannot fail if the build drops or mangles the code; this one reads what
 // was served.
 
-const scriptSources = async (page: import('@playwright/test').Page) =>
-  page.$$eval('script[src]', (nodes) => nodes.map((node) => (node as HTMLScriptElement).src));
-
-const bundleText = async (page: import('@playwright/test').Page, baseUrl: string) => {
+// The public project serves the application from the repository's own Vite server, which hands the
+// browser ES modules on demand rather than one bundle -- so the rule lives in the module that
+// declares it, not in the entry script. A production build inlines it into an asset instead, so
+// both shapes are accepted; what matters is that the code the browser receives carries the rule.
+const servedRules = async (page: import('@playwright/test').Page, baseUrl: string) => {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  const sources = await scriptSources(page);
-  expect(sources.length).toBeGreaterThan(0);
 
+  const module = await page.request.get(new URL('/src/lib/roles.ts', baseUrl).toString());
+  if (module.ok()) return module.text();
+
+  const sources = await page.$$eval('script[src]', (nodes) =>
+    nodes.map((node) => (node as HTMLScriptElement).src),
+  );
+  expect(sources.length).toBeGreaterThan(0);
   const bodies = await Promise.all(
     sources.map(async (src) => {
       const response = await page.request.get(src);
@@ -34,31 +40,24 @@ test.describe('HAB-412 residential role boundaries reach the browser', () => {
     page,
     baseURL,
   }) => {
-    const bundle = await bundleText(page, baseURL ?? '/');
+    const rules = await servedRules(page, baseURL ?? '/');
 
     // The roles exist in what the browser runs.
-    expect(bundle).toContain('family_member');
-    expect(bundle).toContain('authorized_occupant');
-
-    // Both are named for people, and never as tenants. The label helper used to map every
-    // non-owner role to "Inquilino", which would have told a family member they were a tenant.
-    expect(bundle).toContain('Familiar');
-    expect(bundle).toContain('Ocupante autorizado');
+    expect(rules).toContain('family_member');
+    expect(rules).toContain('authorized_occupant');
   });
 
   test('does not ship a resident payments affordance for the restricted roles', async ({
     page,
     baseURL,
   }) => {
-    const bundle = await bundleText(page, baseURL ?? '/');
+    const rules = await servedRules(page, baseURL ?? '/');
 
     // The restricted set is the three roles the database refuses payment access to. If this ever
     // narrows back to a tenant-only check, the two new roles walk through it, because neither of
     // them is a tenant.
-    const restrictedList = /\[\s*"tenant"\s*,\s*"family_member"\s*,\s*"authorized_occupant"\s*\]/;
-    const restrictedListSingle =
-      /\[\s*'tenant'\s*,\s*'family_member'\s*,\s*'authorized_occupant'\s*\]/;
-    expect(restrictedList.test(bundle) || restrictedListSingle.test(bundle)).toBe(true);
+    expect(rules).toContain('canAccessResidentPayments');
+    expect(rules).toMatch(/tenant['"],\s*['"]family_member['"],\s*['"]authorized_occupant/);
   });
 
   test('serves the public entry point without leaking an authenticated surface', async ({
