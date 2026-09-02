@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HABITTA_PROD_CORS_ORIGINS,
   HABITTA_PROD_PROJECT_REF,
   HABITTA_PROD_SUPABASE_URL,
   validateProductionRelease,
@@ -13,7 +14,7 @@ const valid = {
   viteSupabaseUrl: HABITTA_PROD_SUPABASE_URL,
   workerUrl: 'https://habitta-api-prod.aragondaniel91.workers.dev',
   pagesUrl: 'https://app.mihabitta.com',
-  corsAllowedOrigins: 'https://app.mihabitta.com',
+  corsAllowedOrigins: HABITTA_PROD_CORS_ORIGINS.join(','),
 };
 
 describe('production release validation', () => {
@@ -53,7 +54,7 @@ describe('production release validation', () => {
     ).toContain('supabase_url_project_ref_mismatch');
   });
 
-  it('requires canonical production Worker, Pages and CORS configuration', () => {
+  it('requires canonical production Worker, Pages and the exact acquisition CORS set', () => {
     expect(
       validateProductionRelease({
         ...valid,
@@ -62,7 +63,31 @@ describe('production release validation', () => {
         corsAllowedOrigins: 'https://preview.mihabitta.com',
       }),
     ).toEqual(
-      expect.arrayContaining(['invalid_production_worker_url', 'invalid_production_pages_url']),
+      expect.arrayContaining([
+        'invalid_production_worker_url',
+        'invalid_production_pages_url',
+        'production_cors_mismatch',
+      ]),
     );
+
+    expect(
+      validateProductionRelease({ ...valid, corsAllowedOrigins: 'https://app.mihabitta.com' }),
+    ).toContain('production_cors_mismatch');
+    expect(
+      validateProductionRelease({
+        ...valid,
+        corsAllowedOrigins:
+          'https://app.mihabitta.com,https://mihabitta.com,https://evil.example',
+      }),
+    ).toContain('production_cors_mismatch');
+  });
+
+  it('allows only ordering/whitespace differences for the approved two origins', () => {
+    expect(
+      validateProductionRelease({
+        ...valid,
+        corsAllowedOrigins: ' https://mihabitta.com , https://app.mihabitta.com ',
+      }),
+    ).toEqual([]);
   });
 });
