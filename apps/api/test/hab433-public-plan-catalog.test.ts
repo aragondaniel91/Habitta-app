@@ -43,7 +43,7 @@ describe('HAB-433 public plan catalogue API', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         seen.url = String(input);
-        seen.init = init;
+        if (init) seen.init = init;
         return new Response(JSON.stringify(catalogue), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
