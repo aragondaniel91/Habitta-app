@@ -92,9 +92,20 @@ describe('HAB-417 the resident dashboard says whose home this is', () => {
 
   it('names the unit rather than showing its identifier', () => {
     // Standing rule across the app: never put a UUID in front of a person when a readable code
-    // exists. The label comes from the shared helper every other financial surface uses.
-    expect(dashboard).toContain('unitReferenceLabel({');
-    expect(dashboard).not.toMatch(/\{unit\.id\}|residentContext\.unit\?\.id/);
+    // exists. HAB-427 moved the label one level down -- the dashboard now resolves it through
+    // `residentUnitLabels`, which is the shared helper plus the building name the units endpoint
+    // does not return -- so the rule is asserted where it now lives, and the fallback for an
+    // unnamed unit is checked to be a description rather than an identifier.
+    const residentUnits = readFileSync(new URL('./lib/resident-units.ts', import.meta.url), 'utf8');
+    expect(dashboard).toContain('residentUnitLabels(data?.units ?? [], data?.buildings ?? [])');
+    expect(residentUnits).toContain('unitReferenceLabel({');
+    expect(residentUnits).toContain("labels.get(unitId) ?? 'Unidad sin identificar'");
+    // An identifier may address a unit -- the selector's <option value> is a uuid on purpose --
+    // but it must never be the text a person reads. So the rule is about rendered content: the
+    // option shows the label, and no branch renders an id as its own child.
+    expect(dashboard).toMatch(/>\s*\{unit\.label\}\s*<\/option>/);
+    expect(dashboard).not.toMatch(/>\s*\{unit\.id\}\s*</);
+    expect(dashboard).not.toContain('residentContext.unit?.id');
   });
 
   it('states the residential standing without inventing a role', () => {

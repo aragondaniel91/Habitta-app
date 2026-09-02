@@ -37,82 +37,99 @@ const listFailure = async (c: AppContext, response: Response) => {
   return c.json({ error: denied ? 'Forbidden' : 'Request failed' }, denied ? 403 : 400);
 };
 
-const paginatedFinancialList = (table: string, order: string) => async (c: AppContext) => {
-  const id = uuidSchema.parse(c.req.param('id'));
-  const explicitPagination =
-    c.req.query('page') !== undefined || c.req.query('pageSize') !== undefined;
+// HAB-427: some of these lists are also read by a resident who owns several units and wants one of
+// them at a time. Narrowing happens here rather than in the browser so that pagination counts stay
+// true -- filtering a page after it arrives would report totals for rows the reader never sees.
+//
+// The filter is additive and always validated as a uuid: it is appended to the condominium filter,
+// never substituted for it, so a malformed or foreign value can only ever return fewer rows.
+type FinancialListOptions = { unitScoped?: boolean };
 
-  if (!explicitPagination) {
-    const items: unknown[] = [];
-    let total: number | null = null;
+const paginatedFinancialList =
+  (table: string, order: string, options: FinancialListOptions = {}) =>
+  async (c: AppContext) => {
+    const id = uuidSchema.parse(c.req.param('id'));
 
-    for (let offset = 0; ; offset += COMPLETE_READ_PAGE_SIZE) {
-      const response = await rest(
-        c,
-        `${table}?condominium_id=eq.${id}&select=*&order=${order}&limit=${COMPLETE_READ_PAGE_SIZE}&offset=${offset}`,
-        { headers: { Prefer: 'count=exact' } },
-      );
-      if (!response.ok) return listFailure(c, response);
+    const rawUnitId = c.req.query('unitId');
+    const unitId =
+      options.unitScoped && rawUnitId !== undefined ? uuidSchema.safeParse(rawUnitId) : null;
+    if (unitId && !unitId.success) return c.json({ error: 'Invalid unitId' }, 400);
+    const unitFilter = unitId?.success ? `&unit_id=eq.${unitId.data}` : '';
 
-      const pageItems = (await response.json()) as unknown[];
-      const pageTotal = parseExactTotal(response.headers.get('content-range'));
-      if (!Array.isArray(pageItems) || pageTotal === null) {
-        return c.json({ error: 'Pagination metadata unavailable' }, 502);
-      }
-      total ??= pageTotal;
-      if (pageTotal !== total) {
-        return c.json({ error: 'Financial list changed during read' }, 409);
-      }
-      if (total > COMPLETE_READ_MAX_ROWS) {
-        return c.json(
-          {
-            error: 'Financial history requires explicit pagination',
-            total,
-            maxCompleteReadRows: COMPLETE_READ_MAX_ROWS,
-          },
-          413,
+    const explicitPagination =
+      c.req.query('page') !== undefined || c.req.query('pageSize') !== undefined;
+
+    if (!explicitPagination) {
+      const items: unknown[] = [];
+      let total: number | null = null;
+
+      for (let offset = 0; ; offset += COMPLETE_READ_PAGE_SIZE) {
+        const response = await rest(
+          c,
+          `${table}?condominium_id=eq.${id}${unitFilter}&select=*&order=${order}&limit=${COMPLETE_READ_PAGE_SIZE}&offset=${offset}`,
+          { headers: { Prefer: 'count=exact' } },
         );
-      }
+        if (!response.ok) return listFailure(c, response);
 
-      items.push(...pageItems);
-      if (items.length >= total) return c.json(items);
-      if (pageItems.length === 0) {
-        return c.json({ error: 'Financial history ended before exact count' }, 502);
+        const pageItems = (await response.json()) as unknown[];
+        const pageTotal = parseExactTotal(response.headers.get('content-range'));
+        if (!Array.isArray(pageItems) || pageTotal === null) {
+          return c.json({ error: 'Pagination metadata unavailable' }, 502);
+        }
+        total ??= pageTotal;
+        if (pageTotal !== total) {
+          return c.json({ error: 'Financial list changed during read' }, 409);
+        }
+        if (total > COMPLETE_READ_MAX_ROWS) {
+          return c.json(
+            {
+              error: 'Financial history requires explicit pagination',
+              total,
+              maxCompleteReadRows: COMPLETE_READ_MAX_ROWS,
+            },
+            413,
+          );
+        }
+
+        items.push(...pageItems);
+        if (items.length >= total) return c.json(items);
+        if (pageItems.length === 0) {
+          return c.json({ error: 'Financial history ended before exact count' }, 502);
+        }
       }
     }
-  }
 
-  const query = paginationQuerySchema.safeParse({
-    page: c.req.query('page') || undefined,
-    pageSize: c.req.query('pageSize') || undefined,
-  });
-  if (!query.success) return c.json({ error: query.error.flatten() }, 400);
+    const query = paginationQuerySchema.safeParse({
+      page: c.req.query('page') || undefined,
+      pageSize: c.req.query('pageSize') || undefined,
+    });
+    if (!query.success) return c.json({ error: query.error.flatten() }, 400);
 
-  const { page, pageSize } = query.data;
-  const offset = (page - 1) * pageSize;
-  const response = await rest(
-    c,
-    `${table}?condominium_id=eq.${id}&select=*&order=${order}&limit=${pageSize}&offset=${offset}`,
-    { headers: { Prefer: 'count=exact' } },
-  );
-  if (!response.ok) return listFailure(c, response);
+    const { page, pageSize } = query.data;
+    const offset = (page - 1) * pageSize;
+    const response = await rest(
+      c,
+      `${table}?condominium_id=eq.${id}${unitFilter}&select=*&order=${order}&limit=${pageSize}&offset=${offset}`,
+      { headers: { Prefer: 'count=exact' } },
+    );
+    if (!response.ok) return listFailure(c, response);
 
-  const value = await response.json();
-  const items = Array.isArray(value) ? value : [];
-  const total = parseExactTotal(response.headers.get('content-range'));
-  if (total === null) return c.json({ error: 'Pagination metadata unavailable' }, 502);
+    const value = await response.json();
+    const items = Array.isArray(value) ? value : [];
+    const total = parseExactTotal(response.headers.get('content-range'));
+    if (total === null) return c.json({ error: 'Pagination metadata unavailable' }, 502);
 
-  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
-  return c.json({
-    items,
-    page,
-    pageSize,
-    total,
-    totalPages,
-    hasNextPage: page < totalPages,
-    hasPreviousPage: page > 1,
-  });
-};
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+    return c.json({
+      items,
+      page,
+      pageSize,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    });
+  };
 
 export function registerFinancialListRoutes(router: Hono<AppEnvironment>) {
   router.get(
@@ -121,7 +138,7 @@ export function registerFinancialListRoutes(router: Hono<AppEnvironment>) {
   );
   router.get(
     '/:id/receivables',
-    paginatedFinancialList('receivable_balances', 'issue_date.desc,id.desc'),
+    paginatedFinancialList('receivable_balances', 'issue_date.desc,id.desc', { unitScoped: true }),
   );
   router.get(
     '/:id/charge-batches',
@@ -131,5 +148,8 @@ export function registerFinancialListRoutes(router: Hono<AppEnvironment>) {
     '/:id/payment-methods',
     paginatedFinancialList('condominium_payment_methods', 'display_name.asc,id.asc'),
   );
-  router.get('/:id/payments', paginatedFinancialList('payments', 'created_at.desc,id.desc'));
+  router.get(
+    '/:id/payments',
+    paginatedFinancialList('payments', 'created_at.desc,id.desc', { unitScoped: true }),
+  );
 }

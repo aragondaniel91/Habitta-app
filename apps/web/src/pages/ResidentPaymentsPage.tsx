@@ -13,6 +13,13 @@ import type {
 } from '../features/payments/types';
 import { apiRequest } from '../lib/api';
 import { collectAllPages, financialPagePath, mergePageItems, pageInfo } from '../lib/pagination';
+import {
+  financialUnitOptions,
+  payableUnitOptions,
+  residentUnitLabels,
+  rowsForSelection,
+} from '../lib/resident-units';
+import type { ResidentFinancialUnit } from '../lib/resident-units';
 import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import { PaymentsDrawerHost, type PaymentsDrawerMode } from './PaymentsDrawers';
 import { ResidentPaymentsView } from './ResidentPaymentsView';
@@ -24,6 +31,7 @@ type Building = { id: string; name: string };
 type ResidentPaymentsData = {
   units: Unit[];
   buildings: Building[];
+  financialUnits: ResidentFinancialUnit[];
   methods: PaymentMethod[];
   payments: Payment[];
   paymentsPage: PageInfo;
@@ -59,12 +67,18 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
+  // '' means every unit the resident can see. Narrowing happens on the server, so the counts and
+  // the "load more" cursor below describe the same list the resident is looking at.
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   const [drawer, setDrawer] = useState<PaymentsDrawerMode>(null);
 
   const load = useCallback(
     async (background = false) => {
       if (!background) setLoading(true);
       setError('');
+      // Appended, never substituted: the endpoint keeps its own condominium scope and this only
+      // narrows within it.
+      const unitQuery = selectedUnitId ? `&unitId=${selectedUnitId}` : '';
       try {
         const methodsPromise = collectAllPages((page) =>
           apiRequest<PaginatedResponse<PaymentMethod>>(
@@ -78,29 +92,41 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
         );
         const receivablesPromise = collectAllPages((page) =>
           apiRequest<PaginatedResponse<Receivable>>(
-            financialPagePath(
+            `${financialPagePath(
               `/v1/condominiums/${condominiumId}/receivables`,
               page,
               REFERENCE_PAGE_SIZE,
-            ),
+            )}${unitQuery}`,
             session,
           ),
         ).catch(() => [] as Receivable[]);
 
-        const [units, buildings, methods, paymentsPage, receivables] = await Promise.all([
-          apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-          apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-          methodsPromise,
-          apiRequest<PaginatedResponse<Payment>>(
-            financialPagePath(`/v1/condominiums/${condominiumId}/payments`, 1, PAYMENTS_PAGE_SIZE),
-            session,
-          ),
-          receivablesPromise,
-        ]);
+        const [units, buildings, financialUnits, methods, paymentsPage, receivables] =
+          await Promise.all([
+            apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
+            apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+            // Which units exist financially, and which of them the database will actually accept a
+            // payment for. The two are different questions and the page must not conflate them.
+            apiRequest<ResidentFinancialUnit[]>(
+              `/v1/condominiums/${condominiumId}/resident-financial-units`,
+              session,
+            ).catch(() => [] as ResidentFinancialUnit[]),
+            methodsPromise,
+            apiRequest<PaginatedResponse<Payment>>(
+              `${financialPagePath(
+                `/v1/condominiums/${condominiumId}/payments`,
+                1,
+                PAYMENTS_PAGE_SIZE,
+              )}${unitQuery}`,
+              session,
+            ),
+            receivablesPromise,
+          ]);
 
         setData({
           units,
           buildings,
+          financialUnits,
           methods,
           payments: paymentsPage.items,
           paymentsPage: pageInfo(paymentsPage),
@@ -114,7 +140,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
         if (!background) setLoading(false);
       }
     },
-    [condominiumId, session],
+    [condominiumId, selectedUnitId, session],
   );
 
   useEffect(() => {
@@ -125,6 +151,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
     setDrawer(null);
     setMessage('');
     setSelectedCurrency('');
+    setSelectedUnitId('');
     setLoadingMorePayments(false);
   }, [condominiumId]);
 
@@ -156,6 +183,30 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
       Object.fromEntries((data?.buildings ?? []).map((building) => [building.id, building.name])),
     [data?.buildings],
   );
+  const unitLabels = useMemo(
+    () => residentUnitLabels(data?.units ?? [], data?.buildings ?? []),
+    [data?.units, data?.buildings],
+  );
+  const financialUnits = useMemo(
+    () => financialUnitOptions(data?.financialUnits ?? [], unitLabels),
+    [data?.financialUnits, unitLabels],
+  );
+  // `can_submit_payment` as the database answered it, per unit. Not every visible unit is payable
+  // -- a tenant sees the account of the unit they live in and may still not be the one who pays --
+  // so using the visible list here would offer destinations the server is going to refuse.
+  const payableUnits = useMemo(
+    () => payableUnitOptions(data?.financialUnits ?? [], unitLabels),
+    [data?.financialUnits, unitLabels],
+  );
+
+  // Changing unit changes the list, so the cursor cannot survive it: page 2 of one unit is not
+  // page 2 of another, and keeping it would append somebody else's rows to the history.
+  const selectUnit = useCallback((unitId: string) => {
+    setSelectedUnitId(unitId);
+    setMessage('');
+    setLoadingMorePayments(false);
+    setData((current) => (current ? { ...current, payments: [], receivables: [] } : current));
+  }, []);
 
   const loadMorePayments = useCallback(async () => {
     if (!data?.paymentsPage.hasNextPage || loadingMorePayments) return;
@@ -163,11 +214,11 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
     setError('');
     try {
       const next = await apiRequest<PaginatedResponse<Payment>>(
-        financialPagePath(
+        `${financialPagePath(
           `/v1/condominiums/${condominiumId}/payments`,
           data.paymentsPage.page + 1,
           data.paymentsPage.pageSize,
-        ),
+        )}${selectedUnitId ? `&unitId=${selectedUnitId}` : ''}`,
         session,
       );
       setData((current) =>
@@ -188,7 +239,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
     } finally {
       setLoadingMorePayments(false);
     }
-  }, [condominiumId, data?.paymentsPage, loadingMorePayments, session]);
+  }, [condominiumId, data?.paymentsPage, loadingMorePayments, selectedUnitId, session]);
 
   const onChanged = async (nextMessage: string) => {
     setMessage(nextMessage);
@@ -239,17 +290,24 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
     drawer?.type === 'edit' && ['draft', 'correction_requested'].includes(drawer.payment.status)
       ? drawer.payment
       : undefined;
-  const captureOpen = drawer?.type === 'create' || Boolean(capturePayment);
+  // A resident with nothing to pay for cannot open the create flow at all. The view hides the
+  // button too, but the guard belongs here: a drawer that opens onto no valid destination can only
+  // end in a refusal.
+  const captureOpen =
+    (drawer?.type === 'create' && payableUnits.length > 0) || Boolean(capturePayment);
 
   return (
     <>
       <ResidentPaymentsView
+        canRegisterPayment={payableUnits.length > 0}
         condominiumName={condominiumName}
         data={data}
         error={error}
+        financialRows={rowsForSelection(data.financialUnits, selectedUnitId)}
         loadingMorePayments={loadingMorePayments}
         message={message}
         onCurrencyChange={setSelectedCurrency}
+        onUnitChange={selectUnit}
         onLoadMore={() => void loadMorePayments()}
         onOpenPayment={(payment) => void openPayment(payment)}
         onRegisterPayment={() => {
@@ -257,11 +315,13 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
           setDrawer({ type: 'create' });
         }}
         selectedCurrency={selectedCurrency}
+        selectedUnitId={selectedUnitId}
+        unitLabels={unitLabels}
+        unitOptions={financialUnits}
       />
 
       {captureOpen ? (
         <PaymentCaptureDrawer
-          buildingNameById={buildingNameById}
           condominiumId={condominiumId}
           methods={data.methods}
           onClose={() => setDrawer(null)}
@@ -270,7 +330,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
           {...(capturePayment ? { payment: capturePayment } : {})}
           session={session}
           submitOnComplete
-          units={data.units}
+          units={payableUnits}
         />
       ) : null}
 
