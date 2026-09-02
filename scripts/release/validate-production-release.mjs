@@ -1,5 +1,12 @@
 export const HABITTA_PROD_PROJECT_REF = 'kgsfaahixbcwcmykmhat';
 export const HABITTA_PROD_SUPABASE_URL = `https://${HABITTA_PROD_PROJECT_REF}.supabase.co`;
+export const HABITTA_PROD_CORS_ORIGINS = [
+  'https://app.mihabitta.com',
+  'https://mihabitta.com',
+];
+
+const normalizeCorsOrigins = (raw) =>
+  [...new Set(String(raw ?? '').split(',').map((value) => value.trim()).filter(Boolean))].sort();
 
 export const validateProductionRelease = ({
   appEnv,
@@ -39,7 +46,14 @@ export const validateProductionRelease = ({
   if (!/^https:\/\/habitta-api-prod\./.test(String(workerUrl ?? '')))
     errors.push('invalid_production_worker_url');
   if (pagesUrl !== 'https://app.mihabitta.com') errors.push('invalid_production_pages_url');
-  if (corsAllowedOrigins !== pagesUrl) errors.push('production_cors_mismatch');
+
+  const actualCorsOrigins = normalizeCorsOrigins(corsAllowedOrigins);
+  const expectedCorsOrigins = [...HABITTA_PROD_CORS_ORIGINS].sort();
+  if (
+    actualCorsOrigins.length !== expectedCorsOrigins.length ||
+    actualCorsOrigins.some((origin, index) => origin !== expectedCorsOrigins[index])
+  )
+    errors.push('production_cors_mismatch');
 
   return errors;
 };
