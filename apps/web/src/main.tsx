@@ -11,6 +11,7 @@ import './condominium-profile.css';
 import './admin-invitation.css';
 import './help-imports.css';
 import './brand-palette.css';
+import './hq-design-system.css';
 import './brand-assets.css';
 import './page-header.css';
 import './print.css';
