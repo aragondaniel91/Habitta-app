@@ -128,7 +128,7 @@
   .resident-dashboard__balance-card[data-tone='navy']
   .resident-dashboard__card-icon {
   background: var(--hq-shell-elevated);
-  color: #c9d7e2;
+  color: color-mix(in srgb, var(--hq-muted) 60%, var(--hq-ink));
 }
 
 .resident-dashboard__card-note {
