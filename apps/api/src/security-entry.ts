@@ -111,9 +111,7 @@ app.use('*', async (c, next) => {
 // origin is the single public catalogue path above; all authenticated routes remain unchanged.
 app.use('*', async (c, next) => {
   const origin = c.req.header('Origin');
-  if (
-    !isAllowedRequestOrigin(origin, c.req.path, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV)
-  ) {
+  if (!isAllowedRequestOrigin(origin, c.req.path, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV)) {
     return c.json({ error: 'Origin not allowed' }, 403);
   }
 
@@ -169,12 +167,7 @@ app.use(
   '*',
   cors({
     origin: (origin, c) =>
-      isAllowedRequestOrigin(
-        origin,
-        c.req.path,
-        c.env?.CORS_ALLOWED_ORIGINS,
-        c.env?.APP_ENV,
-      )
+      isAllowedRequestOrigin(origin, c.req.path, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV)
         ? origin
         : undefined,
     allowHeaders: [
