@@ -6,7 +6,7 @@ const environment = {
   APP_ENV: 'production',
   SUPABASE_URL: 'https://example.supabase.co',
   SUPABASE_ANON_KEY: 'public-anon-key',
-  CORS_ALLOWED_ORIGINS: 'https://app.mihabitta.com,https://mihabitta.com',
+  CORS_ALLOWED_ORIGINS: 'https://app.mihabitta.com',
 } as unknown as NotificationBindings;
 
 const catalogue = [
@@ -64,7 +64,27 @@ describe('HAB-433 public plan catalogue API', () => {
     expect(headers.get('Authorization')).toBe('Bearer public-anon-key');
   });
 
-  it('keeps production CORS closed to origins outside the configured acquisition surfaces', async () => {
+  it('admits mihabitta.com only on the public catalogue path, not globally', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const health = await app.request(
+      'https://api.example.test/health',
+      { headers: { Origin: 'https://mihabitta.com' } },
+      environment,
+    );
+    expect(health.status).toBe(403);
+
+    const authenticatedSurface = await app.request(
+      'https://api.example.test/v1/organizations',
+      { headers: { Origin: 'https://mihabitta.com' } },
+      environment,
+    );
+    expect(authenticatedSurface.status).toBe(403);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps the public catalogue closed to every other unapproved origin', async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
 
