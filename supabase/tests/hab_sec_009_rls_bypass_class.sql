@@ -24,6 +24,8 @@ select is(
      and p.proname not in (
        -- Public by design: a certificate is verified by whoever it is handed to.
        'verify_solvency_certificate',
+       -- Public by design: this deliberately projects only non-customer catalogue fields.
+       'get_public_plan_catalog',
        -- Token-gated by design: you read the invitation before you have an account.
        'get_admin_invitation_preview',
        'get_resident_invitation_preview',
@@ -49,12 +51,12 @@ select is(
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname='public' and p.proname in (
-     'verify_solvency_certificate','get_admin_invitation_preview','get_resident_invitation_preview',
-     'get_customer_invitation_preview',
+     'verify_solvency_certificate','get_public_plan_catalog','get_admin_invitation_preview',
+     'get_resident_invitation_preview','get_customer_invitation_preview',
      'announcement_audience_valid','is_valid_assembly_action_assignee','is_valid_maintenance_assignee',
      'is_valid_service_request_assignee','create_governance_proposal_v2','preview_payment_allocation',
      'capture_assembly_eligibility')),
-  11::bigint,
+  12::bigint,
   'every allowlisted exemption still names a real function'
 );
 
