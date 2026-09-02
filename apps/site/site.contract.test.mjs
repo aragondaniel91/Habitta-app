@@ -41,9 +41,7 @@ describe('HAB-428 public site contract', () => {
   });
 
   it('loads public prices from the authoritative API and never carries a price fallback', () => {
-    expect(script).toContain(
-      'https://habitta-api-prod.aragondaniel91.workers.dev/public/v1/plans',
-    );
+    expect(script).toContain('https://habitta-api-prod.aragondaniel91.workers.dev/public/v1/plans');
     expect(script).toContain("payload.currency !== 'USD'");
     expect(script).toContain('catalog_monthly_usd');
     expect(script).toContain('catalog_annual_usd');
