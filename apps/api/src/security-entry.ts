@@ -20,6 +20,40 @@ import { requestRateLimitScope } from './request-rate-limit';
 type Bindings = NotificationBindings;
 type Variables = { token: string; userId: string; requestId: string };
 
+const PUBLIC_SITE_ORIGIN = 'https://mihabitta.com';
+const PUBLIC_PLAN_CATALOG_PATH = '/public/v1/plans';
+
+const normalizeOrigin = (value: string) => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+};
+
+export const isAllowedRequestOrigin = (
+  origin: string | undefined,
+  path: string,
+  configuredOrigins?: string,
+  appEnv = 'development',
+) => {
+  if (!origin) return true;
+  const normalized = normalizeOrigin(origin);
+  if (normalized === null) return false;
+
+  // `mihabitta.com` is deliberately admitted for one read-only acquisition endpoint only. This
+  // does not widen CORS for authenticated /v1 application routes or telemetry.
+  if (
+    path === PUBLIC_PLAN_CATALOG_PATH &&
+    appEnv.trim().toLowerCase() === 'production' &&
+    normalized === PUBLIC_SITE_ORIGIN
+  ) {
+    return true;
+  }
+
+  return isAllowedCorsOrigin(normalized, configuredOrigins, appEnv);
+};
+
 const requestIds = new WeakMap<Request, string>();
 const capturedApplicationErrors = new WeakSet<Request>();
 
@@ -73,12 +107,13 @@ app.use('*', async (c, next) => {
   c.header('X-Request-Id', requestId);
 });
 
-// One place decides which origins are allowed. Deciding it here and again inside the application
-// invited the two answers to drift, and they had: the inner copy always trusted localhost, even in
-// production. The guard rejects outright and the middleware below writes the headers.
+// One place decides which origins are allowed. The only exception to the configured application
+// origin is the single public catalogue path above; all authenticated routes remain unchanged.
 app.use('*', async (c, next) => {
   const origin = c.req.header('Origin');
-  if (!isAllowedCorsOrigin(origin, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV)) {
+  if (
+    !isAllowedRequestOrigin(origin, c.req.path, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV)
+  ) {
     return c.json({ error: 'Origin not allowed' }, 403);
   }
 
@@ -134,7 +169,14 @@ app.use(
   '*',
   cors({
     origin: (origin, c) =>
-      isAllowedCorsOrigin(origin, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV) ? origin : undefined,
+      isAllowedRequestOrigin(
+        origin,
+        c.req.path,
+        c.env?.CORS_ALLOWED_ORIGINS,
+        c.env?.APP_ENV,
+      )
+        ? origin
+        : undefined,
     allowHeaders: [
       'Authorization',
       'Content-Type',
