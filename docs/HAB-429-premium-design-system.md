@@ -38,6 +38,7 @@ The implementation should expose semantic aliases rather than forcing feature co
 - `--hq-brand`: Habitta green.
 - `--hq-info`: blue/teal informational emphasis.
 - `--hq-danger`, `--hq-warning`, `--hq-success`: semantic states only.
+- Soft and line variants (`--hq-brand-soft`, `--hq-info-soft`, `--hq-danger-soft`, `--hq-warning-soft` and matching line aliases) remain aliases of the production palette rather than independent colors.
 
 ### Spacing
 
@@ -73,6 +74,10 @@ The first implementation slice should establish reusable conventions for:
 - Table: consistent header, row density, numeric alignment and responsive fallback.
 - Drawer / Modal: intentional hierarchy, clear close affordance, predictable action footer.
 - Empty / Loading / Error: compact, useful and action-oriented rather than oversized illustration states.
+
+### Existing UX contract compatibility
+
+HAB-264/HAB-362 already route approved Personas/Unidades forms through the `--ux-*` contract. HAB-429 does not rewrite those modules. Instead, the HQ layer is loaded after `ux-contract.css` and maps its geometry tokens to the HQ control, radius and spacing tokens. This preserves the existing component APIs and form selectors while eliminating a parallel 48px geometry system. Future migrations should consume HQ tokens directly where practical rather than creating another local token family.
 
 ## Navigation
 
