@@ -30,12 +30,12 @@ if (menuButton && menu) {
 const year = document.querySelector('#year');
 if (year) year.textContent = String(new Date().getFullYear());
 
-const CATALOG_URL =
-  'https://habitta-api-prod.aragondaniel91.workers.dev/public/v1/plans';
+const CATALOG_URL = 'https://habitta-api-prod.aragondaniel91.workers.dev/public/v1/plans';
 const pricingSection = document.querySelector('#precios');
 const pricingGrid = pricingSection?.querySelector('.pricing-grid');
 
-const isPositiveNumber = (value) => typeof value === 'number' && Number.isFinite(value) && value > 0;
+const isPositiveNumber = (value) =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
 
 const isPublicPlan = (plan) =>
   plan &&
