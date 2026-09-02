@@ -96,11 +96,12 @@ describe('HAB-433 public plan catalogue API', () => {
   it('fails safely when PostgREST is unavailable', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(JSON.stringify({ message: 'internal details' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ message: 'internal details' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          }),
       ),
     );
 
@@ -114,11 +115,12 @@ describe('HAB-433 public plan catalogue API', () => {
   it('rejects malformed upstream catalogue data instead of inventing prices', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify([{ ...catalogue[0], catalog_monthly_usd: null }]),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify([{ ...catalogue[0], catalog_monthly_usd: null }]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
       ),
     );
 
