@@ -1,3 +1,8 @@
+const pricingStyles = document.createElement('link');
+pricingStyles.rel = 'stylesheet';
+pricingStyles.href = './pricing.css';
+document.head.append(pricingStyles);
+
 const menuButton = document.querySelector('.menu-toggle');
 const menu = document.querySelector('#primary-menu');
 
@@ -223,7 +228,8 @@ const loadPublicCatalog = async () => {
     renderCatalog(plans, period);
     controls.status.classList.add('is-ready');
     const statusCopy = controls.status.querySelector('p');
-    if (statusCopy) statusCopy.textContent = `${plans.length} planes disponibles · precios de catálogo en USD.`;
+    if (statusCopy)
+      statusCopy.textContent = `${plans.length} planes disponibles · precios de catálogo en USD.`;
 
     controls.toggle.addEventListener('click', (event) => {
       const button = event.target.closest('[data-period]');
