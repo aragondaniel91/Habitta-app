@@ -4,6 +4,12 @@
 -- callers receive only catalogue data that is intentionally public; customer subscriptions,
 -- contracted terms, negotiated amounts and commercial events stay unreachable.
 
+-- Supabase grants table privileges to newly-created tables by default. HAB-410 intentionally made
+-- these catalogue policies authenticated-only, so remove the residual anonymous SELECT ACL rather
+-- than relying on RLS alone to hide the underlying tables. Authenticated catalogue reads remain
+-- unchanged; anonymous acquisition goes only through the narrow RPC below.
+revoke select on public.capabilities, public.plans, public.plan_capabilities from anon;
+
 create or replace function public.get_public_plan_catalog()
 returns table (
   code text,
