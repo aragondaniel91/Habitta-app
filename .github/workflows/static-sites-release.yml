@@ -123,10 +123,8 @@ jobs:
                 exit 0
                 ;;
               403)
-                if [[ "$INPUT_TARGET" == admin-* ]]; then
-                  echo "Admin canonical domain denied this GitHub runner with HTTP 403; requiring Cloudflare control-plane verification next."
-                  exit 0
-                fi
+                echo "Canonical domain denied this GitHub runner with HTTP 403; requiring Cloudflare control-plane verification next."
+                exit 0
                 ;;
             esac
             if [ "$attempt" -lt 12 ]; then

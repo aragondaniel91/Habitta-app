@@ -40,8 +40,12 @@ describe('production release workflow hardening', () => {
     expect(workflow).toContain('CLOUDFLARE_PAGES_PROJECT_NAME=$PAGES_PROJECT');
     expect(workflow).toContain('CLOUDFLARE_PAGES_PROD_URL=$EXPECTED_URL');
     expect(workflow).toContain('curl --connect-timeout 5 --max-time 15');
-    expect(workflow).toContain('if [[ "$INPUT_TARGET" == admin-* ]]');
+    expect(workflow).toContain('403)');
     expect(workflow).toContain(
+      'Canonical domain denied this GitHub runner with HTTP 403; requiring Cloudflare control-plane verification next.',
+    );
+    expect(workflow).not.toContain('if [[ "$INPUT_TARGET" == admin-* ]]');
+    expect(workflow).not.toContain(
       'Admin canonical domain denied this GitHub runner with HTTP 403; requiring Cloudflare control-plane verification next.',
     );
     expect(workflow).toContain('Verify Pages control plane');
