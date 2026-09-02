@@ -18,11 +18,16 @@ describe('HAB-429 Premium HQ design-system foundation', () => {
       '--hq-muted: var(--muted)',
       '--hq-line: var(--border)',
       '--hq-brand: var(--green)',
+      '--hq-brand-soft: var(--green-soft)',
       '--hq-info: var(--blue)',
+      '--hq-info-soft: var(--blue-soft)',
+      '--hq-danger: var(--red)',
+      '--hq-warning: var(--amber)',
     ]) {
       expect(foundation).toContain(token);
     }
     expect(foundation).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(foundation).not.toMatch(/rgb\(/);
     expect(foundation).not.toMatch(/--navy:\s*#/);
     expect(foundation).not.toMatch(/--blue:\s*#/);
     expect(foundation).not.toMatch(/--green:\s*#/);
@@ -34,11 +39,20 @@ describe('HAB-429 Premium HQ design-system foundation', () => {
     expect(foundation).toContain('--hq-touch-target: 44px');
     expect(foundation).toContain('--hq-radius-control:');
     expect(foundation).toContain('--hq-radius-card:');
+    expect(foundation).toContain('--ux-control-height: var(--hq-control-standard)');
+    expect(foundation).toContain('--ux-control-radius: var(--hq-radius-control)');
+    expect(foundation).toContain('--ux-card-radius: var(--hq-radius-card)');
+    expect(foundation).toContain('--ux-space-xs: var(--hq-space-1)');
+    expect(foundation).toContain('--ux-space-sm: var(--hq-space-2)');
+    expect(foundation).toContain('--ux-space-md: var(--hq-space-3)');
     expect(foundation).toContain('.surface {');
     expect(foundation).toContain('.button {');
     expect(foundation).toContain('.input,');
     expect(foundation).toContain('.select {');
     expect(main.indexOf("import './brand-palette.css'")).toBeLessThan(
+      main.indexOf("import './hq-design-system.css'"),
+    );
+    expect(main.indexOf("import './ux-contract.css'")).toBeLessThan(
       main.indexOf("import './hq-design-system.css'"),
     );
   });
