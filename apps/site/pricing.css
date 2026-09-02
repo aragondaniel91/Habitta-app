@@ -103,10 +103,10 @@
   min-height: 280px;
   border: 1px dashed #cfdcdf;
   border-radius: 17px;
-  background:
-    linear-gradient(90deg, transparent, rgb(255 255 255 / 0.72), transparent),
-    #eef3f3;
-  background-size: 240px 100%, 100% 100%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.72), transparent), #eef3f3;
+  background-size:
+    240px 100%,
+    100% 100%;
   animation: pricing-shimmer 1.4s linear infinite;
 }
 
@@ -187,10 +187,14 @@
 
 @keyframes pricing-shimmer {
   from {
-    background-position: -240px 0, 0 0;
+    background-position:
+      -240px 0,
+      0 0;
   }
   to {
-    background-position: calc(100% + 240px) 0, 0 0;
+    background-position:
+      calc(100% + 240px) 0,
+      0 0;
   }
 }
 
