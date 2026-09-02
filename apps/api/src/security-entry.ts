@@ -14,6 +14,7 @@ import {
   workerErrorLog,
 } from './observability';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
+import { publicPlanCatalogRoutes } from './public-plan-catalog-routes';
 import { requestRateLimitScope } from './request-rate-limit';
 
 type Bindings = NotificationBindings;
@@ -146,6 +147,10 @@ app.use(
     ],
   }),
 );
+
+// Public acquisition data is deliberately isolated from authenticated /v1 application routes.
+// The mounted handler itself uses only the Supabase anon key and the narrow HAB-433 RPC contract.
+app.route('/public', publicPlanCatalogRoutes);
 
 // High-risk writes are limited at the outer Worker boundary so every current and future handler
 // under these route families gets the same protection. Keys never include a raw bearer token.
