@@ -1,0 +1,105 @@
+:root {
+  /* Semantic aliases: product code should describe intent, not memorize palette values. */
+  --hq-shell: var(--navy);
+  --hq-shell-elevated: #12283b;
+  --hq-canvas: var(--background);
+  --hq-surface: var(--surface);
+  --hq-surface-subtle: var(--surface-subtle);
+  --hq-ink: var(--text-strong);
+  --hq-text: var(--text);
+  --hq-muted: var(--muted);
+  --hq-line: var(--border);
+  --hq-line-strong: var(--border-strong);
+  --hq-brand: var(--green);
+  --hq-brand-strong: var(--green-dark);
+  --hq-info: var(--blue);
+  --hq-danger: var(--red);
+  --hq-warning: var(--amber);
+  --hq-success: var(--green-dark);
+
+  --hq-space-1: 0.25rem;
+  --hq-space-2: 0.5rem;
+  --hq-space-3: 0.75rem;
+  --hq-space-4: 1rem;
+  --hq-space-5: 1.25rem;
+  --hq-space-6: 1.5rem;
+  --hq-space-8: 2rem;
+  --hq-space-10: 2.5rem;
+
+  --hq-control-compact: 36px;
+  --hq-control-standard: 44px;
+  --hq-touch-target: 44px;
+
+  --hq-radius-small: 0.5rem;
+  --hq-radius-control: 0.6875rem;
+  --hq-radius-card: 0.9375rem;
+  --hq-radius-large: 1.125rem;
+
+  --hq-shadow-resting: 0 1px 3px rgb(13 27 42 / 0.04);
+  --hq-shadow-card: 0 10px 30px rgb(13 27 42 / 0.075);
+  --hq-shadow-floating: 0 22px 58px rgb(13 27 42 / 0.16);
+
+  --hq-content-max: 1480px;
+}
+
+[data-theme='dark'] {
+  --hq-shell-elevated: #172b3d;
+  --hq-shadow-resting: 0 1px 3px rgb(0 0 0 / 0.16);
+  --hq-shadow-card: 0 10px 30px rgb(0 0 0 / 0.18);
+  --hq-shadow-floating: 0 22px 58px rgb(0 0 0 / 0.28);
+}
+
+/* Shared component contract. Existing components keep their API; the HQ layer aligns their shape. */
+.surface {
+  border-color: var(--hq-line);
+  border-radius: var(--hq-radius-card);
+  box-shadow: var(--hq-shadow-resting);
+}
+
+.button {
+  border-radius: var(--hq-radius-control);
+}
+
+.button[data-size='sm'] {
+  min-height: var(--hq-control-compact);
+}
+
+.button[data-size='md'],
+.input,
+.select {
+  min-height: var(--hq-control-standard);
+}
+
+.input,
+.select {
+  border-color: var(--hq-line-strong);
+  border-radius: var(--hq-radius-control);
+}
+
+.badge {
+  font-variant-numeric: tabular-nums;
+}
+
+.hq-money {
+  font-family: var(--font-heading);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+}
+
+.hq-kicker {
+  color: var(--hq-info);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.085em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface,
+  .button,
+  .input,
+  .select {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms !important;
+  }
+}
