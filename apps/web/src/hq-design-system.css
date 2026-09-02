@@ -1,7 +1,7 @@
 :root {
   /* Semantic aliases: product code should describe intent, not memorize palette values. */
   --hq-shell: var(--navy);
-  --hq-shell-elevated: #12283b;
+  --hq-shell-elevated: color-mix(in srgb, var(--navy) 75%, var(--blue));
   --hq-canvas: var(--background);
   --hq-surface: var(--surface);
   --hq-surface-subtle: var(--surface-subtle);
@@ -43,7 +43,7 @@
 }
 
 [data-theme='dark'] {
-  --hq-shell-elevated: #172b3d;
+  --hq-shell-elevated: color-mix(in srgb, var(--surface-subtle) 90%, var(--blue));
   --hq-shadow-resting: 0 1px 3px rgb(0 0 0 / 0.16);
   --hq-shadow-card: 0 10px 30px rgb(0 0 0 / 0.18);
   --hq-shadow-floating: 0 22px 58px rgb(0 0 0 / 0.28);
