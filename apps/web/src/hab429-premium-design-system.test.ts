@@ -61,11 +61,16 @@ describe('HAB-429 Premium HQ design-system foundation', () => {
     expect(residentCss).toContain('width: min(100%, var(--hq-content-max))');
     expect(residentCss).toContain(".resident-dashboard__balance-card[data-tone='navy']");
     expect(residentCss).toContain('.resident-dashboard__property-grid');
+    expect(residentCss).toContain('.resident-dashboard .empty-state {');
+    expect(residentCss).toContain('min-height: 0;');
+    expect(residentCss).toContain('.resident-dashboard .button {');
     expect(residentCss).toContain('@media (max-width: 800px)');
     expect(residentCss).toContain('@media (max-width: 520px)');
     expect(residentCss).toContain('@media (max-width: 390px)');
     expect(residentCss).toContain('min-height: var(--hq-touch-target)');
     expect(residentCss).not.toMatch(/overflow-x:\s*auto/);
+    expect(residentCss).not.toMatch(/rgb\(/);
+    expect(residentCss).not.toMatch(/var\(--(?:navy|blue|green|red|amber)(?:-|\))/);
   });
 
   it('preserves the authoritative resident financial and role gates', () => {
