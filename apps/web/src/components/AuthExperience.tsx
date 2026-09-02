@@ -69,6 +69,46 @@ export function WorkspaceLoadError({
   );
 }
 
+/**
+ * HAB-432: what a Platform Admin identity sees when it opens the tenant portal.
+ *
+ * This is an account-context statement, not a failure. The identity is valid and its session is
+ * intact; it simply administers Habitta from a different console. Framing it as an error -- or
+ * redirecting automatically, as this used to -- produced the loop it replaces: the app-origin
+ * session survives the redirect, so returning here bounced the person straight back out with
+ * nothing they could do about it. Both ways forward are now theirs to choose.
+ */
+export function PlatformAccountHandoff({
+  platformAdminUrl,
+  onSignOut,
+}: {
+  platformAdminUrl: string;
+  onSignOut: () => void;
+}) {
+  return (
+    <main className="onboarding-shell onboarding-shell--centered">
+      <Surface className="platform-handoff-card">
+        <BrandLockup />
+        <span className="access-kicker">Cuenta de plataforma</span>
+        <h1>Esta cuenta administra Habitta desde Platform Admin.</h1>
+        <p>Tu sesión actual no tiene un espacio de condominio o residente en este portal.</p>
+        <div className="platform-handoff-card__actions">
+          {/* An anchor, not a scripted jump: leaving is a decision the person makes, and it should
+              behave like every other link they know how to open. */}
+          <a className="button" href={platformAdminUrl}>
+            Ir a Platform Admin
+            <ArrowRightIcon size={18} />
+          </a>
+          <Button onClick={onSignOut} type="button" variant="secondary">
+            <LogOutIcon size={17} />
+            Iniciar sesión con otra cuenta
+          </Button>
+        </div>
+      </Surface>
+    </main>
+  );
+}
+
 export function OnboardingWizard({
   session,
   organizations,

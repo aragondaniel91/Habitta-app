@@ -281,6 +281,49 @@
   margin-top: 0.65rem;
 }
 
+/* HAB-432: a settled account-context card, deliberately the size of a statement rather than of an
+   empty state -- nothing here failed, so nothing here should occupy the screen like a problem. */
+.platform-handoff-card {
+  display: grid;
+  width: min(520px, 100%);
+  gap: 0.35rem;
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+.platform-handoff-card .access-brand {
+  margin-bottom: 1.35rem;
+}
+
+.platform-handoff-card h1 {
+  margin: 0.4rem 0 0;
+  font-size: clamp(1.35rem, 3.2vw, 1.6rem);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.platform-handoff-card p {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.platform-handoff-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.platform-handoff-card__actions .button {
+  flex: 1 1 auto;
+  text-decoration: none;
+}
+
+@media (max-width: 520px) {
+  .platform-handoff-card__actions .button {
+    flex-basis: 100%;
+  }
+}
+
 .onboarding-topbar {
   display: flex;
   min-height: 72px;

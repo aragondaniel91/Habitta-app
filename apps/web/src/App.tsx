@@ -3,10 +3,15 @@ import type { Session } from '@supabase/supabase-js';
 import { AdminInvitationExperience } from './components/AdminInvitationExperience';
 import { AdminOnboardingWizard } from './components/AdminOnboardingWizard';
 import { AppShell, type Condominium, type Organization } from './components/AppShell';
-import { OnboardingLoading, WorkspaceLoadError } from './components/AuthExperience';
+import {
+  OnboardingLoading,
+  PlatformAccountHandoff,
+  WorkspaceLoadError,
+} from './components/AuthExperience';
 import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
 import { ModuleLoading } from './components/ui';
 import { apiRequest } from './lib/api';
+import { platformAdminUrlForHost } from './lib/platform-handoff';
 import {
   allowedRoutes,
   canAccessRoute,
@@ -200,17 +205,6 @@ export default function App() {
   }, [session, passwordRecoveryMode, adminInvitationToken, loadWorkspace]);
 
   useEffect(() => {
-    if (!platformOnly) return;
-    if (window.location.hostname === 'app.mihabitta.com') {
-      window.location.replace('https://admin.mihabitta.com');
-      return;
-    }
-    if (window.location.hostname === 'habitta-web-dev.pages.dev') {
-      window.location.replace('https://admin-preview.mihabitta.com');
-    }
-  }, [platformOnly]);
-
-  useEffect(() => {
     const onPopState = () => {
       setAdminInvitationToken(invitationTokenFromPath(window.location.pathname));
       setCurrentRoute(getRouteFromPath(window.location.pathname));
@@ -302,10 +296,9 @@ export default function App() {
 
   if (platformOnly) {
     return (
-      <WorkspaceLoadError
-        message="Esta cuenta pertenece a Platform Admin y no tiene un rol tenant. Usa admin.mihabitta.com para operar la plataforma."
-        onRetry={() => window.location.assign('https://admin.mihabitta.com')}
+      <PlatformAccountHandoff
         onSignOut={signOut}
+        platformAdminUrl={platformAdminUrlForHost(window.location.hostname)}
       />
     );
   }
