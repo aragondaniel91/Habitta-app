@@ -22,6 +22,7 @@ describe('HAB-429 Premium HQ design-system foundation', () => {
     ]) {
       expect(foundation).toContain(token);
     }
+    expect(foundation).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(foundation).not.toMatch(/--navy:\s*#/);
     expect(foundation).not.toMatch(/--blue:\s*#/);
     expect(foundation).not.toMatch(/--green:\s*#/);
