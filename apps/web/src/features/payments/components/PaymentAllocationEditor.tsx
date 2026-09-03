@@ -147,7 +147,8 @@ export function PaymentAllocationEditor({
           <option value="">Seleccionar obligación</option>
           {receivables.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.description} · Pendiente {item.outstanding_amount ?? '0.00'} {item.currency_code}
+              {item.description} · Pendiente {item.outstanding_amount ?? '0.00'}{' '}
+              {item.currency_code}
             </option>
           ))}
         </select>
