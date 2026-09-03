@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(38);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at)
 values
@@ -120,6 +120,7 @@ select ok(
   ),
   'customer setup intent is auditable'
 );
+select set_config('hab436.event_time', now()::text, true);
 
 set local role service_role;
 select lives_ok(
@@ -149,7 +150,8 @@ select throws_ok(
 select is(
   (public.apply_billing_provider_event_v1(
     'testpay','evt_setup_ready_436','payment_method_ready',
-    '43620000-0000-4000-8000-000000000001','set_436_a','cus_436_a','pm_436_a',null,null,null,now()
+    '43620000-0000-4000-8000-000000000001','set_436_a','cus_436_a','pm_436_a',null,null,null,
+    current_setting('hab436.event_time')::timestamptz
   )->>'processing_status'),
   'applied',
   'verified payment-method-ready event is applied'
@@ -175,16 +177,20 @@ set local role service_role;
 select is(
   (public.apply_billing_provider_event_v1(
     'testpay','evt_setup_ready_436','payment_method_ready',
-    '43620000-0000-4000-8000-000000000001','set_436_a','cus_436_a','pm_436_a',null,null,null,now()
+    '43620000-0000-4000-8000-000000000001','set_436_a','cus_436_a','pm_436_a',null,null,null,
+    current_setting('hab436.event_time')::timestamptz
   )->>'idempotent_replay')::boolean,
   true,
   'duplicate provider event is idempotent'
 );
 select throws_ok(
-  $$select public.apply_billing_provider_event_v1(
-    'testpay','evt_setup_ready_436','payment_method_ready',
-    '43620000-0000-4000-8000-000000000001','set_436_a','cus_436_a','pm_DIFFERENT',null,null,null,now()
-  )$$,
+  format(
+    $$select public.apply_billing_provider_event_v1(
+      'testpay','evt_setup_ready_436','payment_method_ready',
+      '43620000-0000-4000-8000-000000000001','set_436_a','cus_436_a','pm_DIFFERENT',null,null,null,'%s'::timestamptz
+    )$$,
+    current_setting('hab436.event_time')
+  ),
   '23514','provider event id reused with different normalized payload',
   'same provider event id with changed normalized payload is rejected'
 );
@@ -192,7 +198,8 @@ select throws_ok(
 select is(
   (public.apply_billing_provider_event_v1(
     'testpay','evt_wrong_amount_436','charge_succeeded',
-    '43620000-0000-4000-8000-000000000001',null,'cus_436_a',null,'pay_wrong_436',28.00,'USD',now()
+    '43620000-0000-4000-8000-000000000001',null,'cus_436_a',null,'pay_wrong_436',28.00,'USD',
+    current_setting('hab436.event_time')::timestamptz
   )->>'rejection_reason'),
   'commercial_amount_mismatch',
   'provider success with amount different from Habitta commercial terms is rejected'
@@ -214,7 +221,8 @@ set local role service_role;
 select is(
   (public.apply_billing_provider_event_v1(
     'testpay','evt_charge_ok_436','charge_succeeded',
-    '43620000-0000-4000-8000-000000000001',null,'cus_436_a',null,'pay_ok_436',29.00,'USD',now()
+    '43620000-0000-4000-8000-000000000001',null,'cus_436_a',null,'pay_ok_436',29.00,'USD',
+    current_setting('hab436.event_time')::timestamptz
   )->>'processing_status'),
   'applied',
   'matching authorized provider charge is applied'
@@ -254,7 +262,8 @@ set local role service_role;
 select is(
   (public.apply_billing_provider_event_v1(
     'testpay','evt_charge_failed_436','charge_failed',
-    '43620000-0000-4000-8000-000000000001',null,'cus_436_a',null,'pay_failed_436',29.00,'USD',now()
+    '43620000-0000-4000-8000-000000000001',null,'cus_436_a',null,'pay_failed_436',29.00,'USD',
+    current_setting('hab436.event_time')::timestamptz
   )->>'processing_status'),
   'applied',
   'matching provider charge failure is applied as commercial state only'
@@ -271,7 +280,8 @@ set local role service_role;
 select is(
   (public.apply_billing_provider_event_v1(
     'testpay','evt_method_removed_436','payment_method_removed',
-    '43620000-0000-4000-8000-000000000001',null,'cus_436_a',null,null,null,null,now()
+    '43620000-0000-4000-8000-000000000001',null,'cus_436_a',null,null,null,null,
+    current_setting('hab436.event_time')::timestamptz
   )->>'processing_status'),
   'applied',
   'verified payment method removal is applied'
