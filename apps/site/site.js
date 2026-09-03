@@ -31,6 +31,8 @@ const year = document.querySelector('#year');
 if (year) year.textContent = String(new Date().getFullYear());
 
 const CATALOG_URL = 'https://habitta-api-prod.aragondaniel91.workers.dev/public/v1/plans';
+const APP_URL = 'https://app.mihabitta.com/';
+const SELF_SERVICE_PLAN_CODES = new Set(['esencial', 'comunidad']);
 const pricingSection = document.querySelector('#precios');
 const pricingGrid = pricingSection?.querySelector('.pricing-grid');
 
@@ -73,6 +75,14 @@ const appendText = (parent, tag, className, text) => {
   return element;
 };
 
+const selfServiceSignupUrl = (planCode, period) => {
+  const url = new URL(APP_URL);
+  url.searchParams.set('signup', '1');
+  url.searchParams.set('plan', planCode);
+  url.searchParams.set('period', period);
+  return url.toString();
+};
+
 const buildPricingControls = () => {
   if (!pricingSection || !pricingGrid) return null;
 
@@ -108,6 +118,7 @@ const buildPricingControls = () => {
   note.textContent = 'Precios de catálogo en USD.';
 
   controls.append(toggle, note);
+
   pricingGrid.before(controls);
 
   const status = document.createElement('div');
@@ -156,8 +167,14 @@ const renderPlan = (plan, period) => {
 
   const link = document.createElement('a');
   link.className = plan.code === 'comunidad' ? 'button' : 'button button-outline';
-  link.href = `mailto:hola@mihabitta.com?subject=${encodeURIComponent(`Información ${plan.name}`)}`;
-  link.textContent = 'Solicitar información';
+  if (SELF_SERVICE_PLAN_CODES.has(plan.code)) {
+    link.href = selfServiceSignupUrl(plan.code, period);
+    link.textContent = 'Comenzar prueba gratis';
+    link.setAttribute('aria-label', `Comenzar prueba gratis de ${plan.name}`);
+  } else {
+    link.href = `mailto:hola@mihabitta.com?subject=${encodeURIComponent(`Onboarding guiado ${plan.name}`)}`;
+    link.textContent = 'Hablar con Habitta';
+  }
   article.append(link);
 
   return article;
