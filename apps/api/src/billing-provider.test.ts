@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  BillingProviderUnavailableError,
-  resolveBillingProvider,
-} from './billing-provider';
+import { BillingProviderUnavailableError, resolveBillingProvider } from './billing-provider';
 import type { NotificationBindings } from './notifications/types';
 
 const env = (overrides: Partial<NotificationBindings> = {}) =>
@@ -23,9 +20,9 @@ describe('HAB-436 billing provider adapter', () => {
   });
 
   it('refuses the mock adapter in production', () => {
-    expect(() => resolveBillingProvider(env({ APP_ENV: 'production', BILLING_PROVIDER: 'mock' }))).toThrow(
-      'Mock billing provider is forbidden in production.',
-    );
+    expect(() =>
+      resolveBillingProvider(env({ APP_ENV: 'production', BILLING_PROVIDER: 'mock' })),
+    ).toThrow('Mock billing provider is forbidden in production.');
   });
 
   it('refuses unknown provider names instead of silently choosing one', () => {
@@ -53,8 +50,8 @@ describe('HAB-436 billing provider adapter', () => {
 
   it('never accepts mock webhook traffic', async () => {
     const provider = resolveBillingProvider(env({ BILLING_PROVIDER: 'mock' }));
-    await expect(provider.verifyAndNormalizeWebhook(new Request('https://example.test'))).rejects.toThrow(
-      'Mock billing provider never accepts webhook traffic.',
-    );
+    await expect(
+      provider.verifyAndNormalizeWebhook(new Request('https://example.test')),
+    ).rejects.toThrow('Mock billing provider never accepts webhook traffic.');
   });
 });
