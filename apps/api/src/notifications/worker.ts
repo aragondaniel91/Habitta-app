@@ -159,17 +159,13 @@ export const consumeNotificationQueue = async (
   batch: MessageBatch<NotificationQueueMessage>,
   env: NotificationBindings,
 ) => {
-  await runWithBoundedConcurrency(
-    batch.messages,
-    QUEUE_DELIVERY_CONCURRENCY,
-    async (message) => {
-      try {
-        const outcome = await processNotificationDelivery(message.body, env);
-        if (outcome === 'retry') message.retry();
-        else message.ack();
-      } catch {
-        message.retry();
-      }
-    },
-  );
+  await runWithBoundedConcurrency(batch.messages, QUEUE_DELIVERY_CONCURRENCY, async (message) => {
+    try {
+      const outcome = await processNotificationDelivery(message.body, env);
+      if (outcome === 'retry') message.retry();
+      else message.ack();
+    } catch {
+      message.retry();
+    }
+  });
 };
