@@ -64,7 +64,7 @@ export function PaymentAllocationEditor({
                 paymentAmount,
                 paymentCurrency,
                 receivableCurrency: item.receivableCurrencyCode,
-                rate: item.receivablePerPaymentRate,
+                rate: item.receivablePerPaymentRate ?? '',
               }),
             }
           : item,
