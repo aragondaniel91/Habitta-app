@@ -9,6 +9,7 @@ import {
   recordCommercialConsent,
 } from '../../lib/commercial';
 import type { CommercialCheckoutPreview, CommercialSummary } from '../../lib/commercial';
+import './commercial-checkout.css';
 
 function formatMoney(value: number | undefined, currency = 'USD') {
   if (value === undefined) return '—';
