@@ -1,8 +1,17 @@
+import {
+  browserSelfServiceStorage,
+  clearSelfServiceIdempotencyKey,
+  getOrCreateSelfServiceIdempotencyKey,
+  type SelfServiceTrialIntent,
+} from './selfServiceOnboarding';
 import { supabase } from '../supabase';
 
 export type OrganizationType = 'independent' | 'management_company';
 export type PropertyTopology =
-  'house_community' | 'single_building' | 'multi_building_complex' | 'mixed';
+  | 'house_community'
+  | 'single_building'
+  | 'multi_building_complex'
+  | 'mixed';
 
 export type AdminOnboardingInput = {
   organizationId: string;
@@ -40,6 +49,17 @@ export type AdminOnboardingResult = {
     property_topology?: string;
   } | null;
   building?: { id: string; name: string } | null;
+  trial?: {
+    subscription_id: string;
+    status: string;
+    commercial_status: string;
+    plan_code: string;
+    billing_period: string;
+    contracted_period_amount: number;
+    trial_starts_at: string;
+    trial_ends_at: string;
+    auto_bill_enabled: boolean;
+  } | null;
 };
 
 export const COUNTRY_OPTIONS = [
@@ -292,9 +312,56 @@ function rpcPayload(input: AdminOnboardingInput) {
   };
 }
 
+async function submitSelfServiceTrial(
+  input: AdminOnboardingInput,
+  intent: SelfServiceTrialIntent,
+) {
+  if (!supabase) throw new Error('La configuración de Supabase no está disponible.');
+
+  const userResult = await supabase.auth.getUser();
+  if (userResult.error || !userResult.data.user) {
+    throw new Error('Tu sesión debe estar activa para comenzar la prueba gratis.');
+  }
+
+  const userId = userResult.data.user.id;
+  const storage = browserSelfServiceStorage();
+  const idempotencyKey = getOrCreateSelfServiceIdempotencyKey(storage, userId, intent);
+  const profile = rpcPayload(input);
+  const result = await supabase.rpc('create_self_service_trial_workspace_v1', {
+    p_organization_name: input.organizationName.trim(),
+    p_organization_type: input.organizationType,
+    p_condominium_name: profile.condominium_name,
+    p_country_code: profile.country_code,
+    p_address_line1: profile.address_line1,
+    p_city: profile.city,
+    p_timezone: profile.timezone,
+    p_primary_currency_code: profile.primary_currency_code,
+    p_property_topology: profile.property_topology,
+    p_plan_code: intent.planCode,
+    p_billing_period: intent.billingPeriod,
+    p_idempotency_key: idempotencyKey,
+    p_secondary_currency_code: profile.secondary_currency_code,
+    p_legal_name: profile.legal_name,
+    p_legal_id_type: profile.legal_id_type,
+    p_legal_id_number: profile.legal_id_number,
+    p_address_line2: profile.address_line2,
+    p_state_region: profile.state_region,
+    p_municipality: profile.municipality,
+    p_parish: profile.parish,
+    p_postal_code: profile.postal_code,
+    p_declared_unit_count: profile.declared_unit_count,
+    p_declared_building_count: profile.declared_building_count,
+    p_first_building_name: profile.first_building_name,
+  });
+
+  if (!result.error) clearSelfServiceIdempotencyKey(storage, userId, intent);
+  return result;
+}
+
 export async function submitAdminOnboarding(
   input: AdminOnboardingInput,
   hasOrganization: boolean,
+  selfServiceIntent: SelfServiceTrialIntent | null = null,
 ): Promise<AdminOnboardingResult | null> {
   if (!supabase) throw new Error('La configuración de Supabase no está disponible.');
 
@@ -303,14 +370,32 @@ export async function submitAdminOnboarding(
         target_organization_id: input.organizationId,
         ...rpcPayload(input),
       })
-    : await supabase.rpc('create_admin_workspace_v2', {
-        organization_name: input.organizationName.trim(),
-        organization_type: input.organizationType,
-        ...rpcPayload(input),
-      });
+    : selfServiceIntent
+      ? await submitSelfServiceTrial(input, selfServiceIntent)
+      : await supabase.rpc('create_admin_workspace_v2', {
+          organization_name: input.organizationName.trim(),
+          organization_type: input.organizationType,
+          ...rpcPayload(input),
+        });
 
   if (result.error) {
     const message = result.error.message.toLowerCase();
+    if (message.includes('selected plan requires guided onboarding')) {
+      throw new Error('Este plan requiere acompañamiento de Habitta para completar la activación.');
+    }
+    if (message.includes('selected plan unit limit exceeded')) {
+      throw new Error(
+        'La cantidad de unidades supera el límite del plan seleccionado. Elige un plan superior para continuar.',
+      );
+    }
+    if (message.includes('idempotency key reused')) {
+      throw new Error(
+        'La selección de la prueba cambió durante el registro. Vuelve a iniciar el proceso desde Planes.',
+      );
+    }
+    if (message.includes('self-service onboarding is only available for the first workspace')) {
+      throw new Error('Tu espacio ya existe. Recarga Habitta para continuar con tu condominio.');
+    }
     if (message.includes('already belongs')) {
       throw new Error(
         'Esta cuenta ya pertenece a una organización. Recarga la página e inténtalo nuevamente.',
