@@ -624,7 +624,9 @@ function ReviewPayment({
             })
           }
           paymentCurrency={payment.original_currency_code}
-          receivables={receivables.filter((item) => Number(item.outstanding_amount ?? 0) > 0)}
+          receivables={receivables.filter(
+            (item) => item.unit_id === payment.unit_id && Number(item.outstanding_amount ?? 0) > 0,
+          )}
         />
       </div>
       {payment.status === 'approved' ? (
