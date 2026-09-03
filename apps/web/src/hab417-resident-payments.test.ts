@@ -69,12 +69,13 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
   });
 
   it('keeps the resident honest about balances and payment validation', () => {
-    expect(residentPaymentsView).toContain('Saldo pendiente');
+    expect(residentPaymentsView).toContain('Saldo actual');
     expect(residentPaymentsView).toContain(
       'Este saldo solo cambia cuando la administración aprueba y aplica el pago.',
     );
-    expect(residentPaymentsView).toContain('Reporta tu pago con claridad');
     expect(residentPaymentsView).toContain('La administración está revisando este pago.');
+    expect(residentPaymentsView).not.toContain('Comenzar registro');
+    expect(residentPaymentsView.match(/onClick=\{onRegisterPayment\}/g) ?? []).toHaveLength(1);
   });
 });
 
