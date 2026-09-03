@@ -3,6 +3,12 @@ import type { FormEvent } from 'react';
 import { ArrowRightIcon, CheckCircleIcon, HomeIcon, LogOutIcon } from './icons';
 import { Button, Field, Surface } from './ui';
 import { assessPassword, normalizeEmail, translateAuthError } from '../lib/auth';
+import {
+  parseSelfServiceTrialIntent,
+  selfServiceAuthMetadata,
+  selfServiceBillingPeriodLabel,
+  selfServicePlanLabel,
+} from '../lib/selfServiceOnboarding';
 import { getRememberSession, setRememberSession, supabase } from '../supabase';
 
 type AccessMode = 'sign-in' | 'register' | 'forgot';
@@ -148,7 +154,10 @@ export function SignInGate({
   initialMode?: AccessMode;
   initialMessage?: AuthMessage;
 }) {
-  const [mode, setMode] = useState<AccessMode>(initialMode);
+  const selfServiceIntent = useMemo(() => parseSelfServiceTrialIntent(window.location.search), []);
+  const [mode, setMode] = useState<AccessMode>(() =>
+    selfServiceIntent && initialMode === 'sign-in' ? 'register' : initialMode,
+  );
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -226,6 +235,7 @@ export function SignInGate({
         data: {
           full_name: fullName.trim(),
           registration_source: 'public_admin_onboarding',
+          ...selfServiceAuthMetadata(selfServiceIntent),
         },
       },
     });
@@ -291,13 +301,17 @@ export function SignInGate({
     mode === 'sign-in'
       ? 'Bienvenido a Habitta'
       : mode === 'register'
-        ? 'Crea tu cuenta administrativa'
+        ? selfServiceIntent
+          ? 'Comienza tu prueba gratis'
+          : 'Crea tu cuenta administrativa'
         : 'Recupera tu contraseña';
   const description =
     mode === 'sign-in'
       ? 'Ingresa con el correo y la contraseña de tu cuenta.'
       : mode === 'register'
-        ? 'Empieza con tus datos personales. El condominio se configurará después de confirmar tu correo.'
+        ? selfServiceIntent
+          ? 'Crea tu cuenta. Después de confirmar el correo, configuraremos tu primer condominio y activaremos 30 días de prueba.'
+          : 'Empieza con tus datos personales. El condominio se configurará después de confirmar tu correo.'
         : 'Te enviaremos un enlace seguro para crear una contraseña nueva.';
 
   return (
@@ -348,11 +362,21 @@ export function SignInGate({
                   {mode === 'sign-in'
                     ? 'Acceso seguro'
                     : mode === 'register'
-                      ? 'Nuevo administrador'
+                      ? selfServiceIntent
+                        ? '30 días gratis'
+                        : 'Nuevo administrador'
                       : 'Recuperación'}
                 </span>
                 <h2>{title}</h2>
                 <p>{description}</p>
+                {mode === 'register' && selfServiceIntent ? (
+                  <p className="access-message" data-tone="info" role="status">
+                    <strong>{selfServicePlanLabel(selfServiceIntent.planCode)}</strong> · periodo{' '}
+                    {selfServiceBillingPeriodLabel(selfServiceIntent.billingPeriod)}. No se
+                    realizará ningún cargo al crear la cuenta; la configuración de pago se hará por
+                    separado.
+                  </p>
+                ) : null}
               </div>
 
               {mode === 'sign-in' ? (
