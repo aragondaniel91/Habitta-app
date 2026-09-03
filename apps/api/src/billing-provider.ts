@@ -81,7 +81,9 @@ export function resolveBillingProvider(env: NotificationBindings): BillingProvid
 
   if (configured === 'mock') {
     if (env.APP_ENV === 'production') {
-      throw new BillingProviderUnavailableError('Mock billing provider is forbidden in production.');
+      throw new BillingProviderUnavailableError(
+        'Mock billing provider is forbidden in production.',
+      );
     }
     return mockBillingProvider();
   }
