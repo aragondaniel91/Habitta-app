@@ -7,13 +7,20 @@ import type {
 } from './integrations/types';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationQueueMessage } from './notifications/types';
+import { runPaymentProofRetentionCleanup } from './payment-proof-retention';
 
 const isIntegrationQueue = (queue: string) => queue.includes('integrations');
 
 export default {
   fetch: app.fetch,
   async scheduled(_controller, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduled(env), enqueuePendingIntegrationEvents(env)]));
+    ctx.waitUntil(
+      Promise.all([
+        runScheduled(env),
+        enqueuePendingIntegrationEvents(env),
+        runPaymentProofRetentionCleanup(env),
+      ]),
+    );
   },
   async queue(batch, env) {
     if (isIntegrationQueue(batch.queue)) {
