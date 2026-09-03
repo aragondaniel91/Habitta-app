@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(18);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('00000000-0000-4000-8000-000000004641','00000000-0000-0000-0000-000000000000','authenticated','authenticated','hab464-admin@test.local','x',now(),now()),
@@ -75,6 +75,11 @@ select throws_ok(
 );
 
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000004642',true);
+select throws_ok(
+  $$select public.get_platform_customer_360('46400000-0000-4000-8000-000000000099')$$,
+  'P0002','organization not found',
+  'platform admin receives an explicit not-found result for an unknown organization'
+);
 select lives_ok(
   $$select public.get_platform_customer_360('46400000-0000-4000-8000-000000000001')$$,
   'platform admin can read Customer 360'
