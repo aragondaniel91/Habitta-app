@@ -3,7 +3,8 @@ const POW10 = Array.from({ length: 13 }, (_, index) => 10n ** BigInt(index));
 function scaledInteger(value: string, scale: number): bigint | null {
   const trimmed = value.trim();
   if (!/^\d+(?:\.\d*)?$/.test(trimmed)) return null;
-  const [whole, fraction = ''] = trimmed.split('.');
+  const [wholePart, fraction = ''] = trimmed.split('.');
+  const whole = wholePart!;
   if (fraction.length > scale) return null;
   const padded = fraction.padEnd(scale, '0');
   return BigInt(whole) * POW10[scale]! + BigInt(padded || '0');
