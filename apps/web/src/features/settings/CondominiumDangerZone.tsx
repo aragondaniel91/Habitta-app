@@ -9,6 +9,7 @@ import {
   retryCondominiumStorageCleanup,
 } from './condominium-deletion';
 import type { CondominiumDeletionCapability } from './condominium-deletion';
+import { BillingMethodSetupCard } from './BillingMethodSetupCard';
 import { CommercialSummaryCard } from './CommercialSummaryCard';
 import './danger-zone.css';
 
@@ -91,6 +92,7 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
   return (
     <>
       <CommercialSummaryCard condominiumId={condominiumId} />
+      <BillingMethodSetupCard condominiumId={condominiumId} session={session} />
 
       <Surface className="settings-panel danger-zone">
         <div className="settings-section-heading danger-zone__heading">
