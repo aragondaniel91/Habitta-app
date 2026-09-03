@@ -219,8 +219,8 @@ export function ResidentPaymentsView({
             <p>
               Este saldo solo cambia cuando la administración aprueba y aplica el pago.
               <InfoHint label="Cómo funciona el saldo pendiente">
-                Registrar o enviar un comprobante no reduce el saldo por sí solo. Habitta conserva el
-                saldo hasta que el pago sea aprobado y aplicado de forma trazable.
+                Registrar o enviar un comprobante no reduce el saldo por sí solo. Habitta conserva
+                el saldo hasta que el pago sea aprobado y aplicado de forma trazable.
               </InfoHint>
             </p>
           </div>
@@ -228,7 +228,10 @@ export function ResidentPaymentsView({
       </Surface>
 
       {actionRequired > 0 || inValidation > 0 ? (
-        <section aria-label="Pagos que necesitan seguimiento" className="resident-payments__status-row">
+        <section
+          aria-label="Pagos que necesitan seguimiento"
+          className="resident-payments__status-row"
+        >
           {actionRequired > 0 ? (
             <Surface className="resident-payments__status" data-status="action">
               <span className="resident-payments__status-icon">
@@ -236,7 +239,8 @@ export function ResidentPaymentsView({
               </span>
               <div>
                 <strong>
-                  {actionRequired} {actionRequired === 1 ? 'pago requiere' : 'pagos requieren'} acción
+                  {actionRequired} {actionRequired === 1 ? 'pago requiere' : 'pagos requieren'}{' '}
+                  acción
                 </strong>
                 <small>Continúa un borrador o corrige lo solicitado desde tu historial.</small>
               </div>
@@ -371,7 +375,9 @@ export function ResidentPaymentsView({
               </span>
               <div>
                 <strong>No hay método disponible para {currency}</strong>
-                <small>La administración todavía no publicó un método activo para esta moneda.</small>
+                <small>
+                  La administración todavía no publicó un método activo para esta moneda.
+                </small>
               </div>
             </div>
           )}
