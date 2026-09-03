@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../components/Drawer';
 import { FormActions, FormGrid } from '../components/FormLayout';
-import { CheckCircleIcon, RequestsIcon, UnitsIcon } from '../components/icons';
+import { CheckCircleIcon, RequestsIcon } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
@@ -67,18 +67,18 @@ type ResidentDrawer = 'create' | 'detail' | null;
 
 const emptyFilters: ResidentFilters = { query: '', status: '', categoryId: '' };
 
-const statusTone = (status: ServiceRequestStatus) => {
+function statusTone(status: ServiceRequestStatus) {
   if (status === 'resolved' || status === 'closed') return 'success' as const;
   if (status === 'waiting_resident' || status === 'waiting_vendor') return 'warning' as const;
   if (status === 'cancelled') return 'neutral' as const;
   return 'info' as const;
-};
+}
 
-const priorityTone = (priority: ServiceRequestPriority) => {
+function priorityTone(priority: ServiceRequestPriority) {
   if (priority === 'urgent' || priority === 'high') return 'warning' as const;
   if (priority === 'low') return 'neutral' as const;
   return 'info' as const;
-};
+}
 
 function ResidentRequestsLoading() {
   return (
@@ -146,6 +146,7 @@ function CreateResidentRequestDrawer({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!categoryId) return;
     setSaving(true);
     setError('');
     try {
@@ -336,6 +337,7 @@ function ResidentRequestDetailDrawer({
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
+    setDetail(null);
     const base = `/v1/condominiums/${condominiumId}/requests/${request.id}`;
     const [comments, events, attachments] = await Promise.allSettled([
       apiRequest<ServiceRequestComment[]>(`${base}/comments`, session),
@@ -382,10 +384,7 @@ function ResidentRequestDetailDrawer({
   };
 
   const cancel = async () => {
-    if (!canWrite || cancelReason.trim().length < 3) {
-      setError('Indica el motivo de la cancelación.');
-      return;
-    }
+    if (!canWrite || cancelReason.trim().length < 3) return;
     setSaving(true);
     setError('');
     setMessage('');
@@ -635,14 +634,12 @@ export function ResidentRequestsPage({ condominiumId, condominiumName, session }
   }, [condominiumId, session]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
+    setData(null);
     setFilters(emptyFilters);
     setSelectedId('');
     setDrawer(null);
-  }, [condominiumId]);
+    void load();
+  }, [condominiumId, load]);
 
   const filtered = useMemo(
     () =>
@@ -668,27 +665,22 @@ export function ResidentRequestsPage({ condominiumId, condominiumName, session }
   const activeCategories = data?.categories.filter((category) => category.is_active) ?? [];
   const canCreate = canWrite && activeCategories.length > 0;
 
-  const openDetail = (requestId: string) => {
-    setSelectedId(requestId);
-    setDrawer('detail');
-  };
-
   const handleChanged = async (updated?: ServiceRequestRecord) => {
-    if (updated) {
-      setData((current) =>
-        current
-          ? {
-              ...current,
-              requests: current.requests.some((request) => request.id === updated.id)
-                ? current.requests.map((request) => (request.id === updated.id ? updated : request))
-                : [updated, ...current.requests],
-            }
-          : current,
-      );
-      setSelectedId(updated.id);
+    if (!updated) {
+      await load();
       return;
     }
-    await load();
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            requests: current.requests.some((request) => request.id === updated.id)
+              ? current.requests.map((request) => (request.id === updated.id ? updated : request))
+              : [updated, ...current.requests],
+          }
+        : current,
+    );
+    setSelectedId(updated.id);
   };
 
   if (loading && !data) return <ResidentRequestsLoading />;
@@ -830,7 +822,14 @@ export function ResidentRequestsPage({ condominiumId, condominiumName, session }
               const category = data.categories.find((item) => item.id === request.category_id);
               const unit = data.units.find((item) => item.id === request.unit_id);
               return (
-                <button key={request.id} onClick={() => openDetail(request.id)} type="button">
+                <button
+                  key={request.id}
+                  onClick={() => {
+                    setSelectedId(request.id);
+                    setDrawer('detail');
+                  }}
+                  type="button"
+                >
                   <span className="resident-requests__list-icon">
                     <RequestsIcon size={18} />
                   </span>
