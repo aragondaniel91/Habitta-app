@@ -7,10 +7,11 @@ const page = source('./pages/ResidentPaymentsPage.tsx');
 const view = source('./pages/ResidentPaymentsView.tsx');
 const css = source('./resident-payments.css');
 
-describe('HAB-431 resident payments 2.0 keeps the resident experience compact and intentional', () => {
-  it('has one primary registration action connected to the account summary', () => {
+describe('HAB-431 resident payments approved HQ experience', () => {
+  it('keeps one primary registration action connected to the financial summary', () => {
     expect(view.match(/onClick=\{onRegisterPayment\}/g) ?? []).toHaveLength(1);
     expect(view).toContain('resident-payments__account-action');
+    expect(view).toContain('Registro no disponible');
     expect(view).toContain('Registrar pago');
     expect(view).not.toContain('actions={');
     expect(view).not.toContain('Comenzar registro');
@@ -19,11 +20,24 @@ describe('HAB-431 resident payments 2.0 keeps the resident experience compact an
     expect(page).not.toContain('resident-payments__hero-grid');
   });
 
+  it('moves unit selection into a clear context bar instead of the financial card', () => {
+    const context = view.indexOf('resident-payments__context-shell');
+    const account = view.indexOf('resident-payments__account-shell');
+    expect(context).toBeGreaterThan(-1);
+    expect(account).toBeGreaterThan(context);
+    expect(view).toContain('Condominio seleccionado');
+    expect(view).toContain('Estoy viendo');
+    expect(view).toContain('Unidad que deseas consultar');
+    expect(view).toContain('Todas mis unidades');
+    expect(view).toContain('resident-payments__unit-select');
+  });
+
   it('only enables registration for the currency currently on screen', () => {
     expect(view).toContain('const activeMethods = data.methods.filter(');
     expect(view).toContain('method.is_active && method.currency_code === currency');
     expect(view).toContain('const canRegister = canRegisterPayment && activeMethods.length > 0;');
     expect(view).toContain('No hay un método activo para ${currency}.');
+    expect(view).toContain('disabled={!canRegister}');
   });
 
   it('shows follow-up status only when there is something real to follow', () => {
@@ -49,28 +63,32 @@ describe('HAB-431 resident payments 2.0 keeps the resident experience compact an
     expect(view).not.toMatch(/>\s*\{unit\.id\}\s*</);
   });
 
-  it('makes history full-width and payment methods a compact secondary strip', () => {
-    const methods = view.indexOf('resident-payments__methods-strip');
+  it('integrates methods into the account surface and gives history an intentional empty state', () => {
+    const methods = view.indexOf('resident-payments__methods-compact');
     const history = view.indexOf('resident-payments__history-panel');
     expect(methods).toBeGreaterThan(-1);
     expect(history).toBeGreaterThan(methods);
     expect(view).toContain('resident-payments__method-empty');
-    expect(view).toContain('resident-payments__history-empty');
+    expect(view).toContain('resident-payments__history-illustration');
+    expect(view).toContain('resident-payments__history-help');
+    expect(view).toContain('Más información sobre pagos');
+    expect(view).not.toContain('resident-payments__methods-strip');
     expect(view).not.toContain('resident-payments__content-grid');
-    expect(view).not.toContain('resident-payments__methods-panel');
     expect(view).not.toContain('<EmptyState');
   });
 
-  it('consumes HQ tokens and defines compact responsive behavior', () => {
+  it('uses HQ tokens and large touch targets across desktop, tablet, and mobile', () => {
     expect(css).toContain('var(--hq-space-5)');
     expect(css).toContain('var(--hq-control-standard)');
     expect(css).toContain('var(--hq-touch-target)');
-    expect(css).toContain(".resident-payments__status[data-status='action']");
+    expect(css).toContain('.resident-payments__context-shell');
     expect(css).toContain('.resident-payments__account-main');
-    expect(css).toContain('.resident-payments__methods-strip');
+    expect(css).toContain('.resident-payments__methods-compact');
     expect(css).toContain('.resident-payments__history-empty');
     expect(css).not.toContain('min-height: 240px');
-    expect(css).toContain('@media (max-width: 900px)');
+    expect(css).not.toContain('--hq-success-soft');
+    expect(css).toContain('@media (max-width: 1100px)');
+    expect(css).toContain('@media (max-width: 760px)');
     expect(css).toContain('@media (max-width: 600px)');
     expect(css).toContain('@media (max-width: 390px)');
   });
