@@ -27,7 +27,9 @@ describe('module code splitting', () => {
   });
 
   it('wraps the routed page in Suspense so a chunk can load without a blank screen', () => {
-    expect(appSource).toContain('<Suspense fallback={<ModuleLoading />}>{page}</Suspense>');
+    expect(appSource).toMatch(
+      /<Suspense[^>]*fallback=\{<ModuleLoading \/>\}[^>]*>\s*\{page\}\s*<\/Suspense>/,
+    );
   });
 
   it('keeps each module CSS sheet out of the initial bundle', () => {
