@@ -348,7 +348,7 @@ async function submitSelfServiceTrial(input: AdminOnboardingInput, intent: SelfS
     p_first_building_name: profile.first_building_name,
   });
 
-  if (!result.error) clearSelfServiceIdempotencyKey(storage, userId, intent);
+  if (!result.error) clearSelfServiceIdempotencyKey(storage, userId);
   return result;
 }
 

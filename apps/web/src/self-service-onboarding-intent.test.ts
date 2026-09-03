@@ -68,7 +68,7 @@ describe('HAB-468 self-service onboarding intent', () => {
     );
     expect(calls).toBe(1);
 
-    clearSelfServiceIdempotencyKey(storage, 'user-a', intent);
+    clearSelfServiceIdempotencyKey(storage, 'user-a');
     expect(getOrCreateSelfServiceIdempotencyKey(storage, 'user-a', intent, createUuid)).toBe(
       secondUuid,
     );

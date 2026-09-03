@@ -142,11 +142,7 @@ export function getOrCreateSelfServiceIdempotencyKey(
   return generated;
 }
 
-export function clearSelfServiceIdempotencyKey(
-  storage: StorageLike | null,
-  userId: string,
-  _intent: SelfServiceTrialIntent,
-) {
+export function clearSelfServiceIdempotencyKey(storage: StorageLike | null, userId: string) {
   const key = storageKey(userId);
   memoryIdempotency.delete(key);
   if (!storage) return;
