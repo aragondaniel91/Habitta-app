@@ -212,7 +212,9 @@ function CreateResidentRequestDrawer({
               required
               value={categoryId}
             >
-              {!activeCategories.length ? <option value="">Sin categorías disponibles</option> : null}
+              {!activeCategories.length ? (
+                <option value="">Sin categorías disponibles</option>
+              ) : null}
               {activeCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -411,10 +413,16 @@ function ResidentRequestDetailDrawer({
   const terminal = request.status === 'closed' || request.status === 'cancelled';
   const canCancel =
     canWrite && request.submitted_by_user_id === session.user.id && isOpenRequest(request.status);
-  const publicAttachments = detail?.attachments.filter((item) => item.visibility === 'public') ?? [];
+  const publicAttachments =
+    detail?.attachments.filter((item) => item.visibility === 'public') ?? [];
 
   return (
-    <ResidentDrawerShell eyebrow={request.request_number} onClose={onClose} title={request.title} wide>
+    <ResidentDrawerShell
+      eyebrow={request.request_number}
+      onClose={onClose}
+      title={request.title}
+      wide
+    >
       <div className="resident-request-detail__summary">
         <div className="resident-request-detail__badges">
           <Badge tone={statusTone(request.status)}>{statusLabels[request.status]}</Badge>
@@ -486,7 +494,9 @@ function ResidentRequestDetailDrawer({
               <div className="resident-request-section-heading">
                 <span className="hq-kicker">Conversación</span>
                 <h3>Agregar comentario</h3>
-                <p>Tu comentario será visible para la administración y para residentes autorizados.</p>
+                <p>
+                  Tu comentario será visible para la administración y para residentes autorizados.
+                </p>
               </div>
               <textarea
                 maxLength={3000}
