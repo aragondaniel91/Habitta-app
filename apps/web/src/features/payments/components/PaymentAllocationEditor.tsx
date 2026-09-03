@@ -213,9 +213,7 @@ export function PaymentAllocationEditor({
             <button
               className="payments-allocation-editor__remove"
               onClick={() =>
-                setAllocations((current) =>
-                  current.filter((_, position) => position !== index),
-                )
+                setAllocations((current) => current.filter((_, position) => position !== index))
               }
               type="button"
             >
