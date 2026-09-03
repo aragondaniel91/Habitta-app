@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { adminAuditRoutes } from './admin-audit-routes';
 import { assembliesRoutes } from './assemblies-routes';
+import { billingRoutes } from './billing-routes';
 import { budgetRoutes } from './budget-routes';
 import { condominiumDeletionRoutes } from './condominium-deletion-routes';
 import { governanceThresholdRoutes } from './governance-threshold-routes';
@@ -17,6 +18,7 @@ type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
 baseOperationsRoutes.route('/', maintenanceFinancialRoutes);
 baseOperationsRoutes.route('/', assembliesRoutes);
 baseOperationsRoutes.route('/', adminAuditRoutes);
+baseOperationsRoutes.route('/', billingRoutes);
 baseOperationsRoutes.route('/', budgetRoutes);
 baseOperationsRoutes.route('/', condominiumDeletionRoutes);
 baseOperationsRoutes.route('/', residentInvitationRoutes);
