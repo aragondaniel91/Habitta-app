@@ -15,6 +15,16 @@ function formatCents(cents: bigint): string {
   return `${whole}.${fraction}`;
 }
 
+export function isPositiveMoneyAmount(value: string): boolean {
+  const cents = scaledInteger(value, 2);
+  return cents !== null && cents > 0n;
+}
+
+export function isPositiveAllocationRate(value: string): boolean {
+  const scaled = scaledInteger(value, 10);
+  return scaled !== null && scaled > 0n;
+}
+
 /**
  * Mirrors Postgres `round(payment_amount * receivable_per_payment_rate, 2)` for positive values
  * without routing financial arithmetic through binary floating point.
