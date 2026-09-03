@@ -37,12 +37,7 @@ const rpc = async (
   return { response, value };
 };
 
-const customerRpc = (
-  env: NotificationBindings,
-  token: string,
-  name: string,
-  payload: unknown,
-) => {
+const customerRpc = (env: NotificationBindings, token: string, name: string, payload: unknown) => {
   const url = `${env.SUPABASE_URL}/rest/v1/rpc/${name}`;
   return fetch(url, {
     method: 'POST',
@@ -75,11 +70,17 @@ billingRoutes.post('/:id/billing/setup', async (c) => {
     throw error;
   }
 
-  const beginResponse = await customerRpc(c.env, c.get('token'), 'begin_customer_billing_setup_v1', {
-    p_condominium_id: condominiumId.data,
-    p_idempotency_key: idempotencyKey.data,
-  });
-  const beginValue = (await beginResponse.json()) as BillingSetupAttempt | { message?: string; code?: string };
+  const beginResponse = await customerRpc(
+    c.env,
+    c.get('token'),
+    'begin_customer_billing_setup_v1',
+    {
+      p_condominium_id: condominiumId.data,
+      p_idempotency_key: idempotencyKey.data,
+    },
+  );
+  const beginValue = (await beginResponse.json()) as
+    BillingSetupAttempt | { message?: string; code?: string };
   if (!beginResponse.ok) {
     const error = beginValue as { message?: string; code?: string };
     if (beginResponse.status === 401 || beginResponse.status === 403 || error.code === '42501') {
