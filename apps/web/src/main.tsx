@@ -15,6 +15,7 @@ import './ux-contract.css';
 import './hq-design-system.css';
 import './brand-assets.css';
 import './page-header.css';
+import './resident-payments-history-polish.css';
 import './print.css';
 
 function residentInvitationToken(pathname: string) {
