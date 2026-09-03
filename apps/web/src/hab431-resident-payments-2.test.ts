@@ -29,7 +29,9 @@ describe('HAB-431 resident payments 2.0 keeps the resident experience compact an
     expect(view).toContain('.filter((row) => row.currency_code === currency)');
     expect(view).toContain('Number(row.net_outstanding ?? 0)');
     expect(view).not.toContain('receivable.outstanding_amount');
-    expect(view).toContain('Habitta conserva el\n                saldo hasta que el pago sea aprobado');
+    expect(view).toContain(
+      'Habitta conserva el\n                saldo hasta que el pago sea aprobado',
+    );
   });
 
   it('keeps readable multi-unit context without rendering a UUID as copy', () => {
