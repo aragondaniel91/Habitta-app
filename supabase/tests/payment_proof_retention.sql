@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(13);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('46100000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','retention@habitta.test','x',now(),now());
@@ -72,6 +72,11 @@ select is(
 select lives_ok(
   $$select public.record_payment_proof_storage_cleanup('46161000-0000-4000-8000-000000000001',true,null)$$,
   'successful cleanup is recorded idempotently'
+);
+select is(
+  (select count(*) from public.list_expired_payment_proof_objects(100) where proof_id='46161000-0000-4000-8000-000000000001'),
+  0::bigint,
+  'successfully cleaned object no longer reappears in cleanup batches'
 );
 select is(
   (select count(*) from public.payment_proofs where id='46161000-0000-4000-8000-000000000001' and object_key='payments/461-expired'),
