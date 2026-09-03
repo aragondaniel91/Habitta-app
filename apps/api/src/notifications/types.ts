@@ -13,6 +13,8 @@ export type NotificationBindings = {
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   BILLING_PROVIDER?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
   PAYMENT_PROOFS: R2Bucket;
   NOTIFICATION_QUEUE: Queue<NotificationQueueMessage>;
   /**
