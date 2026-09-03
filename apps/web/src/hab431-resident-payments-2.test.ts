@@ -8,13 +8,22 @@ const view = source('./pages/ResidentPaymentsView.tsx');
 const css = source('./resident-payments.css');
 
 describe('HAB-431 resident payments 2.0 keeps the resident experience compact and intentional', () => {
-  it('has one primary registration action instead of competing hero CTAs', () => {
+  it('has one primary registration action connected to the account summary', () => {
     expect(view.match(/onClick=\{onRegisterPayment\}/g) ?? []).toHaveLength(1);
+    expect(view).toContain('resident-payments__account-action');
     expect(view).toContain('Registrar pago');
+    expect(view).not.toContain('actions={');
     expect(view).not.toContain('Comenzar registro');
     expect(view).not.toContain('resident-payments__hero-grid');
     expect(view).not.toContain('resident-payments__metrics');
     expect(page).not.toContain('resident-payments__hero-grid');
+  });
+
+  it('only enables registration for the currency currently on screen', () => {
+    expect(view).toContain('const activeMethods = data.methods.filter(');
+    expect(view).toContain('method.is_active && method.currency_code === currency');
+    expect(view).toContain('const canRegister = canRegisterPayment && activeMethods.length > 0;');
+    expect(view).toContain('No hay un método activo para ${currency}.');
   });
 
   it('shows follow-up status only when there is something real to follow', () => {
@@ -40,13 +49,16 @@ describe('HAB-431 resident payments 2.0 keeps the resident experience compact an
     expect(view).not.toMatch(/>\s*\{unit\.id\}\s*</);
   });
 
-  it('makes history primary and payment methods secondary', () => {
+  it('makes history full-width and payment methods a compact secondary strip', () => {
+    const methods = view.indexOf('resident-payments__methods-strip');
     const history = view.indexOf('resident-payments__history-panel');
-    const methods = view.indexOf('resident-payments__methods-panel');
-    expect(history).toBeGreaterThan(-1);
-    expect(methods).toBeGreaterThan(history);
+    expect(methods).toBeGreaterThan(-1);
+    expect(history).toBeGreaterThan(methods);
     expect(view).toContain('resident-payments__method-empty');
-    expect(view).not.toContain("actionLabel={canRegister ? 'Registrar mi primer pago'");
+    expect(view).toContain('resident-payments__history-empty');
+    expect(view).not.toContain('resident-payments__content-grid');
+    expect(view).not.toContain('resident-payments__methods-panel');
+    expect(view).not.toContain('<EmptyState');
   });
 
   it('consumes HQ tokens and defines compact responsive behavior', () => {
@@ -54,7 +66,9 @@ describe('HAB-431 resident payments 2.0 keeps the resident experience compact an
     expect(css).toContain('var(--hq-control-standard)');
     expect(css).toContain('var(--hq-touch-target)');
     expect(css).toContain(".resident-payments__status[data-status='action']");
-    expect(css).toContain('.resident-payments__history-panel .empty-state');
+    expect(css).toContain('.resident-payments__account-main');
+    expect(css).toContain('.resident-payments__methods-strip');
+    expect(css).toContain('.resident-payments__history-empty');
     expect(css).not.toContain('min-height: 240px');
     expect(css).toContain('@media (max-width: 900px)');
     expect(css).toContain('@media (max-width: 600px)');
