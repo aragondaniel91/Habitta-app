@@ -1,6 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
+import {
+  allocationReceivableAmount,
+  isPositiveAllocationRate,
+  isPositiveMoneyAmount,
+  moneyExceeds,
+} from '../allocation-amounts';
 import { allocationPreviewFingerprint } from '../allocation-preview';
 import type { AllocationInput, AllocationPreview, Receivable } from '../types';
+import './PaymentAllocationEditor.css';
 
 type PreviewSnapshot = {
   fingerprint: string;
@@ -19,8 +26,13 @@ export function PaymentAllocationEditor({
   onApprove: (allocations: AllocationInput[]) => Promise<void>;
 }) {
   const [allocations, setAllocations] = useState<AllocationInput[]>([]);
+  const [selectedReceivableId, setSelectedReceivableId] = useState('');
   const [previewSnapshot, setPreviewSnapshot] = useState<PreviewSnapshot>();
   const latestPreviewRequest = useRef(0);
+  const receivableById = useMemo(
+    () => new Map(receivables.map((receivable) => [receivable.id, receivable])),
+    [receivables],
+  );
   const currentFingerprint = useMemo(
     () => allocationPreviewFingerprint(allocations, paymentCurrency),
     [allocations, paymentCurrency],
@@ -41,6 +53,69 @@ export function PaymentAllocationEditor({
       },
     ]);
 
+  const updatePaymentAmount = (index: number, paymentAmount: string) =>
+    setAllocations((current) =>
+      current.map((item, position) =>
+        position === index
+          ? {
+              ...item,
+              paymentAmount,
+              receivableAmount: allocationReceivableAmount({
+                paymentAmount,
+                paymentCurrency,
+                receivableCurrency: item.receivableCurrencyCode,
+                rate: item.receivablePerPaymentRate ?? '',
+              }),
+            }
+          : item,
+      ),
+    );
+
+  const updateRate = (index: number, receivablePerPaymentRate: string) =>
+    setAllocations((current) =>
+      current.map((item, position) =>
+        position === index
+          ? {
+              ...item,
+              receivablePerPaymentRate,
+              receivableAmount: allocationReceivableAmount({
+                paymentAmount: item.paymentAmount,
+                paymentCurrency,
+                receivableCurrency: item.receivableCurrencyCode,
+                rate: receivablePerPaymentRate,
+              }),
+            }
+          : item,
+      ),
+    );
+
+  const allocationProblem = (allocation: AllocationInput): string | null => {
+    const receivable = receivableById.get(allocation.receivableItemId);
+    if (!receivable) return 'La obligación ya no está disponible.';
+    if (!isPositiveMoneyAmount(allocation.paymentAmount)) {
+      return `Ingresa un monto válido en ${paymentCurrency} con máximo 2 decimales.`;
+    }
+    if (
+      allocation.receivableCurrencyCode !== paymentCurrency &&
+      !isPositiveAllocationRate(allocation.receivablePerPaymentRate ?? '')
+    ) {
+      return `Ingresa una tasa válida: 1 ${paymentCurrency} = X ${allocation.receivableCurrencyCode}.`;
+    }
+    if (!isPositiveMoneyAmount(allocation.receivableAmount)) {
+      return 'No se pudo derivar un monto válido para la obligación.';
+    }
+    if (
+      receivable.outstanding_amount &&
+      moneyExceeds(allocation.receivableAmount, receivable.outstanding_amount)
+    ) {
+      return `El monto aplicado supera el pendiente de ${receivable.outstanding_amount} ${receivable.currency_code}.`;
+    }
+    return null;
+  };
+
+  const readyForPreview =
+    allocations.length > 0 && allocations.every((allocation) => !allocationProblem(allocation));
+
   const runPreview = async () => {
     const requestId = ++latestPreviewRequest.current;
     const requestedAllocations = allocations.map((allocation) => ({ ...allocation }));
@@ -54,68 +129,101 @@ export function PaymentAllocationEditor({
   };
 
   return (
-    <div>
+    <div className="payments-allocation-editor">
       <label>
         Obligación
         <select
-          defaultValue=""
           onChange={(event) => {
-            const value = receivables.find((item) => item.id === event.target.value);
-            if (value && !allocations.some((item) => item.receivableItemId === value.id))
+            const nextId = event.target.value;
+            setSelectedReceivableId(nextId);
+            const value = receivableById.get(nextId);
+            if (value && !allocations.some((item) => item.receivableItemId === value.id)) {
               add(value);
+              setSelectedReceivableId('');
+            }
           }}
+          value={selectedReceivableId}
         >
-          <option value="">Seleccionar</option>
+          <option value="">Seleccionar obligación</option>
           {receivables.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.description} · {item.currency_code}
+              {item.description} · Pendiente {item.outstanding_amount ?? '0.00'}{' '}
+              {item.currency_code}
             </option>
           ))}
         </select>
       </label>
-      {allocations.map((allocation, index) => (
-        <fieldset key={allocation.receivableItemId}>
-          <input
-            placeholder={`Monto ${paymentCurrency}`}
-            value={allocation.paymentAmount}
-            onChange={(event) =>
-              setAllocations((current) =>
-                current.map((item, position) =>
-                  position === index ? { ...item, paymentAmount: event.target.value } : item,
-                ),
-              )
-            }
-          />
-          <input
-            placeholder={`Monto ${allocation.receivableCurrencyCode}`}
-            value={allocation.receivableAmount}
-            onChange={(event) =>
-              setAllocations((current) =>
-                current.map((item, position) =>
-                  position === index ? { ...item, receivableAmount: event.target.value } : item,
-                ),
-              )
-            }
-          />
-          {allocation.receivableCurrencyCode !== paymentCurrency && (
-            <input
-              placeholder="Tasa (10 decimales)"
-              value={allocation.receivablePerPaymentRate ?? ''}
-              onChange={(event) =>
-                setAllocations((current) =>
-                  current.map((item, position) =>
-                    position === index
-                      ? { ...item, receivablePerPaymentRate: event.target.value }
-                      : item,
-                  ),
-                )
+      {!receivables.length ? (
+        <p className="payments-allocation-editor__empty">
+          Esta unidad no tiene obligaciones pendientes disponibles para aplicar.
+        </p>
+      ) : null}
+      {allocations.map((allocation, index) => {
+        const receivable = receivableById.get(allocation.receivableItemId);
+        const crossCurrency = allocation.receivableCurrencyCode !== paymentCurrency;
+        const problem = allocationProblem(allocation);
+        return (
+          <fieldset key={allocation.receivableItemId}>
+            <legend>
+              <strong>{receivable?.description ?? 'Obligación'}</strong>
+              <span>
+                Pendiente {receivable?.outstanding_amount ?? '—'}{' '}
+                {receivable?.currency_code ?? allocation.receivableCurrencyCode}
+              </span>
+            </legend>
+            <label>
+              Monto del pago ({paymentCurrency})
+              <input
+                inputMode="decimal"
+                onChange={(event) => updatePaymentAmount(index, event.target.value)}
+                pattern="^(0|[1-9][0-9]{0,15})([.][0-9]{1,2})?$"
+                placeholder="0.00"
+                value={allocation.paymentAmount}
+              />
+            </label>
+            {crossCurrency ? (
+              <label>
+                Tasa de aplicación
+                <span className="payments-allocation-editor__hint">
+                  1 {paymentCurrency} = X {allocation.receivableCurrencyCode}
+                </span>
+                <input
+                  inputMode="decimal"
+                  onChange={(event) => updateRate(index, event.target.value)}
+                  pattern="^(0|[1-9][0-9]{0,15})([.][0-9]{1,10})?$"
+                  placeholder={`1 ${paymentCurrency} = … ${allocation.receivableCurrencyCode}`}
+                  value={allocation.receivablePerPaymentRate ?? ''}
+                />
+              </label>
+            ) : null}
+            <div className="payments-allocation-editor__derived">
+              <span>Monto que se aplicará ({allocation.receivableCurrencyCode})</span>
+              <output aria-live="polite">{allocation.receivableAmount || '—'}</output>
+              <small>
+                {crossCurrency
+                  ? 'Calculado automáticamente con la tasa indicada.'
+                  : 'La misma moneda se aplica 1 a 1.'}
+              </small>
+            </div>
+            {problem ? (
+              <p className="payments-allocation-editor__problem" role="status">
+                {problem}
+              </p>
+            ) : null}
+            <button
+              className="payments-allocation-editor__remove"
+              onClick={() =>
+                setAllocations((current) => current.filter((_, position) => position !== index))
               }
-            />
-          )}
-        </fieldset>
-      ))}
-      <button disabled={allocations.length === 0} onClick={() => void runPreview()}>
-        Ejecutar preview
+              type="button"
+            >
+              Quitar obligación
+            </button>
+          </fieldset>
+        );
+      })}
+      <button disabled={!readyForPreview} onClick={() => void runPreview()} type="button">
+        Previsualizar aplicación
       </button>
       {previewIsStale ? (
         <p role="status">Los cambios requieren una nueva previsualización antes de aprobar.</p>
@@ -130,7 +238,11 @@ export function PaymentAllocationEditor({
           {preview.errors.map((error) => (
             <p key={error}>{error}</p>
           ))}
-          <button disabled={preview.errors.length > 0} onClick={() => void onApprove(allocations)}>
+          <button
+            disabled={preview.errors.length > 0}
+            onClick={() => void onApprove(allocations)}
+            type="button"
+          >
             Aprobar pago
           </button>
         </div>
