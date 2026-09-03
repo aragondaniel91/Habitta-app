@@ -22,8 +22,9 @@ describe('HAB-430 Platform Admin command-center attention', () => {
   });
 
   it('lets the operator drill from attention into the exact portfolio slice', () => {
-    expect(adminApp).toContain("applyAttentionFilter('trial_ending')");
-    expect(adminApp).toContain("applyAttentionFilter('no_subscription')");
+    expect(adminApp).toContain('const activate = () => applyAttentionFilter(kind);');
+    expect(adminApp).toContain("'trial_ending',");
+    expect(adminApp).toContain("'no_subscription',");
     expect(adminApp).toContain("attentionFilter === 'trial_ending'");
     expect(adminApp).toContain("attentionFilter === 'no_subscription'");
     expect(adminApp).toContain("card.setAttribute('role', 'button')");
