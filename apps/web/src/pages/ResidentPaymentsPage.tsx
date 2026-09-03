@@ -52,7 +52,7 @@ function ResidentPaymentsLoading() {
     <div aria-label="Cargando mis pagos" className="resident-payments">
       <PageHeader eyebrow="Mi hogar" title="Mis pagos" />
       <Skeleton className="skeleton--card" />
-      <div className="resident-payments__hero-grid">
+      <div className="resident-payments__content-grid">
         <Skeleton className="skeleton--card" />
         <Skeleton className="skeleton--card" />
       </div>
