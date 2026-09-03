@@ -89,6 +89,11 @@ const ReportsPage = lazy(() =>
 const RequestsPage = lazy(() =>
   import('./pages/RequestsPage').then((module) => ({ default: module.RequestsPage })),
 );
+const ResidentRequestsPage = lazy(() =>
+  import('./pages/ResidentRequestsPage').then((module) => ({
+    default: module.ResidentRequestsPage,
+  })),
+);
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
 );
@@ -463,7 +468,13 @@ export default function App() {
       />
     );
   } else if (activeRoute.key === 'requests') {
-    page = (
+    page = residentOnly ? (
+      <ResidentRequestsPage
+        condominiumId={selectedCondominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+    ) : (
       <RequestsPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
