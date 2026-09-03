@@ -154,14 +154,7 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
         .toLocaleLowerCase('es')
         .includes(term);
     });
-  }, [
-    categoryById,
-    documents,
-    folderById,
-    search,
-    selectedCategoryId,
-    selectedFolderId,
-  ]);
+  }, [categoryById, documents, folderById, search, selectedCategoryId, selectedFolderId]);
 
   useEffect(() => {
     if (filteredDocuments.some((document) => document.id === selectedDocumentId)) return;
@@ -181,12 +174,7 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
     setError('');
     setNotice('');
     try {
-      await downloadCommunityDocumentVersion(
-        condominiumId,
-        selectedDocument.id,
-        version,
-        session,
-      );
+      await downloadCommunityDocumentVersion(condominiumId, selectedDocument.id, version, session);
       setNotice('Descarga iniciada.');
     } catch (requestError) {
       setError(
