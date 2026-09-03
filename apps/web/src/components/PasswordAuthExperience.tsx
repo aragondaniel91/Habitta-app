@@ -550,13 +550,15 @@ export function PasswordRecoveryGate({ onComplete }: { onComplete: () => void })
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState<AuthMessage>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
-  const submitPassword = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!supabase) return;
-
-    const assessment = assessPassword(password);
-    if (!assessment.valid) {
+    if (!supabase) {
+      setMessage({ tone: 'error', text: 'La configuración de acceso no está disponible.' });
+      return;
+    }
+    if (!assessPassword(password).valid) {
       setMessage({ tone: 'error', text: 'La contraseña debe cumplir todos los requisitos.' });
       return;
     }
@@ -568,16 +570,25 @@ export function PasswordRecoveryGate({ onComplete }: { onComplete: () => void })
     setSubmitting(true);
     setMessage(null);
     const result = await supabase.auth.updateUser({ password });
+    if (!result.error) await supabase.auth.signOut({ scope: 'others' });
+    setSubmitting(false);
+
     if (result.error) {
-      setSubmitting(false);
       setMessage({ tone: 'error', text: translateAuthError(result.error) });
       return;
     }
 
-    await supabase.auth.signOut({ scope: 'others' });
-    setSubmitting(false);
-    setMessage({ tone: 'success', text: 'Contraseña actualizada correctamente.' });
-    window.setTimeout(onComplete, 700);
+    setCompleted(true);
+    setMessage({
+      tone: 'success',
+      text: 'Tu contraseña fue actualizada y las demás sesiones fueron cerradas.',
+    });
+  };
+
+  const signOut = async () => {
+    await supabase?.auth.signOut();
+    window.history.replaceState({}, '', '/');
+    window.location.reload();
   };
 
   return (
@@ -590,46 +601,47 @@ export function PasswordRecoveryGate({ onComplete }: { onComplete: () => void })
         <Surface className="access-card access-card--password">
           <div className="access-card__heading">
             <span className="access-kicker">Nueva contraseña</span>
-            <h2>Protege tu cuenta</h2>
-            <p>Elige una contraseña nueva. Al guardarla, cerraremos tus otras sesiones activas.</p>
+            <h2>{completed ? 'Tu acceso está protegido' : 'Crea una contraseña nueva'}</h2>
+            <p>
+              {completed
+                ? 'Ya puedes continuar a tu espacio Habitta.'
+                : 'Usa una contraseña que no hayas utilizado anteriormente.'}
+            </p>
           </div>
-          <form className="access-form ux-form" onSubmit={submitPassword}>
-            <PasswordField
-              autoComplete="new-password"
-              autoFocus
-              label="Nueva contraseña"
-              onChange={setPassword}
-              value={password}
-            />
-            <PasswordStrength password={password} />
-            <PasswordField
-              autoComplete="new-password"
-              label="Confirmar nueva contraseña"
-              onChange={setConfirmPassword}
-              value={confirmPassword}
-            />
-            <Button disabled={submitting} type="submit">
-              {submitting ? 'Guardando…' : 'Guardar nueva contraseña'}
-              {!submitting ? <ArrowRightIcon size={18} /> : null}
-            </Button>
-          </form>
-          <AuthMessageBox message={message} />
-        </Surface>
-      </section>
-    </main>
-  );
-}
 
-export function SignedOutNotice() {
-  return (
-    <main className="access-shell access-shell--single">
-      <section className="access-panel">
-        <Surface className="access-card">
-          <span className="access-confirmation__icon">
-            <LogOutIcon size={26} />
-          </span>
-          <h2>Sesión cerrada</h2>
-          <p>Tu sesión terminó correctamente.</p>
+          {!completed ? (
+            <form className="access-form ux-form" onSubmit={submit}>
+              <PasswordField
+                autoComplete="new-password"
+                autoFocus
+                label="Nueva contraseña"
+                onChange={setPassword}
+                value={password}
+              />
+              <PasswordStrength password={password} />
+              <PasswordField
+                autoComplete="new-password"
+                label="Confirmar contraseña"
+                onChange={setConfirmPassword}
+                value={confirmPassword}
+              />
+              <Button disabled={submitting} type="submit">
+                {submitting ? 'Actualizando contraseña…' : 'Actualizar contraseña'}
+                {!submitting ? <ArrowRightIcon size={18} /> : null}
+              </Button>
+            </form>
+          ) : (
+            <Button onClick={onComplete} type="button">
+              Continuar a Habitta
+              <ArrowRightIcon size={18} />
+            </Button>
+          )}
+
+          <AuthMessageBox message={message} />
+          <Button onClick={() => void signOut()} type="button" variant="ghost">
+            <LogOutIcon size={17} />
+            Cerrar sesión
+          </Button>
         </Surface>
       </section>
     </main>
