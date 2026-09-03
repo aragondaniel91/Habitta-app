@@ -180,10 +180,10 @@ jobs:
         run: |
           set -euo pipefail
           SECRETS_FILE="$RUNNER_TEMP/production-worker-secrets"
-          VERSION_LIST_FILE="$RUNNER_TEMP/production-worker-versions.json"
+          UPLOAD_OUTPUT_FILE="$RUNNER_TEMP/production-worker-version-upload.ndjson"
           ACTIVE_STATUS_FILE="$RUNNER_TEMP/production-worker-active.json"
           cleanup() {
-            rm -f "$SECRETS_FILE" "$VERSION_LIST_FILE" "$ACTIVE_STATUS_FILE"
+            rm -f "$SECRETS_FILE" "$UPLOAD_OUTPUT_FILE" "$ACTIVE_STATUS_FILE"
           }
           trap cleanup EXIT
           node scripts/release/create-worker-secrets-file.mjs "$SECRETS_FILE"
@@ -210,10 +210,16 @@ jobs:
             echo 'Bootstrapping the first production Worker deployment.'
             pnpm --filter @habitta/api exec wrangler deploy "${COMMON_ARGS[@]}"
           else
-            pnpm --filter @habitta/api exec wrangler versions upload "${COMMON_ARGS[@]}"
-            pnpm --filter @habitta/api exec wrangler versions list --env prod --json >"$VERSION_LIST_FILE"
-            ACTIVE_VERSION_ID=$(jq -r --arg tag "$TAG" '[.[] | select(.annotations["workers/tag"] == $tag)] | if length == 1 then .[0].id else empty end' "$VERSION_LIST_FILE")
-            test -n "$ACTIVE_VERSION_ID"
+            : >"$UPLOAD_OUTPUT_FILE"
+            WRANGLER_OUTPUT_FILE_PATH="$UPLOAD_OUTPUT_FILE" \
+              pnpm --filter @habitta/api exec wrangler versions upload "${COMMON_ARGS[@]}"
+            ACTIVE_VERSION_ID=$(jq -rs '[.[] | select(.type == "version-upload") | .version_id | select(type == "string" and length > 0)] | if length == 1 then .[0] else empty end' "$UPLOAD_OUTPUT_FILE")
+            if [ -z "$ACTIVE_VERSION_ID" ]; then
+              echo 'Wrangler did not report exactly one uploaded production Worker version ID.' >&2
+              jq -c 'select(.type == "version-upload" or .type == "command-failed")' "$UPLOAD_OUTPUT_FILE" >&2 || true
+              exit 1
+            fi
+            echo "Uploaded production Worker version $ACTIVE_VERSION_ID."
             pnpm --filter @habitta/api exec wrangler versions deploy "$ACTIVE_VERSION_ID@100%" --env prod --yes
           fi
           pnpm --filter @habitta/api exec wrangler deployments status --env prod --json >"$ACTIVE_STATUS_FILE"
