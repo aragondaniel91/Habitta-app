@@ -93,7 +93,17 @@ export function canAccessResidentOperations(roles: CondominiumRole[]) {
   return !roles.every((role) => denied.includes(role));
 }
 
-/** Mirrors the pilot database guard: tenant-only memberships are operationally read-only. */
+/**
+ * Pure resident Requests is writable only when the membership set contains owner standing.
+ * HAB-412 deliberately keeps tenant + family/authorized combinations inside the restricted
+ * resident read-only boundary; those extra memberships must never switch write affordances back on.
+ * Staff sessions do not use the pure resident Requests surface.
+ */
+export function canWriteResidentRequests(roles: CondominiumRole[]) {
+  return roles.includes('owner');
+}
+
+/** Mirrors the original pilot helper kept for compatibility with tenant-specific presentation. */
 export function isTenantOnly(roles: CondominiumRole[]) {
   return roles.length > 0 && roles.every((role) => role === 'tenant');
 }
