@@ -27,6 +27,7 @@ export type PaymentMethod = {
 };
 export type Receivable = {
   id: string;
+  unit_id: string;
   description: string;
   currency_code: string;
   outstanding_amount?: string;
