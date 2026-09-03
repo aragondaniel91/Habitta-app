@@ -36,7 +36,7 @@ describe('HAB-435 commercial checkout contract', () => {
     expect(card).toContain('loadCommercialCheckoutPreview(condominiumId, nextOfferCode)');
     expect(card).toContain('previewMatchesInput');
     expect(card).toContain('checkout.terms_fingerprint');
-    expect(card).toContain("checkout.promotion?.code ?? null");
+    expect(card).toContain('checkout.promotion?.code ?? null');
     expect(card).not.toContain('platform_apply_commercial_offer');
   });
 
@@ -60,7 +60,9 @@ describe('HAB-435 commercial checkout contract', () => {
       ])
     ).join('\n');
 
-    expect(sources).not.toMatch(/\.from\(['"](?:payments|receivable_items|ledger_entries|treasury)/i);
+    expect(sources).not.toMatch(
+      /\.from\(['"](?:payments|receivable_items|ledger_entries|treasury)/i,
+    );
     expect(sources).not.toMatch(/auto_bill_enabled\s*:\s*true/i);
     expect(sources).not.toMatch(/billing_method_ready_at\s*:/i);
   });
