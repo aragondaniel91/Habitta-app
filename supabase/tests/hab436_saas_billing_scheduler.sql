@@ -1,8 +1,8 @@
 begin;
-select plan(19);
+select plan(21);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at)
-values ('00000000-0000-4000-8000-000000004368','00000000-0000-0000-0000-000000000000','authenticated','authenticated','hab436-biller@test.local','x',now(),now());
+values ('00000000-0000-4000-8000-000000004368','00000000-0000-0000-8000-000000000000','authenticated','authenticated','hab436-biller@test.local','x',now(),now());
 
 insert into public.organizations(id,name,created_by,account_type)
 values ('43600000-0000-4000-8000-000000000008','HAB436 Billing Scheduler','00000000-0000-4000-8000-000000004368','customer');
