@@ -3,6 +3,12 @@ import type { FormEvent } from 'react';
 import { ArrowRightIcon, CheckCircleIcon, HomeIcon, LogOutIcon } from './icons';
 import { Button, Field, Surface } from './ui';
 import { assessPassword, normalizeEmail, translateAuthError } from '../lib/auth';
+import {
+  parseSelfServiceTrialIntent,
+  selfServiceAuthMetadata,
+  selfServiceBillingPeriodLabel,
+  selfServicePlanLabel,
+} from '../lib/selfServiceOnboarding';
 import { getRememberSession, setRememberSession, supabase } from '../supabase';
 
 type AccessMode = 'sign-in' | 'register' | 'forgot';
@@ -148,7 +154,13 @@ export function SignInGate({
   initialMode?: AccessMode;
   initialMessage?: AuthMessage;
 }) {
-  const [mode, setMode] = useState<AccessMode>(initialMode);
+  const selfServiceIntent = useMemo(
+    () => parseSelfServiceTrialIntent(window.location.search),
+    [],
+  );
+  const [mode, setMode] = useState<AccessMode>(() =>
+    selfServiceIntent && initialMode === 'sign-in' ? 'register' : initialMode,
+  );
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -226,6 +238,7 @@ export function SignInGate({
         data: {
           full_name: fullName.trim(),
           registration_source: 'public_admin_onboarding',
+          ...selfServiceAuthMetadata(selfServiceIntent),
         },
       },
     });
@@ -291,13 +304,17 @@ export function SignInGate({
     mode === 'sign-in'
       ? 'Bienvenido a Habitta'
       : mode === 'register'
-        ? 'Crea tu cuenta administrativa'
+        ? selfServiceIntent
+          ? 'Comienza tu prueba gratis'
+          : 'Crea tu cuenta administrativa'
         : 'Recupera tu contraseña';
   const description =
     mode === 'sign-in'
       ? 'Ingresa con el correo y la contraseña de tu cuenta.'
       : mode === 'register'
-        ? 'Empieza con tus datos personales. El condominio se configurará después de confirmar tu correo.'
+        ? selfServiceIntent
+          ? 'Crea tu cuenta. Después de confirmar el correo, configuraremos tu primer condominio y activaremos 30 días de prueba.'
+          : 'Empieza con tus datos personales. El condominio se configurará después de confirmar tu correo.'
         : 'Te enviaremos un enlace seguro para crear una contraseña nueva.';
 
   return (
@@ -348,11 +365,20 @@ export function SignInGate({
                   {mode === 'sign-in'
                     ? 'Acceso seguro'
                     : mode === 'register'
-                      ? 'Nuevo administrador'
+                      ? selfServiceIntent
+                        ? '30 días gratis'
+                        : 'Nuevo administrador'
                       : 'Recuperación'}
                 </span>
                 <h2>{title}</h2>
                 <p>{description}</p>
+                {mode === 'register' && selfServiceIntent ? (
+                  <p className="access-message" data-tone="info" role="status">
+                    <strong>{selfServicePlanLabel(selfServiceIntent.planCode)}</strong> · periodo{' '}
+                    {selfServiceBillingPeriodLabel(selfServiceIntent.billingPeriod)}. No se realizará
+                    ningún cargo al crear la cuenta; la configuración de pago se hará por separado.
+                  </p>
+                ) : null}
               </div>
 
               {mode === 'sign-in' ? (
@@ -524,15 +550,13 @@ export function PasswordRecoveryGate({ onComplete }: { onComplete: () => void })
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState<AuthMessage>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [completed, setCompleted] = useState(false);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submitPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!supabase) {
-      setMessage({ tone: 'error', text: 'La configuración de acceso no está disponible.' });
-      return;
-    }
-    if (!assessPassword(password).valid) {
+    if (!supabase) return;
+
+    const assessment = assessPassword(password);
+    if (!assessment.valid) {
       setMessage({ tone: 'error', text: 'La contraseña debe cumplir todos los requisitos.' });
       return;
     }
@@ -544,25 +568,16 @@ export function PasswordRecoveryGate({ onComplete }: { onComplete: () => void })
     setSubmitting(true);
     setMessage(null);
     const result = await supabase.auth.updateUser({ password });
-    if (!result.error) await supabase.auth.signOut({ scope: 'others' });
-    setSubmitting(false);
-
     if (result.error) {
+      setSubmitting(false);
       setMessage({ tone: 'error', text: translateAuthError(result.error) });
       return;
     }
 
-    setCompleted(true);
-    setMessage({
-      tone: 'success',
-      text: 'Tu contraseña fue actualizada y las demás sesiones fueron cerradas.',
-    });
-  };
-
-  const signOut = async () => {
-    await supabase?.auth.signOut();
-    window.history.replaceState({}, '', '/');
-    window.location.reload();
+    await supabase.auth.signOut({ scope: 'others' });
+    setSubmitting(false);
+    setMessage({ tone: 'success', text: 'Contraseña actualizada correctamente.' });
+    window.setTimeout(onComplete, 700);
   };
 
   return (
@@ -575,47 +590,46 @@ export function PasswordRecoveryGate({ onComplete }: { onComplete: () => void })
         <Surface className="access-card access-card--password">
           <div className="access-card__heading">
             <span className="access-kicker">Nueva contraseña</span>
-            <h2>{completed ? 'Tu acceso está protegido' : 'Crea una contraseña nueva'}</h2>
-            <p>
-              {completed
-                ? 'Ya puedes continuar a tu espacio Habitta.'
-                : 'Usa una contraseña que no hayas utilizado anteriormente.'}
-            </p>
+            <h2>Protege tu cuenta</h2>
+            <p>Elige una contraseña nueva. Al guardarla, cerraremos tus otras sesiones activas.</p>
           </div>
-
-          {!completed ? (
-            <form className="access-form ux-form" onSubmit={submit}>
-              <PasswordField
-                autoComplete="new-password"
-                autoFocus
-                label="Nueva contraseña"
-                onChange={setPassword}
-                value={password}
-              />
-              <PasswordStrength password={password} />
-              <PasswordField
-                autoComplete="new-password"
-                label="Confirmar contraseña"
-                onChange={setConfirmPassword}
-                value={confirmPassword}
-              />
-              <Button disabled={submitting} type="submit">
-                {submitting ? 'Actualizando contraseña…' : 'Actualizar contraseña'}
-                {!submitting ? <ArrowRightIcon size={18} /> : null}
-              </Button>
-            </form>
-          ) : (
-            <Button onClick={onComplete} type="button">
-              Continuar a Habitta
-              <ArrowRightIcon size={18} />
+          <form className="access-form ux-form" onSubmit={submitPassword}>
+            <PasswordField
+              autoComplete="new-password"
+              autoFocus
+              label="Nueva contraseña"
+              onChange={setPassword}
+              value={password}
+            />
+            <PasswordStrength password={password} />
+            <PasswordField
+              autoComplete="new-password"
+              label="Confirmar nueva contraseña"
+              onChange={setConfirmPassword}
+              value={confirmPassword}
+            />
+            <Button disabled={submitting} type="submit">
+              {submitting ? 'Guardando…' : 'Guardar nueva contraseña'}
+              {!submitting ? <ArrowRightIcon size={18} /> : null}
             </Button>
-          )}
-
+          </form>
           <AuthMessageBox message={message} />
-          <Button onClick={() => void signOut()} type="button" variant="ghost">
-            <LogOutIcon size={17} />
-            Cerrar sesión
-          </Button>
+        </Surface>
+      </section>
+    </main>
+  );
+}
+
+export function SignedOutNotice() {
+  return (
+    <main className="access-shell access-shell--single">
+      <section className="access-panel">
+        <Surface className="access-card">
+          <span className="access-confirmation__icon">
+            <LogOutIcon size={26} />
+          </span>
+          <h2>Sesión cerrada</h2>
+          <p>Tu sesión terminó correctamente.</p>
         </Surface>
       </section>
     </main>
