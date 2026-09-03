@@ -49,7 +49,7 @@ describe('HAB-468 self-service onboarding intent', () => {
     ).toBeNull();
   });
 
-  it('reuses one UUID across retries and rotates it only after success clears the intent', () => {
+  it('reuses one UUID across retries and rotates it only after success clears the attempt', () => {
     const storage = new MemoryStorage();
     const intent = { planCode: 'esencial', billingPeriod: 'monthly' } as const;
     const firstUuid = '46800000-0000-4000-8000-000000000001';
@@ -75,13 +75,14 @@ describe('HAB-468 self-service onboarding intent', () => {
     expect(calls).toBe(2);
   });
 
-  it('does not reuse a UUID when the selected plan or billing period changes', () => {
+  it('does not mint another UUID when plan or billing intent changes during a retry', () => {
     const storage = new MemoryStorage();
-    const uuids = [
-      '46800000-0000-4000-8000-000000000011',
-      '46800000-0000-4000-8000-000000000012',
-    ];
-    const createUuid = () => uuids.shift()!;
+    const firstUuid = '46800000-0000-4000-8000-000000000011';
+    let calls = 0;
+    const createUuid = () => {
+      calls += 1;
+      return firstUuid;
+    };
 
     const first = getOrCreateSelfServiceIdempotencyKey(
       storage,
@@ -92,10 +93,12 @@ describe('HAB-468 self-service onboarding intent', () => {
     const second = getOrCreateSelfServiceIdempotencyKey(
       storage,
       'user-b',
-      { planCode: 'comunidad', billingPeriod: 'monthly' },
+      { planCode: 'comunidad', billingPeriod: 'annual' },
       createUuid,
     );
 
-    expect(first).not.toBe(second);
+    expect(first).toBe(firstUuid);
+    expect(second).toBe(firstUuid);
+    expect(calls).toBe(1);
   });
 });
