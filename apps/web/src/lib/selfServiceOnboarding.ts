@@ -74,10 +74,6 @@ function storageKey(userId: string) {
   return `${STORAGE_PREFIX}${userId}`;
 }
 
-function matchesIntent(stored: StoredIdempotency, intent: SelfServiceTrialIntent) {
-  return stored.planCode === intent.planCode && stored.billingPeriod === intent.billingPeriod;
-}
-
 function readStored(storage: StorageLike | null, key: string): StoredIdempotency | null {
   const memory = memoryIdempotency.get(key);
   if (memory) return memory;
@@ -129,7 +125,11 @@ export function getOrCreateSelfServiceIdempotencyKey(
 ) {
   const key = storageKey(userId);
   const existing = readStored(storage, key);
-  if (existing && matchesIntent(existing, intent)) return existing.key;
+
+  // Once an onboarding attempt has a UUID, keep that same UUID until the authoritative RPC
+  // confirms success. Reusing the same key after any payload change lets Postgres detect the
+  // fingerprint conflict instead of silently opening a second provisioning attempt.
+  if (existing) return existing.key;
 
   const generated = createUuid();
   if (!UUID_PATTERN.test(generated)) throw new Error('No se pudo preparar un identificador seguro.');
@@ -140,11 +140,9 @@ export function getOrCreateSelfServiceIdempotencyKey(
 export function clearSelfServiceIdempotencyKey(
   storage: StorageLike | null,
   userId: string,
-  intent: SelfServiceTrialIntent,
+  _intent: SelfServiceTrialIntent,
 ) {
   const key = storageKey(userId);
-  const existing = readStored(storage, key);
-  if (!existing || !matchesIntent(existing, intent)) return;
   memoryIdempotency.delete(key);
   if (!storage) return;
   try {
