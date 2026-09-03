@@ -577,8 +577,12 @@ export default function App() {
         session={session}
         visibleRoutes={visibleRoutes}
       >
-        {/* Each module is its own chunk, so the shell stays on screen while one arrives. */}
-        <Suspense fallback={<ModuleLoading />}>{page}</Suspense>
+        {/* Each module is its own chunk, so the shell stays on screen while one arrives. A
+            condominium switch must remount that module so local rows, drawers, filters and cursors
+            from the previous tenant context cannot survive under the new shell context. */}
+        <Suspense key={selectedCondominiumId} fallback={<ModuleLoading />}>
+          {page}
+        </Suspense>
       </AppShell>
     </RolesProvider>
   );
