@@ -269,7 +269,9 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
           <EmptyState
             description="Cuando la administración comparta un archivo con tu rol aparecerá aquí."
             icon={<CommunityIcon size={26} />}
-            title={documents.length ? 'No hay resultados con estos filtros' : 'Aún no hay documentos'}
+            title={
+              documents.length ? 'No hay resultados con estos filtros' : 'Aún no hay documentos'
+            }
           />
         </Surface>
       ) : (
@@ -287,7 +289,9 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
                 const category = document.category_id
                   ? categoryById.get(document.category_id)?.name
                   : undefined;
-                const folder = document.folder_id ? folderById.get(document.folder_id)?.name : undefined;
+                const folder = document.folder_id
+                  ? folderById.get(document.folder_id)?.name
+                  : undefined;
                 return (
                   <button
                     aria-current={selectedDocumentId === document.id ? 'true' : undefined}
@@ -300,7 +304,9 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
                     </span>
                     <span className="resident-documents__file-copy">
                       <strong>{document.title}</strong>
-                      <small>{[category, folder].filter(Boolean).join(' · ') || 'Documento comunitario'}</small>
+                      <small>
+                        {[category, folder].filter(Boolean).join(' · ') || 'Documento comunitario'}
+                      </small>
                     </span>
                     <Badge tone={document.status === 'active' ? 'info' : 'neutral'}>
                       {document.status === 'active' ? 'Disponible' : 'Archivado'}
