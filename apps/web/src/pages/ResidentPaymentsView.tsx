@@ -283,14 +283,19 @@ export function ResidentPaymentsView({
                 </span>
                 <div>
                   <strong>No hay método disponible para {currency}</strong>
-                  <small>La administración todavía no publicó un método activo para esta moneda.</small>
+                  <small>
+                    La administración todavía no publicó un método activo para esta moneda.
+                  </small>
                 </div>
               </div>
             )}
           </section>
 
           <section className="resident-payments__account-action" aria-label="Registrar un pago">
-            <span className="resident-payments__action-icon" data-available={canRegister || undefined}>
+            <span
+              className="resident-payments__action-icon"
+              data-available={canRegister || undefined}
+            >
               {canRegister ? <CheckCircleIcon size={20} /> : <SettingsIcon size={20} />}
             </span>
             <div className="resident-payments__action-copy">
@@ -354,8 +359,8 @@ export function ResidentPaymentsView({
           <div className="resident-payments__history-meta">
             <Badge tone="neutral">Todos los períodos</Badge>
             <span className="resident-payments__count">
-              {visiblePayments.length} visibles · {data.payments.length} de {data.paymentsPage.total}{' '}
-              cargados
+              {visiblePayments.length} visibles · {data.payments.length} de{' '}
+              {data.paymentsPage.total} cargados
             </span>
           </div>
         </div>
