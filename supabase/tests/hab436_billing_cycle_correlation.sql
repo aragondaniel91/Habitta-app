@@ -29,7 +29,7 @@ insert into public.subscription_adjustments(
   reference_period_amount,effective_period_amount,effective_from,effective_to,authorized_by,note
 ) values (
   '43640000-0000-4000-8000-000000000006','43620000-0000-4000-8000-000000000006',null,
-  'gift','free',null,null,'USD',29.00,0.00,'2026-09-03','2026-09-04','00000000-0000-4000-8000-000000004366','Unrelated next-day gift used to prove webhook date is not billing date'
+  'gift','free',null,null,'USD',29.00,0.00,'2026-09-04','2026-09-05','00000000-0000-4000-8000-000000004366','Webhook-date gift proves provider arrival date is not the billing date'
 );
 insert into habitta_internal.saas_billing_accounts(subscription_id,provider,provider_customer_ref,payment_method_ref)
 values ('43620000-0000-4000-8000-000000000006','stripe','cus_cycle_hab436','pm_cycle_hab436');
