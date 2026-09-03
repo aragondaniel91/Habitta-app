@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(35);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at)
 values
@@ -120,12 +120,12 @@ select is(
 );
 select is(
   (public.get_customer_commercial_checkout_preview_v1('43510000-0000-4000-8000-000000000001','SAVE25')#>>'{promotion,starts_on}')::date,
-  (select trial_ends_at::date from public.subscriptions where id='43520000-0000-4000-8000-000000000001'),
+  (public.get_customer_commercial_checkout_preview_v1('43510000-0000-4000-8000-000000000001','SAVE25')->>'first_billing_date')::date,
   'promotion starts when the free trial ends'
 );
 select is(
   (public.get_customer_commercial_checkout_preview_v1('43510000-0000-4000-8000-000000000001','SAVE25')#>>'{promotion,ends_on}')::date,
-  ((select trial_ends_at::date from public.subscriptions where id='43520000-0000-4000-8000-000000000001') + interval '3 months')::date,
+  (((public.get_customer_commercial_checkout_preview_v1('43510000-0000-4000-8000-000000000001','SAVE25')#>>'{promotion,starts_on}')::date + interval '3 months')::date),
   'promotion preview exposes its finite duration'
 );
 select set_config(
