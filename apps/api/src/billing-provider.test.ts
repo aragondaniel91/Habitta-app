@@ -26,8 +26,8 @@ describe('HAB-436 billing provider adapter', () => {
   });
 
   it('refuses unknown provider names instead of silently choosing one', () => {
-    expect(() => resolveBillingProvider(env({ BILLING_PROVIDER: 'stripe' }))).toThrow(
-      'Unsupported billing provider: stripe',
+    expect(() => resolveBillingProvider(env({ BILLING_PROVIDER: 'paddle' }))).toThrow(
+      'Unsupported billing provider: paddle',
     );
   });
 
