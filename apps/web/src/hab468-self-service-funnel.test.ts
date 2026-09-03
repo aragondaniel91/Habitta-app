@@ -42,7 +42,9 @@ describe('HAB-468 self-service trial funnel contract', () => {
     expect(onboarding).toContain('selected plan unit limit exceeded');
     expect(onboarding).toContain('selected plan requires guided onboarding');
     expect(onboarding).toContain('idempotency key reused');
-    expect(onboarding).toContain('self-service onboarding is only available for the first workspace');
+    expect(onboarding).toContain(
+      'self-service onboarding is only available for the first workspace',
+    );
   });
 
   it('shows plan, period, 30-day trial and no-charge context before provisioning', async () => {
@@ -53,7 +55,7 @@ describe('HAB-468 self-service trial funnel contract', () => {
     expect(wizard).toContain('selfServiceBillingPeriodLabel(intent.billingPeriod)');
     expect(wizard).toContain('prueba gratis por 30 días');
     expect(wizard).toContain('No se realizará ningún cargo hoy');
-    expect(wizard).toContain('step === \'review\'');
+    expect(wizard).toContain("step === 'review'");
     expect(wizard).toContain("? 'Crear condominio y activar prueba'");
   });
 

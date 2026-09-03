@@ -214,7 +214,9 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
             Primero definimos la identidad y estructura real del condominio. Personas, cuotas y
             operaciones se completan después sobre esa base.
           </p>
-          {!hasOrganization && selfServiceIntent ? <TrialIntentNotice intent={selfServiceIntent} /> : null}
+          {!hasOrganization && selfServiceIntent ? (
+            <TrialIntentNotice intent={selfServiceIntent} />
+          ) : null}
           <ol>
             {steps.map((item, index) => {
               const complete = index < activeIndex;

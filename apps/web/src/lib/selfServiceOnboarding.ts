@@ -21,12 +21,13 @@ type StoredIdempotency = {
 const PLAN_METADATA_KEY = 'habitta_plan_intent';
 const BILLING_METADATA_KEY = 'habitta_billing_period_intent';
 const STORAGE_PREFIX = 'habitta:self-service-trial:';
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const memoryIdempotency = new Map<string, StoredIdempotency>();
 
 function isPlanCode(value: unknown): value is SelfServicePlanCode {
-  return typeof value === 'string' && SELF_SERVICE_PLAN_CODES.includes(value as SelfServicePlanCode);
+  return (
+    typeof value === 'string' && SELF_SERVICE_PLAN_CODES.includes(value as SelfServicePlanCode)
+  );
 }
 
 function isBillingPeriod(value: unknown): value is SelfServiceBillingPeriod {
@@ -36,7 +37,10 @@ function isBillingPeriod(value: unknown): value is SelfServiceBillingPeriod {
   );
 }
 
-function intentFromValues(planCode: unknown, billingPeriod: unknown): SelfServiceTrialIntent | null {
+function intentFromValues(
+  planCode: unknown,
+  billingPeriod: unknown,
+): SelfServiceTrialIntent | null {
   if (!isPlanCode(planCode) || !isBillingPeriod(billingPeriod)) return null;
   return { planCode, billingPeriod };
 }
@@ -132,7 +136,8 @@ export function getOrCreateSelfServiceIdempotencyKey(
   if (existing) return existing.key;
 
   const generated = createUuid();
-  if (!UUID_PATTERN.test(generated)) throw new Error('No se pudo preparar un identificador seguro.');
+  if (!UUID_PATTERN.test(generated))
+    throw new Error('No se pudo preparar un identificador seguro.');
   writeStored(storage, key, { ...intent, key: generated });
   return generated;
 }

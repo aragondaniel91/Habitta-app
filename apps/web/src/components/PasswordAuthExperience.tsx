@@ -154,10 +154,7 @@ export function SignInGate({
   initialMode?: AccessMode;
   initialMessage?: AuthMessage;
 }) {
-  const selfServiceIntent = useMemo(
-    () => parseSelfServiceTrialIntent(window.location.search),
-    [],
-  );
+  const selfServiceIntent = useMemo(() => parseSelfServiceTrialIntent(window.location.search), []);
   const [mode, setMode] = useState<AccessMode>(() =>
     selfServiceIntent && initialMode === 'sign-in' ? 'register' : initialMode,
   );
@@ -375,8 +372,9 @@ export function SignInGate({
                 {mode === 'register' && selfServiceIntent ? (
                   <p className="access-message" data-tone="info" role="status">
                     <strong>{selfServicePlanLabel(selfServiceIntent.planCode)}</strong> · periodo{' '}
-                    {selfServiceBillingPeriodLabel(selfServiceIntent.billingPeriod)}. No se realizará
-                    ningún cargo al crear la cuenta; la configuración de pago se hará por separado.
+                    {selfServiceBillingPeriodLabel(selfServiceIntent.billingPeriod)}. No se
+                    realizará ningún cargo al crear la cuenta; la configuración de pago se hará por
+                    separado.
                   </p>
                 ) : null}
               </div>

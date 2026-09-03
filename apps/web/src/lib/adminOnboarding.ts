@@ -8,10 +8,7 @@ import { supabase } from '../supabase';
 
 export type OrganizationType = 'independent' | 'management_company';
 export type PropertyTopology =
-  | 'house_community'
-  | 'single_building'
-  | 'multi_building_complex'
-  | 'mixed';
+  'house_community' | 'single_building' | 'multi_building_complex' | 'mixed';
 
 export type AdminOnboardingInput = {
   organizationId: string;
@@ -312,10 +309,7 @@ function rpcPayload(input: AdminOnboardingInput) {
   };
 }
 
-async function submitSelfServiceTrial(
-  input: AdminOnboardingInput,
-  intent: SelfServiceTrialIntent,
-) {
+async function submitSelfServiceTrial(input: AdminOnboardingInput, intent: SelfServiceTrialIntent) {
   if (!supabase) throw new Error('La configuración de Supabase no está disponible.');
 
   const userResult = await supabase.auth.getUser();
