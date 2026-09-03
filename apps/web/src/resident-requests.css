@@ -350,7 +350,7 @@
 }
 
 .resident-request-section-heading h3 {
-  font-size: 1rem;
+  font-size: var(--ux-heading-sub);
 }
 
 .resident-request-section-heading p {
