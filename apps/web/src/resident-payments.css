@@ -304,7 +304,7 @@
 }
 
 .resident-payments__action-icon[data-available] {
-  background: var(--hq-success-soft);
+  background: var(--hq-brand-soft);
   color: var(--hq-success);
 }
 
