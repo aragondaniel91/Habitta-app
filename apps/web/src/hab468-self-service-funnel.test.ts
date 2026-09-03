@@ -26,8 +26,8 @@ describe('HAB-468 self-service trial funnel contract', () => {
     expect(auth).toContain("'Comienza tu prueba gratis'");
     expect(auth).toContain("'Crea tu cuenta administrativa'");
     expect(auth).toContain('30 días de prueba');
-    expect(auth).toContain('No se realizará');
-    expect(auth).toContain('configuración de pago se hará por separado');
+    expect(auth).toMatch(/No se\s+realizará ningún cargo/);
+    expect(auth).toMatch(/configuración de pago se hará por\s+separado/);
   });
 
   it('uses the authoritative trial RPC only for a first workspace with self-service intent', async () => {
