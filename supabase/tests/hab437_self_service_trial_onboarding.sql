@@ -31,6 +31,8 @@ select ok(
   'authenticated users can invoke the narrow self-service RPC'
 );
 
+-- Invoke the public contract as the tenant actor. Direct inspection of protected commercial tables
+-- below intentionally returns to the trusted test role instead of broadening tenant table grants.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','43700000-0000-4000-8000-000000000001',true);
 create temporary table hab437_esencial as
@@ -55,6 +57,8 @@ select is((select result #>> '{trial,plan_code}' from hab437_esencial),'esencial
 select is((select result #>> '{trial,billing_period}' from hab437_esencial),'monthly','monthly intent is retained');
 select is((select (result #>> '{trial,contracted_period_amount}')::numeric from hab437_esencial),29.00::numeric,'Esencial monthly catalogue amount is contracted');
 select is((select (result #>> '{trial,auto_bill_enabled}')::boolean from hab437_esencial),false,'trial never enables automatic billing');
+
+reset role;
 select is(
   (
     select extract(epoch from (s.trial_ends_at - s.trial_starts_at))::bigint
@@ -109,6 +113,8 @@ select is(
   'SaaS trial provisioning creates no resident ledger entries'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub','43700000-0000-4000-8000-000000000001',true);
 create temporary table hab437_esencial_retry as
 select public.create_self_service_trial_workspace_v1(
   p_organization_name := 'Junta HAB437 Esencial',
@@ -137,6 +143,8 @@ select is(
   (select result #>> '{trial,subscription_id}' from hab437_esencial),
   'same idempotency key returns the original subscription'
 );
+
+reset role;
 select is(
   (select count(*) from public.organization_memberships where user_id='43700000-0000-4000-8000-000000000001'),
   1::bigint,
@@ -147,6 +155,9 @@ select is(
   1::bigint,
   'retry does not duplicate subscription'
 );
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','43700000-0000-4000-8000-000000000001',true);
 select throws_ok(
   $$select public.create_self_service_trial_workspace_v1(
     p_organization_name := 'Junta HAB437 Esencial', p_organization_type := 'independent',
@@ -180,6 +191,8 @@ select public.create_self_service_trial_workspace_v1(
 ) as result;
 select is((select result #>> '{trial,plan_code}' from hab437_comunidad),'comunidad','Comunidad self-service plan is accepted');
 select is((select (result #>> '{trial,contracted_period_amount}')::numeric from hab437_comunidad),490.00::numeric,'Comunidad annual catalogue amount is contracted');
+
+reset role;
 select is(
   (
     select st.authorized_by
@@ -190,6 +203,7 @@ select is(
   'commercial term records the self-service actor'
 );
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub','43700000-0000-4000-8000-000000000003',true);
 select throws_ok(
   $$select public.create_self_service_trial_workspace_v1(
@@ -203,8 +217,11 @@ select throws_ok(
   '23514','selected plan requires guided onboarding',
   'Pro cannot be provisioned by the self-service RPC'
 );
+
+reset role;
 select is((select count(*) from public.organization_memberships where user_id='43700000-0000-4000-8000-000000000003'),0::bigint,'rejected Pro request leaves no partial workspace');
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub','43700000-0000-4000-8000-000000000004',true);
 select throws_ok(
   $$select public.create_self_service_trial_workspace_v1(
@@ -218,8 +235,11 @@ select throws_ok(
   '23514','selected plan unit limit exceeded',
   'self-service cannot knowingly provision a plan below the declared unit count'
 );
+
+reset role;
 select is((select count(*) from public.organization_memberships where user_id='43700000-0000-4000-8000-000000000004'),0::bigint,'unit-limit rejection is transactional with no partial workspace');
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub','43700000-0000-4000-8000-000000000005',true);
 select throws_ok(
   $$select public.create_self_service_trial_workspace_v1(
@@ -234,5 +254,6 @@ select throws_ok(
   'existing organization owners cannot use the first-workspace self-service path again'
 );
 
+reset role;
 select * from finish();
 rollback;
