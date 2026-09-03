@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = new URL('../../../', import.meta.url);
 
+// Production must deploy the exact Worker version emitted by the upload command itself.
 describe('production release workflow hardening', () => {
   it('fails closed around production database identity and canonical reachability', async () => {
     const workflow = await readFile(
@@ -28,6 +29,25 @@ describe('production release workflow hardening', () => {
     expect(workflow).not.toContain('browser verification required');
     expect(workflow).not.toContain('fetch(`${canonicalUrl}/app/dashboard`');
     expect(workflow).not.toContain('HABITTA_DEV_PROJECT_REF');
+  });
+
+  it('uses Wrangler structured output for the uploaded production Worker version id', async () => {
+    const workflow = await readFile(
+      new URL('.github/workflows/production-release.yml', root),
+      'utf8',
+    );
+
+    expect(workflow).toContain(
+      'UPLOAD_OUTPUT_FILE="$RUNNER_TEMP/production-worker-version-upload.ndjson"',
+    );
+    expect(workflow).toContain('WRANGLER_OUTPUT_FILE_PATH="$UPLOAD_OUTPUT_FILE"');
+    expect(workflow).toContain('select(.type == "version-upload")');
+    expect(workflow).toContain('.version_id');
+    expect(workflow).toContain(
+      'Wrangler did not report exactly one uploaded production Worker version ID.',
+    );
+    expect(workflow).not.toContain('wrangler versions list --env prod --json');
+    expect(workflow).not.toContain('VERSION_LIST_FILE');
   });
 
   it('verifies static Pages releases without treating arbitrary edge failures as healthy', async () => {
