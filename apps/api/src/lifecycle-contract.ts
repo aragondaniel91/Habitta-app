@@ -59,6 +59,14 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     note: 'HAB-360: name, legal identity and address are correctable; topology stays owned by remediate_condominium_topology.',
   },
   {
+    module: 'settings',
+    entity: 'SaaS billing setup attempt',
+    create: '/:id/billing/setup',
+    classification: 'lifecycle',
+    correction: '/:id/billing/setup',
+    note: 'HAB-436: provider setup sessions are immutable. A failed, expired or abandoned session is corrected by starting a fresh idempotent setup attempt; an issued provider session is never rewritten.',
+  },
+  {
     module: 'units',
     entity: 'building',
     create: '/v1/condominiums/:id/buildings',
