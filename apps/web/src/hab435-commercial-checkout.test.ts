@@ -47,7 +47,7 @@ describe('HAB-435 commercial checkout contract', () => {
     expect(card).toContain('consentAccepted');
     expect(card).toContain('Aceptar condiciones comerciales');
     expect(card).toMatch(/hoy no se\s+realiza ningún cobro/);
-    expect(card).toMatch(/no agrega un método de pago/);
+    expect(card).toMatch(/no agrega un método\s+de pago/);
     expect(card).toMatch(/cobro\s+automático permanece deshabilitado/);
     expect(card).toMatch(/método de pago se configurará en un paso separado/);
   });
