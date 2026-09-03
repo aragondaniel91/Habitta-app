@@ -35,6 +35,7 @@
 
   --hq-control-compact: 36px;
   --hq-control-standard: 44px;
+  --hq-control-form: 48px;
   --hq-touch-target: 44px;
 
   --hq-radius-small: 0.5rem;
@@ -49,11 +50,11 @@
   --hq-content-max: 1480px;
 
   /*
-   * HAB-264/HAB-362 already route approved forms through --ux-* tokens. Keep those call sites
-   * intact while making HQ the single geometry source of truth instead of maintaining a second
-   * 48px/radius/spacing system in parallel.
+   * HAB-264/HAB-362 already route approved forms through --ux-* tokens. Keep their established
+   * 48px form-control contract while HQ owns the geometry source of truth for both general and
+   * form-specific controls.
    */
-  --ux-control-height: var(--hq-control-standard);
+  --ux-control-height: var(--hq-control-form);
   --ux-control-radius: var(--hq-radius-control);
   --ux-card-radius: var(--hq-radius-card);
   --ux-space-xs: var(--hq-space-1);

@@ -36,10 +36,11 @@ describe('HAB-429 Premium HQ design-system foundation', () => {
   it('defines one shared geometry contract for controls, cards and spacing', () => {
     expect(foundation).toContain('--hq-control-compact: 36px');
     expect(foundation).toContain('--hq-control-standard: 44px');
+    expect(foundation).toContain('--hq-control-form: 48px');
     expect(foundation).toContain('--hq-touch-target: 44px');
     expect(foundation).toContain('--hq-radius-control:');
     expect(foundation).toContain('--hq-radius-card:');
-    expect(foundation).toContain('--ux-control-height: var(--hq-control-standard)');
+    expect(foundation).toContain('--ux-control-height: var(--hq-control-form)');
     expect(foundation).toContain('--ux-control-radius: var(--hq-radius-control)');
     expect(foundation).toContain('--ux-card-radius: var(--hq-radius-card)');
     expect(foundation).toContain('--ux-space-xs: var(--hq-space-1)');
