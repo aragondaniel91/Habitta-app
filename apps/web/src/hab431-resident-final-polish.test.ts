@@ -30,7 +30,9 @@ describe('HAB-431 resident experience final production contract', () => {
     expect(dashboard).toContain('canAccessResidentPayments(roles)');
     expect(dashboard).toContain('canAccessResidentOperations(roles)');
     expect(requests).toContain('canWriteResidentRequests(roles)');
-    expect(roles).toContain("const restricted: CondominiumRole[] = ['tenant', 'family_member', 'authorized_occupant']");
+    expect(roles).toContain(
+      "const restricted: CondominiumRole[] = ['tenant', 'family_member', 'authorized_occupant']",
+    );
     expect(roles).toContain("return roles.includes('owner');");
   });
 
