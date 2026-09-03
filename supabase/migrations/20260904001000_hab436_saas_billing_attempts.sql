@@ -31,18 +31,6 @@ create index saas_billing_attempts_due_idx
 
 revoke all on table habitta_internal.saas_billing_attempts from public, anon, authenticated, service_role;
 
-create or replace function habitta_internal.saas_due_on_v1(p_subscription public.subscriptions)
-returns date
-language sql
-immutable
-set search_path = ''
-as $$
-  select coalesce(p_subscription.current_period_end, p_subscription.trial_ends_at::date)
-$$;
-
-revoke all on function habitta_internal.saas_due_on_v1(public.subscriptions)
-  from public, anon, authenticated, service_role;
-
 create or replace function public.advance_zero_due_saas_periods_v1(
   p_run_at timestamptz default now(),
   p_limit_count integer default 25
@@ -55,7 +43,7 @@ set row_security = off
 as $$
 declare
   candidate record;
-  expected record;
+  expected jsonb;
   current_sub public.subscriptions;
   current_term public.subscription_terms;
   due_on date;
@@ -77,18 +65,25 @@ begin
       and s.auto_bill_enabled
       and a.provider_customer_ref is not null
       and a.payment_method_ref is not null
-      and habitta_internal.saas_due_on_v1(s) is not null
-      and habitta_internal.saas_due_on_v1(s) <= p_run_at::date
-    order by habitta_internal.saas_due_on_v1(s), s.id
+      and coalesce(s.current_period_end, s.trial_ends_at::date) is not null
+      and coalesce(s.current_period_end, s.trial_ends_at::date) <= p_run_at::date
+    order by coalesce(s.current_period_end, s.trial_ends_at::date), s.id
     limit p_limit_count
   loop
-    select * into current_sub from public.subscriptions where id = candidate.id for update;
-    due_on := habitta_internal.saas_due_on_v1(current_sub);
-    if due_on is null or due_on > p_run_at::date then continue; end if;
+    select * into current_sub
+    from public.subscriptions
+    where id = candidate.id
+    for update;
 
-    select * into expected
-    from habitta_internal.expected_saas_period_v1(current_sub.id, due_on);
-    if expected.amount is distinct from 0::numeric then continue; end if;
+    due_on := coalesce(current_sub.current_period_end, current_sub.trial_ends_at::date);
+    if due_on is null or due_on > p_run_at::date then
+      continue;
+    end if;
+
+    expected := habitta_internal.expected_saas_period_v1(current_sub.id, due_on);
+    if (expected->>'effective_period_amount')::numeric is distinct from 0::numeric then
+      continue;
+    end if;
 
     select * into current_term
     from public.subscription_terms t
@@ -97,14 +92,18 @@ begin
       and (t.effective_to is null or t.effective_to > due_on)
     order by t.effective_from desc, t.created_at desc
     limit 1;
-    if current_term.id is null then continue; end if;
+    if current_term.id is null then
+      continue;
+    end if;
 
     next_period_end := case current_term.billing_period
-      when 'monthly' then due_on + interval '1 month'
-      when 'annual' then due_on + interval '1 year'
+      when 'monthly' then (due_on + interval '1 month')::date
+      when 'annual' then (due_on + interval '1 year')::date
       else null
-    end::date;
-    if next_period_end is null then continue; end if;
+    end;
+    if next_period_end is null then
+      continue;
+    end if;
 
     update public.subscriptions
        set status = 'active',
@@ -122,7 +121,7 @@ begin
       pg_catalog.jsonb_build_object(
         'billing_cycle_on', due_on,
         'amount', 0,
-        'currency', expected.currency,
+        'currency', expected->>'currency',
         'next_period_end', next_period_end,
         'resident_finance_mutated', false
       ),
@@ -158,10 +157,9 @@ set row_security = off
 as $$
 declare
   candidate record;
-  expected record;
+  expected jsonb;
   latest habitta_internal.saas_billing_attempts;
   due_on date;
-  created_id uuid;
 begin
   if p_limit_count < 1 or p_limit_count > 100 then
     raise exception using errcode = '22023', message = 'invalid billing claim limit';
@@ -186,21 +184,25 @@ begin
       and s.auto_bill_enabled
       and a.provider_customer_ref is not null
       and a.payment_method_ref is not null
-      and habitta_internal.saas_due_on_v1(s) is not null
-      and habitta_internal.saas_due_on_v1(s) <= p_run_at::date
-    order by habitta_internal.saas_due_on_v1(s), s.id
+      and coalesce(s.current_period_end, s.trial_ends_at::date) is not null
+      and coalesce(s.current_period_end, s.trial_ends_at::date) <= p_run_at::date
+    order by coalesce(s.current_period_end, s.trial_ends_at::date), s.id
   loop
-    due_on := habitta_internal.saas_due_on_v1(candidate);
-    select * into expected from habitta_internal.expected_saas_period_v1(candidate.id, due_on);
-    if expected.amount is null or expected.amount <= 0 then continue; end if;
+    due_on := coalesce(candidate.current_period_end, candidate.trial_ends_at::date);
+    expected := habitta_internal.expected_saas_period_v1(candidate.id, due_on);
+    if (expected->>'effective_period_amount')::numeric is null
+      or (expected->>'effective_period_amount')::numeric <= 0
+    then
+      continue;
+    end if;
 
     select * into latest
     from habitta_internal.saas_billing_attempts a
-    where a.subscription_id = candidate.id and a.billing_cycle_on = due_on
+    where a.subscription_id = candidate.id
+      and a.billing_cycle_on = due_on
     order by a.attempt_no desc
     limit 1;
 
-    created_id := null;
     if latest.id is null then
       insert into habitta_internal.saas_billing_attempts(
         subscription_id, condominium_id, billing_cycle_on, attempt_no,
@@ -208,10 +210,10 @@ begin
         next_retry_at, created_at, updated_at
       ) values (
         candidate.id, candidate.condominium_id, due_on, 1,
-        expected.amount, expected.currency, candidate.provider,
+        (expected->>'effective_period_amount')::numeric, expected->>'currency', candidate.provider,
         candidate.provider_customer_ref, candidate.payment_method_ref,
         p_run_at, p_run_at, p_run_at
-      ) returning id into created_id;
+      );
     elsif latest.status = 'failed'
       and latest.attempt_no < 3
       and latest.next_retry_at <= p_run_at
@@ -225,7 +227,7 @@ begin
         latest.expected_amount, latest.currency, candidate.provider,
         candidate.provider_customer_ref, candidate.payment_method_ref,
         p_run_at, p_run_at, p_run_at
-      ) returning id into created_id;
+      );
     end if;
   end loop;
 
@@ -274,15 +276,26 @@ begin
   from habitta_internal.saas_billing_attempts a
   where a.id = p_attempt_id
   for update;
-  if attempt.id is null then raise exception using errcode='P0002', message='SaaS billing attempt not found'; end if;
-  if normalized_payment_ref is null then raise exception using errcode='22023', message='provider payment reference is required'; end if;
-  if attempt.provider <> normalized_provider then raise exception using errcode='23514', message='billing attempt provider mismatch'; end if;
+
+  if attempt.id is null then
+    raise exception using errcode = 'P0002', message = 'SaaS billing attempt not found';
+  end if;
+  if normalized_payment_ref is null then
+    raise exception using errcode = '22023', message = 'provider payment reference is required';
+  end if;
+  if attempt.provider <> normalized_provider then
+    raise exception using errcode = '23514', message = 'billing attempt provider mismatch';
+  end if;
 
   if attempt.provider_payment_ref is not null then
     if attempt.provider_payment_ref = normalized_payment_ref then
-      return pg_catalog.jsonb_build_object('attempt_id',attempt.id,'status',attempt.status,'idempotent_replay',true);
+      return pg_catalog.jsonb_build_object(
+        'attempt_id', attempt.id,
+        'status', attempt.status,
+        'idempotent_replay', true
+      );
     end if;
-    raise exception using errcode='23514', message='billing attempt already attached to different provider payment';
+    raise exception using errcode = '23514', message = 'billing attempt already attached to different provider payment';
   end if;
 
   update habitta_internal.saas_billing_attempts
@@ -292,7 +305,11 @@ begin
          updated_at = now()
    where id = attempt.id;
 
-  return pg_catalog.jsonb_build_object('attempt_id',attempt.id,'status','provider_created','idempotent_replay',false);
+  return pg_catalog.jsonb_build_object(
+    'attempt_id', attempt.id,
+    'status', 'provider_created',
+    'idempotent_replay', false
+  );
 end;
 $$;
 
@@ -311,7 +328,7 @@ begin
   update habitta_internal.saas_billing_attempts a
      set claimed_at = null,
          next_retry_at = p_retry_at,
-         last_error_code = left(nullif(btrim(coalesce(p_error_code,'')),''),120),
+         last_error_code = left(nullif(btrim(coalesce(p_error_code, '')), ''), 120),
          updated_at = now()
    where a.id = p_attempt_id
      and a.status = 'pending'
@@ -328,24 +345,27 @@ set search_path = ''
 set row_security = off
 as $$
 begin
-  if new.provider_payment_ref is null or new.event_type not in ('charge_succeeded','charge_failed') then
+  if new.provider_payment_ref is null
+    or new.normalized_event_type not in ('charge_succeeded','charge_failed')
+  then
     return new;
   end if;
 
   update habitta_internal.saas_billing_attempts a
      set status = case
            when new.processing_status = 'rejected' then 'rejected'
-           when new.event_type = 'charge_succeeded' then 'succeeded'
+           when new.normalized_event_type = 'charge_succeeded' then 'succeeded'
            else 'failed'
          end,
          next_retry_at = case
-           when new.processing_status = 'applied' and new.event_type = 'charge_failed'
-             then greatest(new.created_at + interval '1 hour', now())
+           when new.processing_status = 'applied'
+             and new.normalized_event_type = 'charge_failed'
+             then greatest(new.processed_at + interval '1 hour', now())
            else a.next_retry_at
          end,
          last_error_code = case
            when new.processing_status = 'rejected' then new.rejection_reason
-           when new.event_type = 'charge_failed' then 'provider_charge_failed'
+           when new.normalized_event_type = 'charge_failed' then 'provider_charge_failed'
            else null
          end,
          claimed_at = null,
