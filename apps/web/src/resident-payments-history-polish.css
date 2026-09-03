@@ -60,12 +60,18 @@
   gap: var(--hq-space-3);
 }
 
-.resident-payments .resident-payments__history-panel .resident-payments__history-empty-copy > strong {
+.resident-payments
+  .resident-payments__history-panel
+  .resident-payments__history-empty-copy
+  > strong {
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
 
-.resident-payments .resident-payments__history-panel .resident-payments__history-empty-copy > small {
+.resident-payments
+  .resident-payments__history-panel
+  .resident-payments__history-empty-copy
+  > small {
   max-width: 32rem;
   line-height: 1.6;
 }
