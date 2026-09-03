@@ -7,6 +7,7 @@ import {
 } from '../allocation-amounts';
 import { allocationPreviewFingerprint } from '../allocation-preview';
 import type { AllocationInput, AllocationPreview, Receivable } from '../types';
+import './PaymentAllocationEditor.css';
 
 type PreviewSnapshot = {
   fingerprint: string;
