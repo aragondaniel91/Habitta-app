@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(26);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('43700000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','esencial@hab437.test','x',now(),now()),
