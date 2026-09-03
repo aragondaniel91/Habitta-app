@@ -10,3 +10,9 @@ NOTIFICATIONS_FROM_NAME=Habitta
 APP_BASE_URL=http://localhost:5173
 NOTIFICATIONS_EMAIL_MODE=disabled
 NOTIFICATIONS_SANDBOX_EMAIL=
+
+# HAB-436 SaaS billing. `mock` is local/dev only; production is pinned to Stripe in wrangler.jsonc.
+BILLING_PROVIDER=mock
+# Populate these only when deliberately exercising Stripe locally. Never expose them to apps/web.
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
