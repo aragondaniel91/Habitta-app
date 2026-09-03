@@ -82,16 +82,16 @@
   color: var(--hq-text);
   cursor: pointer;
   text-align: left;
-  box-shadow: var(--hq-shadow-card);
+  box-shadow: var(--hq-shadow-resting);
   transition:
-    border-color var(--hq-motion-fast) ease,
-    transform var(--hq-motion-fast) ease,
-    box-shadow var(--hq-motion-fast) ease;
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .resident-community__destination:hover {
   border-color: var(--hq-brand-line);
-  box-shadow: var(--hq-shadow-raised);
+  box-shadow: var(--hq-shadow-card);
   transform: translateY(-1px);
 }
 
