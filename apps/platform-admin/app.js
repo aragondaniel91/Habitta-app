@@ -25,9 +25,12 @@ const metricTrials = document.querySelector('#metric-trials');
 const metricMrr = document.querySelector('#metric-mrr');
 const metricTrialsSoon = document.querySelector('#metric-trials-soon');
 const metricNoSubscription = document.querySelector('#metric-no-subscription');
+const trialAttentionCard = metricTrialsSoon?.closest('.attention-card');
+const noSubscriptionAttentionCard = metricNoSubscription?.closest('.attention-card');
 
 let overviewRows = [];
 let commercialLink = null;
+let attentionFilter = null;
 
 function getSession() {
   try {
@@ -174,9 +177,13 @@ function monthlyEquivalent(row, field) {
   return row.billing_period === 'annual' ? amount / 12 : amount;
 }
 
+function isBillableCustomer(row) {
+  return row.account_type === 'customer';
+}
+
 function contractedMrr(rows) {
   return rows.reduce((total, row) => {
-    if (row.account_type !== 'customer') return total;
+    if (!isBillableCustomer(row)) return total;
     if (row.commercial_status !== 'confirmed') return total;
     if (!['active', 'past_due'].includes(row.subscription_status)) return total;
     return total + monthlyEquivalent(row, 'contracted_period_amount');
@@ -184,9 +191,14 @@ function contractedMrr(rows) {
 }
 
 function trialEndsSoon(row) {
+  if (!isBillableCustomer(row)) return false;
   if (row.subscription_status !== 'trialing' || !row.trial_ends_at) return false;
   const remaining = new Date(row.trial_ends_at).getTime() - Date.now();
   return remaining >= 0 && remaining <= 7 * 24 * 60 * 60 * 1000;
+}
+
+function needsSubscriptionAttention(row) {
+  return isBillableCustomer(row) && !row.subscription_id;
 }
 
 function renderMetrics(rows) {
@@ -205,11 +217,11 @@ function renderMetrics(rows) {
     rows.reduce((total, row) => total + Number(row.active_unit_count ?? 0), 0),
   );
   metricTrials.textContent = String(
-    rows.filter((row) => row.subscription_status === 'trialing').length,
+    rows.filter((row) => isBillableCustomer(row) && row.subscription_status === 'trialing').length,
   );
   metricMrr.textContent = formatMoney(contractedMrr(rows), 'USD');
   metricTrialsSoon.textContent = String(rows.filter(trialEndsSoon).length);
-  metricNoSubscription.textContent = String(rows.filter((row) => !row.subscription_id).length);
+  metricNoSubscription.textContent = String(rows.filter(needsSubscriptionAttention).length);
 }
 
 function normalizedSearchValue(row) {
@@ -241,8 +253,63 @@ function filteredRows() {
       row.subscription_status !== subscriptionStatus
     )
       return false;
+    if (attentionFilter === 'trial_ending' && !trialEndsSoon(row)) return false;
+    if (attentionFilter === 'no_subscription' && !needsSubscriptionAttention(row)) return false;
     return true;
   });
+}
+
+function updateAttentionState() {
+  trialAttentionCard?.setAttribute(
+    'aria-pressed',
+    attentionFilter === 'trial_ending' ? 'true' : 'false',
+  );
+  noSubscriptionAttentionCard?.setAttribute(
+    'aria-pressed',
+    attentionFilter === 'no_subscription' ? 'true' : 'false',
+  );
+}
+
+function applyAttentionFilter(kind) {
+  attentionFilter = kind;
+  searchInput.value = '';
+  accountFilter.value = 'customer';
+  statusFilter.value = kind === 'trial_ending' ? 'trialing' : 'none';
+  updateAttentionState();
+  renderTable(filteredRows());
+}
+
+function configureAttentionCard(card, kind, label) {
+  if (!card) return;
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('aria-label', label);
+  card.setAttribute('aria-pressed', 'false');
+  card.style.cursor = 'pointer';
+
+  const activate = () => applyAttentionFilter(kind);
+  card.addEventListener('click', activate);
+  card.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    activate();
+  });
+}
+
+function configureAttentionCards() {
+  const noSubscriptionLabel = noSubscriptionAttentionCard?.querySelector('strong');
+  if (noSubscriptionLabel) noSubscriptionLabel.textContent = 'Clientes sin suscripción';
+
+  configureAttentionCard(
+    trialAttentionCard,
+    'trial_ending',
+    'Filtrar clientes cuyas pruebas vencen en siete días o menos',
+  );
+  configureAttentionCard(
+    noSubscriptionAttentionCard,
+    'no_subscription',
+    'Filtrar clientes sin suscripción',
+  );
 }
 
 function appendTextCell(tr, value, className = '') {
@@ -344,6 +411,8 @@ function showDashboard() {
 function showLogin(message) {
   clearSession();
   overviewRows = [];
+  attentionFilter = null;
+  updateAttentionState();
   hideCommercialLink();
   loginView.hidden = false;
   dashboardView.hidden = true;
@@ -391,9 +460,16 @@ logoutButton.addEventListener('click', () => {
   showLogin('');
 });
 
+configureAttentionCards();
+
 for (const filter of [searchInput, accountFilter, statusFilter]) {
-  filter.addEventListener('input', () => renderTable(filteredRows()));
-  filter.addEventListener('change', () => renderTable(filteredRows()));
+  const handleManualFilter = () => {
+    attentionFilter = null;
+    updateAttentionState();
+    renderTable(filteredRows());
+  };
+  filter.addEventListener('input', handleManualFilter);
+  filter.addEventListener('change', handleManualFilter);
 }
 
 const existingSession = getSession();
