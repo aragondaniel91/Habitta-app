@@ -5,7 +5,7 @@ import { ModuleHelpDrawer } from '../features/help/ModuleHelpDrawer';
 import { MODULE_HELP } from '../features/help/module-help';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
-import { canManage, useCondominiumRoles } from '../lib/roles';
+import { canManage, useCondominiumRoles, usesResidentDashboard } from '../lib/roles';
 import { ROUTE_SECTION_LABELS, type AppRoute, type RouteSection } from '../navigation';
 import { ChevronDownIcon, ChevronLeftIcon, HomeIcon, LogOutIcon, MenuIcon } from './icons';
 import { PageChromeProvider, type PageChrome } from './PageHeader';
@@ -38,6 +38,13 @@ type Props = {
 
 const sections: RouteSection[] = ['principal', 'finanzas', 'comunidad', 'sistema'];
 
+const RESIDENT_SECTION_LABELS: Record<RouteSection, string> = {
+  principal: 'Mi hogar',
+  finanzas: 'Mi cuenta',
+  comunidad: 'Comunidad',
+  sistema: 'Cuenta',
+};
+
 const initialsFor = (value: string) => {
   const parts = value
     .split(/[\s@._-]+/)
@@ -67,6 +74,7 @@ export function AppShell({
   onSignOut,
 }: Props) {
   const roles = useCondominiumRoles();
+  const residentOnly = usesResidentDashboard(roles);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem('habitta:sidebar-collapsed') === 'true',
   );
@@ -136,7 +144,7 @@ export function AppShell({
   // Contributed to whichever PageHeader the active module renders, so help and import stay in the
   // same row as the module's own actions instead of needing a second header.
   const pageChrome: PageChrome = {
-    breadcrumb: currentRoute.label,
+    breadcrumb: residentOnly ? currentRoute.shortLabel : currentRoute.label,
     actions: (
       <>
         {canImport ? (
@@ -167,22 +175,27 @@ export function AppShell({
     <nav className="sidebar-nav" aria-label={mobile ? 'Navegación móvil' : 'Navegación principal'}>
       {sections.map((section) => {
         const routes = visibleRoutes.filter((route) => route.section === section);
+        if (!routes.length) return null;
+        const sectionLabel = residentOnly
+          ? RESIDENT_SECTION_LABELS[section]
+          : ROUTE_SECTION_LABELS[section];
         return (
           <div className="nav-section" key={section}>
-            <span className="nav-section__label">{ROUTE_SECTION_LABELS[section]}</span>
+            <span className="nav-section__label">{sectionLabel}</span>
             {routes.map((route) => {
               const Icon = route.icon;
+              const routeLabel = residentOnly ? route.shortLabel : route.label;
               return (
                 <button
                   aria-current={currentRoute.key === route.key ? 'page' : undefined}
                   className="nav-item"
                   key={route.key}
                   onClick={() => onNavigate(route)}
-                  title={sidebarCollapsed && !mobile ? route.label : undefined}
+                  title={sidebarCollapsed && !mobile ? routeLabel : undefined}
                   type="button"
                 >
                   <Icon size={20} />
-                  <span>{route.label}</span>
+                  <span>{routeLabel}</span>
                 </button>
               );
             })}
@@ -192,8 +205,16 @@ export function AppShell({
     </nav>
   );
 
+  const shellClassName = [
+    'app-shell',
+    sidebarCollapsed ? 'app-shell--collapsed' : '',
+    residentOnly ? 'app-shell--resident' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className={sidebarCollapsed ? 'app-shell app-shell--collapsed' : 'app-shell'}>
+    <div className={shellClassName}>
       <aside className="sidebar">
         <div className="sidebar__brand">
           <span className="brand-mark">
@@ -201,7 +222,7 @@ export function AppShell({
           </span>
           <span className="brand-copy">
             <strong>Habitta</strong>
-            <small>Gestión de condominios</small>
+            <small>{residentOnly ? 'Tu comunidad' : 'Gestión de condominios'}</small>
           </span>
         </div>
         {navContent()}
@@ -229,7 +250,7 @@ export function AppShell({
             </button>
             <div className="condo-switcher">
               <div>
-                <span>Condominio</span>
+                <span>{residentOnly ? 'Mi comunidad' : 'Condominio'}</span>
                 <Select
                   aria-label="Seleccionar condominio"
                   disabled={!condominiums.length}
@@ -248,15 +269,17 @@ export function AppShell({
                   ))}
                 </Select>
               </div>
-              <Button
-                className="condo-switcher__add"
-                onClick={onAddCondominium}
-                size="sm"
-                type="button"
-                variant="secondary"
-              >
-                + Agregar condominio
-              </Button>
+              {!residentOnly ? (
+                <Button
+                  className="condo-switcher__add"
+                  onClick={onAddCondominium}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  + Agregar condominio
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -332,7 +355,7 @@ export function AppShell({
           </span>
           <span className="brand-copy">
             <strong>Habitta</strong>
-            <small>Gestión de condominios</small>
+            <small>{residentOnly ? 'Tu comunidad' : 'Gestión de condominios'}</small>
           </span>
         </div>
         {navContent(true)}
