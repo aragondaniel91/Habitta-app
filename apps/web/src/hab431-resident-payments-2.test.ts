@@ -95,9 +95,13 @@ describe('HAB-431 resident payments approved HQ experience', () => {
   });
 
   it('keeps the history typography aligned and gives header and footer deliberate spacing', () => {
-    expect(historyPolish).toContain('resident-payments__history-panel .resident-payments__section-heading');
+    expect(historyPolish).toContain(
+      'resident-payments__history-panel .resident-payments__section-heading',
+    );
     expect(historyPolish).toContain('align-items: center');
-    expect(historyPolish).toContain('padding: var(--hq-space-5) var(--hq-space-6) var(--hq-space-4)');
+    expect(historyPolish).toContain(
+      'padding: var(--hq-space-5) var(--hq-space-6) var(--hq-space-4)',
+    );
     expect(historyPolish).toContain('resident-payments__history-meta');
     expect(historyPolish).toContain('display: flex');
     expect(historyPolish).toContain('resident-payments__history-empty-copy');
