@@ -1,7 +1,12 @@
-import { renderNotificationEmail } from './renderer';
 import { resolveNotificationsEnvironment } from '../config/notifications-env';
+import { runWithBoundedConcurrency } from './concurrency';
 import { sendNotificationEmail } from './email-provider';
+import { renderNotificationEmail } from './renderer';
 import type { NotificationBindings, NotificationDelivery, NotificationQueueMessage } from './types';
+
+const EVENT_PROCESS_CONCURRENCY = 4;
+const QUEUE_ENQUEUE_CONCURRENCY = 5;
+const QUEUE_DELIVERY_CONCURRENCY = 5;
 
 export const serviceRpc = async <T>(env: NotificationBindings, name: string, payload: unknown) => {
   const response = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
@@ -21,12 +26,16 @@ export const enqueuePendingNotifications = async (env: NotificationBindings) => 
   const events = await serviceRpc<{ id: string }[]>(env, 'claim_notification_events', {
     limit_count: 50,
   });
-  for (const event of events)
+  await runWithBoundedConcurrency(events, EVENT_PROCESS_CONCURRENCY, async (event) => {
     await serviceRpc<boolean>(env, 'process_notification_event', { target: event.id });
+  });
+
   const deliveries = await serviceRpc<{ id: string }[]>(env, 'claim_due_notification_deliveries', {
     limit_count: 25,
   });
-  for (const delivery of deliveries) await env.NOTIFICATION_QUEUE.send({ deliveryId: delivery.id });
+  await runWithBoundedConcurrency(deliveries, QUEUE_ENQUEUE_CONCURRENCY, async (delivery) => {
+    await env.NOTIFICATION_QUEUE.send({ deliveryId: delivery.id });
+  });
 };
 
 export const runScheduled = async (env: NotificationBindings, runAt = new Date()) => {
@@ -150,7 +159,7 @@ export const consumeNotificationQueue = async (
   batch: MessageBatch<NotificationQueueMessage>,
   env: NotificationBindings,
 ) => {
-  for (const message of batch.messages) {
+  await runWithBoundedConcurrency(batch.messages, QUEUE_DELIVERY_CONCURRENCY, async (message) => {
     try {
       const outcome = await processNotificationDelivery(message.body, env);
       if (outcome === 'retry') message.retry();
@@ -158,5 +167,5 @@ export const consumeNotificationQueue = async (
     } catch {
       message.retry();
     }
-  }
+  });
 };
