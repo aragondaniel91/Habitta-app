@@ -63,7 +63,10 @@ describe('payment proof retention cleanup', () => {
 
   it('treats an empty eligible set as a no-op', async () => {
     const deleteObject = vi.fn();
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json([])));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json([])),
+    );
 
     await expect(runPaymentProofRetentionCleanup(env(deleteObject))).resolves.toEqual({
       selected: 0,
