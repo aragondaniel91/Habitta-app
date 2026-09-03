@@ -55,7 +55,8 @@ describe('HAB-431 resident experience final production contract', () => {
     expect(requestsCss).toContain('@media (max-width: 520px)');
     expect(requestsCss).toContain('min-height: var(--hq-touch-target)');
     expect(dashboardCss).toContain('.resident-dashboard .empty-state');
-    expect(paymentsCss).toContain('.resident-payments__history-panel .empty-state');
+    expect(paymentsCss).toContain('.resident-payments__history-empty');
+    expect(paymentsCss).not.toContain('min-height: 240px');
     expect(communityCss).toContain('.resident-documents__empty .empty-state');
     expect(requestsCss).toContain('.resident-requests__empty .empty-state');
   });
