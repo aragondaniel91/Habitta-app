@@ -109,7 +109,12 @@ export function CommercialSummaryCard({ condominiumId }: { condominiumId: string
     return () => {
       cancelled = true;
     };
-  }, [condominiumId, summary?.billing_consent_recorded, summary?.commercial_status, summary?.status]);
+  }, [
+    condominiumId,
+    summary?.billing_consent_recorded,
+    summary?.commercial_status,
+    summary?.status,
+  ]);
 
   if (!summary?.found || !summary.has_term) return null;
 
@@ -259,9 +264,9 @@ export function CommercialSummaryCard({ condominiumId }: { condominiumId: string
 
           {ownerCheckoutRequired ? (
             <div className="settings-inline-alert">
-              La revisión y el consentimiento de facturación deben ser completados por el propietario
-              de la organización. Un administrador del condominio puede ver el plan, pero no autorizar
-              condiciones comerciales en nombre de la organización.
+              La revisión y el consentimiento de facturación deben ser completados por el
+              propietario de la organización. Un administrador del condominio puede ver el plan,
+              pero no autorizar condiciones comerciales en nombre de la organización.
             </div>
           ) : null}
 
@@ -405,25 +410,24 @@ export function CommercialSummaryCard({ condominiumId }: { condominiumId: string
                       type="checkbox"
                     />
                     <span>
-                      Acepto las condiciones comerciales mostradas arriba y autorizo estas condiciones
-                      de facturación para cuando se configure un método de pago. Entiendo que hoy no se
-                      realiza ningún cobro, que este paso no agrega un método de pago y que el cobro
-                      automático permanece deshabilitado.
+                      Acepto las condiciones comerciales mostradas arriba y autorizo estas
+                      condiciones de facturación para cuando se configure un método de pago.
+                      Entiendo que hoy no se realiza ningún cobro, que este paso no agrega un método
+                      de pago y que el cobro automático permanece deshabilitado.
                     </span>
                   </label>
 
                   <div className="settings-commercial-checkout__actions">
                     <Button
                       disabled={
-                        consentLoading ||
-                        previewLoading ||
-                        !consentAccepted ||
-                        !previewMatchesInput
+                        consentLoading || previewLoading || !consentAccepted || !previewMatchesInput
                       }
                       onClick={() => void confirmConsent()}
                       type="button"
                     >
-                      {consentLoading ? 'Registrando consentimiento…' : 'Aceptar condiciones comerciales'}
+                      {consentLoading
+                        ? 'Registrando consentimiento…'
+                        : 'Aceptar condiciones comerciales'}
                     </Button>
                     <small>
                       El método de pago se configurará en un paso separado. Este consentimiento no
