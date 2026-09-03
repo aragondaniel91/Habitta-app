@@ -1,5 +1,11 @@
 import { useMemo } from 'react';
-import { CheckCircleIcon, FeesIcon, PaymentsIcon, SettingsIcon } from '../components/icons';
+import {
+  CheckCircleIcon,
+  HomeIcon,
+  PaymentsIcon,
+  SettingsIcon,
+  UnitsIcon,
+} from '../components/icons';
 import { FinancialPagination } from '../components/FinancialPagination';
 import { PageHeader } from '../components/PageHeader';
 import { Badge, Button, InfoHint, Surface } from '../components/ui';
@@ -153,19 +159,25 @@ export function ResidentPaymentsView({
         </div>
       ) : null}
 
-      <Surface className="resident-payments__account-shell">
-        <div className="resident-payments__context-bar">
-          <div className="resident-payments__context-copy">
-            <span className="hq-kicker">Cuenta residencial</span>
-            <strong>{selectedScopeLabel}</strong>
-            <small>Cada unidad y cada moneda mantienen su propia trazabilidad.</small>
+      <Surface aria-label="Contexto de pagos" className="resident-payments__context-shell">
+        <div className="resident-payments__context-item resident-payments__context-condominium">
+          <span className="resident-payments__context-icon">
+            <UnitsIcon size={22} />
+          </span>
+          <div>
+            <span>Condominio seleccionado</span>
+            <strong>{condominiumName}</strong>
           </div>
+        </div>
 
-          <div className="resident-payments__context-controls">
+        <div className="resident-payments__context-item resident-payments__context-unit">
+          <div>
+            <span>Estoy viendo</span>
             {unitOptions.length > 1 ? (
-              <label className="resident-payments__control" htmlFor="resident-payments-unit">
-                <span>Unidad</span>
+              <label className="resident-payments__unit-select" htmlFor="resident-payments-unit">
+                <HomeIcon size={20} />
                 <select
+                  aria-label="Unidad que deseas consultar"
                   id="resident-payments-unit"
                   onChange={(event) => onUnitChange(event.target.value)}
                   value={selectedUnitId}
@@ -178,54 +190,110 @@ export function ResidentPaymentsView({
                   ))}
                 </select>
               </label>
-            ) : null}
-
-            <div className="resident-payments__control">
-              <span>Moneda</span>
-              {currencies.length > 1 ? (
-                <div aria-label="Seleccionar moneda" className="resident-payments__currency-tabs">
-                  {currencies.map((item) => (
-                    <button
-                      aria-pressed={currency === item}
-                      data-active={currency === item || undefined}
-                      key={item}
-                      onClick={() => onCurrencyChange(item)}
-                      type="button"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <Badge tone="info">{currency}</Badge>
-              )}
-            </div>
+            ) : (
+              <strong className="resident-payments__single-unit">
+                <HomeIcon size={20} /> {selectedScopeLabel}
+              </strong>
+            )}
           </div>
         </div>
 
-        <div className="resident-payments__account-main">
-          <div className="resident-payments__account-summary">
-            <span className="resident-payments__account-icon">
-              <FeesIcon size={20} />
-            </span>
-            <div className="resident-payments__account-copy">
-              <span>Saldo actual</span>
-              <div className="resident-payments__amount-row">
-                <strong className="hq-money">{formatDashboardAmount(outstanding, currency)}</strong>
+        <div className="resident-payments__context-item resident-payments__context-currency">
+          <div>
+            <span>Moneda</span>
+            {currencies.length > 1 ? (
+              <div aria-label="Seleccionar moneda" className="resident-payments__currency-tabs">
+                {currencies.map((item) => (
+                  <button
+                    aria-pressed={currency === item}
+                    data-active={currency === item || undefined}
+                    key={item}
+                    onClick={() => onCurrencyChange(item)}
+                    type="button"
+                  >
+                    {item}
+                  </button>
+                ))}
               </div>
-              <p>
-                Este saldo solo cambia cuando la administración aprueba y aplica el pago.
+            ) : (
+              <Badge tone="info">{currency}</Badge>
+            )}
+          </div>
+        </div>
+      </Surface>
+
+      <Surface className="resident-payments__account-shell">
+        <div className="resident-payments__account-main">
+          <section className="resident-payments__account-summary" aria-label="Saldo actual">
+            <div className="resident-payments__account-heading">
+              <span className="resident-payments__account-icon">
+                <HomeIcon size={21} />
+              </span>
+              <div>
+                <span>Cuenta residencial</span>
+                <strong>{selectedScopeLabel}</strong>
+              </div>
+            </div>
+
+            <div className="resident-payments__balance-block">
+              <span>
+                Saldo actual
                 <InfoHint label="Cómo funciona el saldo pendiente">
                   Registrar o enviar un comprobante no reduce el saldo por sí solo. Habitta conserva
                   el saldo hasta que el pago sea aprobado y aplicado de forma trazable.
                 </InfoHint>
-              </p>
+              </span>
+              <strong className="hq-money">{formatDashboardAmount(outstanding, currency)}</strong>
+              <p>Este saldo solo cambia cuando la administración aprueba y aplica el pago.</p>
             </div>
-          </div>
+          </section>
 
-          <div className="resident-payments__account-action">
+          <section className="resident-payments__methods-compact" aria-label="Métodos disponibles">
+            <div className="resident-payments__compact-heading">
+              <span>Métodos disponibles</span>
+              <Badge tone={activeMethods.length ? 'success' : 'neutral'}>
+                {activeMethods.length ? `${activeMethods.length} activos` : 'Sin métodos'}
+              </Badge>
+            </div>
+
+            {activeMethods.length ? (
+              <div className="resident-payments__methods">
+                {activeMethods.map((method) => (
+                  <article key={method.id}>
+                    <span className="resident-payments__method-icon">
+                      <PaymentsIcon size={18} />
+                    </span>
+                    <div>
+                      <strong>{method.display_name}</strong>
+                      <small>
+                        {method.instructions || 'Sigue las instrucciones de la administración.'}
+                      </small>
+                    </div>
+                    <div className="resident-payments__method-badges">
+                      {method.requires_reference ? <Badge tone="info">Referencia</Badge> : null}
+                      {method.requires_proof ? <Badge tone="warning">Comprobante</Badge> : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="resident-payments__method-empty" role="note">
+                <span className="resident-payments__method-icon">
+                  <PaymentsIcon size={18} />
+                </span>
+                <div>
+                  <strong>No hay método disponible para {currency}</strong>
+                  <small>La administración todavía no publicó un método activo para esta moneda.</small>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="resident-payments__account-action" aria-label="Registrar un pago">
+            <span className="resident-payments__action-icon" data-available={canRegister || undefined}>
+              {canRegister ? <CheckCircleIcon size={20} /> : <SettingsIcon size={20} />}
+            </span>
             <div className="resident-payments__action-copy">
-              <span className="hq-kicker">Registrar un pago</span>
               <strong>{canRegister ? '¿Ya realizaste tu pago?' : 'Registro no disponible'}</strong>
               <small>
                 {canRegister
@@ -238,54 +306,7 @@ export function ResidentPaymentsView({
             <Button disabled={!canRegister} onClick={onRegisterPayment}>
               <PaymentsIcon size={17} /> Registrar pago
             </Button>
-          </div>
-        </div>
-
-        <div className="resident-payments__methods-strip">
-          <div className="resident-payments__methods-heading">
-            <div>
-              <span className="hq-kicker">Cómo pagar</span>
-              <strong>Métodos disponibles</strong>
-            </div>
-            <Badge tone={activeMethods.length ? 'success' : 'neutral'}>
-              {activeMethods.length ? `${activeMethods.length} activos` : 'Sin métodos'}
-            </Badge>
-          </div>
-
-          {activeMethods.length ? (
-            <div className="resident-payments__methods">
-              {activeMethods.map((method) => (
-                <article key={method.id}>
-                  <span className="resident-payments__method-icon">
-                    <SettingsIcon size={18} />
-                  </span>
-                  <div>
-                    <strong>{method.display_name}</strong>
-                    <small>
-                      {method.instructions || 'Sigue las instrucciones de la administración.'}
-                    </small>
-                  </div>
-                  <div className="resident-payments__method-badges">
-                    {method.requires_reference ? <Badge tone="info">Referencia</Badge> : null}
-                    {method.requires_proof ? <Badge tone="warning">Comprobante</Badge> : null}
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="resident-payments__method-empty" role="note">
-              <span className="resident-payments__method-icon">
-                <SettingsIcon size={18} />
-              </span>
-              <div>
-                <strong>No hay método disponible para {currency}</strong>
-                <small>
-                  La administración todavía no publicó un método activo para esta moneda. Cuando lo
-                  haga, podrás registrar el pago desde este mismo resumen.
-                </small>
-              </div>
-            </div>
-          )}
+          </section>
         </div>
       </Surface>
 
@@ -327,13 +348,16 @@ export function ResidentPaymentsView({
       <Surface className="resident-payments__panel resident-payments__history-panel">
         <div className="resident-payments__section-heading">
           <div>
-            <span className="hq-kicker">Historial</span>
+            <span className="hq-kicker">Historial de pagos</span>
             <h2>Mis movimientos</h2>
           </div>
-          <span className="resident-payments__count">
-            {visiblePayments.length} visibles · {data.payments.length} de {data.paymentsPage.total}{' '}
-            cargados
-          </span>
+          <div className="resident-payments__history-meta">
+            <Badge tone="neutral">Todos los períodos</Badge>
+            <span className="resident-payments__count">
+              {visiblePayments.length} visibles · {data.payments.length} de {data.paymentsPage.total}{' '}
+              cargados
+            </span>
+          </div>
         </div>
 
         {visiblePayments.length ? (
@@ -362,8 +386,6 @@ export function ResidentPaymentsView({
                       </Badge>
                     </div>
                     <span>
-                      {/* With one unit the answer is obvious and the label is noise. With
-                          several, a payment without its destination is unreadable. */}
                       {!selectedUnitId && unitOptions.length > 1
                         ? `${residentUnitLabel(unitLabels, payment.unit_id)} · `
                         : ''}
@@ -383,12 +405,24 @@ export function ResidentPaymentsView({
           </div>
         ) : (
           <div className="resident-payments__history-empty">
-            <span className="resident-payments__history-empty-icon">
-              <PaymentsIcon size={22} />
-            </span>
-            <div>
+            <div aria-hidden="true" className="resident-payments__history-illustration">
+              <span className="resident-payments__history-paper">
+                <span />
+                <span />
+                <span />
+              </span>
+              <span className="resident-payments__history-money">$</span>
+            </div>
+            <div className="resident-payments__history-empty-copy">
               <strong>Aún no tienes pagos</strong>
               <small>Cuando registres uno aparecerá aquí con su estado de validación.</small>
+              <details className="resident-payments__history-help">
+                <summary>Más información sobre pagos</summary>
+                <p>
+                  Cuando registres un pago podrás seguir aquí su validación, correcciones y recibo
+                  sin perder la trazabilidad de la unidad ni de la moneda.
+                </p>
+              </details>
             </div>
           </div>
         )}
