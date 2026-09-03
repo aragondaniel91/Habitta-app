@@ -31,7 +31,7 @@ describe('HAB-431 resident Requests stays residential without widening capabilit
   });
 
   it('creates a resident request as the current user without impersonation controls', () => {
-    expect(resident).toContain("`/v1/condominiums/${condominiumId}/requests`");
+    expect(resident).toContain('`/v1/condominiums/${condominiumId}/requests`');
     expect(resident).toContain("method: 'POST'");
     expect(resident).toContain('categoryId');
     expect(resident).toContain('priority');
@@ -54,7 +54,7 @@ describe('HAB-431 resident Requests stays residential without widening capabilit
     expect(resident).toContain('const canWrite = canWriteResidentRequests(roles)');
     expect(resident).toContain("visibility: 'public'");
     expect(resident).toContain('visibility="public"');
-    expect(resident).toContain("`/v1/condominiums/${condominiumId}/requests/${request.id}/cancel`");
+    expect(resident).toContain('`/v1/condominiums/${condominiumId}/requests/${request.id}/cancel`');
     expect(resident).toContain('request.submitted_by_user_id === session.user.id');
     expect(resident).toContain('canWrite && !terminal');
     expect(resident).toContain('Consulta de solo lectura');
