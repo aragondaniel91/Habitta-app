@@ -1,0 +1,134 @@
+.resident-payments .resident-payments__history-panel {
+  gap: 0;
+  padding: 0;
+}
+
+.resident-payments .resident-payments__history-panel .resident-payments__section-heading {
+  align-items: center;
+  padding: var(--hq-space-5) var(--hq-space-6) var(--hq-space-4);
+  border-bottom: 1px solid var(--hq-line);
+}
+
+.resident-payments
+  .resident-payments__history-panel
+  .resident-payments__section-heading
+  > div:first-child {
+  gap: var(--hq-space-2);
+}
+
+.resident-payments .resident-payments__history-panel .hq-kicker {
+  line-height: 1;
+}
+
+.resident-payments .resident-payments__history-panel .resident-payments__section-heading h2 {
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.resident-payments .resident-payments__history-panel .resident-payments__history-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--hq-space-3);
+}
+
+.resident-payments .resident-payments__history-panel .resident-payments__history-meta .badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hq-control-compact);
+  padding-inline: var(--hq-space-3);
+}
+
+.resident-payments .resident-payments__history-panel .resident-payments__count {
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.resident-payments .resident-payments__history-panel > .resident-payments__history {
+  padding-inline: var(--hq-space-6);
+}
+
+.resident-payments .resident-payments__history-panel .resident-payments__history-empty {
+  width: min(100%, 46rem);
+  max-width: none;
+  margin: 0 auto;
+  padding: var(--hq-space-8) var(--hq-space-6);
+}
+
+.resident-payments .resident-payments__history-panel .resident-payments__history-empty-copy {
+  align-content: center;
+  gap: var(--hq-space-3);
+}
+
+.resident-payments
+  .resident-payments__history-panel
+  .resident-payments__history-empty-copy
+  > strong {
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.resident-payments
+  .resident-payments__history-panel
+  .resident-payments__history-empty-copy
+  > small {
+  max-width: 32rem;
+  line-height: 1.6;
+}
+
+.resident-payments .resident-payments__history-panel .resident-payments__history-help {
+  margin-top: var(--hq-space-1);
+}
+
+.resident-payments .resident-payments__history-panel > .financial-pagination {
+  margin-top: 0;
+  padding: var(--hq-space-4) var(--hq-space-6);
+  background: var(--hq-surface-subtle);
+}
+
+.resident-payments .resident-payments__history-panel > .financial-pagination span,
+.resident-payments .resident-payments__history-panel > .financial-pagination small {
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .resident-payments .resident-payments__history-panel .resident-payments__section-heading {
+    align-items: flex-start;
+    padding: var(--hq-space-4);
+  }
+
+  .resident-payments .resident-payments__history-panel .resident-payments__history-meta {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .resident-payments .resident-payments__history-panel .resident-payments__history-empty {
+    grid-template-columns: 1fr;
+    gap: var(--hq-space-4);
+    padding: var(--hq-space-6) var(--hq-space-4);
+  }
+
+  .resident-payments .resident-payments__history-panel > .resident-payments__history {
+    padding-inline: var(--hq-space-4);
+  }
+
+  .resident-payments .resident-payments__history-panel > .financial-pagination {
+    padding: var(--hq-space-3) var(--hq-space-4) var(--hq-space-4);
+  }
+}
+
+@media (max-width: 600px) {
+  .resident-payments .resident-payments__history-panel .resident-payments__section-heading {
+    flex-direction: column;
+  }
+
+  .resident-payments .resident-payments__history-panel .resident-payments__history-meta {
+    justify-content: flex-start;
+  }
+
+  .resident-payments .resident-payments__history-panel .resident-payments__count {
+    text-align: left;
+    white-space: normal;
+  }
+}

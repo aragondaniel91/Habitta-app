@@ -6,6 +6,7 @@ const source = (relative: string) => readFileSync(new URL(relative, import.meta.
 const page = source('./pages/ResidentPaymentsPage.tsx');
 const view = source('./pages/ResidentPaymentsView.tsx');
 const css = source('./resident-payments.css');
+const historyPolish = source('./resident-payments-history-polish.css');
 
 describe('HAB-431 resident payments approved HQ experience', () => {
   it('keeps one primary registration action connected to the financial summary', () => {
@@ -91,5 +92,23 @@ describe('HAB-431 resident payments approved HQ experience', () => {
     expect(css).toContain('@media (max-width: 760px)');
     expect(css).toContain('@media (max-width: 600px)');
     expect(css).toContain('@media (max-width: 390px)');
+  });
+
+  it('keeps the history typography aligned and gives header and footer deliberate spacing', () => {
+    expect(historyPolish).toContain(
+      'resident-payments__history-panel .resident-payments__section-heading',
+    );
+    expect(historyPolish).toContain('align-items: center');
+    expect(historyPolish).toContain(
+      'padding: var(--hq-space-5) var(--hq-space-6) var(--hq-space-4)',
+    );
+    expect(historyPolish).toContain('resident-payments__history-meta');
+    expect(historyPolish).toContain('display: flex');
+    expect(historyPolish).toContain('resident-payments__history-empty-copy');
+    expect(historyPolish).toContain('line-height: 1.6');
+    expect(historyPolish).toContain('> .financial-pagination');
+    expect(historyPolish).toContain('background: var(--hq-surface-subtle)');
+    expect(historyPolish).toContain('@media (max-width: 600px)');
+    expect(historyPolish).not.toContain('min-height: 240px');
   });
 });
