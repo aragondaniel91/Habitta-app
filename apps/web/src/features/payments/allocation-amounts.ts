@@ -54,3 +54,10 @@ export function allocationReceivableAmount({
   if (paymentCurrency === receivableCurrency) return paymentAmount;
   return deriveReceivableAmount(paymentAmount, rate ?? '');
 }
+
+export function moneyExceeds(value: string, limit: string): boolean {
+  const valueCents = scaledInteger(value, 2);
+  const limitCents = scaledInteger(limit, 2);
+  if (valueCents === null || limitCents === null) return false;
+  return valueCents > limitCents;
+}
