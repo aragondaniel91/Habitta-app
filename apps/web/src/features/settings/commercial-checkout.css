@@ -1,0 +1,214 @@
+.settings-commercial-success {
+  margin-top: 1rem;
+}
+
+.settings-commercial-checkout {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.15rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.15rem;
+}
+
+.settings-commercial-checkout__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settings-commercial-checkout__heading h3 {
+  margin: 0.22rem 0 0.3rem;
+  color: var(--text-strong);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+}
+
+.settings-commercial-checkout__heading p,
+.settings-commercial-loading {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.settings-commercial-promo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  background: var(--surface-subtle, var(--surface));
+}
+
+.settings-commercial-promo .field {
+  min-width: 0;
+}
+
+.settings-commercial-promo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-bottom: 0.05rem;
+}
+
+.settings-commercial-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.settings-commercial-pricing-grid article {
+  display: grid;
+  align-content: start;
+  gap: 0.32rem;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  background: var(--surface);
+}
+
+.settings-commercial-pricing-grid article[data-emphasis='success'] {
+  border-color: rgb(40 167 69 / 0.24);
+  background: var(--green-soft);
+}
+
+.settings-commercial-pricing-grid span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.settings-commercial-pricing-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--text-strong);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+}
+
+.settings-commercial-pricing-grid small {
+  color: var(--muted);
+  font-size: 0.63rem;
+  line-height: 1.45;
+}
+
+.settings-commercial-timeline {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.settings-commercial-timeline article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.9rem;
+}
+
+.settings-commercial-timeline article + article {
+  border-top: 1px solid var(--border);
+}
+
+.settings-commercial-timeline__step {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.settings-commercial-timeline article > div {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.settings-commercial-timeline small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.settings-commercial-timeline strong {
+  color: var(--text-strong);
+  font-size: 0.82rem;
+}
+
+.settings-commercial-timeline p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
+.settings-commercial-consent {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  background: var(--blue-soft);
+  cursor: pointer;
+}
+
+.settings-commercial-consent input {
+  width: 18px;
+  height: 18px;
+  margin: 0.05rem 0 0;
+  accent-color: var(--blue);
+}
+
+.settings-commercial-consent span {
+  color: var(--text-strong);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.settings-commercial-consent:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.settings-commercial-checkout__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.settings-commercial-checkout__actions small {
+  flex: 1 1 230px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .settings-commercial-promo,
+  .settings-commercial-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-commercial-promo__actions,
+  .settings-commercial-checkout__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-commercial-promo__actions .button,
+  .settings-commercial-checkout__actions .button {
+    width: 100%;
+  }
+}
