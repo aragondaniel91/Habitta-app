@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Organization } from './AppShell';
 import { CondominiumProfileFields } from './CondominiumProfileFields';
@@ -21,6 +21,14 @@ import {
   type AdminOnboardingInput,
   type OrganizationType,
 } from '../lib/adminOnboarding';
+import {
+  parseSelfServiceTrialIntent,
+  selfServiceBillingPeriodLabel,
+  selfServicePlanLabel,
+  selfServiceTrialIntentFromMetadata,
+  type SelfServiceTrialIntent,
+} from '../lib/selfServiceOnboarding';
+import { supabase } from '../supabase';
 
 type Step = 'organization' | 'condominium' | 'review' | 'complete';
 
@@ -84,6 +92,16 @@ function structureSummary(input: AdminOnboardingInput) {
   return 'No definida';
 }
 
+function TrialIntentNotice({ intent }: { intent: SelfServiceTrialIntent }) {
+  return (
+    <p className="access-message" data-tone="info" role="status">
+      <strong>{selfServicePlanLabel(intent.planCode)}</strong> · prueba gratis por 30 días · periodo{' '}
+      {selfServiceBillingPeriodLabel(intent.billingPeriod)}. No se realizará ningún cargo hoy; la
+      configuración de pago se completa por separado.
+    </p>
+  );
+}
+
 export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: Props) {
   const hasOrganization = organizations.length > 0;
   const [step, setStep] = useState<Step>(hasOrganization ? 'condominium' : 'organization');
@@ -93,6 +111,21 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
   const [errors, setErrors] = useState<AdminOnboardingErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [selfServiceIntent, setSelfServiceIntent] = useState<SelfServiceTrialIntent | null>(() =>
+    hasOrganization ? null : parseSelfServiceTrialIntent(window.location.search),
+  );
+
+  useEffect(() => {
+    if (hasOrganization || selfServiceIntent || !supabase) return;
+    let cancelled = false;
+    void supabase.auth.getUser().then(({ data }) => {
+      if (cancelled) return;
+      setSelfServiceIntent(selfServiceTrialIntentFromMetadata(data.user?.user_metadata));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasOrganization, selfServiceIntent]);
 
   const selectedOrganization = useMemo(
     () => organizations.find((organization) => organization.id === input.organizationId),
@@ -148,7 +181,7 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
     setSubmitting(true);
     setSubmitError('');
     try {
-      await submitAdminOnboarding(input, hasOrganization);
+      await submitAdminOnboarding(input, hasOrganization, selfServiceIntent);
       setStep('complete');
     } catch (error) {
       setSubmitError(
@@ -181,6 +214,7 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
             Primero definimos la identidad y estructura real del condominio. Personas, cuotas y
             operaciones se completan después sobre esa base.
           </p>
+          {!hasOrganization && selfServiceIntent ? <TrialIntentNotice intent={selfServiceIntent} /> : null}
           <ol>
             {steps.map((item, index) => {
               const complete = index < activeIndex;
@@ -326,6 +360,10 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                   </p>
                 </div>
 
+                {!hasOrganization && selfServiceIntent ? (
+                  <TrialIntentNotice intent={selfServiceIntent} />
+                ) : null}
+
                 <dl className="admin-onboarding-review">
                   <div>
                     <dt>Administración</dt>
@@ -396,7 +434,11 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                     onClick={() => void createWorkspace()}
                     type="button"
                   >
-                    {submitting ? 'Creando espacio…' : 'Crear condominio'}
+                    {submitting
+                      ? 'Creando espacio…'
+                      : selfServiceIntent && !hasOrganization
+                        ? 'Crear condominio y activar prueba'
+                        : 'Crear condominio'}
                     {!submitting ? <ArrowRightIcon size={18} /> : null}
                   </Button>
                 </div>
@@ -410,10 +452,15 @@ export function AdminOnboardingWizard({ organizations, onComplete, onSignOut }: 
                 </span>
                 <div>
                   <span className="access-kicker">Configuración completada</span>
-                  <h2>Tu condominio tiene una base operativa real.</h2>
+                  <h2>
+                    {selfServiceIntent && !hasOrganization
+                      ? 'Tu prueba gratis ya está activa.'
+                      : 'Tu condominio tiene una base operativa real.'}
+                  </h2>
                   <p>
-                    Habitta ya conoce su identidad, ubicación y estructura física. Los siguientes
-                    módulos se configurarán sobre esa información.
+                    {selfServiceIntent && !hasOrganization
+                      ? 'Tu condominio ya está listo para comenzar. Tienes 30 días para configurar la operación y conocer Habitta; no activamos cobros automáticos.'
+                      : 'Habitta ya conoce su identidad, ubicación y estructura física. Los siguientes módulos se configurarán sobre esa información.'}
                   </p>
                 </div>
 
