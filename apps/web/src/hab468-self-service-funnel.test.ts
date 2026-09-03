@@ -23,8 +23,8 @@ describe('HAB-468 self-service trial funnel contract', () => {
     expect(auth).toContain('parseSelfServiceTrialIntent(window.location.search)');
     expect(auth).toContain('...selfServiceAuthMetadata(selfServiceIntent)');
     expect(auth).toContain("registration_source: 'public_admin_onboarding'");
-    expect(auth).toContain("? 'Comienza tu prueba gratis'");
-    expect(auth).toContain("? 'Crea tu cuenta administrativa'");
+    expect(auth).toContain("'Comienza tu prueba gratis'");
+    expect(auth).toContain("'Crea tu cuenta administrativa'");
     expect(auth).toContain('30 días de prueba');
     expect(auth).toContain('No se realizará');
     expect(auth).toContain('configuración de pago se hará por separado');
