@@ -41,10 +41,14 @@ export const runSaasBilling = async (env: NotificationBindings, runAt = new Date
     p_run_at: runAt.toISOString(),
     p_limit_count: 25,
   });
-  const attempts = await serviceRpc<DueBillingAttempt[]>(env, 'claim_due_saas_billing_attempts_v1', {
-    p_run_at: runAt.toISOString(),
-    p_limit_count: 20,
-  });
+  const attempts = await serviceRpc<DueBillingAttempt[]>(
+    env,
+    'claim_due_saas_billing_attempts_v1',
+    {
+      p_run_at: runAt.toISOString(),
+      p_limit_count: 20,
+    },
+  );
 
   let submitted = 0;
   await runWithBoundedConcurrency(attempts, BILLING_CONCURRENCY, async (attempt) => {
@@ -75,7 +79,9 @@ export const runSaasBilling = async (env: NotificationBindings, runAt = new Date
       submitted += 1;
     } catch (error) {
       const errorCode =
-        error instanceof Error && error.message ? error.message.slice(0, 120) : 'billing_provider_error';
+        error instanceof Error && error.message
+          ? error.message.slice(0, 120)
+          : 'billing_provider_error';
       await serviceRpc<boolean>(env, 'release_saas_billing_attempt_for_retry_v1', {
         p_attempt_id: attempt.attempt_id,
         p_error_code: errorCode,
