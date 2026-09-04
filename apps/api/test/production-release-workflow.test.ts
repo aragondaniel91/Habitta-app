@@ -5,7 +5,7 @@ const root = new URL('../../../', import.meta.url);
 
 // Production must deploy the exact Worker version emitted by the upload command itself.
 describe('production release workflow hardening', () => {
-  it('fails closed around production database identity and canonical reachability', async () => {
+  it('fails closed around production database identity, Stripe secrets and canonical reachability', async () => {
     const workflow = await readFile(
       new URL('.github/workflows/production-release.yml', root),
       'utf8',
@@ -13,6 +13,12 @@ describe('production release workflow hardening', () => {
 
     expect(workflow).toContain('environment: production');
     expect(workflow).toContain('HABITTA_PROD_PROJECT_REF: kgsfaahixbcwcmykmhat');
+    expect(workflow).toContain('BILLING_PROVIDER: stripe');
+    expect(workflow).toContain('STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}');
+    expect(workflow).toContain('STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}');
+    expect(workflow).toMatch(
+      /for name in [^\n]*STRIPE_SECRET_KEY[^\n]*STRIPE_WEBHOOK_SECRET[^\n]*; do/,
+    );
     expect(workflow).toContain('node scripts/release/validate-production-release.mjs');
     expect(workflow).toContain('bash scripts/release/pre-migration-production-backup.sh');
     expect(workflow).toContain('habitta-integrations-prod');
