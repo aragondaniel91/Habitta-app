@@ -132,6 +132,8 @@ describe('HAB-475 trials and billing attention', () => {
   it('keeps demo/internal explicitly nonbillable and outside revenue urgency', () => {
     expect(operationsScript).toContain("if (!isCustomer(row)) return 'not_applicable'");
     expect(operationsScript).toContain("label: 'No facturable'");
-    expect(operations).toContain('Demo, internal, trials, suspended y cancelled no inflan revenue');
+    expect(operations.replace(/\s+/g, ' ')).toContain(
+      'Demo, internal, trials, suspended y cancelled no inflan revenue',
+    );
   });
 });
