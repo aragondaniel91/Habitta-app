@@ -1,0 +1,43 @@
+name: Production Stripe Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type VERIFY-HABITTA-STRIPE
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-stripe-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_WORKER_PROD_URL: https://habitta-api-prod.aragondaniel91.workers.dev
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      INPUT_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate explicit verification intent
+        run: |
+          set -euo pipefail
+          for name in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+            test -n "${!name:-}" || { echo "Missing required production setting: $name" >&2; exit 1; }
+          done
+          CONFIRMATION="$(printf '%s' "$INPUT_CONFIRMATION" | tr -d '[:space:]')"
+          if [ "$CONFIRMATION" != VERIFY-HABITTA-STRIPE ]; then
+            echo 'Refusing Stripe production verification: confirmation phrase does not match VERIFY-HABITTA-STRIPE.' >&2
+            exit 1
+          fi
+      - name: Verify production Stripe provider without charging
+        run: node scripts/release/verify-production-stripe.mjs
