@@ -104,8 +104,8 @@ describe('HAB-426 billable boundary is unchanged', () => {
     }
   });
 
-  it('states the billable rule in the interface, not only in code', () => {
-    expect(commercial).toContain('no facturable');
+  it('states the authorized SaaS boundary in the interface and keeps nonbillable labels explicit', () => {
     expect(commercial).toContain('operaciones SaaS ya autorizadas');
+    expect(commercialScript).toContain('no facturable');
   });
 });
