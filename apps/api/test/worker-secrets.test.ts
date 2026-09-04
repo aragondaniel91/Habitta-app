@@ -35,19 +35,18 @@ describe('worker secret file provider and email gating', () => {
     ).toEqual({ ...supabaseSecrets, ZEPTOMAIL_SEND_TOKEN: 'zepto-token' });
   });
 
-  it.each([
-    {},
-    { STRIPE_SECRET_KEY: 'sk_live_test' },
-    { STRIPE_WEBHOOK_SECRET: 'whsec_test' },
-  ])('fails closed when Stripe is selected without both Worker secrets', (stripeSecrets) => {
-    expect(() =>
-      workerSecretsContent({
-        ...supabaseSecrets,
-        BILLING_PROVIDER: 'stripe',
-        ...stripeSecrets,
-      }),
-    ).toThrow('worker_stripe_secrets_missing');
-  });
+  it.each([{}, { STRIPE_SECRET_KEY: 'sk_live_test' }, { STRIPE_WEBHOOK_SECRET: 'whsec_test' }])(
+    'fails closed when Stripe is selected without both Worker secrets',
+    (stripeSecrets) => {
+      expect(() =>
+        workerSecretsContent({
+          ...supabaseSecrets,
+          BILLING_PROVIDER: 'stripe',
+          ...stripeSecrets,
+        }),
+      ).toThrow('worker_stripe_secrets_missing');
+    },
+  );
 
   it('includes Stripe secrets only when Stripe is the selected billing provider', () => {
     const stripeSecrets = {
