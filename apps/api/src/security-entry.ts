@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import applicationHandler, { app as applicationApp } from './index';
+import { billingWebhookRoutes } from './billing-webhook-routes';
 import {
   isAllowedCorsOrigin,
   publicErrorForStatus,
@@ -173,6 +174,7 @@ app.use(
     allowHeaders: [
       'Authorization',
       'Content-Type',
+      'Idempotency-Key',
       'X-Filename',
       'X-Document-Type',
       'X-Visibility',
@@ -186,6 +188,10 @@ app.use(
 // Public acquisition data is deliberately isolated from authenticated /v1 application routes.
 // The mounted handler itself uses only the Supabase anon key and the narrow HAB-433 RPC contract.
 app.route('/public', publicPlanCatalogRoutes);
+
+// Provider webhooks cannot carry a Habitta user JWT. They live outside `/v1/*` and rely on the
+// provider's cryptographic signature before any service-role RPC is reachable.
+app.route('/billing/webhooks', billingWebhookRoutes);
 
 // High-risk writes are limited at the outer Worker boundary so every current and future handler
 // under these route families gets the same protection. Keys never include a raw bearer token.

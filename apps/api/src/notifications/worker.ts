@@ -1,4 +1,5 @@
 import { resolveNotificationsEnvironment } from '../config/notifications-env';
+import { runSaasBilling } from '../saas-billing';
 import { runWithBoundedConcurrency } from './concurrency';
 import { sendNotificationEmail } from './email-provider';
 import { renderNotificationEmail } from './renderer';
@@ -50,6 +51,20 @@ export const runScheduled = async (env: NotificationBindings, runAt = new Date()
     run_at: runAt.toISOString(),
   });
   await enqueuePendingNotifications(env);
+
+  // SaaS billing is isolated from resident notification work. A provider outage is logged and left
+  // for the idempotent billing retry path; it must never prevent announcements/notifications from
+  // completing their own scheduled cycle.
+  try {
+    await runSaasBilling(env, runAt);
+  } catch (error) {
+    console.error({
+      event: 'saas_billing_scheduler_failed',
+      environment: env.APP_ENV,
+      runAt: runAt.toISOString(),
+      error: error instanceof Error ? error.message : 'unknown_billing_error',
+    });
+  }
 };
 
 const finish = (

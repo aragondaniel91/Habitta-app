@@ -105,12 +105,14 @@ describe('production-owned hosted database notification ownership', () => {
     expect(config.env.prod.triggers.crons).toContain(productionCron);
   });
 
-  it('keeps the production ZeptoMail secret mode-gated instead of statically required', () => {
+  it('keeps the production ZeptoMail secret mode-gated while requiring Stripe server secrets', () => {
     const config = parsedConfig();
 
     expect(config.env.prod.secrets.required).toEqual([
       'SUPABASE_ANON_KEY',
       'SUPABASE_SERVICE_ROLE_KEY',
+      'STRIPE_SECRET_KEY',
+      'STRIPE_WEBHOOK_SECRET',
     ]);
 
     config.env.prod.secrets.required.push('ZEPTOMAIL_SEND_TOKEN');

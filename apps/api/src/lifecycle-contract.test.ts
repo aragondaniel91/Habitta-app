@@ -115,6 +115,7 @@ const ACTION_SUFFIXES = [
   'schedule',
   'service-logs',
   'start-review',
+  'stripe',
   'submit',
   'topology-remediation',
   'transition',

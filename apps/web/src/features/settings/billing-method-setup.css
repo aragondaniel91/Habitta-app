@@ -1,0 +1,73 @@
+.settings-billing-method {
+  display: grid;
+  gap: 18px;
+}
+
+.settings-billing-method .settings-section-heading p {
+  margin: 6px 0 0;
+  max-width: 62ch;
+  color: var(--text-muted);
+}
+
+.settings-billing-method__security {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  background: var(--surface-subtle);
+}
+
+.settings-billing-method__security > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+
+.settings-billing-method__security p,
+.settings-billing-method__action p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+}
+
+.settings-billing-method__status {
+  margin: 0;
+}
+
+.settings-billing-method__action {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.settings-billing-method__action > div {
+  min-width: 0;
+}
+
+.settings-billing-method__action button {
+  flex: 0 0 auto;
+}
+
+.settings-billing-method__notice {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .settings-billing-method__action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-billing-method__action button {
+    width: 100%;
+  }
+}
