@@ -28,9 +28,7 @@ describe('HAB-426 Platform Admin navigation', () => {
   });
 
   it('marks Overview as the current page there', () => {
-    expect(operations).toMatch(
-      /<a[^>]*aria-current="page"[^>]*href="\/"[^>]*>Overview<\/a>/,
-    );
+    expect(operations).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/"[^>]*>Overview<\/a>/);
   });
 
   it('keeps exactly one logout control', () => {
