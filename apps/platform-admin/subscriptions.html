@@ -22,9 +22,15 @@
         <nav class="platform-nav" id="subscription-nav">
           <a data-icon="overview" href="/">Overview</a>
           <a data-icon="customers" href="/customers.html">Clientes</a>
-          <a data-icon="subscriptions" data-view-link="subscriptions" href="/subscriptions.html">Suscripciones</a>
-          <a data-icon="trials" data-view-link="trials" href="/subscriptions.html?view=trials">Trials</a>
-          <a data-icon="revenue" data-view-link="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
+          <a data-icon="subscriptions" data-view-link="subscriptions" href="/subscriptions.html"
+            >Suscripciones</a
+          >
+          <a data-icon="trials" data-view-link="trials" href="/subscriptions.html?view=trials"
+            >Trials</a
+          >
+          <a data-icon="revenue" data-view-link="revenue" href="/subscriptions.html?view=revenue"
+            >Revenue</a
+          >
           <a data-icon="commercial" href="/commercial.html">Comercial</a>
           <span class="nav-disabled" data-icon="activity">Actividad</span>
           <span class="nav-disabled" data-icon="settings">Settings</span>
@@ -64,7 +70,8 @@
               <div class="eyebrow">Owner backoffice</div>
               <h1 id="ops-title">Suscripciones</h1>
               <p id="ops-description">
-                Estado de suscripciones, preparación de billing y atención comercial usando solo datos SaaS autoritativos.
+                Estado de suscripciones, preparación de billing y atención comercial usando solo
+                datos SaaS autoritativos.
               </p>
             </div>
             <div class="ops-heading-actions">
@@ -77,12 +84,16 @@
             <article class="metric-card">
               <span class="metric-label">MRR efectivo</span>
               <strong class="metric-value" id="ops-mrr">—</strong>
-              <span class="metric-note">Customers confirmados active/past_due; trials y no facturables excluidos.</span>
+              <span class="metric-note"
+                >Customers confirmados active/past_due; trials y no facturables excluidos.</span
+              >
             </article>
             <article class="metric-card">
               <span class="metric-label">ARR run-rate</span>
               <strong class="metric-value" id="ops-arr">—</strong>
-              <span class="metric-note">MRR efectivo × 12; no es revenue histórico reconocido.</span>
+              <span class="metric-note"
+                >MRR efectivo × 12; no es revenue histórico reconocido.</span
+              >
             </article>
             <article class="metric-card">
               <span class="metric-label">Suscripciones activas</span>
@@ -102,7 +113,9 @@
             <article class="metric-card">
               <span class="metric-label">Billing requiere atención</span>
               <strong class="metric-value" id="ops-billing-attention">—</strong>
-              <span class="metric-note">Pago vencido, suspensión o readiness incompleto cuando corresponde.</span>
+              <span class="metric-note"
+                >Pago vencido, suspensión o readiness incompleto cuando corresponde.</span
+              >
             </article>
           </section>
 
@@ -113,7 +126,10 @@
           </nav>
 
           <div class="ops-layout-grid">
-            <section class="surface table-surface ops-table-surface" aria-label="Operación de suscripciones">
+            <section
+              class="surface table-surface ops-table-surface"
+              aria-label="Operación de suscripciones"
+            >
               <div class="ops-toolbar">
                 <input
                   aria-label="Buscar en suscripciones"
@@ -212,19 +228,26 @@
                 <span class="eyebrow">Semántica</span>
                 <h2>Cómo se calcula revenue</h2>
                 <p>
-                  MRR y ARR son run-rate SaaS derivados de términos comerciales autoritativos. Solo incluyen cuentas customer confirmadas en active o past_due. Demo, internal, trials, suspended y cancelled no inflan revenue.
+                  MRR y ARR son run-rate SaaS derivados de términos comerciales autoritativos. Solo
+                  incluyen cuentas customer confirmadas en active o past_due. Demo, internal,
+                  trials, suspended y cancelled no inflan revenue.
                 </p>
                 <ul class="ops-semantics-list">
                   <li><strong>Contratado:</strong> monto pactado del término vigente.</li>
                   <li><strong>Catálogo:</strong> referencia pública del plan cuando existe.</li>
-                  <li><strong>Efectivo:</strong> monto después de ajuste vigente; trial activo vale 0.</li>
+                  <li>
+                    <strong>Efectivo:</strong> monto después de ajuste vigente; trial activo vale 0.
+                  </li>
                 </ul>
               </section>
             </aside>
           </div>
 
           <p class="read-only-note">
-            Vista de solo lectura. No expone residentes, receivables, pagos, ledger ni tesorería. Las mutaciones comerciales continúan exclusivamente en <a href="/commercial.html"><strong>Comercial</strong></a>.
+            Vista de solo lectura. No expone residentes, receivables, pagos, ledger ni tesorería.
+            Las mutaciones comerciales continúan exclusivamente en
+            <a href="/commercial.html"><strong>Comercial</strong></a
+            >.
           </p>
         </main>
       </div>
