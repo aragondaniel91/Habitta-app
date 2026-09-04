@@ -28,6 +28,7 @@ jobs:
     env:
       APP_ENV: production
       NOTIFICATIONS_EMAIL_MODE: live
+      BILLING_PROVIDER: stripe
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
@@ -45,6 +46,8 @@ jobs:
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       ZEPTOMAIL_SEND_TOKEN: ${{ secrets.ZEPTOMAIL_SEND_TOKEN }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
       INPUT_RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.sha }}
       INPUT_CONFIRMATION: ${{ inputs.confirmation }}
@@ -67,7 +70,7 @@ jobs:
       - name: Validate production release invariants
         run: |
           set -euo pipefail
-          for name in ZEPTOMAIL_SEND_TOKEN SUPABASE_PROJECT_REF SUPABASE_URL VITE_SUPABASE_URL CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY BACKUP_ENCRYPTION_PASSPHRASE; do
+          for name in ZEPTOMAIL_SEND_TOKEN STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET SUPABASE_PROJECT_REF SUPABASE_URL VITE_SUPABASE_URL CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY BACKUP_ENCRYPTION_PASSPHRASE; do
             test -n "${!name:-}" || { echo "Missing required production setting: $name" >&2; exit 1; }
           done
           node scripts/release/validate-production-release.mjs

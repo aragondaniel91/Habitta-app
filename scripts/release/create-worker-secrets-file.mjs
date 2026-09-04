@@ -6,12 +6,26 @@ export const workerSecretsContent = (env) => {
   const service = env.SUPABASE_SERVICE_ROLE_KEY;
   const emailMode = env.NOTIFICATIONS_EMAIL_MODE ?? 'disabled';
   const zeptoMailToken = env.ZEPTOMAIL_SEND_TOKEN;
+  const billingProvider = String(env.BILLING_PROVIDER ?? '')
+    .trim()
+    .toLowerCase();
+  const stripeSecretKey = env.STRIPE_SECRET_KEY;
+  const stripeWebhookSecret = env.STRIPE_WEBHOOK_SECRET;
   if (!anon || !service) throw new Error('worker_secrets_missing');
   if (emailMode === 'live' && !zeptoMailToken) throw new Error('worker_email_secret_missing');
+  if (billingProvider === 'stripe' && (!stripeSecretKey || !stripeWebhookSecret)) {
+    throw new Error('worker_stripe_secrets_missing');
+  }
   return JSON.stringify({
     SUPABASE_ANON_KEY: anon,
     SUPABASE_SERVICE_ROLE_KEY: service,
     ...(emailMode !== 'disabled' && zeptoMailToken ? { ZEPTOMAIL_SEND_TOKEN: zeptoMailToken } : {}),
+    ...(billingProvider === 'stripe'
+      ? {
+          STRIPE_SECRET_KEY: stripeSecretKey,
+          STRIPE_WEBHOOK_SECRET: stripeWebhookSecret,
+        }
+      : {}),
   });
 };
 
