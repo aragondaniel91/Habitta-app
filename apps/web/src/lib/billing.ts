@@ -40,7 +40,8 @@ export async function startBillingSetup(condominiumId: string, session: Session)
       headers: { 'Idempotency-Key': idempotencyKey },
     },
   );
-  if (result.billingMethodReady || result.status === 'ready') clearBillingSetupIntent(condominiumId);
+  if (result.billingMethodReady || result.status === 'ready')
+    clearBillingSetupIntent(condominiumId);
   return result;
 }
 
