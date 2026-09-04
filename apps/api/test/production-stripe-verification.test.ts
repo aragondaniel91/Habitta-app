@@ -7,7 +7,7 @@ import {
 
 describe('HAB-436 production Stripe verification', () => {
   it('uses a read-only Stripe account probe and a harmless signed ignored webhook', async () => {
-    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const calls: Array<{ url: string; init: RequestInit | undefined }> = [];
     const secretKey = 'sk_live_redacted_fixture';
     const webhookSecret = 'whsec_redacted_fixture';
     const workerUrl = 'https://habitta-api-prod.example.workers.dev';
