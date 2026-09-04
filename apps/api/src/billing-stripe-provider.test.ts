@@ -69,18 +69,19 @@ describe('HAB-436 Stripe adapter', () => {
   });
 
   it('creates a hosted setup-mode Checkout Session without making Stripe subscription authority', async () => {
-    const stripeFetch = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          id: 'cs_test_hab436',
-          mode: 'setup',
-          url: 'https://checkout.stripe.com/c/pay/cs_test_hab436',
-          customer: null,
-          setup_intent: null,
-          expires_at: Math.floor(Date.now() / 1000) + 1800,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      ),
+    const stripeFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'cs_test_hab436',
+            mode: 'setup',
+            url: 'https://checkout.stripe.com/c/pay/cs_test_hab436',
+            customer: null,
+            setup_intent: null,
+            expires_at: Math.floor(Date.now() / 1000) + 1800,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
     );
     vi.stubGlobal('fetch', stripeFetch);
 
@@ -201,11 +202,12 @@ describe('HAB-436 Stripe adapter', () => {
   });
 
   it('creates an off-session PaymentIntent from Habitta-owned amount and idempotency', async () => {
-    const stripeFetch = vi.fn(async () =>
-      new Response(JSON.stringify({ id: 'pi_charge_hab436', status: 'processing' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+    const stripeFetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ id: 'pi_charge_hab436', status: 'processing' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
     );
     vi.stubGlobal('fetch', stripeFetch);
     const provider = resolveBillingProvider(stripeEnv());
