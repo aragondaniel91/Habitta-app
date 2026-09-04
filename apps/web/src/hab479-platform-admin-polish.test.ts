@@ -25,8 +25,8 @@ describe('HAB-479 Platform Admin accessibility contract', () => {
   it('makes asynchronous status and horizontally scrollable tables programmatically discoverable', () => {
     for (const page of pages) {
       expect(page).toMatch(/aria-atomic="true" aria-live="polite" role="status"/);
-      expect(page).toContain(
-        'aria-label="Tabla desplazable horizontalmente" class="table-scroll" role="region" tabindex="0"',
+      expect(page).toMatch(
+        /<div[^>]*aria-label="Tabla desplazable horizontalmente"[^>]*class="table-scroll"[^>]*role="region"[^>]*tabindex="0"/,
       );
     }
   });
@@ -43,11 +43,11 @@ describe('HAB-479 Platform Admin accessibility contract', () => {
 
 describe('HAB-479 commercial dialog keyboard contract', () => {
   it('explicitly names both native dialogs', () => {
-    expect(commercial).toContain(
-      'aria-describedby="commercial-dialog-subtitle" aria-labelledby="commercial-dialog-title" id="commercial-action-dialog"',
+    expect(commercial).toMatch(
+      /<dialog[^>]*aria-describedby="commercial-dialog-subtitle"[^>]*aria-labelledby="commercial-dialog-title"[^>]*id="commercial-action-dialog"/,
     );
-    expect(commercial).toContain(
-      'aria-describedby="offer-dialog-description" aria-labelledby="offer-dialog-title" id="offer-dialog"',
+    expect(commercial).toMatch(
+      /<dialog[^>]*aria-describedby="offer-dialog-description"[^>]*aria-labelledby="offer-dialog-title"[^>]*id="offer-dialog"/,
     );
     expect(commercial).toContain('id="offer-dialog-title"');
     expect(commercial).toContain('id="offer-dialog-description"');
