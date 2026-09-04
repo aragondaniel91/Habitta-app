@@ -24,7 +24,7 @@ describe('HAB-479 Platform Admin accessibility contract', () => {
 
   it('makes asynchronous status and horizontally scrollable tables programmatically discoverable', () => {
     for (const page of pages) {
-      expect(page).toMatch(/aria-atomic="true" aria-live="polite" role="status"/);
+      expect(page).toMatch(/aria-atomic="true"\s+aria-live="polite"\s+role="status"/);
       expect(page).toMatch(
         /<div[^>]*aria-label="Tabla desplazable horizontalmente"[^>]*class="table-scroll"[^>]*role="region"[^>]*tabindex="0"/,
       );
