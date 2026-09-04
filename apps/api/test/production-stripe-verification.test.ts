@@ -18,7 +18,7 @@ describe('HAB-436 production Stripe verification', () => {
       webhookSecret,
       workerUrl,
       now,
-      fetchImpl: async (input, init) => {
+      fetchImpl: async (input: string | URL | Request, init?: RequestInit) => {
         const url = String(input);
         calls.push({ url, init });
 
