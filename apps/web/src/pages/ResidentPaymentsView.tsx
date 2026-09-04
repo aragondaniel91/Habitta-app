@@ -251,9 +251,9 @@ export function ResidentPaymentsView({
           <section className="resident-payments__methods-compact" aria-label="Métodos disponibles">
             <div className="resident-payments__compact-heading">
               <span>Métodos disponibles</span>
-              <Badge tone={activeMethods.length ? 'success' : 'neutral'}>
-                {activeMethods.length ? `${activeMethods.length} activos` : 'Sin métodos'}
-              </Badge>
+              {activeMethods.length ? (
+                <Badge tone="success">{`${activeMethods.length} activos`}</Badge>
+              ) : null}
             </div>
 
             {activeMethods.length ? (
@@ -282,10 +282,8 @@ export function ResidentPaymentsView({
                   <PaymentsIcon size={18} />
                 </span>
                 <div>
-                  <strong>No hay método disponible para {currency}</strong>
-                  <small>
-                    La administración todavía no publicó un método activo para esta moneda.
-                  </small>
+                  <strong>{currency} todavía no tiene un método de pago</strong>
+                  <small>La administración lo habilitará cuando exista una vía disponible.</small>
                 </div>
               </div>
             )}
@@ -304,7 +302,7 @@ export function ResidentPaymentsView({
                 {canRegister
                   ? 'Carga los datos y el comprobante para enviarlo a validación.'
                   : activeMethods.length === 0
-                    ? `No hay un método activo para ${currency}.`
+                    ? 'Se habilitará cuando la administración publique un método para esta moneda.'
                     : 'No hay una unidad elegible para recibir el pago.'}
               </small>
             </div>
