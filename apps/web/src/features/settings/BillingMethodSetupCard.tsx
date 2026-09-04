@@ -150,7 +150,9 @@ export function BillingMethodSetupCard({ condominiumId, session }: Props) {
           <FeesIcon size={20} />
         </span>
         <div>
-          <strong>{ready ? 'Método protegido por Stripe' : 'Configuración segura alojada por Stripe'}</strong>
+          <strong>
+            {ready ? 'Método protegido por Stripe' : 'Configuración segura alojada por Stripe'}
+          </strong>
           <p>
             Habitta guarda únicamente referencias técnicas del proveedor. Los datos completos de tu
             tarjeta no se almacenan en Habitta.
@@ -172,7 +174,11 @@ export function BillingMethodSetupCard({ condominiumId, session }: Props) {
       ) : (
         <div className="settings-billing-method__action">
           <div>
-            <strong>{trialing ? 'Hoy no se realiza ningún cobro' : 'Este paso no realiza un cargo inmediato'}</strong>
+            <strong>
+              {trialing
+                ? 'Hoy no se realiza ningún cobro'
+                : 'Este paso no realiza un cargo inmediato'}
+            </strong>
             <p>
               Stripe te pedirá el método de pago. Habitta sólo lo considerará listo después de
               validar el webhook firmado del proveedor.
