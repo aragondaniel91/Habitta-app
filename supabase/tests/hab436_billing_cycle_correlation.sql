@@ -2,7 +2,7 @@ begin;
 select plan(7);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at)
-values ('00000000-0000-4000-8000-000000004366','00000000-0000-0000-0000-000000000000','authenticated','authenticated','hab436-cycle@test.local','x',now(),now());
+values ('00000000-0000-4000-8000-000000004366','00000000-0000-4000-8000-000000000000','authenticated','authenticated','hab436-cycle@test.local','x',now(),now());
 insert into public.organizations(id,name,created_by,account_type)
 values ('43600000-0000-4000-8000-000000000006','HAB436 Cycle Customer','00000000-0000-4000-8000-000000004366','customer');
 insert into public.condominiums(id,organization_id,name,created_by)
@@ -68,9 +68,8 @@ select is(
   '2026-09-02',
   'audit event records Habitta billing-cycle date'
 );
-select like(
-  (select payload->>'provider_occurred_at' from public.subscription_events where subscription_id='43620000-0000-4000-8000-000000000006' and event_type='saas_billing_succeeded' order by created_at desc limit 1),
-  '2026-09-04%',
+select ok(
+  (select payload->>'provider_occurred_at' from public.subscription_events where subscription_id='43620000-0000-4000-8000-000000000006' and event_type='saas_billing_succeeded' order by created_at desc limit 1) like '2026-09-04%',
   'audit event separately preserves provider occurrence timestamp'
 );
 select is(
