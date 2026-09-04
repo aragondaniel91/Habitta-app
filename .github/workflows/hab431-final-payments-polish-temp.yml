@@ -22,41 +22,47 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           view_path = Path('apps/web/src/pages/ResidentPaymentsView.tsx')
           view = view_path.read_text()
 
-          old_badge = """              <Badge tone={activeMethods.length ? 'success' : 'neutral'}>
-                {activeMethods.length ? `${activeMethods.length} activos` : 'Sin métodos'}
-              </Badge>"""
-          new_badge = """              {activeMethods.length ? (
-                <Badge tone=\"success\">{`${activeMethods.length} activos`}</Badge>
-              ) : null}"""
-          if old_badge not in view:
+          badge_pattern = re.compile(
+              r"<Badge tone=\{activeMethods\.length \? 'success' : 'neutral'\}>\s*"
+              r"\{activeMethods\.length \? `\$\{activeMethods\.length\} activos` : 'Sin métodos'\}\s*"
+              r"</Badge>"
+          )
+          view, count = badge_pattern.subn(
+              "{activeMethods.length ? (\n"
+              "                <Badge tone=\"success\">{`${activeMethods.length} activos`}</Badge>\n"
+              "              ) : null}",
+              view,
+              count=1,
+          )
+          if count != 1:
               raise SystemExit('expected methods badge block not found')
-          view = view.replace(old_badge, new_badge, 1)
 
-          old_empty = """                <div>
-                  <strong>No hay método disponible para {currency}</strong>
-                  <small>
-                    La administración todavía no publicó un método activo para esta moneda.
-                  </small>
-                </div>"""
-          new_empty = """                <div>
-                  <strong>{currency} todavía no tiene un método de pago</strong>
-                  <small>La administración lo habilitará cuando exista una vía disponible.</small>
-                </div>"""
-          if old_empty not in view:
+          empty_pattern = re.compile(
+              r"<div>\s*<strong>No hay método disponible para \{currency\}</strong>\s*"
+              r"<small>\s*La administración todavía no publicó un método activo para esta moneda\.\s*</small>\s*"
+              r"</div>"
+          )
+          view, count = empty_pattern.subn(
+              "<div>\n"
+              "                  <strong>{currency} todavía no tiene un método de pago</strong>\n"
+              "                  <small>La administración lo habilitará cuando exista una vía disponible.</small>\n"
+              "                </div>",
+              view,
+              count=1,
+          )
+          if count != 1:
               raise SystemExit('expected no-method block not found')
-          view = view.replace(old_empty, new_empty, 1)
 
-          old_action = """                    ? `No hay un método activo para ${currency}.`
-                    : 'No hay una unidad elegible para recibir el pago.'}"""
-          new_action = """                    ? 'Se habilitará cuando la administración publique un método para esta moneda.'
-                    : 'No hay una unidad elegible para recibir el pago.'}"""
-          if old_action not in view:
+          old_copy = "`No hay un método activo para ${currency}.`"
+          new_copy = "'Se habilitará cuando la administración publique un método para esta moneda.'"
+          if old_copy not in view:
               raise SystemExit('expected disabled-action copy not found')
-          view = view.replace(old_action, new_action, 1)
+          view = view.replace(old_copy, new_copy, 1)
           view_path.write_text(view)
 
           css_path = Path('apps/web/src/resident-payments.css')
