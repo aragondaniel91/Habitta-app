@@ -37,7 +37,9 @@ describe('HAB-431 resident payments approved HQ experience', () => {
     expect(view).toContain('const activeMethods = data.methods.filter(');
     expect(view).toContain('method.is_active && method.currency_code === currency');
     expect(view).toContain('const canRegister = canRegisterPayment && activeMethods.length > 0;');
-    expect(view).toContain('No hay un método activo para ${currency}.');
+    expect(view).toContain(
+      'Se habilitará cuando la administración publique un método para esta moneda.',
+    );
     expect(view).toContain('disabled={!canRegister}');
   });
 
@@ -70,6 +72,8 @@ describe('HAB-431 resident payments approved HQ experience', () => {
     expect(methods).toBeGreaterThan(-1);
     expect(history).toBeGreaterThan(methods);
     expect(view).toContain('resident-payments__method-empty');
+    expect(view).toContain('{currency} todavía no tiene un método de pago');
+    expect(view).not.toContain("'Sin métodos'");
     expect(view).toContain('resident-payments__history-illustration');
     expect(view).toContain('resident-payments__history-help');
     expect(view).toContain('Más información sobre pagos');
@@ -86,6 +90,10 @@ describe('HAB-431 resident payments approved HQ experience', () => {
     expect(css).toContain('.resident-payments__account-main');
     expect(css).toContain('.resident-payments__methods-compact');
     expect(css).toContain('.resident-payments__history-empty');
+    expect(css).toContain('max-width: 660px');
+    expect(css).toContain('min-height: 112px');
+    expect(css).not.toContain('max-width: 760px');
+    expect(css).not.toContain('min-height: 150px');
     expect(css).not.toContain('min-height: 240px');
     expect(css).not.toContain('--hq-success-soft');
     expect(css).toContain('@media (max-width: 1100px)');
