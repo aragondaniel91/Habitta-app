@@ -55,9 +55,7 @@ describe('HAB-475 authoritative read boundary', () => {
     expect(operationsScript).toContain("rpc('get_platform_commercial_overview'");
     expect(operationsScript).toContain('/rest/v1/platform_admins?select=user_id');
 
-    const rpcCalls = [
-      ...operationsScript.matchAll(/rpc\('([^']+)'/g),
-    ].map((match) => match[1]);
+    const rpcCalls = [...operationsScript.matchAll(/rpc\('([^']+)'/g)].map((match) => match[1]);
     expect([...new Set(rpcCalls)].sort()).toEqual([
       'get_platform_commercial_overview',
       'get_platform_operations_overview',
@@ -126,7 +124,9 @@ describe('HAB-475 trials and billing attention', () => {
     expect(operationsScript).toContain('row.billing_consent_recorded');
     expect(operationsScript).toContain('row.billing_method_ready');
     expect(operationsScript).toContain('row.auto_bill_enabled');
-    expect(operationsScript).toContain("['past_due', 'suspended'].includes(row.subscription_status)");
+    expect(operationsScript).toContain(
+      "['past_due', 'suspended'].includes(row.subscription_status)",
+    );
   });
 
   it('keeps demo/internal explicitly nonbillable and outside revenue urgency', () => {
