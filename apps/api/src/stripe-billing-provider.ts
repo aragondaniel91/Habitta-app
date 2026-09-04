@@ -44,11 +44,7 @@ const computeStripeSignature = async (secret: string, timestamp: number, rawBody
     ['sign'],
   );
   return encodeHex(
-    await crypto.subtle.sign(
-      'HMAC',
-      key,
-      new TextEncoder().encode(`${timestamp}.${rawBody}`),
-    ),
+    await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${rawBody}`)),
   );
 };
 
@@ -95,7 +91,12 @@ const readStripeError = async (response: Response) => {
     const payload = (await response.clone().json()) as {
       error?: { code?: string; message?: string; type?: string };
     };
-    return payload.error?.code ?? payload.error?.type ?? payload.error?.message ?? `http_${response.status}`;
+    return (
+      payload.error?.code ??
+      payload.error?.type ??
+      payload.error?.message ??
+      `http_${response.status}`
+    );
   } catch {
     return `http_${response.status}`;
   }
@@ -124,7 +125,8 @@ const requiredString = (value: unknown, field: string) => {
   if (!normalized) throw new BillingProviderVerificationError(`Stripe event is missing ${field}.`);
   return normalized;
 };
-const numeric = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+const numeric = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
 const metadataFrom = (value: unknown) =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -331,8 +333,14 @@ const createPaymentMethodSetup = async (
   form.set('mode', 'setup');
   form.set('customer_creation', 'always');
   form.append('payment_method_types[]', 'card');
-  form.set('success_url', addQuery(input.returnUrl, { billingSetup: 'success', attempt: input.attemptId }));
-  form.set('cancel_url', addQuery(input.returnUrl, { billingSetup: 'cancelled', attempt: input.attemptId }));
+  form.set(
+    'success_url',
+    addQuery(input.returnUrl, { billingSetup: 'success', attempt: input.attemptId }),
+  );
+  form.set(
+    'cancel_url',
+    addQuery(input.returnUrl, { billingSetup: 'cancelled', attempt: input.attemptId }),
+  );
   form.set('client_reference_id', input.attemptId);
   form.set('metadata[habitta_attempt_id]', input.attemptId);
   form.set('metadata[habitta_subscription_id]', input.subscriptionId);
