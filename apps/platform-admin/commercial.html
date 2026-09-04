@@ -25,8 +25,19 @@
           <a data-icon="subscriptions" href="/subscriptions.html">Suscripciones</a>
           <a data-icon="trials" href="/subscriptions.html?view=trials">Trials</a>
           <a data-icon="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
-          <a aria-current="page" data-commercial-nav="actions" data-icon="commercial" href="/commercial.html">Comercial</a>
-          <a data-commercial-nav="activity" data-icon="activity" href="/commercial.html?view=activity">Actividad</a>
+          <a
+            aria-current="page"
+            data-commercial-nav="actions"
+            data-icon="commercial"
+            href="/commercial.html"
+            >Comercial</a
+          >
+          <a
+            data-commercial-nav="activity"
+            data-icon="activity"
+            href="/commercial.html?view=activity"
+            >Actividad</a
+          >
           <span class="nav-disabled" data-icon="settings">Settings</span>
         </nav>
         <div class="sidebar-footer">
@@ -94,7 +105,9 @@
             </div>
           </section>
 
-          <p class="commercial-status" id="commercial-status" role="status">Cargando operación comercial…</p>
+          <p class="commercial-status" id="commercial-status" role="status">
+            Cargando operación comercial…
+          </p>
 
           <section id="commercial-actions-view">
             <div class="commercial-grid">
@@ -119,15 +132,42 @@
                   </div>
                 </header>
                 <dl class="state-list">
-                  <div><dt>Tipo de cuenta</dt><dd id="state-account">—</dd></div>
-                  <div><dt>Plan</dt><dd id="state-plan">—</dd></div>
-                  <div><dt>Suscripción</dt><dd id="state-subscription">—</dd></div>
-                  <div><dt>Contratado</dt><dd id="state-contracted">—</dd></div>
-                  <div><dt>Efectivo</dt><dd id="state-effective">—</dd></div>
-                  <div><dt>Trial / período</dt><dd id="state-period">—</dd></div>
-                  <div><dt>Método de pago</dt><dd id="state-method">—</dd></div>
-                  <div><dt>Consentimiento</dt><dd id="state-consent">—</dd></div>
-                  <div><dt>Auto-billing</dt><dd id="state-auto-bill">—</dd></div>
+                  <div>
+                    <dt>Tipo de cuenta</dt>
+                    <dd id="state-account">—</dd>
+                  </div>
+                  <div>
+                    <dt>Plan</dt>
+                    <dd id="state-plan">—</dd>
+                  </div>
+                  <div>
+                    <dt>Suscripción</dt>
+                    <dd id="state-subscription">—</dd>
+                  </div>
+                  <div>
+                    <dt>Contratado</dt>
+                    <dd id="state-contracted">—</dd>
+                  </div>
+                  <div>
+                    <dt>Efectivo</dt>
+                    <dd id="state-effective">—</dd>
+                  </div>
+                  <div>
+                    <dt>Trial / período</dt>
+                    <dd id="state-period">—</dd>
+                  </div>
+                  <div>
+                    <dt>Método de pago</dt>
+                    <dd id="state-method">—</dd>
+                  </div>
+                  <div>
+                    <dt>Consentimiento</dt>
+                    <dd id="state-consent">—</dd>
+                  </div>
+                  <div>
+                    <dt>Auto-billing</dt>
+                    <dd id="state-auto-bill">—</dd>
+                  </div>
                 </dl>
                 <div class="guardrail-note" id="commercial-guardrail-note">
                   Cada cambio se ejecuta con el JWT del Platform Admin y queda sujeto a las reglas
@@ -144,7 +184,9 @@
                     <h2>Ofertas comerciales</h2>
                     <p>Cupones temporales disponibles para ventas y pilotos reales.</p>
                   </div>
-                  <button class="secondary-button" id="new-offer-button" type="button">Nueva oferta</button>
+                  <button class="secondary-button" id="new-offer-button" type="button">
+                    Nueva oferta
+                  </button>
                 </header>
                 <div class="offer-list" id="commercial-offer-list"></div>
               </section>
@@ -155,7 +197,12 @@
                     <h2>Actividad reciente</h2>
                     <p>Últimos eventos auditables del cliente seleccionado.</p>
                   </div>
-                  <a class="secondary-button" id="commercial-see-activity" href="/commercial.html?view=activity">Ver todo</a>
+                  <a
+                    class="secondary-button"
+                    id="commercial-see-activity"
+                    href="/commercial.html?view=activity"
+                    >Ver todo</a
+                  >
                 </header>
                 <div class="activity-list" id="commercial-recent-activity"></div>
               </section>
@@ -218,7 +265,14 @@
             <h2 id="commercial-dialog-title">Acción comercial</h2>
             <p id="commercial-dialog-subtitle">—</p>
           </div>
-          <button aria-label="Cerrar" class="dialog-close" id="commercial-dialog-close" type="button">×</button>
+          <button
+            aria-label="Cerrar"
+            class="dialog-close"
+            id="commercial-dialog-close"
+            type="button"
+          >
+            ×
+          </button>
         </div>
         <div class="dialog-body">
           <div class="dialog-warning" id="commercial-dialog-warning"></div>
@@ -229,8 +283,12 @@
           </label>
         </div>
         <div class="dialog-actions">
-          <button class="secondary-button" id="commercial-dialog-cancel" type="button">Cancelar</button>
-          <button class="primary-button" disabled id="commercial-dialog-submit" type="submit">Confirmar acción</button>
+          <button class="secondary-button" id="commercial-dialog-cancel" type="button">
+            Cancelar
+          </button>
+          <button class="primary-button" disabled id="commercial-dialog-submit" type="submit">
+            Confirmar acción
+          </button>
         </div>
       </form>
     </dialog>
@@ -243,7 +301,9 @@
             <h2>Nueva oferta</h2>
             <p>Define un beneficio temporal; no cambia el precio contractual base.</p>
           </div>
-          <button aria-label="Cerrar" class="dialog-close" id="offer-dialog-close" type="button">×</button>
+          <button aria-label="Cerrar" class="dialog-close" id="offer-dialog-close" type="button">
+            ×
+          </button>
         </div>
         <div class="dialog-body dialog-fields two-column-fields">
           <label>Código<input autocomplete="off" maxlength="40" name="code" required /></label>
@@ -255,7 +315,9 @@
             </select>
           </label>
           <label>Valor<input min="0" name="value" required step="0.01" type="number" /></label>
-          <label>Duración (meses)<input min="1" name="duration" required type="number" value="1" /></label>
+          <label
+            >Duración (meses)<input min="1" name="duration" required type="number" value="1"
+          /></label>
           <label>Válida hasta<input name="validUntil" type="date" /></label>
           <label>Máximo de usos<input min="1" name="maxRedemptions" type="number" /></label>
           <label class="field-full">Nota<input autocomplete="off" name="note" /></label>

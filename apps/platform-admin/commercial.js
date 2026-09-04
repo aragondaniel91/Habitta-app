@@ -165,9 +165,11 @@ function inputDate(value = null) {
 }
 
 function accountLabel(value) {
-  return { customer: 'Cliente', demo: 'Demo · no facturable', internal: 'Interno · no facturable' }[
-    value
-  ] ?? '—';
+  return (
+    { customer: 'Cliente', demo: 'Demo · no facturable', internal: 'Interno · no facturable' }[
+      value
+    ] ?? '—'
+  );
 }
 
 function subscriptionLabel(value) {
@@ -190,9 +192,7 @@ function badge(text, tone = 'neutral') {
 }
 
 function mergeOrganizations() {
-  const commercialByCondominium = new Map(
-    commercialRows.map((row) => [row.condominium_id, row]),
-  );
+  const commercialByCondominium = new Map(commercialRows.map((row) => [row.condominium_id, row]));
   const byOrganization = new Map();
 
   for (const operation of operationsRows) {
@@ -211,7 +211,9 @@ function mergeOrganizations() {
 
   // Operations remains the identity boundary. Commercial rows cannot silently enlarge cross-tenant
   // browser visibility when they are absent from the authorized operations read model.
-  return [...byOrganization.values()].sort((left, right) => left.name.localeCompare(right.name, 'es'));
+  return [...byOrganization.values()].sort((left, right) =>
+    left.name.localeCompare(right.name, 'es'),
+  );
 }
 
 function urlState() {
@@ -259,7 +261,8 @@ function normalizeSelection() {
   if (!organizations.length) return;
   const state = urlState();
   const fallbackOrganization =
-    organizations.find((organization) => organization.account_type === 'customer') ?? organizations[0];
+    organizations.find((organization) => organization.account_type === 'customer') ??
+    organizations[0];
   const organization =
     organizations.find((item) => item.id === state.organization) ?? fallbackOrganization;
   const condominium =
@@ -380,7 +383,8 @@ function renderState() {
   stateContracted.textContent = priceLabel(row.contracted_period_amount, row);
   stateEffective.textContent = priceLabel(row.effective_period_amount, row);
   statePeriod.textContent = periodLabel(row);
-  stateMethod.textContent = row.account_type === 'customer' ? yesNo(row.billing_method_ready) : 'No aplica';
+  stateMethod.textContent =
+    row.account_type === 'customer' ? yesNo(row.billing_method_ready) : 'No aplica';
   stateConsent.textContent =
     row.account_type === 'customer' ? yesNo(row.billing_consent_recorded) : 'No aplica';
   stateAutoBill.textContent =
@@ -440,7 +444,8 @@ function allowedActions(row) {
   const actions = [];
   if (row.subscription_status !== 'cancelled' && activeOffers().length > 0) actions.push('coupon');
   if (['active', 'past_due'].includes(row.subscription_status)) actions.push('gift');
-  if (['trialing', 'suspended', 'past_due'].includes(row.subscription_status)) actions.push('activate');
+  if (['trialing', 'suspended', 'past_due'].includes(row.subscription_status))
+    actions.push('activate');
   return actions;
 }
 
@@ -611,11 +616,9 @@ function openAction(action, row) {
         ),
       ),
       field('Comienza', inputControl('startDate', { type: 'date', value: inputDate() })),
-      field(
-        'Nota',
-        inputControl('note', { value: 'Acceso promocional autorizado' }),
-        { full: true },
-      ),
+      field('Nota', inputControl('note', { value: 'Acceso promocional autorizado' }), {
+        full: true,
+      }),
     );
   } else if (action === 'activate') {
     dialogTitle.textContent = 'Activar manualmente';
@@ -664,7 +667,10 @@ async function submitAction() {
     }
 
     actionDialog.close();
-    setStatus('Acción comercial confirmada. El estado y la auditoría fueron recargados.', 'success');
+    setStatus(
+      'Acción comercial confirmada. El estado y la auditoría fueron recargados.',
+      'success',
+    );
     await loadData({ keepStatus: true });
   } catch (error) {
     dialogSubmit.disabled = false;
@@ -691,7 +697,10 @@ function renderOffers() {
     head.className = 'offer-row-head';
     const code = document.createElement('strong');
     code.textContent = offer.code;
-    head.append(code, badge(offer.active ? 'Activa' : 'Deshabilitada', offer.active ? 'success' : 'neutral'));
+    head.append(
+      code,
+      badge(offer.active ? 'Activa' : 'Deshabilitada', offer.active ? 'success' : 'neutral'),
+    );
     const copy = document.createElement('p');
     copy.textContent = offerDescription(offer);
     const meta = document.createElement('div');
@@ -701,7 +710,10 @@ function renderOffers() {
         `Usos ${offer.redemption_count}${offer.max_redemptions === null ? '' : `/${offer.max_redemptions}`}`,
         'info',
       ),
-      badge(offer.valid_until ? `Hasta ${formatDate(offer.valid_until)}` : 'Sin fecha final', 'neutral'),
+      badge(
+        offer.valid_until ? `Hasta ${formatDate(offer.valid_until)}` : 'Sin fecha final',
+        'neutral',
+      ),
     );
     if (offer.active) {
       const disable = document.createElement('button');
@@ -941,7 +953,8 @@ async function loadData({ keepStatus = false } = {}) {
 }
 
 async function disableOffer(offer) {
-  if (!window.confirm(`¿Deshabilitar ${offer.code}? Las aplicaciones existentes no se modifican.`)) return;
+  if (!window.confirm(`¿Deshabilitar ${offer.code}? Las aplicaciones existentes no se modifican.`))
+    return;
   const session = sessionOrRedirect();
   if (!session) return;
   try {
