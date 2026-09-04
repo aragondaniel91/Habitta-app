@@ -21,17 +21,18 @@ describe('HAB-436 Stripe decline identity', () => {
   it('keeps the definitive failed PaymentIntent reference from an HTTP 402 response', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            error: {
-              type: 'card_error',
-              code: 'card_declined',
-              payment_intent: { id: 'pi_declined_hab436', status: 'requires_payment_method' },
-            },
-          }),
-          { status: 402, headers: { 'Content-Type': 'application/json' } },
-        ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                type: 'card_error',
+                code: 'card_declined',
+                payment_intent: { id: 'pi_declined_hab436', status: 'requires_payment_method' },
+              },
+            }),
+            { status: 402, headers: { 'Content-Type': 'application/json' } },
+          ),
       ),
     );
 
