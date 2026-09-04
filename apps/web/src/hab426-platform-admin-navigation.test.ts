@@ -33,7 +33,7 @@ describe('HAB-426 Platform Admin navigation', () => {
 
   it('hides the administrative navigation until there is a session', () => {
     const dashboardStart = operations.indexOf('id="dashboard-view"');
-    const navStart = operations.indexOf('<nav class="platform-nav"');
+    const navStart = operations.search(/<nav[^>]*class="platform-nav"/);
     expect(dashboardStart).toBeGreaterThan(0);
     expect(navStart).toBeGreaterThan(dashboardStart);
     expect(operations).toMatch(/<section hidden id="dashboard-view">/);
