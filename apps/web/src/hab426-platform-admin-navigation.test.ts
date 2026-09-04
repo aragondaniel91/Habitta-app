@@ -1,44 +1,49 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-// HAB-426: Platform Admin is two areas of one backoffice, not two consoles that happen to share a
-// logo. The operations view could not reach the commercial one at all, and still told the operator
-// that commercial operations "will be enabled" -- copy written before HAB-424 shipped them.
+// HAB-426 originally locked the first Platform Admin navigation shell. HAB-464 evolves that shell
+// into the approved owner backoffice IA: Overview -> Clientes -> Comercial. These assertions keep
+// the original session/read-only/billing boundaries while validating the current product contract
+// instead of pinning obsolete markup and labels from the pre-Customer-360 console.
 //
-// The other half of this file is a boundary, not a layout: only a customer is billable, and demo
-// and internal organizations must stay visible and explicitly outside billing. That guard lives in
-// commercial.js and predates this change; asserting it here keeps a navigation change from being
-// the thing that quietly loosens it.
+// The billable boundary below is not a layout concern: only a customer is billable, and demo and
+// internal organizations must stay visible and explicitly outside billing. That guard lives in
+// commercial.js and remains authoritative.
 
 const read = (relative: string) => readFileSync(new URL(relative, import.meta.url), 'utf8');
 
 const operations = read('../../platform-admin/index.html');
+const platformShell = read('../../platform-admin/platform-shell.css');
 const commercial = read('../../platform-admin/commercial.html');
 const commercialScript = read('../../platform-admin/commercial.js');
 
 describe('HAB-426 Platform Admin navigation', () => {
-  it('gives the operations view the same three destinations as the commercial one', () => {
-    expect(operations).toContain('>Operación<');
+  it('exposes the approved owner-backoffice destinations from Overview', () => {
+    expect(operations).toContain('>Overview<');
+    expect(operations).toContain('>Clientes<');
     expect(operations).toContain('>Comercial<');
+    expect(operations).toContain('href="/customers.html"');
     expect(operations).toContain('href="/commercial.html"');
     expect(operations).toContain('Cerrar sesión');
   });
 
-  it('marks Operación as the current page there', () => {
-    expect(operations).toMatch(/aria-current="page"\s+href="\/"/);
+  it('marks Overview as the current page there', () => {
+    expect(operations).toMatch(
+      /<a[^>]*aria-current="page"[^>]*href="\/"[^>]*>Overview<\/a>/,
+    );
   });
 
   it('keeps exactly one logout control', () => {
-    // The button moved into the nav rather than being duplicated. Two elements sharing an id would
-    // leave app.js wiring the first one and the visible one doing nothing.
+    // Two elements sharing an id would leave app.js wiring the first one and the visible one doing
+    // nothing.
     expect(operations.match(/id="logout-button"/g) ?? []).toHaveLength(1);
   });
 
   it('hides the administrative navigation until there is a session', () => {
-    // index.html is also the login screen. The nav sits inside #dashboard-view, which carries
+    // index.html is also the login screen. The shell sits inside #dashboard-view, which carries
     // `hidden` until authentication succeeds, so an anonymous visitor is never offered it.
     const dashboardStart = operations.indexOf('id="dashboard-view"');
-    const navStart = operations.indexOf('<nav class="nav"');
+    const navStart = operations.indexOf('<nav class="platform-nav"');
     expect(dashboardStart).toBeGreaterThan(0);
     expect(navStart).toBeGreaterThan(dashboardStart);
     expect(operations).toMatch(/<section hidden id="dashboard-view">/);
@@ -48,21 +53,17 @@ describe('HAB-426 Platform Admin navigation', () => {
     expect(loginStart).toBeLessThan(navStart);
   });
 
-  it('renders the nav links without the browser underline, as the commercial view does', () => {
-    // commercial.html gets this from a global `a { text-decoration: none }` reset. index.html has
-    // no such reset, so the same markup rendered underlined on one page and plain on the other --
-    // two consoles again, over one declaration.
-    //
-    // Matched on collapsed whitespace so the assertion survives reformatting, and it accepts the
-    // property either in a rule of its own or in a shared block, as long as it reaches `.nav a`.
-    const css = operations.replace(/\s+/g, '');
-    expect(css).toMatch(/\.nava[^{}]*\{[^}]*text-decoration:none/);
+  it('renders shell navigation without browser underlines while keeping the rule scoped', () => {
+    // HAB-464 moved shell styling into a shared stylesheet so Overview and Customers cannot drift
+    // into separate consoles again. Validate the scoped navigation rule at its new source.
+    const css = platformShell.replace(/\s+/g, '');
+    expect(css).toMatch(/\.platform-nava[^{}]*\{[^}]*text-decoration:none/);
 
-    // Scoped, not global: links elsewhere on the page keep their underline.
+    // Scoped, not global: links elsewhere on the page may keep their own treatment.
     expect(css).not.toMatch(/(^|})a\{[^}]*text-decoration:none/);
   });
 
-  it('keeps the commercial view reachable and self-identifying', () => {
+  it('keeps the legacy commercial view reachable and self-identifying during incremental migration', () => {
     expect(commercial).toContain('>Operación<');
     expect(commercial).toContain('>Comercial<');
     expect(commercial).toContain('id="logout-button"');
@@ -73,15 +74,17 @@ describe('HAB-426 Platform Admin navigation', () => {
 describe('HAB-426 Platform Admin copy', () => {
   it('no longer promises commercial operations as future work', () => {
     // HAB-424 shipped trials, coupons and gifted access. Telling an operator they "will be enabled"
-    // sends them looking for something that is already one click away.
+    // sends them looking for something that is already available.
     expect(operations).not.toContain('se habilitarán');
     expect(operations).not.toContain('HAB-419');
     expect(operations).not.toContain('HAB-422');
   });
 
-  it('still says the operations view is read-only, and where to act instead', () => {
+  it('still says Overview is read-only and points to the authoritative operating surfaces', () => {
     expect(operations).toContain('solo lectura');
-    expect(operations).toMatch(/administran desde\s*<a href="\/commercial\.html">Comercial<\/a>/);
+    expect(operations).toContain('href="/customers.html"');
+    expect(operations).toContain('Customer 360');
+    expect(operations).toContain('<a href="/commercial.html">Comercial</a>');
   });
 });
 
