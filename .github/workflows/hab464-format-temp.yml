@@ -1,0 +1,44 @@
+name: HAB-464 Temporary Formatter
+
+on:
+  push:
+    branches:
+      - hab-464-platform-customers-360-ui
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-464-platform-customers-360-ui
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format HAB-464 files
+        run: >-
+          pnpm exec prettier --write
+          apps/platform-admin/customers.html
+          apps/platform-admin/customers.js
+          apps/platform-admin/platform-shell.css
+          apps/web/src/hab464-platform-customers-ui.test.ts
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/platform-admin/customers.html apps/platform-admin/customers.js apps/platform-admin/platform-shell.css apps/web/src/hab464-platform-customers-ui.test.ts
+          git commit -m "HAB-464: apply Prettier formatting"
+          git push origin HEAD:hab-464-platform-customers-360-ui
