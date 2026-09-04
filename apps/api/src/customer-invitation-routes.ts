@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { z } from 'zod';
 import { resolveNotificationsEnvironment } from './config/notifications-env';
 import { withinRateLimit } from './http-security';
@@ -7,6 +8,7 @@ import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
+type CustomerInvitationContext = Context<AppEnvironment>;
 
 type IssuedInvitation = {
   id: string;
@@ -47,14 +49,7 @@ const issueInputSchema = z.object({
 
 export const customerInvitationRoutes = new Hono<AppEnvironment>();
 
-const rpc = async (c: Parameters<(typeof customerInvitationRoutes)['fetch']>[0] extends never ? never : never) => c;
-void rpc;
-
-const rpcRequest = (
-  c: Parameters<Parameters<typeof customerInvitationRoutes.use>[1]>[0],
-  name: string,
-  body: unknown = {},
-) =>
+const rpcRequest = (c: CustomerInvitationContext, name: string, body: unknown = {}) =>
   fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST',
     headers: {
