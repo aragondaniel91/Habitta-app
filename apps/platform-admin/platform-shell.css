@@ -1109,7 +1109,6 @@ td strong {
   }
 }
 
-
 /* HAB-479 Platform Admin accessibility and responsive hardening. */
 .skip-link {
   position: fixed;
@@ -1131,14 +1130,14 @@ td strong {
 }
 
 :where(
-    a[href],
-    button,
-    input,
-    select,
-    textarea,
-    summary,
-    [tabindex]:not([tabindex='-1'])
-  ):focus-visible {
+  a[href],
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  [tabindex]:not([tabindex='-1'])
+):focus-visible {
   outline: 3px solid rgb(12 116 122 / 0.34);
   outline-offset: 3px;
 }
