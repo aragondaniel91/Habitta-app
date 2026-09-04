@@ -22,6 +22,12 @@ const stripeEnv = (overrides: Partial<NotificationBindings> = {}) =>
     ...overrides,
   }) as NotificationBindings;
 
+const withoutStripeSecret = (key: 'STRIPE_SECRET_KEY' | 'STRIPE_WEBHOOK_SECRET') => {
+  const env = stripeEnv();
+  delete env[key];
+  return env;
+};
+
 const sign = async (body: string, timestamp: number, secret = 'whsec_habitta') => {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -60,10 +66,10 @@ afterEach(() => {
 
 describe('HAB-436 Stripe adapter', () => {
   it('fails closed unless both Stripe server secrets are configured', () => {
-    expect(() => resolveBillingProvider(stripeEnv({ STRIPE_SECRET_KEY: undefined }))).toThrow(
+    expect(() => resolveBillingProvider(withoutStripeSecret('STRIPE_SECRET_KEY'))).toThrow(
       BillingProviderUnavailableError,
     );
-    expect(() => resolveBillingProvider(stripeEnv({ STRIPE_WEBHOOK_SECRET: undefined }))).toThrow(
+    expect(() => resolveBillingProvider(withoutStripeSecret('STRIPE_WEBHOOK_SECRET'))).toThrow(
       'Stripe billing secrets are not configured.',
     );
   });
@@ -98,7 +104,7 @@ describe('HAB-436 Stripe adapter', () => {
     expect(setup.providerCustomerRef).toBeNull();
     expect(setup.action.url).toBe('https://checkout.stripe.com/c/pay/cs_test_hab436');
 
-    const [url, init] = stripeFetch.mock.calls[0] as [string, RequestInit];
+    const [url, init] = stripeFetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://api.stripe.com/v1/checkout/sessions');
     const headers = new Headers(init.headers);
     expect(headers.get('Authorization')).toBe('Bearer sk_test_habitta');
@@ -227,7 +233,7 @@ describe('HAB-436 Stripe adapter', () => {
       providerPaymentRef: 'pi_charge_hab436',
       status: 'processing',
     });
-    const [, init] = stripeFetch.mock.calls[0] as [string, RequestInit];
+    const [, init] = stripeFetch.mock.calls[0] as unknown as [string, RequestInit];
     const headers = new Headers(init.headers);
     const form = init.body as URLSearchParams;
     expect(headers.get('Idempotency-Key')).toBe('43680000-0000-4000-8000-000000000001');
