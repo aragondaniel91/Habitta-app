@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/subscription-ops.css" />
   </head>
   <body>
+    <a class="skip-link" href="#platform-main">Saltar al contenido principal</a>
     <div class="platform-layout">
       <aside class="platform-sidebar" aria-label="Platform Admin">
         <a class="platform-brand" href="/">
@@ -19,15 +20,15 @@
             <span>Comunidades mejores<br />todos los días</span>
           </div>
         </a>
-        <nav class="platform-nav">
+        <nav aria-label="Navegación principal" class="platform-nav">
           <a data-icon="overview" href="/">Overview</a>
           <a aria-current="page" data-icon="customers" href="/customers.html">Clientes</a>
           <a data-icon="subscriptions" href="/subscriptions.html">Suscripciones</a>
           <a data-icon="trials" href="/subscriptions.html?view=trials">Trials</a>
           <a data-icon="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
           <a data-icon="commercial" href="/commercial.html">Comercial</a>
-          <span class="nav-disabled" data-icon="activity">Actividad</span>
-          <span class="nav-disabled" data-icon="settings">Settings</span>
+          <span aria-disabled="true" class="nav-disabled" data-icon="activity">Actividad</span>
+          <span aria-disabled="true" class="nav-disabled" data-icon="settings">Settings</span>
         </nav>
         <div class="sidebar-footer">
           Personas · Comunidades · Un mejor mañana<br />
@@ -58,7 +59,7 @@
           </div>
         </header>
 
-        <main class="platform-content">
+        <main class="platform-content" id="platform-main" tabindex="-1">
           <section id="customers-list-view">
             <div class="page-heading">
               <div>
@@ -133,7 +134,12 @@
                 </select>
               </div>
 
-              <div class="table-scroll">
+              <div
+                aria-label="Tabla desplazable horizontalmente"
+                class="table-scroll"
+                role="region"
+                tabindex="0"
+              >
                 <table class="customer-table">
                   <thead>
                     <tr>
@@ -152,7 +158,9 @@
                   <tbody id="customers-body"></tbody>
                 </table>
               </div>
-              <p id="customers-status" role="status">Cargando portafolio…</p>
+              <p id="customers-status" aria-atomic="true" aria-live="polite" role="status">
+                Cargando portafolio…
+              </p>
               <div
                 style="
                   display: flex;
@@ -186,7 +194,9 @@
             <button class="detail-back" id="customer-back" type="button">
               ← Volver a Clientes
             </button>
-            <p id="customer-detail-status" role="status">Cargando Customer 360…</p>
+            <p id="customer-detail-status" aria-atomic="true" aria-live="polite" role="status">
+              Cargando Customer 360…
+            </p>
 
             <div hidden id="customer-detail-content">
               <div class="customer-hero">
@@ -234,7 +244,12 @@
                         <p>Estado SaaS autoritativo por condominio.</p>
                       </div>
                     </header>
-                    <div class="table-scroll">
+                    <div
+                      aria-label="Tabla desplazable horizontalmente"
+                      class="table-scroll"
+                      role="region"
+                      tabindex="0"
+                    >
                       <table>
                         <thead>
                           <tr>

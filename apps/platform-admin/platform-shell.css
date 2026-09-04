@@ -1108,3 +1108,100 @@ td strong {
     flex-direction: column;
   }
 }
+
+/* HAB-479 Platform Admin accessibility and responsive hardening. */
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 10px;
+  left: 10px;
+  transform: translateY(-160%);
+  border: 2px solid #fff;
+  border-radius: 10px;
+  background: var(--habitta-teal-950);
+  color: #fff;
+  padding: 10px 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:where(
+  a[href],
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  [tabindex]:not([tabindex='-1'])
+):focus-visible {
+  outline: 3px solid rgb(12 116 122 / 0.34);
+  outline-offset: 3px;
+}
+
+.platform-sidebar :where(a[href], button, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline-color: #8ce9df;
+}
+
+.table-scroll[tabindex='0'] {
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+}
+
+.table-scroll[tabindex='0']:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid rgb(12 116 122 / 0.28);
+  outline-offset: -3px;
+}
+
+@media (max-width: 860px) {
+  .platform-nav {
+    scroll-padding-inline: 10px;
+    scrollbar-width: thin;
+  }
+
+  .table-toolbar,
+  .detail-card-header {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 620px) {
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .platform-nav a,
+  input,
+  select {
+    min-height: 44px;
+  }
+
+  .platform-user-actions,
+  .table-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .platform-user-actions {
+    justify-content: flex-end;
+  }
+
+  .table-scroll {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

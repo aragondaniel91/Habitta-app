@@ -58,6 +58,8 @@ let offers = [];
 let plans = [];
 let customer360 = null;
 let currentAction = null;
+let actionDialogReturnFocus = null;
+let offerDialogReturnFocus = null;
 let detailRequest = 0;
 
 function getSession() {
@@ -510,7 +512,10 @@ function renderActions() {
     button.className = action === 'activate' ? 'primary-button' : 'secondary-button';
     button.type = 'button';
     button.textContent = definition.label;
-    button.addEventListener('click', () => openAction(action, row));
+    button.addEventListener('click', (event) => {
+      actionDialogReturnFocus = event.currentTarget;
+      openAction(action, row);
+    });
     card.append(head, guardrail, button);
     actionCards.append(card);
   }
@@ -1061,10 +1066,23 @@ actionForm.addEventListener('submit', (event) => {
 });
 dialogClose.addEventListener('click', () => actionDialog.close());
 dialogCancel.addEventListener('click', () => actionDialog.close());
+actionDialog.addEventListener('close', () => {
+  const target = actionDialogReturnFocus;
+  actionDialogReturnFocus = null;
+  if (target?.isConnected) requestAnimationFrame(() => target.focus());
+});
 
-newOfferButton.addEventListener('click', () => offerDialog.showModal());
+newOfferButton.addEventListener('click', (event) => {
+  offerDialogReturnFocus = event.currentTarget;
+  offerDialog.showModal();
+});
 offerDialogClose.addEventListener('click', () => offerDialog.close());
 offerDialogCancel.addEventListener('click', () => offerDialog.close());
+offerDialog.addEventListener('close', () => {
+  const target = offerDialogReturnFocus;
+  offerDialogReturnFocus = null;
+  if (target?.isConnected) requestAnimationFrame(() => target.focus());
+});
 offerForm.addEventListener('submit', (event) => {
   event.preventDefault();
   void createOffer();

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/subscription-ops.css" />
   </head>
   <body>
+    <a class="skip-link" href="#platform-main">Saltar al contenido principal</a>
     <div class="platform-layout">
       <aside class="platform-sidebar" aria-label="Platform Admin">
         <a class="platform-brand" href="/">
@@ -19,7 +20,7 @@
             <span>Comunidades mejores<br />todos los días</span>
           </div>
         </a>
-        <nav class="platform-nav" id="subscription-nav">
+        <nav aria-label="Navegación principal" class="platform-nav" id="subscription-nav">
           <a data-icon="overview" href="/">Overview</a>
           <a data-icon="customers" href="/customers.html">Clientes</a>
           <a data-icon="subscriptions" data-view-link="subscriptions" href="/subscriptions.html"
@@ -32,8 +33,8 @@
             >Revenue</a
           >
           <a data-icon="commercial" href="/commercial.html">Comercial</a>
-          <span class="nav-disabled" data-icon="activity">Actividad</span>
-          <span class="nav-disabled" data-icon="settings">Settings</span>
+          <span aria-disabled="true" class="nav-disabled" data-icon="activity">Actividad</span>
+          <span aria-disabled="true" class="nav-disabled" data-icon="settings">Settings</span>
         </nav>
         <div class="sidebar-footer">
           Personas · Comunidades · Un mejor mañana<br />
@@ -64,7 +65,7 @@
           </div>
         </header>
 
-        <main class="platform-content">
+        <main class="platform-content" id="platform-main" tabindex="-1">
           <div class="page-heading ops-heading">
             <div>
               <div class="eyebrow">Owner backoffice</div>
@@ -167,7 +168,12 @@
                 </select>
               </div>
 
-              <div class="table-scroll">
+              <div
+                aria-label="Tabla desplazable horizontalmente"
+                class="table-scroll"
+                role="region"
+                tabindex="0"
+              >
                 <table class="ops-table">
                   <thead>
                     <tr>
@@ -190,7 +196,9 @@
                 </table>
               </div>
 
-              <p id="ops-status" role="status">Cargando estado comercial…</p>
+              <p id="ops-status" aria-atomic="true" aria-live="polite" role="status">
+                Cargando estado comercial…
+              </p>
               <div class="ops-pagination">
                 <button class="secondary-button" id="ops-prev" type="button">Anterior</button>
                 <span id="ops-page">—</span>
