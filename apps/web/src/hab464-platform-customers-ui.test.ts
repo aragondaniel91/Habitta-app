@@ -51,7 +51,7 @@ describe('HAB-464 Platform Admin customer portfolio and Customer 360', () => {
   it('preserves portfolio context while drilling into Customer 360', () => {
     expect(customersJs).toContain("params.set('organization', organizationId);");
     expect(customersJs).toContain("params.delete('organization');");
-    expect(customersJs).toContain("params.set('q', value)").toBe(false);
+    expect(customersJs).not.toContain("params.set('q', value)");
     expect(customersJs).toContain('q: searchInput.value.trim()');
     expect(customersJs).toContain("window.addEventListener('popstate', route)");
   });
