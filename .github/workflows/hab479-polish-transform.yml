@@ -1,0 +1,339 @@
+name: HAB-479 Platform Admin Polish Transform
+
+on:
+  push:
+    branches:
+      - hab-479-platform-admin-responsive-accessibility-polish
+
+permissions:
+  contents: write
+
+jobs:
+  transform:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-479-platform-admin-responsive-accessibility-polish
+      - name: Apply HAB-479 accessibility and responsive hardening
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('apps/platform-admin')
+
+          def replace_once(text, old, new, path):
+              if old not in text:
+                  raise SystemExit(f'Missing expected pattern in {path}: {old[:100]!r}')
+              return text.replace(old, new, 1)
+
+          def patch_shared_html(path_name, *, dashboard_wrapped=False):
+              path = root / path_name
+              text = path.read_text()
+
+              if dashboard_wrapped:
+                  marker = '    <section hidden id="dashboard-view">\n'
+                  replacement = (
+                      '    <section hidden id="dashboard-view">\n'
+                      '      <a class="skip-link" href="#platform-main">Saltar al contenido principal</a>\n'
+                  )
+                  text = replace_once(text, marker, replacement, path)
+              else:
+                  marker = '  <body>\n'
+                  replacement = (
+                      '  <body>\n'
+                      '    <a class="skip-link" href="#platform-main">Saltar al contenido principal</a>\n'
+                  )
+                  text = replace_once(text, marker, replacement, path)
+
+              text = text.replace(
+                  '<nav class="platform-nav">',
+                  '<nav aria-label="Navegación principal" class="platform-nav">',
+              )
+              text = text.replace(
+                  '<nav class="platform-nav" id="subscription-nav">',
+                  '<nav aria-label="Navegación principal" class="platform-nav" id="subscription-nav">',
+              )
+              text = text.replace(
+                  '<span class="nav-disabled"',
+                  '<span aria-disabled="true" class="nav-disabled"',
+              )
+
+              text = replace_once(
+                  text,
+                  '<main class="platform-content">',
+                  '<main class="platform-content" id="platform-main" tabindex="-1">',
+                  path,
+              ) if '<main class="platform-content">' in text else text
+              text = replace_once(
+                  text,
+                  '<main class="platform-content commercial-content">',
+                  '<main class="platform-content commercial-content" id="platform-main" tabindex="-1">',
+                  path,
+              ) if '<main class="platform-content commercial-content">' in text else text
+
+              text = text.replace(
+                  'role="status"',
+                  'aria-atomic="true" aria-live="polite" role="status"',
+              )
+              text = text.replace(
+                  '<div class="table-scroll">',
+                  '<div aria-label="Tabla desplazable horizontalmente" class="table-scroll" role="region" tabindex="0">',
+              )
+              path.write_text(text)
+
+          patch_shared_html('index.html', dashboard_wrapped=True)
+          patch_shared_html('customers.html')
+          patch_shared_html('subscriptions.html')
+          patch_shared_html('commercial.html')
+
+          commercial_html = root / 'commercial.html'
+          text = commercial_html.read_text()
+          text = replace_once(
+              text,
+              '<dialog id="commercial-action-dialog">',
+              '<dialog aria-describedby="commercial-dialog-subtitle" aria-labelledby="commercial-dialog-title" id="commercial-action-dialog">',
+              commercial_html,
+          )
+          text = replace_once(
+              text,
+              '<dialog id="offer-dialog">',
+              '<dialog aria-describedby="offer-dialog-description" aria-labelledby="offer-dialog-title" id="offer-dialog">',
+              commercial_html,
+          )
+          text = replace_once(text, '<h2>Nueva oferta</h2>', '<h2 id="offer-dialog-title">Nueva oferta</h2>', commercial_html)
+          text = replace_once(
+              text,
+              '<p>Define un beneficio temporal; no cambia el precio contractual base.</p>',
+              '<p id="offer-dialog-description">Define un beneficio temporal; no cambia el precio contractual base.</p>',
+              commercial_html,
+          )
+          commercial_html.write_text(text)
+
+          commercial_js = root / 'commercial.js'
+          text = commercial_js.read_text()
+          text = replace_once(
+              text,
+              'let currentAction = null;\nlet detailRequest = 0;',
+              'let currentAction = null;\nlet actionDialogReturnFocus = null;\nlet offerDialogReturnFocus = null;\nlet detailRequest = 0;',
+              commercial_js,
+          )
+          text = replace_once(
+              text,
+              "    button.addEventListener('click', () => openAction(action, row));",
+              "    button.addEventListener('click', (event) => {\n      actionDialogReturnFocus = event.currentTarget;\n      openAction(action, row);\n    });",
+              commercial_js,
+          )
+          text = replace_once(
+              text,
+              "newOfferButton.addEventListener('click', () => offerDialog.showModal());",
+              "newOfferButton.addEventListener('click', (event) => {\n  offerDialogReturnFocus = event.currentTarget;\n  offerDialog.showModal();\n});",
+              commercial_js,
+          )
+          text = replace_once(
+              text,
+              "dialogCancel.addEventListener('click', () => actionDialog.close());\n\nnewOfferButton.addEventListener",
+              "dialogCancel.addEventListener('click', () => actionDialog.close());\nactionDialog.addEventListener('close', () => {\n  const target = actionDialogReturnFocus;\n  actionDialogReturnFocus = null;\n  if (target?.isConnected) requestAnimationFrame(() => target.focus());\n});\n\nnewOfferButton.addEventListener",
+              commercial_js,
+          )
+          text = replace_once(
+              text,
+              "offerDialogCancel.addEventListener('click', () => offerDialog.close());\nofferForm.addEventListener",
+              "offerDialogCancel.addEventListener('click', () => offerDialog.close());\nofferDialog.addEventListener('close', () => {\n  const target = offerDialogReturnFocus;\n  offerDialogReturnFocus = null;\n  if (target?.isConnected) requestAnimationFrame(() => target.focus());\n});\nofferForm.addEventListener",
+              commercial_js,
+          )
+          commercial_js.write_text(text)
+
+          shell = root / 'platform-shell.css'
+          css = shell.read_text()
+          marker = '/* HAB-479 Platform Admin accessibility and responsive hardening. */'
+          if marker not in css:
+              css += r'''
+
+/* HAB-479 Platform Admin accessibility and responsive hardening. */
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 10px;
+  left: 10px;
+  transform: translateY(-160%);
+  border: 2px solid #fff;
+  border-radius: 10px;
+  background: var(--habitta-teal-950);
+  color: #fff;
+  padding: 10px 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:where(
+    a[href],
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [tabindex]:not([tabindex='-1'])
+  ):focus-visible {
+  outline: 3px solid rgb(12 116 122 / 0.34);
+  outline-offset: 3px;
+}
+
+.platform-sidebar :where(a[href], button, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline-color: #8ce9df;
+}
+
+.table-scroll[tabindex='0'] {
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+}
+
+.table-scroll[tabindex='0']:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid rgb(12 116 122 / 0.28);
+  outline-offset: -3px;
+}
+
+@media (max-width: 860px) {
+  .platform-nav {
+    scroll-padding-inline: 10px;
+    scrollbar-width: thin;
+  }
+
+  .table-toolbar,
+  .detail-card-header {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 620px) {
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .platform-nav a,
+  input,
+  select {
+    min-height: 44px;
+  }
+
+  .platform-user-actions,
+  .table-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .platform-user-actions {
+    justify-content: flex-end;
+  }
+
+  .table-scroll {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+'''
+          shell.write_text(css)
+
+          test = Path('apps/web/src/hab479-platform-admin-polish.test.ts')
+          test.write_text(r'''import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+
+const read = (relative: string) => readFileSync(new URL(relative, import.meta.url), 'utf8');
+const pages = [
+  read('../../platform-admin/index.html'),
+  read('../../platform-admin/customers.html'),
+  read('../../platform-admin/subscriptions.html'),
+  read('../../platform-admin/commercial.html'),
+];
+const shell = read('../../platform-admin/platform-shell.css');
+const commercial = pages[3];
+const commercialScript = read('../../platform-admin/commercial.js');
+
+describe('HAB-479 Platform Admin accessibility contract', () => {
+  it('gives every operating surface a skip target and labeled main navigation', () => {
+    for (const page of pages) {
+      expect(page).toContain('class="skip-link" href="#platform-main"');
+      expect(page).toMatch(/<main[^>]*id="platform-main"[^>]*tabindex="-1"/);
+      expect(page).toContain('aria-label="Navegación principal" class="platform-nav"');
+      expect(page).toContain('aria-disabled="true" class="nav-disabled"');
+    }
+  });
+
+  it('makes asynchronous status and horizontally scrollable tables programmatically discoverable', () => {
+    for (const page of pages) {
+      expect(page).toMatch(/aria-atomic="true" aria-live="polite" role="status"/);
+      expect(page).toContain(
+        'aria-label="Tabla desplazable horizontalmente" class="table-scroll" role="region" tabindex="0"',
+      );
+    }
+  });
+
+  it('provides a visible focus contract, touch targets and reduced-motion fallback', () => {
+    expect(shell).toContain(':focus-visible');
+    expect(shell).toContain('.skip-link:focus');
+    expect(shell).toContain(".table-scroll[tabindex='0']:focus-visible");
+    expect(shell).toContain('@media (max-width: 620px)');
+    expect(shell).toContain('min-height: 44px');
+    expect(shell).toContain('@media (prefers-reduced-motion: reduce)');
+  });
+});
+
+describe('HAB-479 commercial dialog keyboard contract', () => {
+  it('explicitly names both native dialogs', () => {
+    expect(commercial).toContain(
+      'aria-describedby="commercial-dialog-subtitle" aria-labelledby="commercial-dialog-title" id="commercial-action-dialog"',
+    );
+    expect(commercial).toContain(
+      'aria-describedby="offer-dialog-description" aria-labelledby="offer-dialog-title" id="offer-dialog"',
+    );
+    expect(commercial).toContain('id="offer-dialog-title"');
+    expect(commercial).toContain('id="offer-dialog-description"');
+  });
+
+  it('returns focus to the invoking control after either dialog closes', () => {
+    expect(commercialScript).toContain('let actionDialogReturnFocus = null');
+    expect(commercialScript).toContain('let offerDialogReturnFocus = null');
+    expect(commercialScript).toContain("actionDialog.addEventListener('close'");
+    expect(commercialScript).toContain("offerDialog.addEventListener('close'");
+    expect(commercialScript).toContain('requestAnimationFrame(() => target.focus())');
+  });
+});
+
+describe('HAB-479 security/domain boundary', () => {
+  it('does not add privileged browser credentials or condominium accounting access', () => {
+    const combined = pages.join('\n') + commercialScript;
+    expect(combined).not.toContain('service_role');
+    expect(combined).not.toContain('/rest/v1/payments');
+    expect(combined).not.toContain('/rest/v1/receivables');
+    expect(combined).not.toContain('/rest/v1/ledger');
+    expect(combined).not.toContain('/rest/v1/treasury');
+  });
+});
+''')
+          PY
+      - name: Validate transformed diff
+        run: git diff --check
+      - name: Commit scoped HAB-479 changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/platform-admin apps/web/src/hab479-platform-admin-polish.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "HAB-479: harden platform admin responsive accessibility"
+          git push origin HEAD:hab-479-platform-admin-responsive-accessibility-polish
