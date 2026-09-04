@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Clientes · Habitta Platform Admin</title>
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/platform-shell.css" />
+  </head>
+  <body>
+    <div class="platform-layout">
+      <aside class="platform-sidebar" aria-label="Platform Admin">
+        <a class="platform-brand" href="/">
+          <img alt="" src="/logo-mark.svg" />
+          <div>
+            <strong>HABITTA</strong>
+            <span>Comunidades mejores<br />todos los días</span>
+          </div>
+        </a>
+        <nav class="platform-nav">
+          <a data-icon="overview" href="/">Overview</a>
+          <a aria-current="page" data-icon="customers" href="/customers.html">Clientes</a>
+          <a data-icon="commercial" href="/commercial.html">Comercial</a>
+          <span class="nav-disabled" data-icon="subscriptions">Suscripciones</span>
+          <span class="nav-disabled" data-icon="revenue">Revenue</span>
+          <span class="nav-disabled" data-icon="trials">Trials</span>
+          <span class="nav-disabled" data-icon="activity">Actividad</span>
+          <span class="nav-disabled" data-icon="settings">Settings</span>
+        </nav>
+        <div class="sidebar-footer">
+          Personas · Comunidades · Un mejor mañana<br />
+          <strong>Platform Admin</strong>
+        </div>
+      </aside>
+
+      <div class="platform-stage">
+        <header class="platform-topbar">
+          <div class="global-search">
+            <input
+              aria-label="Buscar cliente"
+              autocomplete="off"
+              id="global-customer-search"
+              placeholder="Buscar clientes, condominios o planes…"
+              type="search"
+            />
+          </div>
+          <div class="platform-user-actions">
+            <button class="ghost-button" id="customers-logout" type="button">Cerrar sesión</button>
+            <div class="operator-chip" aria-label="Platform Admin">
+              <span class="operator-avatar">PA</span>
+              <span class="operator-copy">
+                <strong>Habitta</strong>
+                <span>Platform Admin</span>
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main class="platform-content">
+          <section id="customers-list-view">
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow">Owner backoffice</div>
+                <h1>Clientes</h1>
+                <p>
+                  Portafolio comercial de Habitta para encontrar un cliente, entender su estado SaaS
+                  y entrar al Customer 360 sin consultar la base de datos manualmente.
+                </p>
+              </div>
+            </div>
+
+            <div class="metrics-grid" aria-label="Métricas del portafolio">
+              <article class="metric-card">
+                <span class="metric-label">Clientes</span>
+                <strong class="metric-value" id="customers-metric-total">—</strong>
+                <span class="metric-note">Solo organizaciones customer.</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Suscripciones activas</span>
+                <strong class="metric-value" id="customers-metric-active">—</strong>
+                <span class="metric-note">Condominios customer con estado active.</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Trials por vencer</span>
+                <strong class="metric-value" id="customers-metric-trials">—</strong>
+                <span class="metric-note">Próximos 7 días.</span>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Atención de billing</span>
+                <strong class="metric-value" id="customers-metric-attention">—</strong>
+                <span class="metric-note">Clientes con bloqueo o riesgo autoritativo.</span>
+              </article>
+            </div>
+
+            <section class="surface table-surface" aria-label="Portafolio de clientes">
+              <div class="customer-toolbar">
+                <input
+                  aria-label="Buscar en el portafolio"
+                  autocomplete="off"
+                  id="customer-search"
+                  placeholder="Buscar cliente, condominio o plan"
+                  type="search"
+                />
+                <select aria-label="Tipo de cuenta" id="customer-account-filter">
+                  <option value="">Todos los tipos</option>
+                  <option value="customer">Cliente</option>
+                  <option value="demo">Demo</option>
+                  <option value="internal">Interno</option>
+                </select>
+                <select aria-label="Estado de suscripción" id="customer-subscription-filter">
+                  <option value="">Todos los estados</option>
+                  <option value="none">Sin suscripción</option>
+                  <option value="trialing">Prueba</option>
+                  <option value="active">Activa</option>
+                  <option value="past_due">Pago vencido</option>
+                  <option value="suspended">Suspendida</option>
+                  <option value="cancelled">Cancelada</option>
+                </select>
+                <select aria-label="Billing readiness" id="customer-billing-filter">
+                  <option value="">Billing: todos</option>
+                  <option value="ready">Listo para cobrar</option>
+                  <option value="incomplete">Configuración incompleta</option>
+                  <option value="attention">Requiere atención</option>
+                  <option value="not_applicable">No aplica</option>
+                </select>
+                <select aria-label="Ordenar clientes" id="customer-sort">
+                  <option value="name">Nombre A–Z</option>
+                  <option value="attention">Atención primero</option>
+                  <option value="units">Más unidades</option>
+                  <option value="price">Mayor precio</option>
+                </select>
+              </div>
+
+              <div class="table-scroll">
+                <table class="customer-table">
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th>Condominios</th>
+                      <th>Tipo</th>
+                      <th>Plan</th>
+                      <th>Suscripción</th>
+                      <th>Precio contratado</th>
+                      <th>Trial / período</th>
+                      <th>Unidades activas</th>
+                      <th>Billing readiness</th>
+                      <th>Atención</th>
+                    </tr>
+                  </thead>
+                  <tbody id="customers-body"></tbody>
+                </table>
+              </div>
+              <p id="customers-status" role="status">Cargando portafolio…</p>
+              <div
+                style="display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--habitta-border)"
+              >
+                <button class="secondary-button" id="customers-prev" type="button">Anterior</button>
+                <span id="customers-page" style="font-size:.72rem;color:var(--habitta-muted)">—</span>
+                <button class="secondary-button" id="customers-next" type="button">Siguiente</button>
+              </div>
+            </section>
+
+            <p class="read-only-note">
+              Esta superficie usa únicamente contratos autorizados de PostgreSQL. Demo e interno se
+              muestran como <strong>no facturables</strong> y no generan urgencia de revenue.
+            </p>
+          </section>
+
+          <section hidden id="customer-detail-view">
+            <button class="detail-back" id="customer-back" type="button">← Volver a Clientes</button>
+            <p id="customer-detail-status" role="status">Cargando Customer 360…</p>
+
+            <div hidden id="customer-detail-content">
+              <div class="customer-hero">
+                <section class="customer-hero-main">
+                  <div class="customer-title-row">
+                    <div>
+                      <div class="eyebrow">Customer 360</div>
+                      <h1 id="customer-360-name">—</h1>
+                      <p id="customer-360-subtitle">—</p>
+                      <div class="customer-meta" id="customer-360-meta"></div>
+                    </div>
+                  </div>
+                  <div class="customer-summary-grid">
+                    <article class="summary-fact">
+                      <span>Plan</span>
+                      <strong id="customer-360-plan">—</strong>
+                    </article>
+                    <article class="summary-fact">
+                      <span>Estado</span>
+                      <strong id="customer-360-status">—</strong>
+                    </article>
+                    <article class="summary-fact">
+                      <span>Precio efectivo</span>
+                      <strong id="customer-360-price">—</strong>
+                    </article>
+                    <article class="summary-fact">
+                      <span>Billing</span>
+                      <strong id="customer-360-billing">—</strong>
+                    </article>
+                  </div>
+                </section>
+
+                <aside class="customer-attention-panel">
+                  <h2>Atención</h2>
+                  <div class="attention-list" id="customer-360-attention"></div>
+                </aside>
+              </div>
+
+              <div class="detail-grid">
+                <div class="detail-stack">
+                  <section class="detail-card">
+                    <header class="detail-card-header">
+                      <div>
+                        <h2>Suscripción y términos</h2>
+                        <p>Estado SaaS autoritativo por condominio.</p>
+                      </div>
+                    </header>
+                    <div class="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Condominio</th>
+                            <th>Estado</th>
+                            <th>Plan</th>
+                            <th>Período</th>
+                            <th>Contratado</th>
+                            <th>Efectivo</th>
+                            <th>Billing</th>
+                          </tr>
+                        </thead>
+                        <tbody id="customer-360-subscriptions"></tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section class="detail-card">
+                    <header class="detail-card-header">
+                      <div>
+                        <h2>Ajustes comerciales</h2>
+                        <p>Cupones, descuentos o períodos obsequiados ya registrados.</p>
+                      </div>
+                    </header>
+                    <div class="detail-card-body" id="customer-360-adjustments"></div>
+                  </section>
+
+                  <section class="detail-card">
+                    <header class="detail-card-header">
+                      <div>
+                        <h2>Historial comercial</h2>
+                        <p>Cambios auditables existentes; no es un feed inventado.</p>
+                      </div>
+                    </header>
+                    <div class="detail-card-body">
+                      <div class="history-list" id="customer-360-history"></div>
+                    </div>
+                  </section>
+                </div>
+
+                <div class="detail-stack">
+                  <section class="detail-card">
+                    <header class="detail-card-header">
+                      <div>
+                        <h2>Uso seguro</h2>
+                        <p>Solo agregados; sin PII de residentes.</p>
+                      </div>
+                    </header>
+                    <div class="detail-card-body">
+                      <div class="usage-grid">
+                        <article class="usage-card">
+                          <span>Condominios</span>
+                          <strong id="customer-360-condominiums">—</strong>
+                        </article>
+                        <article class="usage-card">
+                          <span>Unidades activas</span>
+                          <strong id="customer-360-units">—</strong>
+                        </article>
+                        <article class="usage-card">
+                          <span>Membresías</span>
+                          <strong id="customer-360-memberships">—</strong>
+                        </article>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="detail-card">
+                    <header class="detail-card-header">
+                      <div>
+                        <h2>Condominios</h2>
+                        <p>Identidad y capacidad agregada.</p>
+                      </div>
+                    </header>
+                    <div class="detail-card-body" id="customer-360-condo-list"></div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="customers.js" type="module"></script>
+  </body>
+</html>
