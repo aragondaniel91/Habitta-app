@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Suscripciones y revenue · Habitta Platform Admin</title>
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/platform-shell.css" />
+    <link rel="stylesheet" href="/subscription-ops.css" />
+  </head>
+  <body>
+    <div class="platform-layout">
+      <aside class="platform-sidebar" aria-label="Platform Admin">
+        <a class="platform-brand" href="/">
+          <img alt="" src="/logo-mark.svg" />
+          <div>
+            <strong>HABITTA</strong>
+            <span>Comunidades mejores<br />todos los días</span>
+          </div>
+        </a>
+        <nav class="platform-nav" id="subscription-nav">
+          <a data-icon="overview" href="/">Overview</a>
+          <a data-icon="customers" href="/customers.html">Clientes</a>
+          <a data-icon="subscriptions" data-view-link="subscriptions" href="/subscriptions.html"
+            >Suscripciones</a
+          >
+          <a data-icon="trials" data-view-link="trials" href="/subscriptions.html?view=trials"
+            >Trials</a
+          >
+          <a data-icon="revenue" data-view-link="revenue" href="/subscriptions.html?view=revenue"
+            >Revenue</a
+          >
+          <a data-icon="commercial" href="/commercial.html">Comercial</a>
+          <span class="nav-disabled" data-icon="activity">Actividad</span>
+          <span class="nav-disabled" data-icon="settings">Settings</span>
+        </nav>
+        <div class="sidebar-footer">
+          Personas · Comunidades · Un mejor mañana<br />
+          <strong>Platform Admin</strong>
+        </div>
+      </aside>
+
+      <div class="platform-stage">
+        <header class="platform-topbar">
+          <div class="global-search">
+            <input
+              aria-label="Buscar suscripciones"
+              autocomplete="off"
+              id="ops-global-search"
+              placeholder="Buscar cliente, condominio o plan…"
+              type="search"
+            />
+          </div>
+          <div class="platform-user-actions">
+            <button class="ghost-button" id="ops-logout" type="button">Cerrar sesión</button>
+            <div class="operator-chip" aria-label="Platform Admin">
+              <span class="operator-avatar">PA</span>
+              <span class="operator-copy">
+                <strong>Habitta</strong>
+                <span>Platform Admin</span>
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main class="platform-content">
+          <div class="page-heading ops-heading">
+            <div>
+              <div class="eyebrow">Owner backoffice</div>
+              <h1 id="ops-title">Suscripciones</h1>
+              <p id="ops-description">
+                Estado de suscripciones, preparación de billing y atención comercial usando solo
+                datos SaaS autoritativos.
+              </p>
+            </div>
+            <div class="ops-heading-actions">
+              <a class="secondary-button" href="/customers.html">Abrir Clientes</a>
+              <a class="primary-button" href="/commercial.html">Operaciones comerciales</a>
+            </div>
+          </div>
+
+          <section class="ops-kpi-grid" aria-label="Indicadores SaaS">
+            <article class="metric-card">
+              <span class="metric-label">MRR efectivo</span>
+              <strong class="metric-value" id="ops-mrr">—</strong>
+              <span class="metric-note"
+                >Customers confirmados active/past_due; trials y no facturables excluidos.</span
+              >
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">ARR run-rate</span>
+              <strong class="metric-value" id="ops-arr">—</strong>
+              <span class="metric-note"
+                >MRR efectivo × 12; no es revenue histórico reconocido.</span
+              >
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Suscripciones activas</span>
+              <strong class="metric-value" id="ops-active">—</strong>
+              <span class="metric-note">Condominios customer con estado active.</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Trials activos</span>
+              <strong class="metric-value" id="ops-trials">—</strong>
+              <span class="metric-note">Trials customer vigentes.</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Trials ≤ 7 días</span>
+              <strong class="metric-value" id="ops-trials-soon">—</strong>
+              <span class="metric-note">Próximos vencimientos accionables.</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Billing requiere atención</span>
+              <strong class="metric-value" id="ops-billing-attention">—</strong>
+              <span class="metric-note"
+                >Pago vencido, suspensión o readiness incompleto cuando corresponde.</span
+              >
+            </article>
+          </section>
+
+          <nav class="ops-tabs" aria-label="Vista operativa">
+            <a data-ops-tab="subscriptions" href="/subscriptions.html">Suscripciones</a>
+            <a data-ops-tab="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
+            <a data-ops-tab="trials" href="/subscriptions.html?view=trials">Trials</a>
+          </nav>
+
+          <div class="ops-layout-grid">
+            <section
+              class="surface table-surface ops-table-surface"
+              aria-label="Operación de suscripciones"
+            >
+              <div class="ops-toolbar">
+                <input
+                  aria-label="Buscar en suscripciones"
+                  autocomplete="off"
+                  id="ops-search"
+                  placeholder="Buscar cliente, condominio o plan"
+                  type="search"
+                />
+                <select aria-label="Tipo de cuenta" id="ops-account-filter">
+                  <option value="">Todos los tipos</option>
+                  <option value="customer">Cliente</option>
+                  <option value="demo">Demo</option>
+                  <option value="internal">Interno</option>
+                </select>
+                <select aria-label="Estado de suscripción" id="ops-status-filter">
+                  <option value="">Todos los estados</option>
+                  <option value="none">Sin suscripción</option>
+                  <option value="trialing">Prueba</option>
+                  <option value="active">Activa</option>
+                  <option value="past_due">Pago vencido</option>
+                  <option value="suspended">Suspendida</option>
+                  <option value="cancelled">Cancelada</option>
+                </select>
+                <select aria-label="Billing readiness" id="ops-billing-filter">
+                  <option value="">Billing: todos</option>
+                  <option value="ready">Listo</option>
+                  <option value="attention">Requiere atención</option>
+                  <option value="not_applicable">No aplica</option>
+                </select>
+                <select aria-label="Ordenar" id="ops-sort">
+                  <option value="attention">Atención primero</option>
+                  <option value="name">Cliente A–Z</option>
+                  <option value="effective">Mayor MRR efectivo</option>
+                  <option value="trial">Trial más próximo</option>
+                </select>
+              </div>
+
+              <div class="table-scroll">
+                <table class="ops-table">
+                  <thead>
+                    <tr>
+                      <th>Cliente / condominio</th>
+                      <th>Tipo</th>
+                      <th>Plan</th>
+                      <th>Estado</th>
+                      <th>Contratado</th>
+                      <th>Catálogo</th>
+                      <th>Efectivo</th>
+                      <th>Trial / período</th>
+                      <th>Método</th>
+                      <th>Consentimiento</th>
+                      <th>Auto-billing</th>
+                      <th>Atención</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="ops-body"></tbody>
+                </table>
+              </div>
+
+              <p id="ops-status" role="status">Cargando estado comercial…</p>
+              <div class="ops-pagination">
+                <button class="secondary-button" id="ops-prev" type="button">Anterior</button>
+                <span id="ops-page">—</span>
+                <button class="secondary-button" id="ops-next" type="button">Siguiente</button>
+              </div>
+            </section>
+
+            <aside class="ops-side-stack">
+              <section class="surface ops-side-card">
+                <div class="ops-side-header">
+                  <div>
+                    <span class="eyebrow">Próximos vencimientos</span>
+                    <h2>Trials</h2>
+                  </div>
+                  <a href="/subscriptions.html?view=trials">Ver todos</a>
+                </div>
+                <div class="trial-buckets" aria-label="Trials por vencer">
+                  <article>
+                    <span>≤ 7 días</span>
+                    <strong id="ops-trial-7">—</strong>
+                  </article>
+                  <article>
+                    <span>8–14 días</span>
+                    <strong id="ops-trial-14">—</strong>
+                  </article>
+                  <article>
+                    <span>15–30 días</span>
+                    <strong id="ops-trial-30">—</strong>
+                  </article>
+                </div>
+                <div class="upcoming-list" id="ops-upcoming"></div>
+              </section>
+
+              <section class="surface ops-side-card" id="ops-semantics-card">
+                <span class="eyebrow">Semántica</span>
+                <h2>Cómo se calcula revenue</h2>
+                <p>
+                  MRR y ARR son run-rate SaaS derivados de términos comerciales autoritativos. Solo
+                  incluyen cuentas customer confirmadas en active o past_due. Demo, internal,
+                  trials, suspended y cancelled no inflan revenue.
+                </p>
+                <ul class="ops-semantics-list">
+                  <li><strong>Contratado:</strong> monto pactado del término vigente.</li>
+                  <li><strong>Catálogo:</strong> referencia pública del plan cuando existe.</li>
+                  <li>
+                    <strong>Efectivo:</strong> monto después de ajuste vigente; trial activo vale 0.
+                  </li>
+                </ul>
+              </section>
+            </aside>
+          </div>
+
+          <p class="read-only-note">
+            Vista de solo lectura. No expone residentes, receivables, pagos, ledger ni tesorería.
+            Las mutaciones comerciales continúan exclusivamente en
+            <a href="/commercial.html"><strong>Comercial</strong></a
+            >.
+          </p>
+        </main>
+      </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="subscriptions.js" type="module"></script>
+  </body>
+</html>

@@ -7,6 +7,7 @@
     <title>Habitta Platform Admin</title>
     <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/platform-shell.css" />
+    <link rel="stylesheet" href="/subscription-ops.css" />
   </head>
   <body>
     <section class="login-shell" id="login-view">
@@ -56,10 +57,10 @@
           <nav class="platform-nav">
             <a aria-current="page" data-icon="overview" href="/">Overview</a>
             <a data-icon="customers" href="/customers.html">Clientes</a>
+            <a data-icon="subscriptions" href="/subscriptions.html">Suscripciones</a>
+            <a data-icon="trials" href="/subscriptions.html?view=trials">Trials</a>
+            <a data-icon="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
             <a data-icon="commercial" href="/commercial.html">Comercial</a>
-            <span class="nav-disabled" data-icon="subscriptions">Suscripciones</span>
-            <span class="nav-disabled" data-icon="revenue">Revenue</span>
-            <span class="nav-disabled" data-icon="trials">Trials</span>
             <span class="nav-disabled" data-icon="activity">Actividad</span>
             <span class="nav-disabled" data-icon="settings">Settings</span>
           </nav>
@@ -153,7 +154,10 @@
                   <h2>Organizaciones y condominios</h2>
                   <p>Vista operativa de solo lectura.</p>
                 </div>
-                <div class="filters" style="grid-template-columns:repeat(2,minmax(150px,1fr));width:min(390px,100%)">
+                <div
+                  class="filters"
+                  style="grid-template-columns: repeat(2, minmax(150px, 1fr)); width: min(390px, 100%)"
+                >
                   <select aria-label="Filtrar por tipo de cuenta" id="account-filter">
                     <option value="">Todos los tipos</option>
                     <option value="customer">Cliente</option>
@@ -194,8 +198,10 @@
 
             <p class="read-only-note">
               Para buscar una organización y entrar a su contexto SaaS completo, usa
-              <a href="/customers.html"><strong>Clientes → Customer 360</strong></a>. Trials,
-              ofertas y beneficios auditados continúan en <a href="/commercial.html">Comercial</a>.
+              <a href="/customers.html"><strong>Clientes → Customer 360</strong></a>. Suscripciones,
+              revenue y vencimientos están en
+              <a href="/subscriptions.html"><strong>Suscripciones</strong></a>; trials, ofertas y
+              beneficios auditados continúan en <a href="/commercial.html">Comercial</a>.
             </p>
           </main>
         </div>

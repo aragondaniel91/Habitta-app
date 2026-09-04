@@ -7,6 +7,7 @@
     <title>Clientes · Habitta Platform Admin</title>
     <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/platform-shell.css" />
+    <link rel="stylesheet" href="/subscription-ops.css" />
   </head>
   <body>
     <div class="platform-layout">
@@ -21,10 +22,10 @@
         <nav class="platform-nav">
           <a data-icon="overview" href="/">Overview</a>
           <a aria-current="page" data-icon="customers" href="/customers.html">Clientes</a>
+          <a data-icon="subscriptions" href="/subscriptions.html">Suscripciones</a>
+          <a data-icon="trials" href="/subscriptions.html?view=trials">Trials</a>
+          <a data-icon="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
           <a data-icon="commercial" href="/commercial.html">Comercial</a>
-          <span class="nav-disabled" data-icon="subscriptions">Suscripciones</span>
-          <span class="nav-disabled" data-icon="revenue">Revenue</span>
-          <span class="nav-disabled" data-icon="trials">Trials</span>
           <span class="nav-disabled" data-icon="activity">Actividad</span>
           <span class="nav-disabled" data-icon="settings">Settings</span>
         </nav>
@@ -174,7 +175,10 @@
 
             <p class="read-only-note">
               Esta superficie usa únicamente contratos autorizados de PostgreSQL. Demo e interno se
-              muestran como <strong>no facturables</strong> y no generan urgencia de revenue.
+              muestran como <strong>no facturables</strong> y no generan urgencia de revenue. Para
+              la operación agregada usa
+              <a href="/subscriptions.html"><strong>Suscripciones</strong></a
+              >.
             </p>
           </section>
 
