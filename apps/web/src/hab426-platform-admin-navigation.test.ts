@@ -87,8 +87,8 @@ describe('HAB-426 billable boundary is unchanged', () => {
     expect(commercialScript).toContain("customer: 'Cliente'");
   });
 
-  it('does not expose mutation cards in the nonbillable branch', () => {
-    const guard = commercialScript.indexOf("if (row.account_type !== 'customer')");
+  it('does not expose mutation cards in the explicit nonbillable render branch', () => {
+    const guard = commercialScript.indexOf("if (row.account_type !== 'customer') {");
     expect(guard).toBeGreaterThan(0);
     const returnPoint = commercialScript.indexOf('return;', guard);
     expect(returnPoint).toBeGreaterThan(guard);
