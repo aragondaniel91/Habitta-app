@@ -1,0 +1,93 @@
+name: HAB-431 final payments polish temp
+
+on:
+  push:
+    branches:
+      - hab-431-resident-payments-final-visual-polish
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hab-431-resident-payments-final-visual-polish
+
+      - name: Apply final production visual polish
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          view_path = Path('apps/web/src/pages/ResidentPaymentsView.tsx')
+          view = view_path.read_text()
+
+          old_badge = """              <Badge tone={activeMethods.length ? 'success' : 'neutral'}>
+                {activeMethods.length ? `${activeMethods.length} activos` : 'Sin métodos'}
+              </Badge>"""
+          new_badge = """              {activeMethods.length ? (
+                <Badge tone=\"success\">{`${activeMethods.length} activos`}</Badge>
+              ) : null}"""
+          if old_badge not in view:
+              raise SystemExit('expected methods badge block not found')
+          view = view.replace(old_badge, new_badge, 1)
+
+          old_empty = """                <div>
+                  <strong>No hay método disponible para {currency}</strong>
+                  <small>
+                    La administración todavía no publicó un método activo para esta moneda.
+                  </small>
+                </div>"""
+          new_empty = """                <div>
+                  <strong>{currency} todavía no tiene un método de pago</strong>
+                  <small>La administración lo habilitará cuando exista una vía disponible.</small>
+                </div>"""
+          if old_empty not in view:
+              raise SystemExit('expected no-method block not found')
+          view = view.replace(old_empty, new_empty, 1)
+
+          old_action = """                    ? `No hay un método activo para ${currency}.`
+                    : 'No hay una unidad elegible para recibir el pago.'}"""
+          new_action = """                    ? 'Se habilitará cuando la administración publique un método para esta moneda.'
+                    : 'No hay una unidad elegible para recibir el pago.'}"""
+          if old_action not in view:
+              raise SystemExit('expected disabled-action copy not found')
+          view = view.replace(old_action, new_action, 1)
+          view_path.write_text(view)
+
+          css_path = Path('apps/web/src/resident-payments.css')
+          css = css_path.read_text()
+          replacements = {
+              'grid-template-columns: minmax(220px, 0.82fr) minmax(280px, 1fr);': 'grid-template-columns: minmax(180px, 0.72fr) minmax(260px, 1fr);',
+              'gap: var(--hq-space-6);\n  max-width: 760px;\n  margin: 0 auto;\n  padding: var(--hq-space-4) var(--hq-space-5) var(--hq-space-5);': 'gap: var(--hq-space-4);\n  max-width: 660px;\n  margin: 0 auto;\n  padding: var(--hq-space-3) var(--hq-space-5) var(--hq-space-4);',
+              'min-height: 150px;': 'min-height: 112px;',
+              'width: 170px;\n  height: 92px;': 'width: 138px;\n  height: 72px;',
+              'bottom: 16px;\n  width: 210px;\n  height: 18px;': 'bottom: 10px;\n  width: 168px;\n  height: 14px;',
+              'width: 92px;\n  height: 118px;\n  gap: var(--hq-space-2);\n  padding: var(--hq-space-4);': 'width: 74px;\n  height: 96px;\n  gap: var(--hq-space-2);\n  padding: var(--hq-space-3);',
+              'right: calc(50% - 72px);\n  bottom: 36px;\n  display: grid;\n  width: 36px;\n  height: 36px;': 'right: calc(50% - 59px);\n  bottom: 24px;\n  display: grid;\n  width: 32px;\n  height: 32px;',
+          }
+          for old, new in replacements.items():
+              if old not in css:
+                  raise SystemExit(f'expected CSS block not found: {old!r}')
+              css = css.replace(old, new, 1)
+          css_path.write_text(css)
+          PY
+
+          git diff --check
+
+      - name: Commit polish
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/pages/ResidentPaymentsView.tsx apps/web/src/resident-payments.css
+          git commit -m "HAB-431: final resident payments visual polish"
+          git push origin HEAD:hab-431-resident-payments-final-visual-polish
