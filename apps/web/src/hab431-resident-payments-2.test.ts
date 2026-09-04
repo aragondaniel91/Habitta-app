@@ -83,17 +83,21 @@ describe('HAB-431 resident payments approved HQ experience', () => {
   });
 
   it('uses HQ tokens and large touch targets across desktop, tablet, and mobile', () => {
+    const historyEmpty =
+      css.match(/\.resident-payments__history-empty\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+    const historyIllustration =
+      css.match(/\.resident-payments__history-illustration\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+
     expect(css).toContain('var(--hq-space-5)');
     expect(css).toContain('var(--hq-control-standard)');
     expect(css).toContain('var(--hq-touch-target)');
     expect(css).toContain('.resident-payments__context-shell');
     expect(css).toContain('.resident-payments__account-main');
     expect(css).toContain('.resident-payments__methods-compact');
-    expect(css).toContain('.resident-payments__history-empty');
-    expect(css).toContain('max-width: 660px');
-    expect(css).toContain('min-height: 112px');
-    expect(css).not.toContain('max-width: 760px');
-    expect(css).not.toContain('min-height: 150px');
+    expect(historyEmpty).toContain('max-width: 660px');
+    expect(historyEmpty).not.toContain('max-width: 760px');
+    expect(historyIllustration).toContain('min-height: 112px');
+    expect(historyIllustration).not.toContain('min-height: 150px');
     expect(css).not.toContain('min-height: 240px');
     expect(css).not.toContain('--hq-success-soft');
     expect(css).toContain('@media (max-width: 1100px)');
