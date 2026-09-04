@@ -96,8 +96,8 @@ describe('HAB-477 authoritative audit history', () => {
   });
 
   it('makes mutation success and failure explicit to the operator', () => {
-    expect(script).toContain(
-      "setStatus('Acción comercial confirmada. El estado y la auditoría fueron recargados.', 'success')",
+    expect(script).toMatch(
+      /setStatus\(\s*'Acción comercial confirmada\. El estado y la auditoría fueron recargados\.',\s*'success',?\s*\)/,
     );
     expect(script).toContain("dialogWarning.dataset.tone = 'error'");
   });
