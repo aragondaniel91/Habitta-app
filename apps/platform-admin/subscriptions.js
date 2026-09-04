@@ -230,9 +230,7 @@ function renderMetrics() {
     rows.filter((row) => isCustomer(row) && row.subscription_status === 'active').length,
   );
   metricTrials.textContent = String(rows.filter(isCurrentTrial).length);
-  metricTrialsSoon.textContent = String(
-    rows.filter((row) => trialBucket(row) === '7').length,
-  );
+  metricTrialsSoon.textContent = String(rows.filter((row) => trialBucket(row) === '7').length);
   metricBillingAttention.textContent = String(
     rows.filter((row) => isCustomer(row) && billingState(row) === 'attention').length,
   );
@@ -352,7 +350,11 @@ function writeFilters({ resetPage = false } = {}) {
   if (resetPage) currentPage = 1;
   if (currentPage > 1) params.set('page', String(currentPage));
   else params.delete('page');
-  window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`.replace(/\?$/, ''));
+  window.history.replaceState(
+    {},
+    '',
+    `${window.location.pathname}?${params.toString()}`.replace(/\?$/, ''),
+  );
 }
 
 function filteredRows() {
@@ -378,7 +380,13 @@ function filteredRows() {
     if (sort === 'attention') {
       const score = (row) => {
         const item = attentionFor(row);
-        return item.tone === 'danger' ? 3 : item.tone === 'warning' ? 2 : item.tone === 'success' ? 0 : -1;
+        return item.tone === 'danger'
+          ? 3
+          : item.tone === 'warning'
+            ? 2
+            : item.tone === 'success'
+              ? 0
+              : -1;
       };
       const difference = score(right) - score(left);
       if (difference) return difference;
@@ -396,7 +404,10 @@ function filteredRows() {
       const safeRight = rightDays === null || rightDays < 0 ? Number.POSITIVE_INFINITY : rightDays;
       if (safeLeft !== safeRight) return safeLeft - safeRight;
     }
-    return String(left.organization_name ?? '').localeCompare(String(right.organization_name ?? ''), 'es');
+    return String(left.organization_name ?? '').localeCompare(
+      String(right.organization_name ?? ''),
+      'es',
+    );
   });
 
   return filtered;
@@ -467,7 +478,8 @@ function priceCell(tr, row, field) {
   td.append(strong);
   if (row.billing_period && row[field] !== null && row[field] !== undefined) {
     const small = document.createElement('small');
-    small.textContent = row.billing_period === 'annual' ? 'término anual normalizado' : 'término mensual';
+    small.textContent =
+      row.billing_period === 'annual' ? 'término anual normalizado' : 'término mensual';
     td.append(small);
   }
   tr.append(td);
@@ -536,7 +548,9 @@ function renderTable() {
     appendTextCell(tr, row.plan_name ?? row.plan_code ?? 'Sin plan');
 
     const subscriptionCell = document.createElement('td');
-    subscriptionCell.append(badge(subscriptionLabel(row.subscription_status), subscriptionTone(row.subscription_status)));
+    subscriptionCell.append(
+      badge(subscriptionLabel(row.subscription_status), subscriptionTone(row.subscription_status)),
+    );
     tr.append(subscriptionCell);
 
     priceCell(tr, row, 'contracted_period_amount');
@@ -544,7 +558,9 @@ function renderTable() {
     priceCell(tr, row, 'effective_period_amount');
     appendTextCell(tr, trialOrPeriod(row));
 
-    const notApplicable = !isCustomer(row) || !['active', 'trialing', 'past_due', 'suspended'].includes(row.subscription_status);
+    const notApplicable =
+      !isCustomer(row) ||
+      !['active', 'trialing', 'past_due', 'suspended'].includes(row.subscription_status);
     const methodCell = document.createElement('td');
     methodCell.append(
       readinessElement(row.billing_method_ready, 'Listo', 'Falta método', notApplicable),
@@ -553,7 +569,12 @@ function renderTable() {
 
     const consentCell = document.createElement('td');
     consentCell.append(
-      readinessElement(row.billing_consent_recorded, 'Registrado', 'Falta consentimiento', notApplicable),
+      readinessElement(
+        row.billing_consent_recorded,
+        'Registrado',
+        'Falta consentimiento',
+        notApplicable,
+      ),
     );
     tr.append(consentCell);
 
