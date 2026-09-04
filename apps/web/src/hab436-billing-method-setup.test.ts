@@ -9,7 +9,9 @@ const settingsSurface = read('./features/settings/CondominiumDangerZone.tsx');
 
 describe('HAB-436 payment-method setup UX contract', () => {
   it('renders payment setup as a separate step after the commercial summary', () => {
-    expect(settingsSurface).toContain("import { BillingMethodSetupCard } from './BillingMethodSetupCard'");
+    expect(settingsSurface).toContain(
+      "import { BillingMethodSetupCard } from './BillingMethodSetupCard'",
+    );
     expect(settingsSurface.indexOf('<CommercialSummaryCard')).toBeLessThan(
       settingsSurface.indexOf('<BillingMethodSetupCard'),
     );
