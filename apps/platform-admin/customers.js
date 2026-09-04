@@ -125,7 +125,9 @@ function subscriptionLabel(value) {
       suspended: 'Suspendida',
       cancelled: 'Cancelada',
       none: 'Sin suscripción',
-    }[value] ?? value ?? 'Sin suscripción'
+    }[value] ??
+    value ??
+    'Sin suscripción'
   );
 }
 
@@ -169,9 +171,7 @@ function trialEndsSoon(row) {
 }
 
 function mergePortfolioRows(operationsRows, commercialRows) {
-  const commercialByCondominium = new Map(
-    commercialRows.map((row) => [row.condominium_id, row]),
-  );
+  const commercialByCondominium = new Map(commercialRows.map((row) => [row.condominium_id, row]));
   const organizations = new Map();
 
   for (const operation of operationsRows) {
@@ -319,7 +319,11 @@ function writeFiltersToUrl({ resetPage = false } = {}) {
   if (resetPage) currentPage = 1;
   if (currentPage > 1) params.set('page', String(currentPage));
   else params.delete('page');
-  window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`.replace(/\?$/, ''));
+  window.history.replaceState(
+    {},
+    '',
+    `${window.location.pathname}?${params.toString()}`.replace(/\?$/, ''),
+  );
 }
 
 function matchesSubscriptionFilter(organization, value) {
@@ -373,8 +377,9 @@ function renderMetrics() {
     ),
   );
   metricTrials.textContent = String(
-    customers.filter((organization) => organization.attention.some((item) => item.key === 'trial_ending'))
-      .length,
+    customers.filter((organization) =>
+      organization.attention.some((item) => item.key === 'trial_ending'),
+    ).length,
   );
   metricAttention.textContent = String(
     customers.filter((organization) => organization.attention.length > 0).length,
@@ -390,7 +395,9 @@ function planLabel(organization) {
 function statusSummary(organization) {
   if (organization.statuses.length === 1) return organization.statuses[0];
   const priority = ['suspended', 'past_due', 'trialing', 'active', 'cancelled', 'none'];
-  return priority.find((status) => organization.statuses.includes(status)) ?? organization.statuses[0];
+  return (
+    priority.find((status) => organization.statuses.includes(status)) ?? organization.statuses[0]
+  );
 }
 
 function contractedPriceLabel(organization) {
@@ -534,9 +541,7 @@ function renderPortfolio() {
     } else if (!organization.attention.length) {
       attentionCell.append(badge('Sin alertas', 'success'));
     } else {
-      attentionCell.append(
-        badge(organization.attention[0].label, organization.attention[0].tone),
-      );
+      attentionCell.append(badge(organization.attention[0].label, organization.attention[0].tone));
       if (organization.attention.length > 1) {
         const note = document.createElement('span');
         note.className = 'table-secondary';
@@ -619,8 +624,7 @@ function detailAttention(data) {
     const attention = row.attention ?? {};
     if (attention.suspended)
       items.push({ label: `${row.name}: suscripción suspendida.`, tone: 'danger' });
-    if (attention.past_due)
-      items.push({ label: `${row.name}: pago vencido.`, tone: 'danger' });
+    if (attention.past_due) items.push({ label: `${row.name}: pago vencido.`, tone: 'danger' });
     if (attention.missing_subscription)
       items.push({ label: `${row.name}: cliente sin suscripción.`, tone: 'warning' });
     if (attention.billing_setup_incomplete)
@@ -628,7 +632,9 @@ function detailAttention(data) {
     if (attention.trial_ends_within_7_days)
       items.push({ label: `${row.name}: trial vence en 7 días o menos.`, tone: 'warning' });
   }
-  return items.length ? items : [{ label: 'Sin alertas comerciales autoritativas.', tone: 'neutral' }];
+  return items.length
+    ? items
+    : [{ label: 'Sin alertas comerciales autoritativas.', tone: 'neutral' }];
 }
 
 function setText(selector, value) {
@@ -672,7 +678,8 @@ function readinessLabel(row, billable) {
   if (readiness.consent_recorded && readiness.method_ready) {
     return readiness.auto_bill_enabled ? 'Auto-billing activo' : 'Método y consentimiento listos';
   }
-  if (!readiness.consent_recorded && !readiness.method_ready) return 'Faltan consentimiento y método';
+  if (!readiness.consent_recorded && !readiness.method_ready)
+    return 'Faltan consentimiento y método';
   if (!readiness.consent_recorded) return 'Falta consentimiento';
   return 'Falta método de pago';
 }
@@ -729,16 +736,14 @@ function renderAdjustments(data) {
   tableScroll.className = 'table-scroll';
   const table = document.createElement('table');
   const head = document.createElement('thead');
-  head.innerHTML = '<tr><th>Tipo</th><th>Origen</th><th>Referencia</th><th>Efectivo</th><th>Vigencia</th></tr>';
+  head.innerHTML =
+    '<tr><th>Tipo</th><th>Origen</th><th>Referencia</th><th>Efectivo</th><th>Vigencia</th></tr>';
   const body = document.createElement('tbody');
   for (const adjustment of adjustments.slice(0, 20)) {
     const tr = document.createElement('tr');
     appendTextCell(tr, adjustment.kind ?? 'Ajuste');
     appendTextCell(tr, adjustment.source ?? '—');
-    appendTextCell(
-      tr,
-      formatMoney(adjustment.reference_period_amount, adjustment.currency),
-    );
+    appendTextCell(tr, formatMoney(adjustment.reference_period_amount, adjustment.currency));
     appendTextCell(tr, formatMoney(adjustment.effective_period_amount, adjustment.currency));
     appendTextCell(
       tr,
@@ -841,7 +846,9 @@ function renderCondominiumList(data) {
 }
 
 function renderCustomer360(data) {
-  const plans = uniqueValues(data.condominiums.map((row) => row.terms?.plan_name ?? row.terms?.plan_code));
+  const plans = uniqueValues(
+    data.condominiums.map((row) => row.terms?.plan_name ?? row.terms?.plan_code),
+  );
   const statuses = uniqueValues(data.condominiums.map((row) => row.subscription?.status));
   const effective = detailMonthlyTotal(data, 'effective_period_amount');
 
@@ -850,10 +857,17 @@ function renderCustomer360(data) {
     '#customer-360-subtitle',
     `${data.condominiums.length} condominio${data.condominiums.length === 1 ? '' : 's'} · Contexto comercial y operativo seguro`,
   );
-  setText('#customer-360-plan', plans.length === 1 ? plans[0] : plans.length ? 'Múltiples planes' : 'Sin plan');
+  setText(
+    '#customer-360-plan',
+    plans.length === 1 ? plans[0] : plans.length ? 'Múltiples planes' : 'Sin plan',
+  );
   setText(
     '#customer-360-status',
-    statuses.length === 1 ? subscriptionLabel(statuses[0]) : statuses.length ? 'Estados mixtos' : 'Sin suscripción',
+    statuses.length === 1
+      ? subscriptionLabel(statuses[0])
+      : statuses.length
+        ? 'Estados mixtos'
+        : 'Sin suscripción',
   );
   setText(
     '#customer-360-price',
@@ -922,7 +936,11 @@ function route() {
 function goBackToPortfolio() {
   const params = new URLSearchParams(window.location.search);
   params.delete('organization');
-  window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`.replace(/\?$/, ''));
+  window.history.pushState(
+    {},
+    '',
+    `${window.location.pathname}?${params.toString()}`.replace(/\?$/, ''),
+  );
   route();
 }
 
@@ -940,7 +958,10 @@ async function bootstrap() {
     applyFiltersToControls();
     route();
   } catch (error) {
-    if (error instanceof Error && (error.message === 'unauthorized' || error.message === 'forbidden')) {
+    if (
+      error instanceof Error &&
+      (error.message === 'unauthorized' || error.message === 'forbidden')
+    ) {
       clearSession();
       window.location.replace('/');
       return;

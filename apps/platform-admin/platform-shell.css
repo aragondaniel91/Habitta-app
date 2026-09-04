@@ -47,7 +47,13 @@ body {
   background: var(--habitta-bg);
   color: var(--habitta-ink);
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -230,14 +236,30 @@ select:focus {
   content: '•';
 }
 
-.platform-nav a[data-icon='overview']::before { content: '▦'; }
-.platform-nav a[data-icon='customers']::before { content: '◎'; }
-.platform-nav a[data-icon='commercial']::before { content: '▥'; }
-.platform-nav span[data-icon='subscriptions']::before { content: '▭'; }
-.platform-nav span[data-icon='revenue']::before { content: '▥'; }
-.platform-nav span[data-icon='trials']::before { content: '△'; }
-.platform-nav span[data-icon='activity']::before { content: '◷'; }
-.platform-nav span[data-icon='settings']::before { content: '⚙'; }
+.platform-nav a[data-icon='overview']::before {
+  content: '▦';
+}
+.platform-nav a[data-icon='customers']::before {
+  content: '◎';
+}
+.platform-nav a[data-icon='commercial']::before {
+  content: '▥';
+}
+.platform-nav span[data-icon='subscriptions']::before {
+  content: '▭';
+}
+.platform-nav span[data-icon='revenue']::before {
+  content: '▥';
+}
+.platform-nav span[data-icon='trials']::before {
+  content: '△';
+}
+.platform-nav span[data-icon='activity']::before {
+  content: '◷';
+}
+.platform-nav span[data-icon='settings']::before {
+  content: '⚙';
+}
 
 .platform-nav a:hover {
   background: rgb(255 255 255 / 0.07);
@@ -598,8 +620,7 @@ td strong {
   min-height: 100vh;
   place-items: center;
   background:
-    radial-gradient(circle at 20% 10%, rgb(12 116 122 / 0.12), transparent 35%),
-    var(--habitta-bg);
+    radial-gradient(circle at 20% 10%, rgb(12 116 122 / 0.12), transparent 35%), var(--habitta-bg);
   padding: 22px;
 }
 
@@ -737,10 +758,18 @@ td strong {
   content: '';
 }
 
-.billing-readiness--ready { color: var(--habitta-green); }
-.billing-readiness--warning { color: var(--habitta-amber); }
-.billing-readiness--danger { color: var(--habitta-red); }
-.billing-readiness--neutral { color: var(--habitta-muted); }
+.billing-readiness--ready {
+  color: var(--habitta-green);
+}
+.billing-readiness--warning {
+  color: var(--habitta-amber);
+}
+.billing-readiness--danger {
+  color: var(--habitta-red);
+}
+.billing-readiness--neutral {
+  color: var(--habitta-muted);
+}
 
 .detail-back {
   display: inline-flex;
