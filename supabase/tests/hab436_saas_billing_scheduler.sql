@@ -2,7 +2,7 @@ begin;
 select plan(21);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at)
-values ('00000000-0000-4000-8000-000000004368','00000000-0000-0000-8000-000000000000','authenticated','authenticated','hab436-biller@test.local','x',now(),now());
+values ('00000000-0000-4000-8000-000000004368','00000000-0000-4000-8000-000000000000','authenticated','authenticated','hab436-biller@test.local','x',now(),now());
 
 insert into public.organizations(id,name,created_by,account_type)
 values ('43600000-0000-4000-8000-000000000008','HAB436 Billing Scheduler','00000000-0000-4000-8000-000000004368','customer');
@@ -161,9 +161,9 @@ select is(
 
 set local role service_role;
 select is(
-  (select attempt_no from public.claim_due_saas_billing_attempts_v1('2026-09-03T14:00:00Z',20) where subscription_id='43620000-0000-4000-8000-000000000008' limit 1),
+  (select attempt_no from public.claim_due_saas_billing_attempts_v1(clock_timestamp() + interval '2 hours',20) where subscription_id='43620000-0000-4000-8000-000000000008' limit 1),
   2,
-  'a definitive failed charge creates the next bounded retry attempt'
+  'a definitive failed charge creates the next bounded retry attempt after the retry window'
 );
 
 set local role postgres;
