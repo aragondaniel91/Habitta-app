@@ -45,6 +45,7 @@
     </section>
 
     <section hidden id="dashboard-view">
+      <a class="skip-link" href="#platform-main">Saltar al contenido principal</a>
       <div class="platform-layout">
         <aside class="platform-sidebar" aria-label="Platform Admin">
           <a class="platform-brand" href="/">
@@ -54,15 +55,15 @@
               <span>Comunidades mejores<br />todos los días</span>
             </div>
           </a>
-          <nav class="platform-nav">
+          <nav aria-label="Navegación principal" class="platform-nav">
             <a aria-current="page" data-icon="overview" href="/">Overview</a>
             <a data-icon="customers" href="/customers.html">Clientes</a>
             <a data-icon="subscriptions" href="/subscriptions.html">Suscripciones</a>
             <a data-icon="trials" href="/subscriptions.html?view=trials">Trials</a>
             <a data-icon="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
             <a data-icon="commercial" href="/commercial.html">Comercial</a>
-            <span class="nav-disabled" data-icon="activity">Actividad</span>
-            <span class="nav-disabled" data-icon="settings">Settings</span>
+            <span aria-disabled="true" class="nav-disabled" data-icon="activity">Actividad</span>
+            <span aria-disabled="true" class="nav-disabled" data-icon="settings">Settings</span>
           </nav>
           <div class="sidebar-footer">
             Personas · Comunidades · Un mejor mañana<br />
@@ -92,7 +93,7 @@
             </div>
           </header>
 
-          <main class="platform-content">
+          <main class="platform-content" id="platform-main" tabindex="-1">
             <div class="page-heading">
               <div>
                 <div class="eyebrow">Resumen de plataforma</div>
@@ -176,7 +177,7 @@
                 </div>
               </div>
 
-              <div class="table-scroll">
+              <div aria-label="Tabla desplazable horizontalmente" class="table-scroll" role="region" tabindex="0">
                 <table>
                   <thead>
                     <tr>
@@ -193,7 +194,7 @@
                   <tbody id="overview-body"></tbody>
                 </table>
               </div>
-              <p id="overview-status" role="status"></p>
+              <p id="overview-status" aria-atomic="true" aria-live="polite" role="status"></p>
             </section>
 
             <p class="read-only-note">
