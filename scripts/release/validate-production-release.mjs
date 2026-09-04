@@ -1,13 +1,5 @@
 export const HABITTA_PROD_PROJECT_REF = 'kgsfaahixbcwcmykmhat';
 export const HABITTA_PROD_SUPABASE_URL = `https://${HABITTA_PROD_PROJECT_REF}.supabase.co`;
-export const HABITTA_PROD_ADMIN_URL = 'https://admin.mihabitta.com';
-
-const normalizedOriginSet = (value) =>
-  String(value ?? '')
-    .split(',')
-    .map((item) => item.trim().replace(/\/$/, ''))
-    .filter(Boolean)
-    .sort();
 
 export const validateProductionRelease = ({
   appEnv,
@@ -47,13 +39,7 @@ export const validateProductionRelease = ({
   if (!/^https:\/\/habitta-api-prod\./.test(String(workerUrl ?? '')))
     errors.push('invalid_production_worker_url');
   if (pagesUrl !== 'https://app.mihabitta.com') errors.push('invalid_production_pages_url');
-
-  // The Worker serves two first-party browser surfaces in production: the customer/resident app
-  // and the owner-only Platform Admin. Keep this an exact set; wildcards or surprise origins still
-  // fail the release invariant.
-  const expectedCorsOrigins = normalizedOriginSet(`${pagesUrl},${HABITTA_PROD_ADMIN_URL}`);
-  if (JSON.stringify(normalizedOriginSet(corsAllowedOrigins)) !== JSON.stringify(expectedCorsOrigins))
-    errors.push('production_cors_mismatch');
+  if (corsAllowedOrigins !== pagesUrl) errors.push('production_cors_mismatch');
 
   return errors;
 };
