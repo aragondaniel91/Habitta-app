@@ -43,7 +43,9 @@ export async function getCustomerInvitationPreview(rawToken: string) {
   return result.data as CustomerInvitationPreview;
 }
 
-export async function acceptCustomerInvitation(rawToken: string): Promise<AcceptedCustomerInvitation> {
+export async function acceptCustomerInvitation(
+  rawToken: string,
+): Promise<AcceptedCustomerInvitation> {
   const client = requireSupabase();
   const result = await client.rpc('accept_customer_invitation_v2', { raw_token: rawToken });
   if (result.error) {

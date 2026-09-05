@@ -149,7 +149,10 @@ export function CustomerInvitationExperience({ rawToken, session, onAccepted, on
     setMessage(null);
     try {
       await acceptCustomerInvitation(rawToken);
-      setMessage({ tone: 'success', text: 'Invitación aceptada. Preparemos tu primer condominio.' });
+      setMessage({
+        tone: 'success',
+        text: 'Invitación aceptada. Preparemos tu primer condominio.',
+      });
       await onAccepted();
     } catch (error) {
       setMessage({
@@ -215,7 +218,8 @@ export function CustomerInvitationExperience({ rawToken, session, onAccepted, on
                   <span className="access-kicker">Tu acceso a Habitta</span>
                   <h2>{customerPlanLabel(preview.plan_code)}</h2>
                   <p>
-                    {preview.email} · facturación {customerBillingPeriodLabel(preview.billing_period)}
+                    {preview.email} · facturación{' '}
+                    {customerBillingPeriodLabel(preview.billing_period)}
                   </p>
                 </div>
               </div>
@@ -345,9 +349,15 @@ export function CustomerInvitationExperience({ rawToken, session, onAccepted, on
                         />
                       </Field>
                       <div className="password-strength__requirements">
-                        <span data-complete={passwordAssessment.minimumLength || undefined}>10 caracteres</span>
-                        <span data-complete={passwordAssessment.uppercase || undefined}>Mayúscula</span>
-                        <span data-complete={passwordAssessment.lowercase || undefined}>Minúscula</span>
+                        <span data-complete={passwordAssessment.minimumLength || undefined}>
+                          10 caracteres
+                        </span>
+                        <span data-complete={passwordAssessment.uppercase || undefined}>
+                          Mayúscula
+                        </span>
+                        <span data-complete={passwordAssessment.lowercase || undefined}>
+                          Minúscula
+                        </span>
                         <span data-complete={passwordAssessment.number || undefined}>Número</span>
                       </div>
                       <Field label="Confirmar contraseña">
@@ -382,7 +392,11 @@ export function CustomerInvitationExperience({ rawToken, session, onAccepted, on
               <p className="access-message" data-tone="error">
                 {message?.text ?? 'Solicita al equipo de Habitta una invitación nueva.'}
               </p>
-              <Button onClick={() => (window.location.href = '/')} type="button" variant="secondary">
+              <Button
+                onClick={() => (window.location.href = '/')}
+                type="button"
+                variant="secondary"
+              >
                 Volver a Habitta
               </Button>
             </div>

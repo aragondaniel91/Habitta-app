@@ -70,7 +70,9 @@
                 condominio aparezca en Customer 360.
               </p>
             </div>
-            <button class="primary-button" id="new-customer-button" type="button">+ Nuevo cliente</button>
+            <button class="primary-button" id="new-customer-button" type="button">
+              + Nuevo cliente
+            </button>
           </div>
 
           <div class="metrics-grid" aria-label="Métricas de onboarding">
@@ -153,17 +155,24 @@
       </div>
     </div>
 
-    <dialog aria-describedby="new-customer-description" aria-labelledby="new-customer-title" id="new-customer-dialog">
+    <dialog
+      aria-describedby="new-customer-description"
+      aria-labelledby="new-customer-title"
+      id="new-customer-dialog"
+    >
       <form class="onboarding-dialog" id="new-customer-form" method="dialog">
         <header>
           <div>
             <div class="eyebrow">Nuevo cliente</div>
             <h2 id="new-customer-title">Preparar invitación</h2>
             <p id="new-customer-description">
-              El cliente recibirá un enlace individual. El plan y período quedarán ligados al onboarding.
+              El cliente recibirá un enlace individual. El plan y período quedarán ligados al
+              onboarding.
             </p>
           </div>
-          <button aria-label="Cerrar" class="ghost-button" id="new-customer-close" type="button">×</button>
+          <button aria-label="Cerrar" class="ghost-button" id="new-customer-close" type="button">
+            ×
+          </button>
         </header>
 
         <div class="onboarding-form-grid">
@@ -196,7 +205,12 @@
           </label>
           <label class="field-label field-wide">
             <span>Nota interna</span>
-            <textarea id="new-customer-notes" maxlength="500" placeholder="Contexto comercial o seguimiento…" rows="3"></textarea>
+            <textarea
+              id="new-customer-notes"
+              maxlength="500"
+              placeholder="Contexto comercial o seguimiento…"
+              rows="3"
+            ></textarea>
           </label>
         </div>
 
@@ -205,7 +219,9 @@
 
         <footer>
           <button class="secondary-button" id="new-customer-cancel" type="button">Cancelar</button>
-          <button class="primary-button" id="new-customer-submit" type="submit">Enviar invitación</button>
+          <button class="primary-button" id="new-customer-submit" type="submit">
+            Enviar invitación
+          </button>
         </footer>
       </form>
     </dialog>
@@ -216,12 +232,15 @@
           <div>
             <div class="eyebrow">Confirmación</div>
             <h2 id="revoke-title">Revocar invitación</h2>
-            <p id="revoke-description">El enlace dejará de funcionar. El registro seguirá visible para auditoría.</p>
+            <p id="revoke-description">
+              El enlace dejará de funcionar. El registro seguirá visible para auditoría.
+            </p>
           </div>
         </header>
         <label class="field-label">
           <span>Motivo</span>
-          <textarea id="revoke-reason" maxlength="500" rows="3">Invitación reemplazada por el operador.</textarea>
+          <textarea id="revoke-reason" maxlength="500" rows="3">
+Invitación reemplazada por el operador.</textarea>
         </label>
         <p class="dialog-status" id="revoke-status" aria-live="polite"></p>
         <footer>

@@ -154,13 +154,15 @@ function effectiveState(invitation) {
 }
 
 function stateLabel(value) {
-  return {
-    pending: 'Invitada',
-    accepted: 'Aceptada',
-    completed: 'Completada',
-    revoked: 'Revocada',
-    expired: 'Vencida',
-  }[value] ?? value;
+  return (
+    {
+      pending: 'Invitada',
+      accepted: 'Aceptada',
+      completed: 'Completada',
+      revoked: 'Revocada',
+      expired: 'Vencida',
+    }[value] ?? value
+  );
 }
 
 function stateTone(value) {
@@ -233,12 +235,18 @@ function filteredInvitations() {
 }
 
 function updateMetrics() {
-  metricPending.textContent = String(invitations.filter((item) => effectiveState(item) === 'pending').length);
-  metricAccepted.textContent = String(invitations.filter((item) => effectiveState(item) === 'accepted').length);
+  metricPending.textContent = String(
+    invitations.filter((item) => effectiveState(item) === 'pending').length,
+  );
+  metricAccepted.textContent = String(
+    invitations.filter((item) => effectiveState(item) === 'accepted').length,
+  );
   metricCompleted.textContent = String(
     invitations.filter((item) => effectiveState(item) === 'completed').length,
   );
-  metricEmail.textContent = String(invitations.filter((item) => item.delivery_status === 'failed').length);
+  metricEmail.textContent = String(
+    invitations.filter((item) => item.delivery_status === 'failed').length,
+  );
 }
 
 function render() {
@@ -288,7 +296,9 @@ function render() {
     stateCell.append(badge(stateLabel(state), stateTone(state)));
 
     const deliveryCell = document.createElement('td');
-    deliveryCell.append(badge(deliveryLabel(invitation.delivery_status), deliveryTone(invitation.delivery_status)));
+    deliveryCell.append(
+      badge(deliveryLabel(invitation.delivery_status), deliveryTone(invitation.delivery_status)),
+    );
     if (invitation.delivery_status === 'failed' && invitation.delivery_error_code) {
       const detail = document.createElement('span');
       detail.className = 'onboarding-email-detail';
@@ -424,7 +434,8 @@ async function resendInvitation(invitation) {
       : 'La invitación se renovó, pero el correo no pudo entregarse. Revisa el estado de Email.';
     await load();
   } catch (error) {
-    status.textContent = error instanceof Error ? error.message : 'No se pudo reenviar la invitación.';
+    status.textContent =
+      error instanceof Error ? error.message : 'No se pudo reenviar la invitación.';
   }
 }
 
@@ -497,7 +508,8 @@ form.addEventListener('submit', async (event) => {
     if (result.delivered) window.setTimeout(() => dialog.close(), 700);
   } catch (error) {
     formStatus.dataset.tone = 'error';
-    formStatus.textContent = error instanceof Error ? error.message : 'No se pudo crear la invitación.';
+    formStatus.textContent =
+      error instanceof Error ? error.message : 'No se pudo crear la invitación.';
   } finally {
     submitButton.disabled = false;
   }

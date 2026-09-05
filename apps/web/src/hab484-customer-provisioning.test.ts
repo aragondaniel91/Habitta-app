@@ -6,7 +6,10 @@ const invitation = readFileSync(
   new URL('./components/CustomerInvitationExperience.tsx', import.meta.url),
   'utf8',
 );
-const invitationClient = readFileSync(new URL('./lib/customerInvitation.ts', import.meta.url), 'utf8');
+const invitationClient = readFileSync(
+  new URL('./lib/customerInvitation.ts', import.meta.url),
+  'utf8',
+);
 const onboardingHtml = readFileSync(
   new URL('../../platform-admin/onboarding.html', import.meta.url),
   'utf8',
@@ -19,7 +22,10 @@ const customersHtml = readFileSync(
   new URL('../../platform-admin/customers.html', import.meta.url),
   'utf8',
 );
-const securityEntry = readFileSync(new URL('../../api/src/security-entry.ts', import.meta.url), 'utf8');
+const securityEntry = readFileSync(
+  new URL('../../api/src/security-entry.ts', import.meta.url),
+  'utf8',
+);
 
 describe('HAB-484 pilot-ready customer provisioning', () => {
   it('routes the emailed customer invitation before the normal app shell', () => {
@@ -34,7 +40,7 @@ describe('HAB-484 pilot-ready customer provisioning', () => {
   it('uses the invitation-aware auth flow without persisting the raw token', () => {
     expect(invitation).toContain('getCustomerInvitationPreview(rawToken)');
     expect(invitation).toContain('acceptCustomerInvitation(rawToken)');
-    expect(invitation).toContain('registration_source: \'customer_invitation\'');
+    expect(invitation).toContain("registration_source: 'customer_invitation'");
     expect(invitation).toContain('/app/bienvenida?invitacion=');
     expect(invitation).not.toContain('localStorage');
     expect(invitation).not.toContain('sessionStorage');
@@ -68,9 +74,13 @@ describe('HAB-484 pilot-ready customer provisioning', () => {
 
   it('admits Platform Admin to only the customer-onboarding Worker family', () => {
     expect(securityEntry).toContain("const PLATFORM_ADMIN_ORIGIN = 'https://admin.mihabitta.com'");
-    expect(securityEntry).toContain("const CUSTOMER_ONBOARDING_API_PATH = '/v1/platform/customer-invitations'");
+    expect(securityEntry).toContain(
+      "const CUSTOMER_ONBOARDING_API_PATH = '/v1/platform/customer-invitations'",
+    );
     expect(securityEntry).toContain('path.startsWith(CUSTOMER_ONBOARDING_API_PATH)');
     expect(securityEntry).toContain('normalized === PLATFORM_ADMIN_ORIGIN');
-    expect(securityEntry).not.toContain('CORS_ALLOWED_ORIGINS: https://app.mihabitta.com,https://admin.mihabitta.com');
+    expect(securityEntry).not.toContain(
+      'CORS_ALLOWED_ORIGINS: https://app.mihabitta.com,https://admin.mihabitta.com',
+    );
   });
 });

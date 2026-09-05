@@ -68,9 +68,7 @@ const rpcRequest = (c: CustomerInvitationContext, name: string, body: unknown = 
 customerInvitationRoutes.get('/customer-invitations', async (c) => {
   const response = await rpcRequest(c, 'list_customer_invitations_for_platform');
   const data = (await response.json().catch(() => null)) as
-    | CustomerInvitationListItem[]
-    | { message?: string }
-    | null;
+    CustomerInvitationListItem[] | { message?: string } | null;
 
   if (!response.ok || !Array.isArray(data)) {
     const message = (
@@ -116,9 +114,7 @@ customerInvitationRoutes.post('/customer-invitations', async (c) => {
   });
 
   const rpcData = (await rpcResponse.json().catch(() => null)) as
-    | IssuedInvitation
-    | { message?: string }
-    | null;
+    IssuedInvitation | { message?: string } | null;
 
   if (!rpcResponse.ok || !rpcData || !('token' in rpcData)) {
     const message = (rpcData && 'message' in rpcData ? (rpcData.message ?? '') : '').toLowerCase();
@@ -145,7 +141,10 @@ customerInvitationRoutes.post('/customer-invitations', async (c) => {
     }
     if (message.includes('billing period')) {
       return c.json(
-        { error: 'invalid_billing_period', publicMessage: 'Selecciona facturación mensual o anual.' },
+        {
+          error: 'invalid_billing_period',
+          publicMessage: 'Selecciona facturación mensual o anual.',
+        },
         422,
       );
     }
