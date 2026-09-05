@@ -205,7 +205,8 @@ function blockerCode(invitation) {
   const state = effectiveState(invitation);
   if (state === 'completed') return 'none';
   if (state === 'accepted') return 'awaiting_workspace_completion';
-  if (state === 'pending' && invitation.delivery_status === 'failed') return 'email_delivery_failed';
+  if (state === 'pending' && invitation.delivery_status === 'failed')
+    return 'email_delivery_failed';
   if (state === 'pending') return 'awaiting_customer_acceptance';
   if (state === 'expired') return 'invitation_expired';
   if (state === 'revoked') return 'invitation_revoked';
