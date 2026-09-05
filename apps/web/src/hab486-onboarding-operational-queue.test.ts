@@ -52,7 +52,9 @@ describe('HAB-486 Platform Admin onboarding operating queue', () => {
     expect(onboardingScript).toContain(
       "invitation.next_action_code === 'complete_commercial_activation'",
     );
-    expect(onboardingScript).toContain("params.set('condominium', invitation.onboarding_condominium_id)");
+    expect(onboardingScript).toContain(
+      "params.set('condominium', invitation.onboarding_condominium_id)",
+    );
     expect(onboardingScript).toContain('/commercial.html?${params.toString()}');
     expect(onboardingScript).toContain('/customers.html?organization=${encodeURIComponent(');
   });
