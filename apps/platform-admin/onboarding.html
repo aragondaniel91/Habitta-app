@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Onboarding · Habitta Platform Admin</title>
+    <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/platform-shell.css" />
+    <link rel="stylesheet" href="/onboarding.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#platform-main">Saltar al contenido principal</a>
+    <div class="platform-layout">
+      <aside class="platform-sidebar" aria-label="Platform Admin">
+        <a class="platform-brand" href="/">
+          <img alt="" src="/logo-mark.svg" />
+          <div>
+            <strong>HABITTA</strong>
+            <span>Comunidades mejores<br />todos los días</span>
+          </div>
+        </a>
+        <nav aria-label="Navegación principal" class="platform-nav">
+          <a data-icon="overview" href="/">Overview</a>
+          <a data-icon="customers" href="/customers.html">Clientes</a>
+          <a aria-current="page" data-icon="customers" href="/onboarding.html">Onboarding</a>
+          <a data-icon="subscriptions" href="/subscriptions.html">Suscripciones</a>
+          <a data-icon="trials" href="/subscriptions.html?view=trials">Trials</a>
+          <a data-icon="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
+          <a data-icon="commercial" href="/commercial.html">Comercial</a>
+          <a data-icon="activity" href="/commercial.html?view=activity">Actividad</a>
+          <span aria-disabled="true" class="nav-disabled" data-icon="settings">Settings</span>
+        </nav>
+        <div class="sidebar-footer">
+          Personas · Comunidades · Un mejor mañana<br />
+          <strong>Platform Admin</strong>
+        </div>
+      </aside>
+
+      <div class="platform-stage">
+        <header class="platform-topbar">
+          <div class="global-search">
+            <input
+              aria-label="Buscar invitación"
+              autocomplete="off"
+              id="onboarding-global-search"
+              placeholder="Buscar correo, referencia o plan…"
+              type="search"
+            />
+          </div>
+          <div class="platform-user-actions">
+            <button class="ghost-button" id="onboarding-logout" type="button">Cerrar sesión</button>
+            <div class="operator-chip" aria-label="Platform Admin">
+              <span class="operator-avatar">PA</span>
+              <span class="operator-copy">
+                <strong>Habitta</strong>
+                <span>Platform Admin</span>
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main class="platform-content" id="platform-main" tabindex="-1">
+          <div class="page-heading onboarding-heading">
+            <div>
+              <div class="eyebrow">Customer provisioning</div>
+              <h1>Onboarding de clientes</h1>
+              <p>
+                Invita un cliente, conserva el plan vendido y sigue el alta hasta que su primer
+                condominio aparezca en Customer 360.
+              </p>
+            </div>
+            <button class="primary-button" id="new-customer-button" type="button">
+              + Nuevo cliente
+            </button>
+          </div>
+
+          <div class="metrics-grid" aria-label="Métricas de onboarding">
+            <article class="metric-card">
+              <span class="metric-label">Pendientes</span>
+              <strong class="metric-value" id="onboarding-metric-pending">—</strong>
+              <span class="metric-note">Invitaciones todavía no aceptadas.</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Aceptadas</span>
+              <strong class="metric-value" id="onboarding-metric-accepted">—</strong>
+              <span class="metric-note">Cuenta validada; puede faltar el condominio.</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Completadas</span>
+              <strong class="metric-value" id="onboarding-metric-completed">—</strong>
+              <span class="metric-note">Ya enlazadas a un Customer 360.</span>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Email con atención</span>
+              <strong class="metric-value" id="onboarding-metric-email">—</strong>
+              <span class="metric-note">Invitación creada pero entrega fallida.</span>
+            </article>
+          </div>
+
+          <section class="surface table-surface onboarding-surface" aria-label="Cola de onboarding">
+            <div class="customer-toolbar onboarding-toolbar">
+              <input
+                aria-label="Buscar en onboarding"
+                autocomplete="off"
+                id="onboarding-search"
+                placeholder="Buscar correo, referencia o plan"
+                type="search"
+              />
+              <select aria-label="Estado de onboarding" id="onboarding-status-filter">
+                <option value="">Todos los estados</option>
+                <option value="pending">Invitada</option>
+                <option value="accepted">Aceptada</option>
+                <option value="completed">Completada</option>
+                <option value="revoked">Revocada</option>
+                <option value="expired">Vencida</option>
+              </select>
+              <select aria-label="Entrega de correo" id="onboarding-delivery-filter">
+                <option value="">Email: todos</option>
+                <option value="sent">Enviado</option>
+                <option value="failed">Falló</option>
+                <option value="pending">Pendiente</option>
+              </select>
+            </div>
+
+            <div aria-label="Tabla de onboarding" class="table-scroll" role="region" tabindex="0">
+              <table class="onboarding-table">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Plan</th>
+                    <th>Estado</th>
+                    <th>Email</th>
+                    <th>Creada</th>
+                    <th>Vence</th>
+                    <th>Referencia</th>
+                    <th>Próximo paso</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="onboarding-body"></tbody>
+              </table>
+            </div>
+            <p id="onboarding-status" aria-atomic="true" aria-live="polite" role="status">
+              Cargando onboarding…
+            </p>
+          </section>
+
+          <p class="read-only-note">
+            Crear una invitación <strong>no cobra</strong> ni crea deuda. Esencial y Comunidad
+            reciben la prueba de 30 días al completar el primer workspace; los planes guiados quedan
+            pendientes de activación explícita en <a href="/commercial.html">Comercial</a>.
+          </p>
+        </main>
+      </div>
+    </div>
+
+    <dialog
+      aria-describedby="new-customer-description"
+      aria-labelledby="new-customer-title"
+      id="new-customer-dialog"
+    >
+      <form class="onboarding-dialog" id="new-customer-form" method="dialog">
+        <header>
+          <div>
+            <div class="eyebrow">Nuevo cliente</div>
+            <h2 id="new-customer-title">Preparar invitación</h2>
+            <p id="new-customer-description">
+              El cliente recibirá un enlace individual. El plan y período quedarán ligados al
+              onboarding.
+            </p>
+          </div>
+          <button aria-label="Cerrar" class="ghost-button" id="new-customer-close" type="button">
+            ×
+          </button>
+        </header>
+
+        <div class="onboarding-form-grid">
+          <label class="field-label field-wide">
+            <span>Correo del cliente</span>
+            <input autocomplete="email" id="new-customer-email" required type="email" />
+          </label>
+          <label class="field-label">
+            <span>Plan</span>
+            <select id="new-customer-plan" required></select>
+          </label>
+          <label class="field-label">
+            <span>Facturación</span>
+            <select id="new-customer-period" required>
+              <option value="monthly">Mensual</option>
+              <option value="annual">Anual</option>
+            </select>
+          </label>
+          <label class="field-label">
+            <span>Vigencia del enlace</span>
+            <select id="new-customer-expiry">
+              <option value="7">7 días</option>
+              <option selected value="14">14 días</option>
+              <option value="30">30 días</option>
+            </select>
+          </label>
+          <label class="field-label">
+            <span>Referencia interna</span>
+            <input id="new-customer-reference" maxlength="120" placeholder="Ej. PILOTO-MARIA" />
+          </label>
+          <label class="field-label field-wide">
+            <span>Nota interna</span>
+            <textarea
+              id="new-customer-notes"
+              maxlength="500"
+              placeholder="Contexto comercial o seguimiento…"
+              rows="3"
+            ></textarea>
+          </label>
+        </div>
+
+        <div class="onboarding-plan-summary" id="new-customer-plan-summary"></div>
+        <p class="dialog-status" id="new-customer-status" aria-live="polite"></p>
+
+        <footer>
+          <button class="secondary-button" id="new-customer-cancel" type="button">Cancelar</button>
+          <button class="primary-button" id="new-customer-submit" type="submit">
+            Enviar invitación
+          </button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog aria-describedby="revoke-description" aria-labelledby="revoke-title" id="revoke-dialog">
+      <form class="onboarding-dialog onboarding-dialog--small" id="revoke-form" method="dialog">
+        <header>
+          <div>
+            <div class="eyebrow">Confirmación</div>
+            <h2 id="revoke-title">Revocar invitación</h2>
+            <p id="revoke-description">
+              El enlace dejará de funcionar. El registro seguirá visible para auditoría.
+            </p>
+          </div>
+        </header>
+        <label class="field-label">
+          <span>Motivo</span>
+          <textarea id="revoke-reason" maxlength="500" rows="3">
+Invitación reemplazada por el operador.</textarea>
+        </label>
+        <p class="dialog-status" id="revoke-status" aria-live="polite"></p>
+        <footer>
+          <button class="secondary-button" id="revoke-cancel" type="button">Cancelar</button>
+          <button class="danger-button" id="revoke-submit" type="submit">Revocar</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <script src="config.js"></script>
+    <script src="onboarding.js" type="module"></script>
+  </body>
+</html>

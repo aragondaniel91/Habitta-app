@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { z } from 'zod';
 import { resolveNotificationsEnvironment } from './config/notifications-env';
 import { withinRateLimit } from './http-security';
@@ -7,18 +8,40 @@ import type { NotificationBindings } from './notifications/types';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
+type CustomerInvitationContext = Context<AppEnvironment>;
 
 type IssuedInvitation = {
   id: string;
   email: string;
-  plan_code: string | null;
+  plan_code: string;
+  billing_period: 'monthly' | 'annual';
   expires_at: string;
   token: string;
 };
 
+type CustomerInvitationListItem = {
+  id: string;
+  email: string;
+  plan_code: string;
+  billing_period: 'monthly' | 'annual';
+  reference: string | null;
+  notes: string | null;
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  delivery_status: 'pending' | 'sent' | 'failed';
+  delivery_error_code: string | null;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+  last_delivery_at: string | null;
+  onboarding_organization_id: string | null;
+  onboarding_condominium_id: string | null;
+  onboarding_completed_at: string | null;
+};
+
 const issueInputSchema = z.object({
   email: z.string().trim().min(5).max(320).email(),
-  planCode: z.string().trim().min(1).max(60).optional(),
+  planCode: z.string().trim().min(1).max(60),
+  billingPeriod: z.enum(['monthly', 'annual']),
   reference: z.string().trim().min(1).max(120).optional(),
   notes: z.string().trim().min(1).max(500).optional(),
   expiresAt: z.string().datetime().optional(),
@@ -26,15 +49,48 @@ const issueInputSchema = z.object({
 
 export const customerInvitationRoutes = new Hono<AppEnvironment>();
 
+const rpcRequest = (c: CustomerInvitationContext, name: string, body: unknown = {}) =>
+  fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: {
+      apikey: c.env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${c.get('token')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
 /*
- * Issuing the invitation a paying customer receives.
- *
- * Authorization is not decided here: the RPC is gated on `is_platform_admin`, so a caller without
- * that standing is refused by the database whatever this route believes. The route's job is to
- * turn the one-time token into an email and never to persist it.
+ * Platform onboarding queue. The RPC is the authorization boundary and deliberately omits token
+ * hashes/raw tokens. Prospective-customer email is visible only to a Platform Admin in this narrow
+ * operating surface.
+ */
+customerInvitationRoutes.get('/customer-invitations', async (c) => {
+  const response = await rpcRequest(c, 'list_customer_invitations_for_platform');
+  const data = (await response.json().catch(() => null)) as
+    CustomerInvitationListItem[] | { message?: string } | null;
+
+  if (!response.ok || !Array.isArray(data)) {
+    const message = (
+      data && !Array.isArray(data) && typeof data === 'object' && 'message' in data
+        ? (data.message ?? '')
+        : ''
+    ).toLowerCase();
+    if (message.includes('platform administrator required')) {
+      return c.json({ error: 'platform_administrator_required' }, 403);
+    }
+    return c.json({ error: 'customer_invitation_list_failed' }, 400);
+  }
+
+  return c.json({ invitations: data });
+});
+
+/*
+ * Issue the invitation a prospective customer receives. The one-time token is consumed here only
+ * to build the email; it is never returned to Platform Admin or written to logs.
  */
 customerInvitationRoutes.post('/customer-invitations', async (c) => {
-  if (!(await withinRateLimit(c.env.PROOF_UPLOAD_LIMIT, `customer-invite:${c.get('userId')}`))) {
+  if (!(await withinRateLimit(c.env.INVITATION_LIMIT, `customer-invite:${c.get('userId')}`))) {
     return c.json({ error: 'Too many requests' }, 429);
   }
 
@@ -48,20 +104,13 @@ customerInvitationRoutes.post('/customer-invitations', async (c) => {
   const parsed = issueInputSchema.safeParse(payload);
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-  const rpcResponse = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/create_customer_invitation`, {
-    method: 'POST',
-    headers: {
-      apikey: c.env.SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${c.get('token')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      target_email: parsed.data.email.toLowerCase(),
-      target_plan_code: parsed.data.planCode ?? null,
-      target_reference: parsed.data.reference ?? null,
-      target_notes: parsed.data.notes ?? null,
-      target_expires_at: parsed.data.expiresAt ?? null,
-    }),
+  const rpcResponse = await rpcRequest(c, 'create_customer_invitation_v2', {
+    target_email: parsed.data.email.toLowerCase(),
+    target_plan_code: parsed.data.planCode,
+    target_billing_period: parsed.data.billingPeriod,
+    target_reference: parsed.data.reference ?? null,
+    target_notes: parsed.data.notes ?? null,
+    target_expires_at: parsed.data.expiresAt ?? null,
   });
 
   const rpcData = (await rpcResponse.json().catch(() => null)) as
@@ -84,6 +133,21 @@ customerInvitationRoutes.post('/customer-invitations', async (c) => {
         422,
       );
     }
+    if (message.includes('public plan not found')) {
+      return c.json(
+        { error: 'invalid_plan', publicMessage: 'Selecciona un plan vigente del catálogo.' },
+        422,
+      );
+    }
+    if (message.includes('billing period')) {
+      return c.json(
+        {
+          error: 'invalid_billing_period',
+          publicMessage: 'Selecciona facturación mensual o anual.',
+        },
+        422,
+      );
+    }
     if (message.includes('invalid expiration')) {
       return c.json(
         {
@@ -100,21 +164,22 @@ customerInvitationRoutes.post('/customer-invitations', async (c) => {
   const appBaseUrl = c.env.APP_BASE_URL.replace(/\/$/, '');
   const acceptUrl = `${appBaseUrl}/app/bienvenida?invitacion=${encodeURIComponent(invitation.token)}`;
   const notificationEnvironment = resolveNotificationsEnvironment(c.env);
+  const periodLabel = invitation.billing_period === 'annual' ? 'anual' : 'mensual';
 
-  const subject = 'Tu acceso a Habitta';
-  const plan = invitation.plan_code ? ` (plan ${invitation.plan_code})` : '';
+  const subject = 'Tu invitación a Habitta';
   const text = [
-    'Gracias por sumarte a Habitta.',
+    'Habitta te invitó a configurar tu espacio de administración.',
     '',
-    `Tu suscripción${plan} ya está activa. Crea tu cuenta desde este enlace:`,
+    `Plan seleccionado: ${invitation.plan_code} · facturación ${periodLabel}.`,
+    'No se realizará ningún cargo al abrir este enlace.',
+    '',
+    'Crea o inicia sesión con tu cuenta y completa los datos de tu primer condominio:',
     acceptUrl,
     '',
     `El enlace vence el ${new Date(invitation.expires_at).toLocaleDateString('es-VE')}.`,
     'Si no reconoces este correo, puedes ignorarlo.',
   ].join('\n');
 
-  // The email carries values that came from an operator's form, so it escapes them rather than
-  // trusting them: an address or a plan code with markup in it must not become markup here.
   const escape = (value: string) =>
     value
       .replace(/&/g, '&amp;')
@@ -122,23 +187,17 @@ customerInvitationRoutes.post('/customer-invitations', async (c) => {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   const html = [
-    '<p>Gracias por sumarte a Habitta.</p>',
-    `<p>Tu suscripción${escape(plan)} ya está activa. Crea tu cuenta desde este enlace:</p>`,
-    `<p><a href="${escape(acceptUrl)}">Crear mi cuenta</a></p>`,
+    '<p>Habitta te invitó a configurar tu espacio de administración.</p>',
+    `<p><strong>Plan seleccionado:</strong> ${escape(invitation.plan_code)} · facturación ${escape(periodLabel)}.</p>`,
+    '<p>No se realizará ningún cargo al abrir este enlace.</p>',
+    '<p>Crea o inicia sesión con tu cuenta y completa los datos de tu primer condominio:</p>',
+    `<p><a href="${escape(acceptUrl)}">Comenzar en Habitta</a></p>`,
     `<p>El enlace vence el ${escape(new Date(invitation.expires_at).toLocaleDateString('es-VE'))}.</p>`,
     '<p>Si no reconoces este correo, puedes ignorarlo.</p>',
   ].join('');
 
-  /*
-   * Delivery is reported, never assumed. The invitation already exists in the database, so a
-   * failed send must not read as a failed issue: the operator needs to know the record is there
-   * and only the email has to be retried, which is what `delivered` distinguishes.
-   */
   let delivered = false;
   let deliveryError: string | undefined;
-
-  // In sandbox mode every message is redirected to one inbox, so a development release can never
-  // email a real customer.
   const recipient = notificationEnvironment.sandboxEmail ?? invitation.email;
 
   if (recipient) {
@@ -170,30 +229,33 @@ customerInvitationRoutes.post('/customer-invitations', async (c) => {
     deliveryError = 'no_recipient';
   }
 
-  // The raw token leaves this Worker only inside the email. It is never returned to the caller,
-  // never logged, and only its hash was stored, so a compromised operator console cannot replay it.
+  // Delivery tracking is best-effort metadata. The authoritative invitation already exists; a
+  // provider outage must be represented as "issued, email failed" instead of erasing the record.
+  const deliveryResponse = await rpcRequest(c, 'record_customer_invitation_delivery', {
+    target_invitation: invitation.id,
+    delivered,
+    error_code: deliveryError ?? null,
+  });
+  const deliveryTracked = deliveryResponse.ok;
+  await deliveryResponse.arrayBuffer().catch(() => undefined);
+
   return c.json(
     {
       invitation: {
         id: invitation.id,
         email: invitation.email,
         planCode: invitation.plan_code,
+        billingPeriod: invitation.billing_period,
         expiresAt: invitation.expires_at,
       },
       delivered,
+      deliveryTracked,
       ...(deliveryError ? { deliveryError } : {}),
     },
     201,
   );
 });
 
-/*
- * Retiring an invitation sent to the wrong address.
- *
- * Resending only helps when the address was right; a mistyped one stays live until it expires and
- * whoever owns that inbox can redeem it. Authorization is the database's again, and the record is
- * retired rather than deleted so the mistake stays visible to whoever audits it later.
- */
 customerInvitationRoutes.post('/customer-invitations/:invitationId/revoke', async (c) => {
   const invitationId = c.req.param('invitationId');
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(invitationId)) {
@@ -209,14 +271,9 @@ customerInvitationRoutes.post('/customer-invitations/:invitationId/revoke', asyn
     reason = null;
   }
 
-  const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/revoke_customer_invitation`, {
-    method: 'POST',
-    headers: {
-      apikey: c.env.SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${c.get('token')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ target_invitation: invitationId, revoke_reason: reason }),
+  const response = await rpcRequest(c, 'revoke_customer_invitation', {
+    target_invitation: invitationId,
+    revoke_reason: reason,
   });
 
   const data = (await response.json().catch(() => null)) as { message?: string } | unknown;

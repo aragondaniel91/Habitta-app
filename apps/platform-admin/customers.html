@@ -23,11 +23,12 @@
         <nav aria-label="Navegación principal" class="platform-nav">
           <a data-icon="overview" href="/">Overview</a>
           <a aria-current="page" data-icon="customers" href="/customers.html">Clientes</a>
+          <a data-icon="customers" href="/onboarding.html">Onboarding</a>
           <a data-icon="subscriptions" href="/subscriptions.html">Suscripciones</a>
           <a data-icon="trials" href="/subscriptions.html?view=trials">Trials</a>
           <a data-icon="revenue" href="/subscriptions.html?view=revenue">Revenue</a>
           <a data-icon="commercial" href="/commercial.html">Comercial</a>
-          <span aria-disabled="true" class="nav-disabled" data-icon="activity">Actividad</span>
+          <a data-icon="activity" href="/commercial.html?view=activity">Actividad</a>
           <span aria-disabled="true" class="nav-disabled" data-icon="settings">Settings</span>
         </nav>
         <div class="sidebar-footer">
@@ -70,6 +71,7 @@
                   y entrar al Customer 360 sin consultar la base de datos manualmente.
                 </p>
               </div>
+              <a class="primary-button" href="/onboarding.html?new=1">+ Nuevo cliente</a>
             </div>
 
             <div class="metrics-grid" aria-label="Métricas del portafolio">
@@ -182,11 +184,11 @@
             </section>
 
             <p class="read-only-note">
-              Esta superficie usa únicamente contratos autorizados de PostgreSQL. Demo e interno se
-              muestran como <strong>no facturables</strong> y no generan urgencia de revenue. Para
-              la operación agregada usa
-              <a href="/subscriptions.html"><strong>Suscripciones</strong></a
-              >.
+              Para dar de alta una organización nueva usa
+              <a href="/onboarding.html"><strong>Onboarding</strong></a
+              >. Esta superficie conserva la lectura autorizada del portafolio y Customer 360; Demo
+              e interno se muestran como <strong>no facturables</strong> y no generan urgencia de
+              revenue.
             </p>
           </section>
 

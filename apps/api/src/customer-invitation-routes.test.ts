@@ -4,52 +4,57 @@ import { describe, expect, it } from 'vitest';
 const source = readFileSync(new URL('./customer-invitation-routes.ts', import.meta.url), 'utf8');
 const index = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
 
-describe('HAB-402 customer invitation delivery', () => {
-  it('never uses the service role', () => {
-    // The Worker's HTTP surface must stay clear of it: service_role bypasses RLS, so a route that
-    // holds it is one bug away from being an unauthenticated door into every tenant.
+describe('HAB-484 customer invitation delivery and onboarding queue', () => {
+  it('never uses the service role and forwards only the operator JWT', () => {
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(source).toContain("Authorization: `Bearer ${c.get('token')}`");
   });
 
-  it('leaves authorization to the database', () => {
-    // The route does not decide who may issue an invitation. `create_customer_invitation` is gated
-    // on is_platform_admin, so a caller without that standing is refused whatever this file thinks.
-    expect(source).toContain('rpc/create_customer_invitation');
+  it('leaves customer issue/list/revoke authorization to hardened database RPCs', () => {
+    expect(source).toContain("'create_customer_invitation_v2'");
+    expect(source).toContain("'list_customer_invitations_for_platform'");
+    expect(source).toContain("'revoke_customer_invitation'");
     expect(source).toContain('platform administrator required');
     expect(source).toContain("'platform_administrator_required'");
   });
 
+  it('requires catalogue plan plus monthly/annual billing intent', () => {
+    expect(source).toContain("billingPeriod: z.enum(['monthly', 'annual'])");
+    expect(source).toContain('target_plan_code: parsed.data.planCode');
+    expect(source).toContain('target_billing_period: parsed.data.billingPeriod');
+  });
+
   it('never returns or logs the one-time token', () => {
-    // Only its hash is stored. If the token came back in the response it would sit in logs,
-    // browser history and any operator console that renders it.
     const responseBlock = source.slice(
       source.indexOf('return c.json(', source.indexOf('let delivered')),
     );
     expect(responseBlock).not.toContain('invitation.token');
-    expect(source).toContain('The raw token leaves this Worker only inside the email');
+    expect(source).toContain('never returned to Platform Admin or written to logs');
   });
 
-  it('reports delivery instead of assuming it', () => {
-    // The invitation exists in the database before the email is attempted, so a failed send must
-    // not read as a failed issue: the operator needs to know only the email has to be retried.
-    expect(source).toContain('delivered');
-    expect(source).toContain('deliveryError');
+  it('records delivery instead of assuming it', () => {
     expect(source).toContain('delivered = result.ok');
-  });
-
-  it('cannot email a real customer from a sandbox release', () => {
+    expect(source).toContain("'record_customer_invitation_delivery'");
+    expect(source).toContain('deliveryTracked');
     expect(source).toContain('notificationEnvironment.sandboxEmail ?? invitation.email');
   });
 
-  it('escapes operator-supplied values into the email body', () => {
-    expect(source).toContain('const escape = (value: string)');
-    expect(source).toContain('escape(acceptUrl)');
-    expect(source).toContain('escape(plan)');
+  it('does not claim a subscription is active before onboarding', () => {
+    expect(source).not.toContain('Tu suscripción${plan} ya está activa');
+    expect(source).toContain('No se realizará ningún cargo al abrir este enlace.');
+    expect(source).toContain('Plan seleccionado:');
   });
 
-  it('is rate limited and mounted under the platform namespace', () => {
+  it('escapes operator/catalogue values used in HTML email', () => {
+    expect(source).toContain('const escape = (value: string)');
+    expect(source).toContain('escape(acceptUrl)');
+    expect(source).toContain('escape(invitation.plan_code)');
+    expect(source).toContain('escape(periodLabel)');
+  });
+
+  it('is rate limited and mounted only under the platform namespace', () => {
     expect(source).toContain('withinRateLimit');
+    expect(source).toContain('c.env.INVITATION_LIMIT');
     expect(source).toContain("`customer-invite:${c.get('userId')}`");
     expect(index).toContain("app.route('/v1/platform', customerInvitationRoutes);");
   });

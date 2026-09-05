@@ -23,6 +23,9 @@ type Variables = { token: string; userId: string; requestId: string };
 
 const PUBLIC_SITE_ORIGIN = 'https://mihabitta.com';
 const PUBLIC_PLAN_CATALOG_PATH = '/public/v1/plans';
+const PLATFORM_ADMIN_ORIGIN = 'https://admin.mihabitta.com';
+const PLATFORM_ADMIN_PREVIEW_ORIGIN = 'https://admin-preview.mihabitta.com';
+const CUSTOMER_ONBOARDING_API_PATH = '/v1/platform/customer-invitations';
 
 const normalizeOrigin = (value: string) => {
   try {
@@ -41,13 +44,22 @@ export const isAllowedRequestOrigin = (
   if (!origin) return true;
   const normalized = normalizeOrigin(origin);
   if (normalized === null) return false;
+  const production = appEnv.trim().toLowerCase() === 'production';
 
   // `mihabitta.com` is deliberately admitted for one read-only acquisition endpoint only. This
   // does not widen CORS for authenticated /v1 application routes or telemetry.
+  if (path === PUBLIC_PLAN_CATALOG_PATH && production && normalized === PUBLIC_SITE_ORIGIN) {
+    return true;
+  }
+
+  // Platform Admin needs the Worker only for the prospect/customer invitation lifecycle because
+  // that route sends email server-side. Every other Platform Admin read/write remains on hardened
+  // Postgres RPCs. Keep this exception path-scoped instead of widening the production application
+  // CORS allowlist to the whole owner console.
   if (
-    path === PUBLIC_PLAN_CATALOG_PATH &&
-    appEnv.trim().toLowerCase() === 'production' &&
-    normalized === PUBLIC_SITE_ORIGIN
+    path.startsWith(CUSTOMER_ONBOARDING_API_PATH) &&
+    ((production && normalized === PLATFORM_ADMIN_ORIGIN) ||
+      (!production && normalized === PLATFORM_ADMIN_PREVIEW_ORIGIN))
   ) {
     return true;
   }
@@ -69,10 +81,6 @@ const logFinancial5xx = (
   if (event) console.error(event);
 };
 
-// The application app historically had its own generic onError handler. Override it at the
-// composition boundary so thrown errors are captured before they are converted into safe JSON.
-// The outer request-id middleware registers the same Request object in a WeakMap, which lets the
-// inner handler preserve correlation without trusting a caller-provided header.
 applicationApp.onError((error, c) => {
   const requestId = requestIds.get(c.req.raw) ?? crypto.randomUUID();
   const status = error.name === 'ZodError' ? 400 : 500;
@@ -97,8 +105,6 @@ app.onError((error, c) => {
   return c.json({ error: 'Request failed', requestId }, 500);
 });
 
-// Establish one server-owned correlation ID for the full request lifecycle. Do not accept a
-// caller-provided ID: untrusted high-cardinality values make production diagnostics noisy.
 app.use('*', async (c, next) => {
   const requestId = crypto.randomUUID();
   c.set('requestId', requestId);
@@ -108,8 +114,6 @@ app.use('*', async (c, next) => {
   c.header('X-Request-Id', requestId);
 });
 
-// One place decides which origins are allowed. The only exception to the configured application
-// origin is the single public catalogue path above; all authenticated routes remain unchanged.
 app.use('*', async (c, next) => {
   const origin = c.req.header('Origin');
   if (!isAllowedRequestOrigin(origin, c.req.path, c.env?.CORS_ALLOWED_ORIGINS, c.env?.APP_ENV)) {
@@ -185,16 +189,9 @@ app.use(
   }),
 );
 
-// Public acquisition data is deliberately isolated from authenticated /v1 application routes.
-// The mounted handler itself uses only the Supabase anon key and the narrow HAB-433 RPC contract.
 app.route('/public', publicPlanCatalogRoutes);
-
-// Provider webhooks cannot carry a Habitta user JWT. They live outside `/v1/*` and rely on the
-// provider's cryptographic signature before any service-role RPC is reachable.
 app.route('/billing/webhooks', billingWebhookRoutes);
 
-// High-risk writes are limited at the outer Worker boundary so every current and future handler
-// under these route families gets the same protection. Keys never include a raw bearer token.
 app.use('/v1/*', async (c, next) => {
   const scope = await requestRateLimitScope(c.req.raw);
   if (!scope) return next();
@@ -211,8 +208,6 @@ app.use('/v1/*', async (c, next) => {
   return next();
 });
 
-// Public by design so errors on login/signup can still be seen. The origin guard above, strict
-// payload contract, body-size cap and Cloudflare limiter keep it from becoming a generic log sink.
 app.post('/telemetry/client-error', async (c) => {
   const requestId = c.get('requestId');
   const contentType = c.req.header('Content-Type') ?? '';
