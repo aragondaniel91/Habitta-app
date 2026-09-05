@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(24);
 
 select has_column('public','customer_invitations','billing_period','billing intent is persisted');
 select has_column('public','customer_invitations','delivery_status','delivery state is persisted');
@@ -85,9 +85,6 @@ select is(
   'sent','delivery result is visible to Platform Admin'
 );
 
--- The existing HAB-437 onboarding path is deliberately reused. The new membership trigger links
--- the accepted invitation, and the subscription-term guard ensures the browser cannot substitute a
--- different plan/period during the handoff.
 select set_config('request.jwt.claim.sub','48400000-0000-0000-0000-000000000002',true);
 select lives_ok(
   $$select public.create_self_service_trial_workspace_v1(
