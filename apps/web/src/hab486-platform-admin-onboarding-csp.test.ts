@@ -27,9 +27,9 @@ describe('HAB-486 Platform Admin onboarding CSP allows the Worker API it depends
     const cspLine = headers.split('\n').find((line) => line.includes('Content-Security-Policy'));
     expect(cspLine).toBeDefined();
 
-    const resolvableOrigins = [...onboardingScript.matchAll(/return\s+'(https:\/\/[^']+)'/g)].map(
-      (match) => match[1],
-    );
+    const resolvableOrigins = [...onboardingScript.matchAll(/return\s+'(https:\/\/[^']+)'/g)]
+      .map((match) => match[1])
+      .filter((origin): origin is string => Boolean(origin));
     expect(resolvableOrigins).toEqual(
       expect.arrayContaining([
         'https://habitta-api-prod.aragondaniel91.workers.dev',
