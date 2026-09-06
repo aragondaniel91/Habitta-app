@@ -64,7 +64,8 @@ select public.create_customer_invitation_workspace_v1(
   p_city => 'Caracas',
   p_timezone => 'America/Caracas',
   p_primary_currency_code => 'VES',
-  p_property_topology => 'house_community'::public.condominium_property_topology
+  p_property_topology => 'house_community'::public.condominium_property_topology,
+  p_declared_unit_count => 1
 );
 
 select set_config('request.jwt.claim.sub','48600000-0000-0000-0000-000000000005',true);
@@ -80,7 +81,8 @@ select public.create_customer_invitation_workspace_v1(
   p_city => 'Caracas',
   p_timezone => 'America/Caracas',
   p_primary_currency_code => 'VES',
-  p_property_topology => 'house_community'::public.condominium_property_topology
+  p_property_topology => 'house_community'::public.condominium_property_topology,
+  p_declared_unit_count => 1
 );
 
 select set_config('request.jwt.claim.sub','48600000-0000-0000-0000-000000000001',true);
