@@ -1,4 +1,4 @@
-// HAB-484 pilot customer provisioning.
+// HAB-484/HAB-486 pilot customer provisioning and authoritative operating queue.
 // Browser authority is limited to the Platform Admin's own JWT. Invitation tokens and email-provider
 // credentials remain inside the Worker/Postgres boundary and are never returned here.
 const config = window.HABITTA_ADMIN_CONFIG;
@@ -142,6 +142,7 @@ function periodLabel(value) {
 }
 
 function effectiveState(invitation) {
+  if (invitation.operational_state) return invitation.operational_state;
   if (invitation.onboarding_completed_at) return 'completed';
   if (
     invitation.status === 'pending' &&
@@ -199,13 +200,69 @@ function button(text, variant, action) {
   return element;
 }
 
+function blockerCode(invitation) {
+  if (invitation.blocker_code) return invitation.blocker_code;
+  const state = effectiveState(invitation);
+  if (state === 'completed') return 'none';
+  if (state === 'accepted') return 'awaiting_workspace_completion';
+  if (state === 'pending' && invitation.delivery_status === 'failed')
+    return 'email_delivery_failed';
+  if (state === 'pending') return 'awaiting_customer_acceptance';
+  if (state === 'expired') return 'invitation_expired';
+  if (state === 'revoked') return 'invitation_revoked';
+  return 'none';
+}
+
+function blockerLabel(value) {
+  return (
+    {
+      email_delivery_failed: 'Email falló',
+      awaiting_customer_acceptance: 'Esperando cliente',
+      awaiting_workspace_completion: 'Workspace pendiente',
+      pending_platform_activation: 'Activación pendiente',
+      invitation_expired: 'Invitación vencida',
+      invitation_revoked: 'Invitación revocada',
+      none: 'Sin bloqueo',
+    }[value] ?? 'Revisar estado'
+  );
+}
+
+function blockerTone(value) {
+  if (value === 'none') return 'success';
+  if (value === 'awaiting_workspace_completion') return 'info';
+  if (value === 'awaiting_customer_acceptance' || value === 'pending_platform_activation') {
+    return 'warning';
+  }
+  if (
+    value === 'email_delivery_failed' ||
+    value === 'invitation_expired' ||
+    value === 'invitation_revoked'
+  ) {
+    return 'danger';
+  }
+  return 'neutral';
+}
+
 function nextStep(invitation) {
+  const coded = {
+    resend_invitation: 'Reenviar invitación',
+    wait_customer_acceptance: 'Esperar aceptación del cliente',
+    customer_complete_workspace: 'Cliente debe completar su condominio',
+    complete_commercial_activation: 'Completar activación comercial',
+    open_customer_360: 'Abrir Customer 360',
+    issue_new_invitation: 'Emitir una invitación nueva',
+    none: 'Sin acción pendiente',
+  }[invitation.next_action_code];
+  if (coded) return coded;
+
+  // Deployment-safety fallback for a brief static/DB rollout mismatch. The authoritative RPC codes
+  // take precedence as soon as the HAB-486 migration is present.
   const state = effectiveState(invitation);
   if (state === 'completed') return 'Customer 360 disponible';
   if (state === 'accepted') return 'Cliente debe completar su condominio';
   if (state === 'pending' && invitation.delivery_status === 'failed') return 'Reenviar invitación';
   if (state === 'pending') return 'Esperando aceptación';
-  if (state === 'expired') return 'Emitir una invitación nueva';
+  if (state === 'expired' || state === 'revoked') return 'Emitir una invitación nueva';
   return 'Sin acción pendiente';
 }
 
@@ -216,6 +273,8 @@ function searchable(invitation) {
     planLabel(invitation.plan_code),
     invitation.reference,
     invitation.notes,
+    blockerLabel(blockerCode(invitation)),
+    nextStep(invitation),
   ]
     .filter(Boolean)
     .join(' ')
@@ -315,11 +374,30 @@ function render() {
     referenceCell.textContent = invitation.reference || '—';
     const nextCell = document.createElement('td');
     nextCell.className = 'onboarding-next';
-    nextCell.textContent = nextStep(invitation);
+    const blocker = blockerCode(invitation);
+    nextCell.append(badge(blockerLabel(blocker), blockerTone(blocker)));
+    const nextDetail = document.createElement('span');
+    nextDetail.className = 'onboarding-email-detail';
+    nextDetail.textContent = `Siguiente: ${nextStep(invitation)}`;
+    nextCell.append(nextDetail);
 
     const actionsCell = document.createElement('td');
     const actions = document.createElement('div');
     actions.className = 'onboarding-actions';
+    if (
+      invitation.next_action_code === 'complete_commercial_activation' &&
+      invitation.onboarding_organization_id
+    ) {
+      const params = new URLSearchParams({ organization: invitation.onboarding_organization_id });
+      if (invitation.onboarding_condominium_id) {
+        params.set('condominium', invitation.onboarding_condominium_id);
+      }
+      const link = document.createElement('a');
+      link.className = 'secondary-button';
+      link.href = `/commercial.html?${params.toString()}`;
+      link.textContent = 'Activar';
+      actions.append(link);
+    }
     if (state === 'completed' && invitation.onboarding_organization_id) {
       const link = document.createElement('a');
       link.className = 'secondary-button';
