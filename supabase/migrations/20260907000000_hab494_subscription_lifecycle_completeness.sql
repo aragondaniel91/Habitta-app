@@ -436,7 +436,9 @@ set search_path = public
 set row_security = off
 as $$
 begin
-  perform public.hab424_require_platform_admin();
+  if auth.uid() is null or not public.is_platform_admin() then
+    raise exception using errcode = '42501', message = 'platform admin required';
+  end if;
 
   return query
   select
