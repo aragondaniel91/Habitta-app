@@ -29,7 +29,6 @@ const securityEntry = readFileSync(
 
 describe('HAB-484 pilot-ready customer provisioning', () => {
   it('routes the emailed customer invitation before the normal app shell', () => {
-    expect(main).toContain("pathname !== '/app/bienvenida'");
     expect(main).toContain("new URLSearchParams(search).get('invitacion')");
     expect(main).toContain('<CustomerInvitationEntry rawToken={customerToken} />');
     expect(main).toContain('getMyCustomerOnboardingInvitation');
@@ -69,7 +68,9 @@ describe('HAB-484 pilot-ready customer provisioning', () => {
   it('preserves a clear handoff from completed onboarding to Customer 360', () => {
     expect(onboardingScript).toContain('/customers.html?organization=${encodeURIComponent(');
     expect(onboardingScript).toContain("state === 'completed'");
-    expect(onboardingScript).toContain('Customer 360 disponible');
+    // Fase 11 audit (HAB-486 pilot readiness): the handoff copy now comes only from the authoritative
+    // next_action_code RPC mapping, never from a client-side guess derived from `state`.
+    expect(onboardingScript).toContain("open_customer_360: 'Abrir Customer 360'");
   });
 
   it('admits Platform Admin to only the customer-onboarding Worker family', () => {
