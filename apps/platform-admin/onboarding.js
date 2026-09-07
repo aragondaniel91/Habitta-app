@@ -201,16 +201,10 @@ function button(text, variant, action) {
 }
 
 function blockerCode(invitation) {
-  if (invitation.blocker_code) return invitation.blocker_code;
-  const state = effectiveState(invitation);
-  if (state === 'completed') return 'none';
-  if (state === 'accepted') return 'awaiting_workspace_completion';
-  if (state === 'pending' && invitation.delivery_status === 'failed')
-    return 'email_delivery_failed';
-  if (state === 'pending') return 'awaiting_customer_acceptance';
-  if (state === 'expired') return 'invitation_expired';
-  if (state === 'revoked') return 'invitation_revoked';
-  return 'none';
+  // Fase 11 audit (HAB-486 pilot readiness): no inference from client-derived state. If Postgres
+  // doesn't send an authoritative blocker_code, say so explicitly instead of guessing a
+  // plausible-looking value the operator would otherwise trust as real.
+  return invitation.blocker_code || 'not_verified';
 }
 
 function blockerLabel(value) {
@@ -222,6 +216,7 @@ function blockerLabel(value) {
       pending_platform_activation: 'Activación pendiente',
       invitation_expired: 'Invitación vencida',
       invitation_revoked: 'Invitación revocada',
+      not_verified: 'Estado no verificado',
       none: 'Sin bloqueo',
     }[value] ?? 'Revisar estado'
   );
@@ -230,7 +225,11 @@ function blockerLabel(value) {
 function blockerTone(value) {
   if (value === 'none') return 'success';
   if (value === 'awaiting_workspace_completion') return 'info';
-  if (value === 'awaiting_customer_acceptance' || value === 'pending_platform_activation') {
+  if (
+    value === 'awaiting_customer_acceptance' ||
+    value === 'pending_platform_activation' ||
+    value === 'not_verified'
+  ) {
     return 'warning';
   }
   if (
@@ -253,17 +252,10 @@ function nextStep(invitation) {
     issue_new_invitation: 'Emitir una invitación nueva',
     none: 'Sin acción pendiente',
   }[invitation.next_action_code];
-  if (coded) return coded;
-
-  // Deployment-safety fallback for a brief static/DB rollout mismatch. The authoritative RPC codes
-  // take precedence as soon as the HAB-486 migration is present.
-  const state = effectiveState(invitation);
-  if (state === 'completed') return 'Customer 360 disponible';
-  if (state === 'accepted') return 'Cliente debe completar su condominio';
-  if (state === 'pending' && invitation.delivery_status === 'failed') return 'Reenviar invitación';
-  if (state === 'pending') return 'Esperando aceptación';
-  if (state === 'expired' || state === 'revoked') return 'Emitir una invitación nueva';
-  return 'Sin acción pendiente';
+  // Fase 11 audit (HAB-486 pilot readiness): no inference from client-derived state. If Postgres
+  // doesn't send an authoritative next_action_code, say so explicitly instead of guessing a
+  // plausible-looking action the operator would otherwise trust as real.
+  return coded ?? 'Estado no verificado';
 }
 
 function searchable(invitation) {
@@ -495,16 +487,34 @@ async function issueInvitation(payload) {
   });
 }
 
+const INVITATION_LINK_VALIDITY_DAYS = [7, 14, 30];
+const DEFAULT_INVITATION_LINK_VALIDITY_DAYS = 14;
+
+function invitationValidityDays(invitation) {
+  const createdAt = invitation.created_at ? new Date(invitation.created_at).getTime() : NaN;
+  const expiresAt = invitation.expires_at ? new Date(invitation.expires_at).getTime() : NaN;
+  if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt) || expiresAt <= createdAt) {
+    return DEFAULT_INVITATION_LINK_VALIDITY_DAYS;
+  }
+  const days = Math.round((expiresAt - createdAt) / (24 * 60 * 60 * 1000));
+  return INVITATION_LINK_VALIDITY_DAYS.includes(days)
+    ? days
+    : DEFAULT_INVITATION_LINK_VALIDITY_DAYS;
+}
+
 async function resendInvitation(invitation) {
   status.textContent = `Reenviando invitación a ${invitation.email}…`;
   try {
+    // Fase 11 audit (HAB-486 pilot readiness): keep the link's originally selected validity window
+    // (7/14/30 days) instead of silently resetting every resend to 14 days.
+    const validityDays = invitationValidityDays(invitation);
     const result = await issueInvitation({
       email: invitation.email,
       planCode: invitation.plan_code,
       billingPeriod: invitation.billing_period,
       ...(invitation.reference ? { reference: invitation.reference } : {}),
       ...(invitation.notes ? { notes: invitation.notes } : {}),
-      expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000).toISOString(),
     });
     if (!result) return;
     status.textContent = result.delivered
