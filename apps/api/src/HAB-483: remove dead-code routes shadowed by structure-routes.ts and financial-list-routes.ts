@@ -2,10 +2,8 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { z } from 'zod';
 import {
-  buildingInputSchema,
   condominiumInputSchema,
   organizationInputSchema,
-  unitInputSchema,
   personInputSchema,
   ownerInputSchema,
   occupancyInputSchema,
@@ -173,77 +171,11 @@ app.get('/v1/condominiums/:id', async (c) =>
     ).json(),
   ),
 );
-app.get('/v1/condominiums/:id/buildings', async (c) =>
-  c.json(
-    await (
-      await rest(
-        c,
-        `buildings?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*&order=name`,
-      )
-    ).json(),
-  ),
-);
-app.post('/v1/condominiums/:id/buildings', async (c) => {
-  const p = await body(c, buildingInputSchema);
-  if (p instanceof Response) return p;
-  const r = await rest(c, 'buildings', {
-    method: 'POST',
-    body: JSON.stringify({
-      condominium_id: uuidSchema.parse(c.req.param('id')),
-      name: p.name,
-      created_by: c.get('userId'),
-    }),
-  });
-  return c.json(await r.json(), r.ok ? 201 : 400);
-});
-app.get('/v1/condominiums/:id/units', async (c) =>
-  c.json(
-    await (
-      await rest(
-        c,
-        `units?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*&order=code`,
-      )
-    ).json(),
-  ),
-);
-app.post('/v1/condominiums/:id/units', async (c) => {
-  const p = await body(c, unitInputSchema);
-  if (p instanceof Response) return p;
-  const r = await rest(c, 'units', {
-    method: 'POST',
-    body: JSON.stringify({
-      condominium_id: uuidSchema.parse(c.req.param('id')),
-      building_id: p.buildingId ?? null,
-      code: p.code,
-      type: p.type,
-      floor: p.floor ?? null,
-      ownership_percentage: p.ownershipPercentage ?? null,
-      status: p.status,
-      created_by: c.get('userId'),
-    }),
-  });
-  return c.json(await r.json(), r.ok ? 201 : 400);
-});
-app.patch('/v1/condominiums/:id/units/:unitId', async (c) => {
-  const p = await body(c, unitInputSchema.partial());
-  if (p instanceof Response) return p;
-  const r = await rest(
-    c,
-    `units?id=eq.${uuidSchema.parse(c.req.param('unitId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify({
-        building_id: p.buildingId,
-        code: p.code,
-        type: p.type,
-        floor: p.floor,
-        ownership_percentage: p.ownershipPercentage,
-        status: p.status,
-      }),
-    },
-  );
-  return c.json(await r.json(), r.ok ? 200 : 400);
-});
+// NOTE (HAB-483 cleanup): the legacy inline buildings/units GET+POST+PATCH handlers that used to
+// live here were removed — they were dead code, unreachable because `structure-routes.ts` (mounted
+// via `adminInvitationRoutes` earlier in this file) already registers the same paths and Hono
+// dispatches to the first matching handler. `structure-routes.ts` is the live implementation and
+// also handles unit-code conflicts (409) and not-found (404), which this dead copy never did.
 const list =
   (table: string, filter: string) =>
   async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
@@ -254,7 +186,9 @@ const list =
     const value = await r.json();
     return c.json(value, r.ok ? 200 : 400);
   };
-app.get('/v1/condominiums/:id/people', list('people', 'condominium_id=eq.:id'));
+// NOTE (HAB-483 cleanup): the legacy `app.get('/v1/condominiums/:id/people', list(...))` that used
+// to live here was removed. It was dead code: `admin-invitations.ts` registers the same path earlier
+// (see the comment there) specifically to shadow this generic list helper.
 app.post('/v1/condominiums/:id/people', async (c) => {
   const p = await body(c, personInputSchema);
   if (p instanceof Response) return p;
@@ -484,14 +418,10 @@ app.post('/v1/condominiums/:id/people/import/commit', async (c) => {
   });
   return c.json(await r.json(), r.ok ? 200 : 400);
 });
-const financeList =
-  (table: string, order = 'created_at.desc') =>
-  async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
-    const id = uuidSchema.parse(c.req.param('id'));
-    const r = await rest(c, `${table}?condominium_id=eq.${id}&select=*&order=${order}`);
-    return c.json(await r.json(), r.ok ? 200 : 400);
-  };
-app.get('/v1/condominiums/:id/charge-concepts', financeList('charge_concepts'));
+// NOTE (HAB-483 cleanup): the `financeList` helper and the GET handlers it backed here
+// (charge-concepts, receivables, charge-batches, payment-methods, payments) were removed — all dead
+// code, shadowed by `financial-list-routes.ts` (mounted via `treasuryRoutes` earlier in this file),
+// which is the live, paginated implementation of each of those list endpoints.
 app.post('/v1/condominiums/:id/charge-concepts', async (c) => {
   const p = await body(c, chargeConceptSchema);
   if (p instanceof Response) return p;
@@ -532,7 +462,8 @@ app.patch('/v1/condominiums/:id/charge-concepts/:conceptId', async (c) => {
   );
   return c.json(await r.json(), r.ok ? 200 : 403);
 });
-app.get('/v1/condominiums/:id/receivables', financeList('receivable_balances', 'issue_date.desc'));
+// NOTE (HAB-483 cleanup): the legacy `financeList`-backed receivables GET was removed here too — see
+// the note above `charge-concepts`.
 app.post('/v1/condominiums/:id/receivables', async (c) => {
   const p = await body(c, receivableSchema);
   if (p instanceof Response) return p;
@@ -581,7 +512,8 @@ app.post('/v1/condominiums/:id/receivables/:receivableId/reverse', async (c) => 
   }
   return c.json(result, r.ok ? 200 : 403);
 });
-app.get('/v1/condominiums/:id/charge-batches', financeList('charge_batches'));
+// NOTE (HAB-483 cleanup): the legacy `financeList`-backed charge-batches GET was removed here too —
+// see the note above `charge-concepts`.
 app.post('/v1/condominiums/:id/charge-batches/preview', async (c) => {
   const p = await body(c, batchSchema);
   if (p instanceof Response) return p;
@@ -1034,10 +966,8 @@ app.get('/v1/condominiums/:id/requests/:requestId/attachments', async (c) => {
   );
   return c.json(await r.json(), r.ok ? 200 : 403);
 });
-app.get(
-  '/v1/condominiums/:id/payment-methods',
-  financeList('condominium_payment_methods', 'display_name.asc'),
-);
+// NOTE (HAB-483 cleanup): the legacy `financeList`-backed payment-methods GET was removed here too —
+// see the note above `charge-concepts`.
 app.post('/v1/condominiums/:id/payment-methods', async (c) => {
   const p = await body(c, paymentMethodSchema);
   if (p instanceof Response) return p;
@@ -1094,7 +1024,8 @@ app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
   );
   return c.json(await r.json(), r.ok ? 200 : 403);
 });
-app.get('/v1/condominiums/:id/payments', financeList('payments', 'created_at.desc'));
+// NOTE (HAB-483 cleanup): the legacy `financeList`-backed payments GET was removed here too — see the
+// note above `charge-concepts`.
 app.post('/v1/condominiums/:id/payments', async (c) => {
   const p = await body(c, paymentDraftSchema);
   if (p instanceof Response) return p;
