@@ -77,4 +77,3 @@ describe('Platform Admin onboarding resend preserves the original link validity 
     );
   });
 });
-
