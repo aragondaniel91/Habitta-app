@@ -77,11 +77,24 @@ describe('HAB-428 public site contract', () => {
     expect(pricingStyles).toContain(':focus-visible');
   });
 
-  it('allows only the production catalogue endpoint through the marketing-site CSP', () => {
+  it('allows only the production catalogue endpoint and Cloudflare Web Analytics through the marketing-site CSP', () => {
     expect(headers).toContain(
-      "connect-src 'self' https://habitta-api-prod.aragondaniel91.workers.dev;",
+      "connect-src 'self' https://habitta-api-prod.aragondaniel91.workers.dev https://cloudflareinsights.com;",
     );
     expect(headers).not.toMatch(/connect-src[^;]*\*/);
+  });
+
+  /*
+   * Same gap as HAB-320 (apps/web) and its Platform Admin follow-up: Cloudflare injects its own
+   * Web Analytics beacon (https://static.cloudflareinsights.com/beacon.min.js) into every page it
+   * serves for this zone, including the marketing site. Without script-src, that falls back to
+   * default-src 'self' and the beacon gets blocked. Allow the same narrow origin everywhere else in
+   * the product allows it, without weakening the CSP against injected/XSS inline scripts.
+   */
+  it('allows the Cloudflare Web Analytics beacon without weakening script-src', () => {
+    expect(headers).toContain("script-src 'self' https://static.cloudflareinsights.com");
+    expect(headers).not.toContain("script-src 'self' 'unsafe-inline'");
+    expect(headers).not.toContain('unsafe-eval');
   });
 
   it('loads its static assets from the site directory', () => {
