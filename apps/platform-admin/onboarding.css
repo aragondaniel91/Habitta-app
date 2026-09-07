@@ -40,6 +40,19 @@
   margin-top: 3px;
 }
 
+.onboarding-error-code {
+  background: var(--habitta-surface-soft);
+  border: 1px solid var(--habitta-border);
+  border-radius: 4px;
+  color: var(--habitta-muted);
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.68rem;
+  margin-top: 4px;
+  padding: 1px 6px;
+  user-select: all;
+}
+
 .onboarding-client-email {
   color: var(--habitta-text);
   font-weight: 700;
