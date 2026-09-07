@@ -66,20 +66,9 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     correction: '/:id/billing/setup',
     note: 'HAB-436: provider setup sessions are immutable. A failed, expired or abandoned session is corrected by starting a fresh idempotent setup attempt; an issued provider session is never rewritten.',
   },
-  {
-    module: 'units',
-    entity: 'building',
-    create: '/v1/condominiums/:id/buildings',
-    classification: 'configuration',
-    correction: '/:condominiumId/buildings/:buildingId',
-  },
-  {
-    module: 'units',
-    entity: 'unit',
-    create: '/v1/condominiums/:id/units',
-    classification: 'configuration',
-    correction: '/v1/condominiums/:id/units/:unitId',
-  },
+  // Building and unit creation/correction are covered once, below, by the "structure (structure
+  // router)" entries — HAB-483 removed the legacy duplicate routes in index.ts that this pair of
+  // entries used to describe (they were dead code, shadowed by structure-routes.ts all along).
 
   // ---------------------------------------------------------------- people
   {
