@@ -355,6 +355,11 @@ function render() {
       detail.className = 'onboarding-email-detail';
       detail.textContent = 'Requiere reenvío';
       deliveryCell.append(detail);
+      const errorCode = document.createElement('code');
+      errorCode.className = 'onboarding-error-code';
+      errorCode.textContent = invitation.delivery_error_code;
+      errorCode.title = `Código del proveedor de email: ${invitation.delivery_error_code}`;
+      deliveryCell.append(errorCode);
     }
 
     const createdCell = document.createElement('td');
