@@ -48,4 +48,3 @@ describe('Platform Admin onboarding queue never infers blocker/next-action state
     expect(nextStepBody).not.toContain('effectiveState');
   });
 });
-
