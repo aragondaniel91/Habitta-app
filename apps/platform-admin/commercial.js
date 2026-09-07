@@ -381,7 +381,9 @@ function renderState() {
 
   stateAccount.textContent = accountLabel(row.account_type);
   statePlan.textContent = planLabel(row);
-  stateSubscription.textContent = subscriptionLabel(row.subscription_status);
+  stateSubscription.textContent = row.cancel_at
+    ? `${subscriptionLabel(row.subscription_status)} · cancela ${formatDate(row.cancel_at)}`
+    : subscriptionLabel(row.subscription_status);
   stateContracted.textContent = priceLabel(row.contracted_period_amount, row);
   stateEffective.textContent = priceLabel(row.effective_period_amount, row);
   statePeriod.textContent = periodLabel(row);
@@ -437,17 +439,44 @@ const actionDefinitions = {
     icon: '✓',
     copy: 'Confirma acceso activo sin habilitar auto-billing ni fabricar un cobro.',
   },
+  changePlan: {
+    label: 'Cambiar plan',
+    icon: '⇄',
+    copy: 'Cierra hoy el término vigente y abre uno nuevo al precio de catálogo del plan elegido. Nunca reescribe el término existente.',
+  },
+  cancel: {
+    label: 'Programar cancelación',
+    icon: '⏻',
+    copy: 'Programa el fin de la relación comercial a una fecha futura. El estado y el acceso no cambian hasta que esa fecha llega.',
+  },
+  undoCancel: {
+    label: 'Deshacer cancelación',
+    icon: '↺',
+    copy: 'Cancela la cancelación programada antes de que surta efecto. El estado nunca cambió, así que no hay nada más que revertir.',
+  },
+  reactivate: {
+    label: 'Reactivar',
+    icon: '↻',
+    copy: 'Restaura acceso activo y confirmado con el plan elegido. Nunca asume el consentimiento o método de pago previos.',
+  },
 };
 
+// HAB-494: eligibility here mirrors each RPC's own guard exactly (subscription_status and
+// cancel_at), so a card only ever appears when the backing mutation will actually succeed.
 function allowedActions(row) {
   if (!row) return [];
   if (row.account_type !== 'customer') return [];
   if (!row.subscription_id) return ['trial'];
+  if (row.subscription_status === 'cancelled') return ['reactivate'];
+  if (row.cancel_at) return ['undoCancel'];
   const actions = [];
-  if (row.subscription_status !== 'cancelled' && activeOffers().length > 0) actions.push('coupon');
+  if (activeOffers().length > 0) actions.push('coupon');
   if (['active', 'past_due'].includes(row.subscription_status)) actions.push('gift');
   if (['trialing', 'suspended', 'past_due'].includes(row.subscription_status))
     actions.push('activate');
+  if (['trialing', 'active', 'past_due'].includes(row.subscription_status))
+    actions.push('changePlan');
+  actions.push('cancel');
   return actions;
 }
 
@@ -480,10 +509,7 @@ function renderActions() {
   if (!actions.length) {
     const empty = document.createElement('div');
     empty.className = 'empty-actions';
-    empty.textContent =
-      row.subscription_status === 'cancelled'
-        ? 'La suscripción está cancelada y no hay una mutación aprobada para este estado.'
-        : 'No hay acciones comerciales aplicables al estado actual.';
+    empty.textContent = 'No hay acciones comerciales aplicables al estado actual.';
     actionCards.append(empty);
     return;
   }
@@ -506,10 +532,13 @@ function renderActions() {
     head.append(icon, copy);
 
     const guardrail = document.createElement('p');
-    guardrail.textContent = `${row.condominium_name} · ${subscriptionLabel(row.subscription_status)}`;
+    guardrail.textContent = row.cancel_at
+      ? `${row.condominium_name} · ${subscriptionLabel(row.subscription_status)} · cancela ${formatDate(row.cancel_at)}`
+      : `${row.condominium_name} · ${subscriptionLabel(row.subscription_status)}`;
 
     const button = document.createElement('button');
-    button.className = action === 'activate' ? 'primary-button' : 'secondary-button';
+    button.className =
+      action === 'activate' || action === 'reactivate' ? 'primary-button' : 'secondary-button';
     button.type = 'button';
     button.textContent = definition.label;
     button.addEventListener('click', (event) => {
@@ -541,12 +570,12 @@ function selectControl(name, options) {
   return select;
 }
 
-function inputControl(name, { type = 'text', value = '', min = null } = {}) {
+function inputControl(name, { type = 'text', value = '', min = null, required = true } = {}) {
   const input = document.createElement('input');
   input.name = name;
   input.type = type;
   input.value = value;
-  input.required = true;
+  input.required = required;
   if (min !== null) input.min = String(min);
   return input;
 }
@@ -629,6 +658,70 @@ function openAction(action, row) {
     dialogTitle.textContent = 'Activar manualmente';
     dialogWarning.textContent =
       'Confirma la suscripción como activa, pero NO registra un pago, NO configura método/consentimiento y NO habilita auto-billing.';
+  } else if (action === 'changePlan') {
+    dialogTitle.textContent = 'Cambiar plan';
+    dialogWarning.textContent =
+      'El cambio es inmediato: el término vigente se cierra hoy y se abre uno nuevo al precio de catálogo del plan elegido. No se puede repetir el mismo día.';
+    dialogFields.append(
+      field(
+        'Nuevo plan',
+        selectControl(
+          'plan',
+          plans.map((plan) => ({
+            value: plan.code,
+            label: `${plan.name} · ${formatMoney(plan.catalog_monthly_usd)}/mes`,
+          })),
+        ),
+      ),
+      field(
+        'Facturación',
+        selectControl('billingPeriod', [
+          { value: 'monthly', label: 'Mensual' },
+          { value: 'annual', label: 'Anual' },
+        ]),
+      ),
+      field('Motivo (opcional)', inputControl('reason', { required: false }), { full: true }),
+    );
+  } else if (action === 'cancel') {
+    dialogTitle.textContent = 'Programar cancelación';
+    dialogWarning.textContent =
+      'El acceso continúa exactamente igual hasta la fecha efectiva. Nada cambia de estado hoy: el proceso automático cierra el término y cancela cuando esa fecha llega.';
+    dialogFields.append(
+      field(
+        'Fecha efectiva',
+        inputControl('effectiveDate', {
+          type: 'date',
+          value: inputDate(row.current_period_end ?? row.trial_ends_at ?? null),
+        }),
+      ),
+      field('Motivo (opcional)', inputControl('reason', { required: false }), { full: true }),
+    );
+  } else if (action === 'undoCancel') {
+    dialogTitle.textContent = 'Deshacer cancelación programada';
+    dialogWarning.textContent = `Esto cancela la cancelación programada para ${formatDate(row.cancel_at)}. El estado nunca cambió, así que la suscripción sigue exactamente como está hoy.`;
+  } else if (action === 'reactivate') {
+    dialogTitle.textContent = 'Reactivar suscripción';
+    dialogWarning.textContent =
+      'Restaura acceso activo y confirmado hoy mismo. El consentimiento, el método de pago y auto-billing anteriores NO se restauran: hay que configurarlos de nuevo si aplica.';
+    dialogFields.append(
+      field(
+        'Plan',
+        selectControl(
+          'plan',
+          plans.map((plan) => ({
+            value: plan.code,
+            label: `${plan.name} · ${formatMoney(plan.catalog_monthly_usd)}/mes`,
+          })),
+        ),
+      ),
+      field(
+        'Facturación',
+        selectControl('billingPeriod', [
+          { value: 'monthly', label: 'Mensual' },
+          { value: 'annual', label: 'Anual' },
+        ]),
+      ),
+    );
   }
 
   actionDialog.showModal();
@@ -668,6 +761,29 @@ async function submitAction() {
         p_billing_consent_at: null,
         p_billing_method_ready_at: null,
         p_enable_auto_bill: false,
+      });
+    } else if (action === 'changePlan') {
+      await rpc('platform_change_plan', session.access_token, {
+        p_condominium_id: row.condominium_id,
+        p_new_plan_code: String(data.get('plan')),
+        p_new_billing_period: String(data.get('billingPeriod')),
+        p_reason: String(data.get('reason') ?? '').trim() || null,
+      });
+    } else if (action === 'cancel') {
+      await rpc('platform_request_subscription_cancellation', session.access_token, {
+        p_condominium_id: row.condominium_id,
+        p_effective_at: String(data.get('effectiveDate')),
+        p_reason: String(data.get('reason') ?? '').trim() || null,
+      });
+    } else if (action === 'undoCancel') {
+      await rpc('platform_undo_scheduled_cancellation', session.access_token, {
+        p_condominium_id: row.condominium_id,
+      });
+    } else if (action === 'reactivate') {
+      await rpc('platform_reactivate_subscription', session.access_token, {
+        p_condominium_id: row.condominium_id,
+        p_plan_code: String(data.get('plan')),
+        p_billing_period: String(data.get('billingPeriod')),
       });
     }
 

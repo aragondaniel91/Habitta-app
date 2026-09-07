@@ -50,12 +50,17 @@ describe('HAB-477 approved mutation boundary', () => {
       'platform_activate_subscription',
       'platform_create_commercial_offer',
       'platform_disable_commercial_offer',
+      'platform_change_plan',
+      'platform_request_subscription_cancellation',
+      'platform_undo_scheduled_cancellation',
+      'platform_reactivate_subscription',
     ];
     for (const rpcName of expectedMutations) expect(script).toContain(`'${rpcName}'`);
 
+    // HAB-494 added plan change, end-of-term cancellation and reactivation. Immediate/for-cause
+    // cancellation and pausing a subscription remain deliberately unbuilt.
     expect(script).not.toContain('platform_pause_subscription');
     expect(script).not.toContain('platform_cancel_subscription');
-    expect(script).not.toContain('platform_change_plan');
   });
 
   it('keeps demo/internal explicitly visible but outside customer mutation controls', () => {
@@ -100,5 +105,24 @@ describe('HAB-477 authoritative audit history', () => {
       /setStatus\(\s*'Acción comercial confirmada\. El estado y la auditoría fueron recargados\.',\s*'success',?\s*\)/,
     );
     expect(script).toContain("dialogWarning.dataset.tone = 'error'");
+  });
+});
+
+describe('HAB-494 subscription lifecycle completeness', () => {
+  it('never offers plan change or cancellation while a cancellation is already scheduled', () => {
+    expect(script).toContain("if (row.cancel_at) return ['undoCancel'];");
+  });
+
+  it('offers only reactivation once a subscription is cancelled', () => {
+    expect(script).toContain("if (row.subscription_status === 'cancelled') return ['reactivate'];");
+  });
+
+  it('surfaces the scheduled cancellation date instead of hiding it', () => {
+    expect(script).toContain('cancela ${formatDate(row.cancel_at)}');
+  });
+
+  it('never assumes prior billing consent, payment method or auto-bill on reactivation', () => {
+    expect(script).toContain('p_plan_code');
+    expect(script).toContain("rpc('platform_reactivate_subscription'");
   });
 });
