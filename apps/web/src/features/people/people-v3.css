@@ -116,7 +116,7 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 50%;
-  background: linear-gradient(145deg, var(--blue), #214c70);
+  background: linear-gradient(145deg, var(--blue), var(--navy));
   color: white;
   font-size: 0.72rem;
   font-weight: 850;
@@ -128,7 +128,6 @@
   height: 58px;
   font-size: 1rem;
 }
-
 .people-v3-profile-header {
   display: grid;
   min-width: 0;
@@ -258,7 +257,6 @@
   color: var(--muted);
   font-size: 0.66rem;
 }
-
 .people-v3-unit-card__participation {
   display: grid;
   flex: 0 0 auto;
