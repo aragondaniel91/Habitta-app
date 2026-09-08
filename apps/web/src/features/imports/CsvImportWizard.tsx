@@ -108,7 +108,7 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
     return row.data.unit_code || '—';
   };
 
-
+  const readFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     setError('');
