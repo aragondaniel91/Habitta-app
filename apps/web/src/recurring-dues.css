@@ -83,8 +83,8 @@
 }
 
 .recurring-dues-metrics > div[data-emphasis] {
-  border-color: color-mix(in srgb, #b7791f 35%, var(--border-subtle));
-  background: color-mix(in srgb, #f6ad55 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--amber) 35%, var(--border-subtle));
+  background: color-mix(in srgb, var(--amber) 8%, var(--surface));
 }
 
 .recurring-dues-metrics strong {
@@ -346,9 +346,9 @@
 .recurring-dues-safety-note {
   display: grid;
   gap: 4px;
-  border: 1px solid color-mix(in srgb, #2563eb 22%, var(--border-subtle));
+  border: 1px solid color-mix(in srgb, var(--blue) 22%, var(--border-subtle));
   border-radius: 12px;
-  background: color-mix(in srgb, #2563eb 5%, var(--surface));
+  background: color-mix(in srgb, var(--blue) 5%, var(--surface));
   padding: 12px;
 }
 
