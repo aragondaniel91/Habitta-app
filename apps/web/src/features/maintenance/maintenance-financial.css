@@ -25,7 +25,7 @@
 }
 
 .maintenance-workspace-switcher__button[data-active='true'] {
-  background: var(--navy-900, #102c3c);
+  background: var(--navy);
   color: #fff;
 }
 
@@ -35,10 +35,10 @@
 }
 
 .maintenance-financial-alert {
-  border: 1px solid #efb4b4;
+  border: 1px solid var(--red-border);
   border-radius: 12px;
-  background: #fff3f3;
-  color: #8e2525;
+  background: var(--red-soft);
+  color: var(--red);
   padding: 12px 14px;
 }
 
@@ -102,7 +102,7 @@
   padding: 16px;
   border: 1px solid var(--border-subtle, #e1e6eb);
   border-radius: 14px;
-  background: var(--surface-soft, #f8fafb);
+  background: var(--surface-subtle, #f8fafb);
 }
 
 .maintenance-financial-form__grid {
@@ -128,7 +128,6 @@
 .maintenance-expense-link:first-child {
   border-top: 0;
 }
-
 .maintenance-quote__top strong,
 .maintenance-attachment strong,
 .maintenance-expense-link strong {
