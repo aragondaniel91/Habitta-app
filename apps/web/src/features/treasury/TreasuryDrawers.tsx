@@ -94,7 +94,9 @@ export function AccountDrawer({
       name,
       accountType,
       currencyCode,
-      ...(bankName.trim() ? { bankName: bankName.trim() } : {}),
+      // Only a bank account carries an institution name; a stale value typed in before switching
+      // away from "Banco" must never reach an account of another type.
+      ...(accountType === 'bank' && bankName.trim() ? { bankName: bankName.trim() } : {}),
       ...(accountReference.trim() ? { accountReference: accountReference.trim() } : {}),
       isActive,
     }),
@@ -131,7 +133,13 @@ export function AccountDrawer({
           <Field label="Tipo">
             <Select
               disabled={hasMovements}
-              onChange={(event) => setAccountType(event.target.value)}
+              onChange={(event) => {
+                const nextType = event.target.value;
+                setAccountType(nextType);
+                // "Institución financiera" only applies to bank accounts; clear it so a value
+                // typed before switching away can't resurface if the type is set back to "Banco".
+                if (nextType !== 'bank') setBankName('');
+              }}
               value={accountType}
             >
               {Object.entries(accountTypeLabels).map(([value, label]) => (
@@ -212,6 +220,7 @@ export function MovementDrawer({
     occurredOn: string;
     description: string;
     overdraftReason?: string;
+    adjustmentDirection?: 'credit' | 'debit';
   }) => Promise<void>;
 }) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
@@ -221,10 +230,16 @@ export function MovementDrawer({
   const [description, setDescription] = useState('');
   const [confirmOverdraft, setConfirmOverdraft] = useState(false);
   const [overdraftReason, setOverdraftReason] = useState('');
+  // An adjustment can correct a balance up or down; unlike every other recordable kind, its
+  // direction is not implied by movementKind and must come from what the operator picks.
+  const [adjustmentDirection, setAdjustmentDirection] = useState<'credit' | 'debit'>('credit');
 
   const account = accounts.find((item) => item.id === accountId);
   const numericAmount = Number(amount);
-  const isDebit = movementKind === 'withdrawal' || movementKind === 'fee';
+  const isDebit =
+    movementKind === 'withdrawal' ||
+    movementKind === 'fee' ||
+    (movementKind === 'adjustment' && adjustmentDirection === 'debit');
   const projectedBalance = Number(account?.balance ?? 0) - numericAmount;
   const overdraft = isDebit && numericAmount > 0 && projectedBalance < 0;
 
@@ -236,6 +251,7 @@ export function MovementDrawer({
       occurredOn,
       description,
       ...(overdraft ? { overdraftReason: overdraftReason.trim() } : {}),
+      ...(movementKind === 'adjustment' ? { adjustmentDirection } : {}),
     }),
   );
 
@@ -296,6 +312,23 @@ export function MovementDrawer({
             />
           </Field>
         </FormGrid>
+        {movementKind === 'adjustment' ? (
+          <Field
+            hint="Determina si el ajuste aumenta o disminuye el saldo de la cuenta."
+            label="Dirección del ajuste"
+          >
+            <Select
+              onChange={(event) => {
+                setAdjustmentDirection(event.target.value as 'credit' | 'debit');
+                setConfirmOverdraft(false);
+              }}
+              value={adjustmentDirection}
+            >
+              <option value="credit">Aumenta el saldo</option>
+              <option value="debit">Disminuye el saldo</option>
+            </Select>
+          </Field>
+        ) : null}
         <Field label="Monto">
           <input
             className="input"
