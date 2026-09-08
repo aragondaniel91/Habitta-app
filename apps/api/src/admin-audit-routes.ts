@@ -68,7 +68,7 @@ adminAuditRoutes.get('/:id/audit-events', async (c) => {
   if (error.code === '42501' || error.message?.includes('not authorized')) {
     return c.json({ error: 'Forbidden' }, 403);
   }
-  
+
   // Log the upstream failure server-side, but never forward its raw message to the client --
   // Postgrest/RPC error text can carry internal details (constraint names, SQL fragments) that
   // are not meant to leave the API boundary.
