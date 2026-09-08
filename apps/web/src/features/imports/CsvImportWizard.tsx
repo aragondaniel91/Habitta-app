@@ -286,7 +286,11 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
         ))}
       </ol>
 
-      {error ? <div className="csv-import__alert">{error}</div> : null}
+      {error ? (
+        <div className="csv-import__alert" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {stage === 'file' ? (
         <>
