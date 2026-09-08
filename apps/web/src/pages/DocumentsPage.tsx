@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../components/Dialog';
@@ -215,8 +215,11 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
     }
   }, [condominiumId, session]);
 
+  const latestDetailRequest = useRef(0);
+
   const loadDetail = useCallback(
     async (documentId: string) => {
+      const requestId = ++latestDetailRequest.current;
       if (!documentId) {
         setVersions([]);
         setLinks([]);
@@ -230,17 +233,22 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
           listCommunityDocumentLinks(condominiumId, documentId, session),
           listCommunityDocumentDownloadEvents(condominiumId, session, documentId),
         ]);
+        // A newer detail request may have started (and even finished) while this one was in
+        // flight -- e.g. the user clicked a second document before the first request settled.
+        // Discard this response so it cannot clobber the newer one with stale data.
+        if (requestId !== latestDetailRequest.current) return;
         setVersions(versionRows);
         setLinks(linkRows);
         setDownloadEvents(eventRows);
       } catch (requestError) {
+        if (requestId !== latestDetailRequest.current) return;
         setError(
           requestError instanceof Error
             ? requestError.message
             : 'No se pudo cargar el detalle del documento.',
         );
       } finally {
-        setDetailLoading(false);
+        if (requestId === latestDetailRequest.current) setDetailLoading(false);
       }
     },
     [condominiumId, session],
@@ -360,14 +368,30 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
         audience: documentAudience,
         retentionDays: documentRetention ? Number(documentRetention) : undefined,
       });
+      // The document record already exists at this point. If the initial-version upload below
+      // fails, the operation is a partial success, not a full failure -- the catch block for
+      // this step must say so and still surface the created document instead of reporting
+      // "no se pudo crear el documento" over a document that was, in fact, created.
       if (initialFile) {
-        await uploadCommunityDocumentVersion(
-          condominiumId,
-          created.id,
-          session,
-          initialFile,
-          'Versión inicial',
-        );
+        try {
+          await uploadCommunityDocumentVersion(
+            condominiumId,
+            created.id,
+            session,
+            initialFile,
+            'Versión inicial',
+          );
+        } catch (uploadError) {
+          setComposer(null);
+          setError(
+            uploadError instanceof Error
+              ? `El documento se creó, pero no se pudo guardar el archivo inicial: ${uploadError.message}`
+              : 'El documento se creó, pero no se pudo guardar el archivo inicial. Puedes agregarlo desde el detalle.',
+          );
+          await loadLibrary();
+          setSelectedDocumentId(created.id);
+          return;
+        }
       }
       setComposer(null);
       setNotice(initialFile ? 'Documento y versión inicial guardados.' : 'Documento creado.');
