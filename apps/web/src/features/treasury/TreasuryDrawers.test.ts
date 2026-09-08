@@ -11,7 +11,7 @@ describe('treasury drawer layout migration', () => {
     expect(drawers.match(/<FormGrid>/g)).toHaveLength(5);
     expect(drawers.match(/<FormActions sticky>/g)).toHaveLength(4);
     expect(drawers).toContain(
-      "const isDebit = movementKind === 'withdrawal' || movementKind === 'fee'",
+      "movementKind === 'withdrawal' ||\n    movementKind === 'fee' ||\n    (movementKind === 'adjustment' && adjustmentDirection === 'debit');",
     );
     expect(drawers).toContain(
       'const overdraft = isDebit && numericAmount > 0 && projectedBalance < 0',
