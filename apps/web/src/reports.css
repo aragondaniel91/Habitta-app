@@ -349,7 +349,7 @@
 }
 
 .reports-aging-track > span[data-bucket='days_31_60'] {
-  background: #3978bd;
+  background: var(--chart-blue);
 }
 
 .reports-aging-track > span[data-bucket='days_61_90'] {
