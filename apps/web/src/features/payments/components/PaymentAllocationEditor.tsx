@@ -28,6 +28,7 @@ export function PaymentAllocationEditor({
   const [allocations, setAllocations] = useState<AllocationInput[]>([]);
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
   const [previewSnapshot, setPreviewSnapshot] = useState<PreviewSnapshot>();
+  const [saving, setSaving] = useState(false);
   const latestPreviewRequest = useRef(0);
   const receivableById = useMemo(
     () => new Map(receivables.map((receivable) => [receivable.id, receivable])),
@@ -126,6 +127,15 @@ export function PaymentAllocationEditor({
     const value = await onPreview(requestedAllocations);
     if (requestId !== latestPreviewRequest.current) return;
     setPreviewSnapshot({ fingerprint: requestedFingerprint, value });
+  };
+
+  const approve = async () => {
+    setSaving(true);
+    try {
+      await onApprove(allocations);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -239,11 +249,11 @@ export function PaymentAllocationEditor({
             <p key={error}>{error}</p>
           ))}
           <button
-            disabled={preview.errors.length > 0}
-            onClick={() => void onApprove(allocations)}
+            disabled={preview.errors.length > 0 || saving}
+            onClick={() => void approve()}
             type="button"
           >
-            Aprobar pago
+            {saving ? 'Aprobando…' : 'Aprobar pago'}
           </button>
         </div>
       )}

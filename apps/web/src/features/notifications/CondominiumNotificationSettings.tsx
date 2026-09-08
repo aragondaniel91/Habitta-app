@@ -11,7 +11,8 @@ export function CondominiumNotificationSettings({
   condominiumId: string;
 }) {
   const [settings, setSettings] = useState<NotificationSettings | null>(null),
-    [message, setMessage] = useState('');
+    [message, setMessage] = useState(''),
+    [saving, setSaving] = useState(false);
   useEffect(() => {
     if (!condominiumId) return;
     void getNotificationSettings(session, condominiumId)
@@ -26,12 +27,15 @@ export function CondominiumNotificationSettings({
         className="ux-form"
         onSubmit={(event) => {
           event.preventDefault();
+          if (saving) return;
+          setSaving(true);
           void saveNotificationSettings(session, condominiumId, settings)
             .then((value) => {
               setSettings(value);
               setMessage('Configuración guardada.');
             })
-            .catch(() => setMessage('No tienes permiso para modificar esta configuración.'));
+            .catch(() => setMessage('No tienes permiso para modificar esta configuración.'))
+            .finally(() => setSaving(false));
         }}
       >
         <label>
@@ -75,7 +79,7 @@ export function CondominiumNotificationSettings({
             onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
           />
         </label>
-        <button>Guardar</button>
+        <button disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
         <p>{message}</p>
       </form>
     </details>

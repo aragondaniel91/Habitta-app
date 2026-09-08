@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ModuleHelpDrawer } from '../features/help/ModuleHelpDrawer';
@@ -75,15 +75,21 @@ export function AppShell({
 }: Props) {
   const roles = useCondominiumRoles();
   const residentOnly = usesResidentDashboard(roles);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    () => window.localStorage.getItem('habitta:sidebar-collapsed') === 'true',
-  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem('habitta:sidebar-collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [helpState, setHelpState] = useState<HelpState>({
     open: false,
     initialView: 'guide',
   });
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const profilePopoverId = useId();
 
   const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
   const selectedOrganization = organizations.find(
@@ -113,7 +119,11 @@ export function AppShell({
   );
 
   useEffect(() => {
-    window.localStorage.setItem('habitta:sidebar-collapsed', String(sidebarCollapsed));
+    try {
+      window.localStorage.setItem('habitta:sidebar-collapsed', String(sidebarCollapsed));
+    } catch {
+      // Storage is unavailable (e.g. private browsing); the preference just won't persist.
+    }
   }, [sidebarCollapsed]);
 
   useEffect(() => {
@@ -134,6 +144,17 @@ export function AppShell({
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [onCloseNotifications]);
+
+  useEffect(() => {
+    if (!profileOpen) return undefined;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [profileOpen]);
 
   const openHelp = (initialView: HelpState['initialView']) => {
     setHelpState({ open: true, initialView });
@@ -285,9 +306,11 @@ export function AppShell({
 
           <div className="topbar__actions">
             <NotificationBell session={session} onOpen={onOpenNotifications} />
-            <div className="profile-menu">
+            <div className="profile-menu" ref={profileMenuRef}>
               <button
+                aria-controls={profilePopoverId}
                 aria-expanded={profileOpen}
+                aria-haspopup="true"
                 className="profile-trigger"
                 onClick={() => setProfileOpen((value) => !value)}
                 type="button"
@@ -300,7 +323,7 @@ export function AppShell({
                 <ChevronDownIcon size={16} />
               </button>
               {profileOpen ? (
-                <div className="profile-popover">
+                <div className="profile-popover" id={profilePopoverId}>
                   <div>
                     <strong>{userLabel}</strong>
                     <span>{session.user.email}</span>

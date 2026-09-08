@@ -107,7 +107,11 @@ export function AccountDrawer({
       title={editing ? 'Editar cuenta' : 'Nueva cuenta'}
     >
       <form className="treasury-form ux-form" onSubmit={(event) => void submit(event)}>
-        {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        {error ? (
+          <div className="treasury-inline-alert" role="alert">
+            {error}
+          </div>
+        ) : null}
         {hasMovements ? (
           <p className="treasury-form__note" role="note">
             Esta cuenta ya tiene saldo registrado. Puedes corregir el nombre, la institución y la
@@ -238,7 +242,11 @@ export function MovementDrawer({
   return (
     <DrawerShell eyebrow="Tesorería" onClose={onClose} title="Registrar movimiento">
       <form className="treasury-form ux-form" onSubmit={(event) => void submit(event)}>
-        {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        {error ? (
+          <div className="treasury-inline-alert" role="alert">
+            {error}
+          </div>
+        ) : null}
         <Field label="Cuenta">
           <Select
             onChange={(event) => {
@@ -407,7 +415,11 @@ export function TransferDrawer({
   return (
     <DrawerShell eyebrow="Tesorería" onClose={onClose} title="Transferencia interna">
       <form className="treasury-form ux-form" onSubmit={(event) => void submit(event)}>
-        {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        {error ? (
+          <div className="treasury-inline-alert" role="alert">
+            {error}
+          </div>
+        ) : null}
         <Field label="Cuenta origen">
           <Select
             onChange={(event) => {
@@ -559,7 +571,11 @@ export function ReconciliationDrawer({
   return (
     <DrawerShell eyebrow="Tesorería" onClose={onClose} title="Nueva conciliación">
       <form className="treasury-form ux-form" onSubmit={(event) => void submit(event)}>
-        {error ? <div className="treasury-inline-alert">{error}</div> : null}
+        {error ? (
+          <div className="treasury-inline-alert" role="alert">
+            {error}
+          </div>
+        ) : null}
         <Field label="Cuenta">
           <Select onChange={(event) => setAccountId(event.target.value)} required value={accountId}>
             {accounts.map((account) => (
