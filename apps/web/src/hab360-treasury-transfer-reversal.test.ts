@@ -27,8 +27,16 @@ describe('HAB-360 reversible treasury transfers', () => {
     expect(page).toContain('Reversar transferencia');
     expect(page).toContain('<ConfirmDialog');
     expect(page).toContain('Motivo del reverso');
-    expect(page).toContain('if (reversalReason.trim().length < 2) return;');
+    expect(page).toContain('if (reversalReason.trim().length < 2) {');
     expect(page).not.toMatch(/window\.(confirm|alert|prompt)\s*\(/);
+  });
+
+  it('shows the reason validation error to the user instead of failing silently', () => {
+    // A too-short reason used to just `return` with no feedback, leaving the operator unsure why
+    // nothing happened. It must now set a visible, dismissable message in the dialog itself.
+    expect(page).toContain("setReversalError('Explica el motivo del reverso");
+    expect(page).toContain('{reversalError ? (');
+    expect(page).toMatch(/role="alert">\s*\{reversalError\}/);
   });
 
   it('states that both accounts are compensated and history is preserved', () => {
