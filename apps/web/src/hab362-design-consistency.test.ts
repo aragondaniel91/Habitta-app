@@ -125,7 +125,9 @@ describe('HAB-362 one design standard across every module', () => {
       'pages/TreasuryPage.tsx',
       'pages/DocumentsPage.tsx',
       'pages/SettingsPage.tsx',
-      'features/people/PeoplePanel.tsx',
+      // PeoplePanel.tsx (the module this entry used to name) was dead code superseded by
+      // PeoplePanelV3.tsx and was removed; the live People module has no hint of its own yet, so
+      // there is nothing to require here.
     ]) {
       expect(withHints.some((file) => relative(file).includes(module))).toBe(true);
     }
