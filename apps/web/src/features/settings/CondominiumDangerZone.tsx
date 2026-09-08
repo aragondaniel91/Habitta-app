@@ -42,14 +42,11 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
   const canViewCommercial = roles.includes('condominium_admin');
   const [commercialSummary, setCommercialSummary] = useState<CommercialSummary | null>(null);
 
-  const refreshCommercialSummary = useCallback(
-    async () => {
-      const value = await loadCommercialSummary(condominiumId);
-      setCommercialSummary(value);
-      return value;
-    },
-    [condominiumId],
-  );
+  const refreshCommercialSummary = useCallback(async () => {
+    const value = await loadCommercialSummary(condominiumId);
+    setCommercialSummary(value);
+    return value;
+  }, [condominiumId]);
 
   useEffect(() => {
     if (!canViewCommercial) {
