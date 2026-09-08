@@ -59,4 +59,17 @@ describe('requestRateLimitScope', () => {
       requestRateLimitScope(request('POST', `/v1/condominiums/${condo}/people`)),
     ).resolves.toBeNull();
   });
+
+  it('covers charge-batch commits and billing setup writes', async () => {
+    const condo = '11111111-1111-1111-1111-111111111111';
+    await expect(
+      requestRateLimitScope(request('POST', `/v1/condominiums/${condo}/charge-batches/commit`)),
+    ).resolves.toMatchObject({ kind: 'financial-write' });
+    await expect(
+      requestRateLimitScope(request('POST', `/v1/condominiums/${condo}/charge-batches/preview`)),
+    ).resolves.toMatchObject({ kind: 'financial-write' });
+    await expect(
+      requestRateLimitScope(request('POST', `/v1/condominiums/${condo}/billing/setup`)),
+    ).resolves.toMatchObject({ kind: 'financial-write' });
+  });
 });

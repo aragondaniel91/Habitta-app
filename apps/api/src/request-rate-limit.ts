@@ -7,8 +7,10 @@ const FINANCIAL_ROUTE_FAMILIES = new Set([
   'treasury',
   'receivables',
   'charge-concepts',
+  'charge-batches',
   'opening-balances',
   'late-fees',
+  'billing',
 ]);
 
 export type RequestRateLimitScope =
