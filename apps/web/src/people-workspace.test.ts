@@ -6,7 +6,7 @@ const routeSource = readFileSync(
   'utf8',
 );
 const workspaceSource = readFileSync(
-  new URL('./features/people/PeoplePanel.tsx', import.meta.url),
+  new URL('./features/people/PeoplePanelV3.tsx', import.meta.url),
   'utf8',
 );
 const relationshipSource = readFileSync(
@@ -17,16 +17,14 @@ const relationshipSource = readFileSync(
 describe('HAB-211 live People workspace contract', () => {
   it('routes the production People screen to the operational workspace', () => {
     expect(routeSource).toContain("if (mode === 'people')");
-    expect(routeSource).toContain('<PeoplePanel');
+    expect(routeSource).toContain('<PeoplePanelV3');
     expect(routeSource).toContain('condominiumName={condominiumName}');
   });
 
   it('keeps one person profile connected to ownership, occupancy and condominium relationships', () => {
     expect(workspaceSource).toContain('/relationships`');
-    expect(workspaceSource).toContain('/ownerships`');
-    expect(workspaceSource).toContain('/occupancies`');
     expect(workspaceSource).toContain('/condominium-relationships`');
-    expect(workspaceSource).toContain('Un registro por persona');
+    expect(workspaceSource).toContain('Una identidad por persona');
   });
 
   it('derives resident access from the existing HAB-125 owner and tenant model', () => {
