@@ -11,8 +11,8 @@ export type UnitEditorInput = {
   code: string;
   buildingId?: string | null;
   type: UnitType;
-  floor?: string;
-  ownershipPercentage?: number;
+  floor?: string | null | undefined;
+  ownershipPercentage?: number | null | undefined;
   status: 'active' | 'inactive';
 };
 
@@ -39,20 +39,31 @@ type Draft = {
 
 type Errors = Partial<Record<'code' | 'buildingId' | 'type' | 'ownershipPercentage', string>>;
 
-export function buildUnitMutationPayload({
-  code,
-  buildingId,
-  type,
-  floor,
-  ownershipPercentage,
-  status,
-}: UnitEditorInput): UnitEditorInput {
+export function buildUnitMutationPayload(
+  { code, buildingId, type, floor, ownershipPercentage, status }: UnitEditorInput,
+  mode: 'create' | 'edit',
+): UnitEditorInput {
+  const trimmedFloor = floor?.trim();
+  // In edit mode a field the user just cleared must be sent as an explicit `null` rather than
+  // omitted: the backend treats a missing key as "no change", so an omitted key would leave the
+  // unit's previous value in place instead of clearing it. Create mode has no previous value to
+  // clear, so an unset field is still safely omitted there.
   return {
     code: code.trim(),
     ...(buildingId === undefined ? {} : { buildingId }),
     type,
-    ...(floor?.trim() ? { floor: floor.trim() } : {}),
-    ...(ownershipPercentage === undefined ? {} : { ownershipPercentage }),
+    ...(trimmedFloor
+      ? { floor: trimmedFloor }
+      : floor === undefined
+        ? {}
+        : mode === 'edit'
+          ? { floor: null }
+          : {}),
+    ...(ownershipPercentage === undefined || ownershipPercentage === null
+      ? mode === 'edit'
+        ? { ownershipPercentage: null }
+        : {}
+      : { ownershipPercentage }),
     status,
   };
 }
@@ -128,14 +139,17 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
         : draft.buildingId || null;
 
     await onSave(
-      buildUnitMutationPayload({
-        code: draft.code,
-        buildingId,
-        type: draft.type,
-        ...(!houseCommunity ? { floor: draft.floor } : {}),
-        ...(ownershipPercentage === undefined ? {} : { ownershipPercentage }),
-        status: draft.status,
-      }),
+      buildUnitMutationPayload(
+        {
+          code: draft.code,
+          buildingId,
+          type: draft.type,
+          ...(!houseCommunity ? { floor: draft.floor } : {}),
+          ownershipPercentage,
+          status: draft.status,
+        },
+        mode,
+      ),
     );
   };
 
