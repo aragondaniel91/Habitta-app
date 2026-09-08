@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../../components/Dialog';
 import { SettingsIcon } from '../../components/icons';
 import { Badge, Button, Field, Surface } from '../../components/ui';
+import { loadCommercialSummary } from '../../lib/commercial';
+import type { CommercialSummary } from '../../lib/commercial';
+import { useCondominiumRoles } from '../../lib/roles';
 import {
   deleteCondominium,
   getCondominiumDeletionCapability,
@@ -28,6 +31,38 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
   const [error, setError] = useState('');
   const [databaseDeleted, setDatabaseDeleted] = useState(false);
   const [cleanupPending, setCleanupPending] = useState(false);
+
+  // my_commercial_summary is restricted server-side to organization owners and condominium
+  // admins (it raises 42501 for every other role). Every condominium-creation path grants its
+  // creator both memberships atomically, so a real organization owner always also holds
+  // condominium_admin here -- skip the request entirely for roles that can never pass that check,
+  // instead of firing a guaranteed-403 RPC call on every Settings visit. Fetched once here and
+  // shared with both cards below so they don't each fire their own copy of the same request.
+  const roles = useCondominiumRoles();
+  const canViewCommercial = roles.includes('condominium_admin');
+  const [commercialSummary, setCommercialSummary] = useState<CommercialSummary | null>(null);
+
+  const refreshCommercialSummary = useCallback(async () => {
+    const value = await loadCommercialSummary(condominiumId);
+    setCommercialSummary(value);
+    return value;
+  }, [condominiumId]);
+
+  useEffect(() => {
+    if (!canViewCommercial) {
+      setCommercialSummary(null);
+      return;
+    }
+    let cancelled = false;
+    void refreshCommercialSummary().catch(() => {
+      // Pricing is intentionally restricted to organization owners and condominium admins.
+      // Other settings roles simply do not receive a commercial card.
+      if (!cancelled) setCommercialSummary(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canViewCommercial, refreshCommercialSummary]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,8 +126,21 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
 
   return (
     <>
-      <CommercialSummaryCard condominiumId={condominiumId} />
-      <BillingMethodSetupCard condominiumId={condominiumId} session={session} />
+      {canViewCommercial ? (
+        <>
+          <CommercialSummaryCard
+            condominiumId={condominiumId}
+            setSummary={setCommercialSummary}
+            summary={commercialSummary}
+          />
+          <BillingMethodSetupCard
+            condominiumId={condominiumId}
+            refresh={refreshCommercialSummary}
+            session={session}
+            summary={commercialSummary}
+          />
+        </>
+      ) : null}
 
       <Surface className="settings-panel danger-zone">
         <div className="settings-section-heading danger-zone__heading">

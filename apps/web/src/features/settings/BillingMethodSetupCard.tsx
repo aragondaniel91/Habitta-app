@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Badge, Button, Surface } from '../../components/ui';
 import { FeesIcon } from '../../components/icons';
@@ -8,11 +8,17 @@ import {
   safeBillingRedirectUrl,
   startBillingSetup,
 } from '../../lib/billing';
-import { loadCommercialSummary } from '../../lib/commercial';
 import type { CommercialSummary } from '../../lib/commercial';
 import './billing-method-setup.css';
 
-type Props = { condominiumId: string; session: Session };
+type Props = {
+  condominiumId: string;
+  session: Session;
+  // Fetched once by the shared parent (CondominiumDangerZone) and passed down here, so this card
+  // and CommercialSummaryCard read the same data instead of each firing their own request for it.
+  summary: CommercialSummary | null;
+  refresh: () => Promise<CommercialSummary>;
+};
 
 const clearReturnState = () => {
   const url = new URL(window.location.href);
@@ -21,27 +27,10 @@ const clearReturnState = () => {
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 };
 
-export function BillingMethodSetupCard({ condominiumId, session }: Props) {
-  const [summary, setSummary] = useState<CommercialSummary | null>(null);
+export function BillingMethodSetupCard({ condominiumId, session, summary, refresh }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    const value = await loadCommercialSummary(condominiumId);
-    setSummary(value);
-    return value;
-  }, [condominiumId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void refresh().catch(() => {
-      if (!cancelled) setSummary(null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
 
   useEffect(() => {
     const returnState = new URLSearchParams(window.location.search).get('billingSetup');

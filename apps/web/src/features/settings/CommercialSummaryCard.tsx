@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { Badge, Button, Field, Surface } from '../../components/ui';
 import { FeesIcon } from '../../components/icons';
 import {
   commercialBenefitLabel,
   commercialStatusLabel,
   loadCommercialCheckoutPreview,
-  loadCommercialSummary,
   recordCommercialConsent,
 } from '../../lib/commercial';
 import type { CommercialCheckoutPreview, CommercialSummary } from '../../lib/commercial';
@@ -41,8 +41,19 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'No pudimos validar las condiciones comerciales.';
 }
 
-export function CommercialSummaryCard({ condominiumId }: { condominiumId: string }) {
-  const [summary, setSummary] = useState<CommercialSummary | null>(null);
+export function CommercialSummaryCard({
+  condominiumId,
+  summary,
+  setSummary,
+}: {
+  condominiumId: string;
+  // Fetched once by the shared parent (CondominiumDangerZone) and passed down here, so this card
+  // and BillingMethodSetupCard read the same data instead of each firing their own request for
+  // it -- see the parent for why, and for the role check that skips the request entirely for
+  // roles that could never pass it.
+  summary: CommercialSummary | null;
+  setSummary: Dispatch<SetStateAction<CommercialSummary | null>>;
+}) {
   const [checkout, setCheckout] = useState<CommercialCheckoutPreview | null>(null);
   const [offerCode, setOfferCode] = useState('');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -52,23 +63,10 @@ export function CommercialSummaryCard({ condominiumId }: { condominiumId: string
   const [ownerCheckoutRequired, setOwnerCheckoutRequired] = useState(false);
   const [consentRecordedNow, setConsentRecordedNow] = useState(false);
 
+  // The parent owns the summary fetch and already resets it on a condominium switch; this local
+  // "just confirmed" flag is UI-only and needs the same reset so it can't leak across condos.
   useEffect(() => {
-    let cancelled = false;
-    setSummary(null);
-    setCheckout(null);
     setConsentRecordedNow(false);
-    void loadCommercialSummary(condominiumId)
-      .then((value) => {
-        if (!cancelled) setSummary(value);
-      })
-      .catch(() => {
-        // Pricing is intentionally restricted to organization owners and condominium admins.
-        // Other settings roles simply do not receive a commercial card.
-        if (!cancelled) setSummary(null);
-      });
-    return () => {
-      cancelled = true;
-    };
   }, [condominiumId]);
 
   useEffect(() => {
