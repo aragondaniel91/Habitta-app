@@ -110,7 +110,7 @@
 }
 
 .action-item-card__meta [data-overdue='true'] dd {
-  color: var(--danger, #b42318);
+  color: var(--red);
 }
 
 .action-item-card__links,
