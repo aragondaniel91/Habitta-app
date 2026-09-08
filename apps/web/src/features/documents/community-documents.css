@@ -28,13 +28,13 @@
 }
 
 .documents-alert--error {
-  border-color: rgb(180 35 44 / 0.22);
+  border-color: color-mix(in srgb, var(--red) 22%, transparent);
   background: var(--red-soft);
   color: var(--red);
 }
 
 .documents-alert--success {
-  border-color: rgb(40 167 69 / 0.22);
+  border-color: color-mix(in srgb, var(--green) 22%, transparent);
   background: var(--green-soft);
   color: var(--green-dark);
 }
@@ -101,7 +101,7 @@
 .documents-search input:focus {
   border-color: var(--blue);
   outline: none;
-  box-shadow: 0 0 0 4px rgb(35 101 142 / 0.12);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 12%, transparent);
 }
 
 .documents-layout {
@@ -220,7 +220,7 @@
 }
 
 .documents-row.is-selected {
-  border-color: rgb(27 79 114 / 0.42);
+  border-color: color-mix(in srgb, var(--blue) 42%, transparent);
   background: var(--blue-soft);
 }
 
