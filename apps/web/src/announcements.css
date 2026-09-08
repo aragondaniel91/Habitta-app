@@ -202,7 +202,7 @@
 }
 
 .announcement-card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--border-subtle);
   border-radius: 17px;
   box-shadow: 0 7px 20px rgb(13 27 42 / 4%);
@@ -354,7 +354,7 @@
 }
 
 .announcements-drawer {
-  background: white;
+  background: var(--surface);
   box-shadow: -24px 0 60px rgb(13 27 42 / 18%);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
