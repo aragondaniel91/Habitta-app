@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogBody, DialogFooter } from '../components/Dialog';
@@ -324,25 +324,36 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     [data?.expenses],
   );
 
+  const latestAttachmentsRequest = useRef(0);
+
   const loadExpenseDocuments = useCallback(
     async (expenseId: string) => {
+      const requestId = ++latestAttachmentsRequest.current;
       try {
-        setAttachments(
-          await apiRequest<ExpenseAttachment[]>(
-            `/v1/condominiums/${condominiumId}/expenses/${expenseId}/attachments`,
-            session,
-          ),
+        const attachmentRows = await apiRequest<ExpenseAttachment[]>(
+          `/v1/condominiums/${condominiumId}/expenses/${expenseId}/attachments`,
+          session,
         );
+        if (requestId !== latestAttachmentsRequest.current) return;
+        setAttachments(attachmentRows);
       } catch {
+        if (requestId !== latestAttachmentsRequest.current) return;
         setAttachments([]);
       }
     },
     [condominiumId, session],
   );
 
+  const latestDetailRequest = useRef(0);
+
   const openDetail = async (expense: ExpenseRecord) => {
+    const requestId = ++latestDetailRequest.current;
     setSelectedExpenseId(expense.id);
     setDrawer('detail');
+    // Clear the previous expense's events/attachments immediately so its detail panel never
+    // shows another expense's history while the new one is loading.
+    setEvents([]);
+    setAttachments([]);
     const [eventsResult] = await Promise.allSettled([
       apiRequest<ExpenseEvent[]>(
         `/v1/condominiums/${condominiumId}/expenses/${expense.id}/events`,
@@ -350,6 +361,10 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
       ),
       loadExpenseDocuments(expense.id),
     ]);
+    // A newer openDetail call may have started (and even finished) while this one was pending --
+    // e.g. the user clicked a second expense before the first request settled. Discard this
+    // response so it cannot clobber the newer selection with stale events.
+    if (requestId !== latestDetailRequest.current) return;
     setEvents(eventsResult.status === 'fulfilled' ? eventsResult.value : []);
   };
 
@@ -440,7 +455,7 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             icon={<CheckCircleIcon size={20} />}
             label="Pendientes de aprobación"
             tone="red"
-            value={String(data.summary.pending_approval_count || counts.pending_approval)}
+            value={String(data.summary.pending_approval_count ?? counts.pending_approval)}
           />
           <MetricCard
             detail="Gastos que ya completaron su ciclo de pago."

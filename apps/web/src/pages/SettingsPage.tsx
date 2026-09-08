@@ -377,9 +377,15 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
                       disabled={!data.settings.due_soon_enabled}
                       max={30}
                       min={1}
-                      onChange={(event) =>
-                        updateSettings({ due_soon_days: Number(event.target.value) })
-                      }
+                      onChange={(event) => {
+                        // An intermediate/empty value (e.g. the field cleared, or just "-" while
+                        // typing) parses to NaN; ignore it instead of pushing NaN into settings,
+                        // where it would render as an invalid number and could reach the request
+                        // body as `null`.
+                        const parsed = Number(event.target.value);
+                        if (Number.isNaN(parsed)) return;
+                        updateSettings({ due_soon_days: parsed });
+                      }}
                       type="number"
                       value={data.settings.due_soon_days}
                     />

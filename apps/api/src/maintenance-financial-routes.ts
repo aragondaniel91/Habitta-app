@@ -130,7 +130,7 @@ maintenanceFinancialRoutes.post('/:id/maintenance/work-orders/:workOrderId/quote
 maintenanceFinancialRoutes.post(
   '/:id/maintenance/work-orders/:workOrderId/quotes/:quoteId/decision',
   async (c) => {
-    uuid.parse(c.req.param('workOrderId'));
+    const workOrderId = uuid.parse(c.req.param('workOrderId'));
     const parsed = await body(c, quoteDecisionSchema);
     if (parsed instanceof Response) return parsed;
     const response = await rpc(c, 'decide_maintenance_quote', {
@@ -139,6 +139,17 @@ maintenanceFinancialRoutes.post(
       decision: parsed.decision,
       decision_note_value: parsed.note ?? null,
     });
+    // decide_maintenance_quote only takes target_quote -- it derives the work order from the
+    // quote row itself, so workOrderId in the path was parsed for its UUID shape and then never
+    // checked against anything. Confirm the decided quote actually belongs to that work order so
+    // a stale or mistaken URL (e.g. built from a different work order's page) cannot silently
+    // decide a quote that isn't the one the caller believes they are looking at.
+    if (response.ok) {
+      const decided = (await response.clone().json()) as { work_order_id?: string };
+      if (decided.work_order_id !== workOrderId) {
+        return c.json({ error: 'Not found' }, 404);
+      }
+    }
     return responseJson(c, response);
   },
 );

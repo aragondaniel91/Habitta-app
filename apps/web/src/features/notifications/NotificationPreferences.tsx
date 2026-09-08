@@ -44,7 +44,9 @@ export function NotificationPreferences({
                   notification_type: type,
                   email_enabled: event.target.checked,
                   in_app_enabled: preference?.in_app_enabled ?? true,
-                }).then(onSaved)
+                })
+                  .then(onSaved)
+                  .catch(() => undefined)
               }
             />{' '}
             Email: {type.replaceAll('_', ' ')}

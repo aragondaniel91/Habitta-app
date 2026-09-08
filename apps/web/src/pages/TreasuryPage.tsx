@@ -80,6 +80,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   const [editingAccountId, setEditingAccountId] = useState('');
   const [transferToReverse, setTransferToReverse] = useState<string>('');
   const [reversalReason, setReversalReason] = useState('');
+  const [reversalError, setReversalError] = useState('');
   const [reversing, setReversing] = useState(false);
 
   const load = useCallback(async () => {
@@ -303,6 +304,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                           <Button
                             onClick={() => {
                               setReversalReason('');
+                              setReversalError('');
                               setTransferToReverse(transfer.id);
                             }}
                             size="sm"
@@ -456,9 +458,16 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           busyLabel="Reversando…"
           confirmLabel="Reversar transferencia"
           description="Habitta creará un movimiento compensatorio en cada cuenta. La transferencia original se conserva en el historial."
-          onCancel={() => setTransferToReverse('')}
+          onCancel={() => {
+            setTransferToReverse('');
+            setReversalError('');
+          }}
           onConfirm={async () => {
-            if (reversalReason.trim().length < 2) return;
+            if (reversalReason.trim().length < 2) {
+              setReversalError('Explica el motivo del reverso (mínimo 2 caracteres).');
+              return;
+            }
+            setReversalError('');
             setReversing(true);
             try {
               await reverseTreasuryTransfer(
@@ -469,6 +478,12 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
               );
               setTransferToReverse('');
               await afterWrite('Transferencia reversada.');
+            } catch (requestError) {
+              setReversalError(
+                requestError instanceof Error
+                  ? requestError.message
+                  : 'No se pudo reversar la transferencia.',
+              );
             } finally {
               setReversing(false);
             }
@@ -480,12 +495,20 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
             <textarea
               className="input"
               minLength={2}
-              onChange={(event) => setReversalReason(event.target.value)}
+              onChange={(event) => {
+                setReversalReason(event.target.value);
+                if (reversalError) setReversalError('');
+              }}
               placeholder="Explica por qué se reversa esta transferencia"
               required
               value={reversalReason}
             />
           </label>
+          {reversalError ? (
+            <p className="treasury-inline-alert" role="alert">
+              {reversalError}
+            </p>
+          ) : null}
         </ConfirmDialog>
       ) : null}
 

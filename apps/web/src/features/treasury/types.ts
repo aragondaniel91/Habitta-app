@@ -87,8 +87,19 @@ export const recordableKinds: TreasuryMovementKind[] = [
   'adjustment',
 ];
 
-export const directionForKind = (kind: TreasuryMovementKind): 'credit' | 'debit' => {
+/**
+ * Deposits, withdrawals and fees always move funds the same way, so their direction is implied
+ * by the kind. An adjustment is a correction that can go either way -- the database places no
+ * constraint on its direction (see treasury_foundation.sql's record_treasury_movement) -- so the
+ * caller must say which one this adjustment is; `adjustmentDirection` defaults to 'credit' only
+ * to preserve behavior for call sites that do not pass it.
+ */
+export const directionForKind = (
+  kind: TreasuryMovementKind,
+  adjustmentDirection: 'credit' | 'debit' = 'credit',
+): 'credit' | 'debit' => {
   if (kind === 'withdrawal' || kind === 'fee') return 'debit';
+  if (kind === 'adjustment') return adjustmentDirection;
   return 'credit';
 };
 

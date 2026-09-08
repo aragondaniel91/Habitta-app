@@ -61,7 +61,14 @@ export function CondominiumNotificationSettings({
             min="1"
             max="30"
             value={settings.due_soon_days}
-            onChange={(e) => setSettings({ ...settings, due_soon_days: e.target.valueAsNumber })}
+            onChange={(e) => {
+              // An empty or otherwise unparsable field yields NaN from valueAsNumber; keep the
+              // last valid value instead of letting NaN into state (and eventually the request
+              // body, where JSON turns it into `null` and a stale-looking value gets saved).
+              const parsed = e.target.valueAsNumber;
+              if (Number.isNaN(parsed)) return;
+              setSettings({ ...settings, due_soon_days: parsed });
+            }}
           />
         </label>
         <label>

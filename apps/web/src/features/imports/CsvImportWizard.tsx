@@ -92,6 +92,22 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
   const validRows = useMemo(() => rows.filter((row) => row.errors.length === 0), [rows]);
   const invalidRows = useMemo(() => rows.filter((row) => row.errors.length > 0), [rows]);
 
+  // Every "people" row also carries a unit_code (the unit they belong to), so
+  // `unit_code || first_name` never reaches first_name -- it always resolves to unit_code. Two
+  // different residents of the same unit (an owner and a tenant, several family members) then
+  // show the identical reference in the preview table and look like the same person duplicated.
+  // Prefer the person's own name for that kind instead.
+  const rowReference = (row: ValidatedImportRow) => {
+    if (kind === 'people') {
+      const name = [row.data.first_name, row.data.last_name]
+        .map((part) => part?.trim())
+        .filter(Boolean)
+        .join(' ');
+      if (name) return name;
+    }
+    return row.data.unit_code || '—';
+  };
+
   const readFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -355,7 +371,7 @@ export function CsvImportWizard({ condominiumId, kind, session, onImported }: Pr
                 {rows.slice(0, 100).map((row) => (
                   <tr key={row.rowNumber}>
                     <td>{row.rowNumber}</td>
-                    <td>{row.data.unit_code || row.data.first_name || '—'}</td>
+                    <td>{rowReference(row)}</td>
                     <td>
                       <Badge tone={row.errors.length ? 'warning' : 'success'}>
                         {row.errors.length ? 'Corregir' : 'Válida'}

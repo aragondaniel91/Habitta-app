@@ -86,6 +86,8 @@ export const recordTreasuryMovement = async (
     description: string;
     reference?: string;
     overdraftReason?: string;
+    /** Only meaningful for 'adjustment' -- every other kind's direction is implied by its kind. */
+    adjustmentDirection?: 'credit' | 'debit';
   },
 ) => {
   const requestKey = treasuryRequestKey('movement');
@@ -108,7 +110,7 @@ export const recordTreasuryMovement = async (
       occurredOn: input.occurredOn,
       description: input.description,
       ...(input.reference ? { reference: input.reference } : {}),
-      direction: directionForKind(input.movementKind),
+      direction: directionForKind(input.movementKind, input.adjustmentDirection),
       idempotencyKey: requestKey,
     }),
   });
