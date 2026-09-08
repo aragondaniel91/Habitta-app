@@ -308,7 +308,11 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
         title="Finanzas y evidencias"
       />
 
-      {error ? <div className="maintenance-financial-alert">{error}</div> : null}
+      {error ? (
+        <div className="maintenance-financial-alert" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       <Surface className="maintenance-financial-selector">
         <Field label="Orden de trabajo">
