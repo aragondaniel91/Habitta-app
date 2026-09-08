@@ -55,7 +55,15 @@ type Props = {
   session: Session;
 };
 
-const statusColors = ['#28a745', '#1b4f72', '#7aaee2', '#e39b45', '#c94d58', '#64748b'];
+// Design-token colours (not hex literals) so this donut reacts to dark mode.
+const statusColors = [
+  'var(--green)',
+  'var(--blue)',
+  'var(--chart-sky)',
+  'var(--chart-amber)',
+  'var(--red)',
+  'var(--muted)',
+];
 
 function MetricCard({
   icon,
