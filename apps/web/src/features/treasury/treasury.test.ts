@@ -52,6 +52,17 @@ describe('treasury workspace', () => {
     expect(directionForKind('fee')).toBe('debit');
   });
 
+  it('lets an adjustment go either way, unlike every other recordable kind', () => {
+    // The database places no direction constraint on 'adjustment' movements (see
+    // record_treasury_movement in treasury_foundation.sql) -- it is a correction that can
+    // increase or decrease a balance, so the caller's chosen direction must be honored.
+    expect(directionForKind('adjustment', 'credit')).toBe('credit');
+    expect(directionForKind('adjustment', 'debit')).toBe('debit');
+    // Kinds whose direction is implied by the kind ignore any adjustmentDirection override.
+    expect(directionForKind('withdrawal', 'credit')).toBe('debit');
+    expect(directionForKind('deposit', 'debit')).toBe('credit');
+  });
+
   it('never offers the kinds produced by a dedicated operation', () => {
     for (const kind of ['transfer_in', 'transfer_out', 'reversal'] as const) {
       expect(recordableKinds).not.toContain(kind);
