@@ -86,7 +86,19 @@ billingRoutes.post('/:id/billing/setup', async (c) => {
     if (beginResponse.status === 401 || beginResponse.status === 403 || error.code === '42501') {
       return c.json({ error: 'Forbidden' }, 403);
     }
-    return c.json({ error: error.message ?? 'Billing setup could not be started' }, 400);
+
+    // Log the upstream failure server-side, but never forward its raw message to the client --
+    // Postgrest/RPC error text can carry internal details (constraint names, SQL fragments) that
+    // are not meant to leave the API boundary.
+    console.error(
+      JSON.stringify({
+        event: 'billing_setup_begin_failed',
+        status: beginResponse.status,
+        code: error.code ?? null,
+        message: error.message ?? null,
+      }),
+    );
+    return c.json({ error: 'Billing setup could not be started' }, 400);
   }
 
   const attempt = beginValue as BillingSetupAttempt;
