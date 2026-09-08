@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useDialogBehavior } from '../components/Drawer';
-import { CheckCircleIcon, PaymentsIcon, SettingsIcon } from '../components/icons';
+import { PaymentsIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
 import { paymentApi, paymentProof } from '../features/payments/api';
 import { PaymentAllocationEditor } from '../features/payments/components/PaymentAllocationEditor';
@@ -260,139 +260,6 @@ function PaymentForm({
   );
 }
 
-function MethodsForm({
-  condominiumId,
-  session,
-  methods,
-  onChanged,
-}: {
-  condominiumId: string;
-  session: Session;
-  methods: PaymentMethod[];
-  onChanged: (message: string) => Promise<void>;
-}) {
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSaving(true);
-    setMessage('');
-    try {
-      const values = Object.fromEntries(new FormData(event.currentTarget));
-      await paymentApi(`/v1/condominiums/${condominiumId}/payment-methods`, session, {
-        method: 'POST',
-        body: JSON.stringify({
-          methodType: String(values.methodType),
-          displayName: String(values.displayName),
-          currencyCode: String(values.currencyCode),
-          accountHolder: String(values.accountHolder ?? ''),
-          bankName: String(values.bankName ?? ''),
-          accountIdentifierMasked: String(values.accountIdentifierMasked ?? ''),
-          phoneMasked: String(values.phoneMasked ?? ''),
-          emailMasked: String(values.emailMasked ?? ''),
-          instructions: String(values.instructions ?? ''),
-          requiresReference: values.requiresReference === 'on',
-          requiresProof: values.requiresProof === 'on',
-          isActive: true,
-        }),
-      });
-      event.currentTarget.reset();
-      await onChanged('Método de pago creado.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo crear el método.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="payments-methods-workspace">
-      <div className="payments-method-list">
-        {methods.map((method) => (
-          <article key={method.id}>
-            <div>
-              <strong>{method.display_name}</strong>
-              <span>
-                {method.method_type.replaceAll('_', ' ')} · {method.currency_code}
-              </span>
-            </div>
-            <div>
-              {method.requires_reference ? <Badge tone="info">Referencia</Badge> : null}
-              {method.requires_proof ? <Badge tone="warning">Comprobante</Badge> : null}
-              <Badge tone={method.is_active ? 'success' : 'neutral'}>
-                {method.is_active ? 'Activo' : 'Inactivo'}
-              </Badge>
-            </div>
-          </article>
-        ))}
-      </div>
-      <form
-        className="payments-form payments-method-form ux-form"
-        onSubmit={(event) => void submit(event)}
-      >
-        <div className="payments-form__section-heading">
-          <strong>Agregar método</strong>
-          <span>Publica instrucciones claras para residentes y administradores.</span>
-        </div>
-        {message ? <div className="payments-form__message">{message}</div> : null}
-        <div className="payments-form__grid">
-          <Field label="Tipo">
-            <Select name="methodType">
-              <option value="bank_transfer">Transferencia bancaria</option>
-              <option value="pago_movil">Pago Móvil</option>
-              <option value="zelle">Zelle</option>
-              <option value="cash">Efectivo</option>
-              <option value="other">Otro</option>
-            </Select>
-          </Field>
-          <Field label="Moneda">
-            <Select name="currencyCode">
-              <option>USD</option>
-              <option>VES</option>
-            </Select>
-          </Field>
-        </div>
-        <Field label="Nombre visible">
-          <input className="input" name="displayName" required />
-        </Field>
-        <div className="payments-form__grid">
-          <Field label="Titular">
-            <input className="input" name="accountHolder" />
-          </Field>
-          <Field label="Banco">
-            <input className="input" name="bankName" />
-          </Field>
-        </div>
-        <div className="payments-form__grid">
-          <Field label="Cuenta enmascarada">
-            <input className="input" name="accountIdentifierMasked" placeholder="****1234" />
-          </Field>
-          <Field label="Teléfono enmascarado">
-            <input className="input" name="phoneMasked" placeholder="****5678" />
-          </Field>
-        </div>
-        <Field label="Correo enmascarado">
-          <input className="input" name="emailMasked" placeholder="a***@correo.com" />
-        </Field>
-        <Field label="Instrucciones">
-          <textarea className="payments-textarea" name="instructions" />
-        </Field>
-        <div className="payments-checkbox-row">
-          <label>
-            <input name="requiresReference" type="checkbox" /> Exigir referencia
-          </label>
-          <label>
-            <input name="requiresProof" type="checkbox" /> Exigir comprobante
-          </label>
-        </div>
-        <Button disabled={saving} type="submit">
-          {saving ? 'Creando…' : 'Crear método'}
-        </Button>
-      </form>
-    </div>
-  );
-}
-
 function ReviewPayment({
   condominiumId,
   session,
@@ -642,67 +509,6 @@ function ReviewPayment({
   );
 }
 
-function ReceiptView({ payment, receipt }: { payment: Payment; receipt: PaymentReceipt }) {
-  return (
-    <article className="payments-receipt-card">
-      {payment.status === 'reversed' ? (
-        <div className="payments-receipt-card__reversed">PAGO REVERSADO</div>
-      ) : null}
-      <div className="payments-receipt-card__brand">
-        <span>
-          <CheckCircleIcon size={22} />
-        </span>
-        <div>
-          <strong>Habitta</strong>
-          <small>Recibo de pago</small>
-        </div>
-      </div>
-      <div className="payments-receipt-card__number">
-        <span>Número de recibo</span>
-        <strong>{receipt.receipt_number}</strong>
-      </div>
-      <div className="payments-receipt-card__amount">
-        <span>Monto confirmado</span>
-        <strong>
-          {formatDashboardAmount(
-            receipt.snapshot.payment.amount,
-            receipt.snapshot.payment.currency_code,
-          )}
-        </strong>
-      </div>
-      <div className="payments-receipt-card__details">
-        <div>
-          <span>Condominio</span>
-          <strong>{receipt.snapshot.condominium.name}</strong>
-        </div>
-        <div>
-          <span>Unidad</span>
-          <strong>{receipt.snapshot.unit.code}</strong>
-        </div>
-        <div>
-          <span>Pagador</span>
-          <strong>{receipt.snapshot.payment.payer}</strong>
-        </div>
-        <div>
-          <span>Fecha</span>
-          <strong>{formatDashboardDate(receipt.snapshot.payment.date)}</strong>
-        </div>
-        <div>
-          <span>Método</span>
-          <strong>{receipt.snapshot.method.display_name}</strong>
-        </div>
-        <div>
-          <span>Emitido</span>
-          <strong>{formatDashboardDate(receipt.issued_at)}</strong>
-        </div>
-      </div>
-      <Button onClick={() => window.print()} variant="secondary">
-        Imprimir recibo
-      </Button>
-    </article>
-  );
-}
-
 export function PaymentsDrawerHost({
   condominiumId,
   session,
@@ -716,38 +522,9 @@ export function PaymentsDrawerHost({
 }: Props) {
   if (!drawer) return null;
 
-  if (drawer.type === 'methods') {
-    return (
-      <DrawerFrame
-        description="Configura opciones visibles y requisitos de validación."
-        eyebrow="Configuración financiera"
-        icon={<SettingsIcon size={22} />}
-        onClose={onClose}
-        title="Métodos de pago"
-      >
-        <MethodsForm
-          condominiumId={condominiumId}
-          methods={methods}
-          onChanged={onChanged}
-          session={session}
-        />
-      </DrawerFrame>
-    );
-  }
-
-  if (drawer.type === 'receipt') {
-    return (
-      <DrawerFrame
-        description="Documento generado a partir del pago aprobado y sus aplicaciones."
-        eyebrow="Trazabilidad"
-        icon={<CheckCircleIcon size={22} />}
-        onClose={onClose}
-        title="Recibo de pago"
-      >
-        <ReceiptView payment={drawer.payment} receipt={drawer.receipt} />
-      </DrawerFrame>
-    );
-  }
+  // 'methods' and 'receipt' are handled upstream by PaymentsDrawers.tsx, which intercepts those
+  // drawer modes with its own views before ever delegating to this host. Only null, 'create',
+  // 'edit' and 'review' reach here.
 
   if (drawer.type === 'review') {
     return (
