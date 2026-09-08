@@ -86,7 +86,9 @@ export function NotificationCenter({
       {error && <p role="alert">{error}</p>}
       <button
         onClick={() =>
-          void markAllRead(session, onlyCurrent ? condominiumId : undefined).then(refresh)
+          void markAllRead(session, onlyCurrent ? condominiumId : undefined)
+            .then(refresh)
+            .catch(() => setError('No se pudieron marcar las notificaciones como leídas.'))
         }
       >
         Marcar todas como leídas
@@ -96,8 +98,16 @@ export function NotificationCenter({
           <NotificationItem
             key={item.id}
             item={item}
-            onRead={() => void markRead(session, item.id).then(refresh)}
-            onArchive={() => void archiveNotification(session, item.id).then(refresh)}
+            onRead={() =>
+              void markRead(session, item.id)
+                .then(refresh)
+                .catch(() => setError('No se pudo marcar la notificación como leída.'))
+            }
+            onArchive={() =>
+              void archiveNotification(session, item.id)
+                .then(refresh)
+                .catch(() => setError('No se pudo archivar la notificación.'))
+            }
             onNavigate={() => {
               if (item.action_url?.startsWith('/app/') && !item.action_url.startsWith('//'))
                 window.location.assign(item.action_url);
