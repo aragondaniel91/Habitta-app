@@ -47,18 +47,18 @@
 }
 
 .module-help-checklist[data-tone='warning'] {
-  border-color: #f0d7ad;
-  background: #fff9ec;
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
 }
 
 .module-help-checklist[data-tone='success'] {
-  border-color: #bfe3c7;
-  background: #f2fbf4;
+  border-color: var(--green-border);
+  background: var(--green-soft);
 }
 
 .module-help-checklist[data-tone='info'] {
-  border-color: #c6dcef;
-  background: #f4f9fd;
+  border-color: color-mix(in srgb, var(--blue) 25%, var(--surface));
+  background: var(--blue-soft);
 }
 
 .module-help-checklist ul {
