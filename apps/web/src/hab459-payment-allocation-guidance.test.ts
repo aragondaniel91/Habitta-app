@@ -68,6 +68,6 @@ describe('HAB-459 guided payment allocations', () => {
     expect(editorSource).toContain('previewIsCurrent');
     expect(editorSource).toContain('Los cambios requieren una nueva previsualización');
     expect(editorSource).toContain('disabled={!readyForPreview}');
-    expect(editorSource).toContain('disabled={preview.errors.length > 0}');
+    expect(editorSource).toContain('disabled={preview.errors.length > 0 || saving}');
   });
 });
