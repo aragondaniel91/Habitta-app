@@ -37,6 +37,7 @@ import {
   notificationTypeMetadata,
 } from '../lib/settings';
 import type { NotificationPreferenceDraft, NotificationType } from '../lib/settings';
+import { useCondominiumRoles } from '../lib/roles';
 import '../settings.css';
 
 type Props = {
@@ -150,13 +151,26 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
+  // get_condominium_notification_settings is restricted server-side to organization owners,
+  // condominium admins and accountants (can_manage_receivables raises 42501 for every other
+  // role). Every condominium-creation path grants its creator both memberships atomically, so a
+  // real organization owner always also holds condominium_admin here -- skip the request for
+  // roles that can never pass that check instead of firing a guaranteed-403 RPC call on every
+  // Settings visit. The rest of this component already renders the "restricted" state correctly
+  // when settingsResult is unavailable, so this only removes the doomed network call.
+  const roles = useCondominiumRoles();
+  const canManageNotificationSettings =
+    roles.includes('condominium_admin') || roles.includes('accountant');
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const [preferenceResult, settingsResult] = await Promise.allSettled([
         getPreferences(session, condominiumId),
-        getNotificationSettings(session, condominiumId),
+        canManageNotificationSettings
+          ? getNotificationSettings(session, condominiumId)
+          : Promise.reject(new Error('restricted-role')),
       ]);
       if (preferenceResult.status === 'rejected' && settingsResult.status === 'rejected') {
         throw preferenceResult.reason;
@@ -189,7 +203,7 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
     } finally {
       setLoading(false);
     }
-  }, [condominiumId, session]);
+  }, [condominiumId, session, canManageNotificationSettings]);
 
   useEffect(() => {
     void load();
