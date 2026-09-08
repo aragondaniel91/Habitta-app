@@ -125,7 +125,7 @@
   min-height: 156px;
   align-content: space-between;
   gap: 0.8rem;
-  border: 1px solid rgb(217 225 233 / 0.85);
+  border: 1px solid var(--border);
   padding: 1.1rem;
   box-shadow: 0 8px 24px rgb(13 27 42 / 0.045);
   transition:
@@ -201,7 +201,7 @@
 .receivables-panel,
 .receivables-workspace {
   min-width: 0;
-  border: 1px solid rgb(217 225 233 / 0.85);
+  border: 1px solid var(--border);
   box-shadow: 0 8px 24px rgb(13 27 42 / 0.04);
 }
 
@@ -254,7 +254,7 @@
 
 .receivables-aging-bar > span[data-bucket='days_31_60'],
 .receivables-aging-list > div > span[data-bucket='days_31_60'] {
-  background: #3c7cc0;
+  background: var(--chart-blue);
 }
 
 .receivables-aging-bar > span[data-bucket='days_61_90'],
@@ -366,7 +366,7 @@
 .receivables-status-list button > span[data-tone='warning'],
 .receivables-opening-preview > div > span[data-tone='warning'] {
   background: var(--amber-soft);
-  color: #bf7416;
+  color: var(--amber);
 }
 
 .receivables-status-list button > span[data-tone='green'],

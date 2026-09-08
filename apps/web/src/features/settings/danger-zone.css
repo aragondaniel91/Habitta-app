@@ -1,9 +1,9 @@
 .danger-zone {
-  border: 1px solid color-mix(in srgb, var(--color-danger, #b42318) 28%, var(--border-color));
+  border: 1px solid color-mix(in srgb, var(--red) 28%, var(--border));
 }
 
 .danger-zone__heading h2 {
-  color: var(--color-danger, #b42318);
+  color: var(--red);
 }
 
 .danger-zone__warning {
@@ -11,9 +11,9 @@
   gap: 12px;
   padding: 14px;
   margin-block: 14px;
-  border: 1px solid color-mix(in srgb, var(--color-danger, #b42318) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 22%, transparent);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--color-danger, #b42318) 6%, transparent);
+  background: color-mix(in srgb, var(--red) 6%, transparent);
 }
 
 .danger-zone__warning > span {
@@ -23,8 +23,8 @@
   height: 36px;
   place-items: center;
   border-radius: 10px;
-  color: var(--color-danger, #b42318);
-  background: color-mix(in srgb, var(--color-danger, #b42318) 10%, transparent);
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
 }
 
 .danger-zone__warning strong,
@@ -62,13 +62,13 @@
 }
 
 .danger-zone__error {
-  color: var(--color-danger, #b42318);
-  background: color-mix(in srgb, var(--color-danger, #b42318) 8%, transparent);
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
 }
 
 .danger-zone__cleanup {
-  border: 1px solid var(--border-color);
-  background: var(--surface-subtle, rgba(127, 127, 127, 0.06));
+  border: 1px solid var(--border);
+  background: var(--surface-subtle);
 }
 
 .danger-zone__cleanup .button {

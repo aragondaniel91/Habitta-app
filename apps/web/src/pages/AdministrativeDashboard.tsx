@@ -45,7 +45,15 @@ import { buildDashboardSourceWarning, settleDashboardSource } from '../lib/dashb
 import '../dashboard.css';
 import '../dashboard-mobile.css';
 
-const PORTFOLIO_COLORS = ['#28a745', '#78aee8', '#3978bd', '#e39b45', '#c94d58'] as const;
+// Mirrors the aging-bucket palette in receivables-core.css (current, 1-30, 31-60, 61-90, over-90)
+// so this donut and that bar chart read as the same sequence, and so it reacts to dark mode.
+const PORTFOLIO_COLORS = [
+  'var(--green)',
+  'var(--chart-sky)',
+  'var(--chart-blue)',
+  'var(--chart-amber)',
+  'var(--red)',
+] as const;
 
 type DashboardData = {
   units: DashboardUnit[];

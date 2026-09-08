@@ -335,7 +335,7 @@
 }
 
 .maintenance-priority[data-priority='high']::before {
-  background: #d97706;
+  background: var(--amber);
 }
 
 .maintenance-priority[data-priority='urgent']::before {

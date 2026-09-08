@@ -526,7 +526,7 @@
 
 .dashboard-priority-list button > span[data-tone='warning'] {
   background: var(--amber-soft);
-  color: #b56e13;
+  color: var(--amber);
 }
 
 .dashboard-priority-list button > span[data-tone='success'] {
