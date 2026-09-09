@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { PaymentsIcon } from '../../components/icons';
 import { Badge, Button, Surface } from '../../components/ui';
-import { FeesIcon } from '../../components/icons';
 import { ApiRequestError } from '../../lib/api';
 import {
   clearBillingSetupIntent,
@@ -144,7 +144,7 @@ export function BillingMethodSetupCard({
 
       <div className="settings-billing-method__security">
         <span aria-hidden="true">
-          <FeesIcon size={20} />
+          <PaymentsIcon size={20} />
         </span>
         <div>
           <strong>
