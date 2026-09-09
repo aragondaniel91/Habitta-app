@@ -20,8 +20,10 @@ import {
   Surface,
 } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
+import { CondominiumBillingPanel } from '../features/settings/CondominiumBillingPanel';
 import { CondominiumDangerZone } from '../features/settings/CondominiumDangerZone';
 import { CondominiumIdentityPanel } from '../features/settings/CondominiumIdentityPanel';
+import '../features/settings/settings-section-nav.css';
 import {
   getNotificationSettings,
   getPreferences,
@@ -310,7 +312,7 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
             </Button>
           </>
         }
-        description={`${condominiumName} · controla canales, recordatorios y preferencias personales.`}
+        description={`${condominiumName} · administra identidad, notificaciones, preferencias y la suscripción de Habitta.`}
         eyebrow="Sistema y preferencias"
         title="Configuración"
       />
@@ -321,6 +323,13 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
           <CheckCircleIcon size={17} /> {message}
         </div>
       ) : null}
+
+      <nav aria-label="Secciones de configuración" className="settings-section-nav">
+        <a href="#notificaciones">Notificaciones</a>
+        <a href="#perfil-condominio">Perfil del condominio</a>
+        <a href="#plan-facturacion">Plan y facturación</a>
+        <a href="#seguridad">Seguridad</a>
+      </nav>
 
       <section aria-label="Resumen de configuración" className="settings-metrics-grid">
         <MetricCard
@@ -353,7 +362,7 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
         />
       </section>
 
-      <section className="settings-layout">
+      <section className="settings-layout settings-anchor-section" id="notificaciones">
         <div className="settings-primary-column">
           <Surface className="settings-panel settings-global-panel">
             <div className="settings-section-heading">
@@ -583,14 +592,24 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
             </p>
           </Surface>
 
-          <CondominiumIdentityPanel condominiumId={condominiumId} session={session} />
-
-          <CondominiumDangerZone
-            condominiumId={condominiumId}
-            condominiumName={condominiumName}
-            session={session}
-          />
+          <div className="settings-anchor-section" id="perfil-condominio">
+            <CondominiumIdentityPanel condominiumId={condominiumId} session={session} />
+          </div>
         </aside>
+      </section>
+
+      <CondominiumBillingPanel
+        condominiumId={condominiumId}
+        condominiumName={condominiumName}
+        session={session}
+      />
+
+      <section className="settings-danger-section settings-anchor-section" id="seguridad">
+        <CondominiumDangerZone
+          condominiumId={condominiumId}
+          condominiumName={condominiumName}
+          session={session}
+        />
       </section>
     </div>
   );
