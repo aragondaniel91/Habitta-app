@@ -58,13 +58,34 @@ function DrawerFrame({
   children: ReactNode;
 }) {
   const panel = useRef<HTMLElement>(null);
-  useDialogBehavior(panel, onClose);
+  const [closeDisabled, setCloseDisabled] = useState(false);
+
+  useEffect(() => {
+    const element = panel.current;
+    if (!element) return undefined;
+    const updateBusy = () =>
+      setCloseDisabled(
+        Boolean(element.querySelector('[data-busy="true"],[aria-busy="true"]')),
+      );
+    updateBusy();
+    const observer = new MutationObserver(updateBusy);
+    observer.observe(element, {
+      attributes: true,
+      attributeFilter: ['aria-busy', 'data-busy'],
+      childList: true,
+      subtree: true,
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  useDialogBehavior(panel, onClose, closeDisabled);
 
   return (
     <div className="payments-drawer-layer" role="presentation">
       <button
         aria-label="Cerrar panel"
         className="payments-drawer-backdrop"
+        disabled={closeDisabled}
         onClick={onClose}
         tabIndex={-1}
         type="button"
@@ -87,6 +108,7 @@ function DrawerFrame({
           <button
             aria-label="Cerrar"
             className="payments-drawer__close"
+            disabled={closeDisabled}
             onClick={onClose}
             type="button"
           >
@@ -125,6 +147,7 @@ function PaymentForm({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (saving) return;
     setSaving(true);
     setMessage('');
     try {
@@ -275,6 +298,7 @@ function ReviewPayment({
 }) {
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [treasuryAccounts, setTreasuryAccounts] = useState<TreasuryAccount[]>([]);
   const [treasuryLoading, setTreasuryLoading] = useState(true);
   const [selectedTreasuryAccountId, setSelectedTreasuryAccountId] = useState(
@@ -324,6 +348,8 @@ function ReviewPayment({
   ]);
 
   const transition = async (action: string, nextMessage: string, includeReason = false) => {
+    if (processingAction) return;
+    setProcessingAction(action);
     setMessage('');
     try {
       await paymentApi(`${endpoint}/${action}`, session, {
@@ -333,6 +359,8 @@ function ReviewPayment({
       await onChanged(nextMessage);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo actualizar el pago.');
+    } finally {
+      setProcessingAction(null);
     }
   };
 
@@ -386,13 +414,15 @@ function ReviewPayment({
       <div className="payments-review__actions">
         {payment.status === 'submitted' ? (
           <Button
+            disabled={processingAction !== null}
             onClick={() => void transition('start-review', 'Revisión iniciada.')}
             variant="secondary"
           >
-            Iniciar revisión
+            {processingAction === 'start-review' ? 'Procesando…' : 'Iniciar revisión'}
           </Button>
         ) : null}
         <Button
+          disabled={processingAction !== null}
           onClick={() =>
             void paymentProof(`${endpoint}/proof`, session)
               .then((value) => {
@@ -410,24 +440,25 @@ function ReviewPayment({
         <Field label="Motivo para corrección, rechazo o reverso">
           <textarea
             className="payments-textarea"
+            disabled={processingAction !== null}
             onChange={(event) => setReason(event.target.value)}
             value={reason}
           />
         </Field>
         <div>
           <Button
-            disabled={!reason.trim()}
+            disabled={!reason.trim() || processingAction !== null}
             onClick={() => void transition('request-correction', 'Corrección solicitada.', true)}
             variant="secondary"
           >
-            Solicitar corrección
+            {processingAction === 'request-correction' ? 'Procesando…' : 'Solicitar corrección'}
           </Button>
           <Button
-            disabled={!reason.trim()}
+            disabled={!reason.trim() || processingAction !== null}
             onClick={() => void transition('reject', 'Pago rechazado.', true)}
             variant="danger"
           >
-            Rechazar
+            {processingAction === 'reject' ? 'Procesando…' : 'Rechazar'}
           </Button>
         </div>
       </div>
@@ -448,7 +479,9 @@ function ReviewPayment({
           }
         >
           <Select
-            disabled={treasuryLoading || treasuryAccounts.length === 0}
+            disabled={
+              treasuryLoading || treasuryAccounts.length === 0 || processingAction !== null
+            }
             onChange={(event) => setSelectedTreasuryAccountId(event.target.value)}
             required={treasuryAccounts.length > 1}
             value={selectedTreasuryAccountId}
@@ -498,11 +531,11 @@ function ReviewPayment({
       </div>
       {payment.status === 'approved' ? (
         <Button
-          disabled={!reason.trim()}
+          disabled={!reason.trim() || processingAction !== null}
           onClick={() => void transition('reverse', 'Pago reversado.', true)}
           variant="danger"
         >
-          Reversar pago aprobado
+          {processingAction === 'reverse' ? 'Procesando…' : 'Reversar pago aprobado'}
         </Button>
       ) : null}
     </div>
