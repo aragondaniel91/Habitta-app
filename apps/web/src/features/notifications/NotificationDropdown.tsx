@@ -4,19 +4,15 @@ import { useDialogBehavior } from '../../components/Drawer';
 import { Button } from '../../components/ui';
 import './NotificationDropdown.css';
 
-export function NotificationDropdown({
-  open,
-  onClose,
-  children,
-}: {
-  open: boolean;
+type NotificationModalProps = {
   onClose: () => void;
   children: ReactNode;
-}) {
+};
+
+function NotificationModal({ onClose, children }: NotificationModalProps) {
   const panel = useRef<HTMLElement>(null);
   useDialogBehavior(panel, onClose);
 
-  if (!open) return null;
   return (
     <div className="notification-center-layer" role="presentation">
       <button
@@ -44,4 +40,17 @@ export function NotificationDropdown({
       </section>
     </div>
   );
+}
+
+export function NotificationDropdown({
+  open,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (!open) return null;
+  return <NotificationModal onClose={onClose}>{children}</NotificationModal>;
 }
