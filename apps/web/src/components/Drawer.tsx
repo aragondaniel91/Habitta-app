@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './ui';
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
+const BUSY_DESCENDANT = '[data-busy="true"],[aria-busy="true"]';
 
 type Props = {
   /**
@@ -17,6 +18,8 @@ type Props = {
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  /** Prevent Escape, backdrop and close-button dismissal while a mutation is in flight. */
+  closeDisabled?: boolean;
   /** Opt-in to the shared Habitta workspace visual contract without changing legacy drawers. */
   presentation?: 'legacy' | 'workspace';
   /** Rendered next to the close button, for actions that belong to the panel itself. */
@@ -32,8 +35,10 @@ type Props = {
 export function useDialogBehavior(
   panel: { current: HTMLElement | null },
   onClose: () => void,
+  closeDisabled = false,
 ): void {
   const onCloseRef = useRef(onClose);
+  const closeDisabledRef = useRef(closeDisabled);
   const previouslyFocusedRef = useRef<HTMLElement | null>(
     typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null),
   );
@@ -42,6 +47,10 @@ export function useDialogBehavior(
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    closeDisabledRef.current = closeDisabled;
+  }, [closeDisabled]);
 
   useEffect(() => {
     if (focusRestoreTimerRef.current !== null) {
@@ -60,7 +69,7 @@ export function useDialogBehavior(
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onCloseRef.current();
+        if (!closeDisabledRef.current) onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panel.current) return;
@@ -105,12 +114,31 @@ export function Drawer({
   onClose,
   children,
   wide = false,
+  closeDisabled = false,
   presentation = 'legacy',
   headerActions,
 }: Props) {
   const panel = useRef<HTMLElement>(null);
+  const [descendantBusy, setDescendantBusy] = useState(false);
   const workspace = presentation === 'workspace';
-  useDialogBehavior(panel, onClose);
+  const effectiveCloseDisabled = closeDisabled || descendantBusy;
+
+  useEffect(() => {
+    const element = panel.current;
+    if (!element) return undefined;
+    const updateBusy = () => setDescendantBusy(Boolean(element.querySelector(BUSY_DESCENDANT)));
+    updateBusy();
+    const observer = new MutationObserver(updateBusy);
+    observer.observe(element, {
+      attributes: true,
+      attributeFilter: ['aria-busy', 'data-busy'],
+      childList: true,
+      subtree: true,
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  useDialogBehavior(panel, onClose, effectiveCloseDisabled);
 
   return (
     <div
@@ -125,6 +153,7 @@ export function Drawer({
         className={[`${prefix}-drawer-backdrop`, workspace ? 'ux-drawer-backdrop' : '']
           .filter(Boolean)
           .join(' ')}
+        disabled={effectiveCloseDisabled}
         onClick={onClose}
         tabIndex={-1}
         type="button"
@@ -153,7 +182,13 @@ export function Drawer({
           </div>
           <div className="drawer-header-actions">
             {headerActions}
-            <Button aria-label="Cerrar" onClick={onClose} size="sm" variant="ghost">
+            <Button
+              aria-label="Cerrar"
+              disabled={effectiveCloseDisabled}
+              onClick={onClose}
+              size="sm"
+              variant="ghost"
+            >
               ×
             </Button>
           </div>

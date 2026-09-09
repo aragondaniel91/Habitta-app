@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { Button } from '../../../components/ui';
 import {
   allocationReceivableAmount,
   isPositiveAllocationRate,
@@ -28,6 +29,7 @@ export function PaymentAllocationEditor({
   const [allocations, setAllocations] = useState<AllocationInput[]>([]);
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
   const [previewSnapshot, setPreviewSnapshot] = useState<PreviewSnapshot>();
+  const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
   const latestPreviewRequest = useRef(0);
   const receivableById = useMemo(
@@ -118,18 +120,25 @@ export function PaymentAllocationEditor({
     allocations.length > 0 && allocations.every((allocation) => !allocationProblem(allocation));
 
   const runPreview = async () => {
+    if (previewing || saving) return;
     const requestId = ++latestPreviewRequest.current;
     const requestedAllocations = allocations.map((allocation) => ({ ...allocation }));
     const requestedFingerprint = allocationPreviewFingerprint(
       requestedAllocations,
       paymentCurrency,
     );
-    const value = await onPreview(requestedAllocations);
-    if (requestId !== latestPreviewRequest.current) return;
-    setPreviewSnapshot({ fingerprint: requestedFingerprint, value });
+    setPreviewing(true);
+    try {
+      const value = await onPreview(requestedAllocations);
+      if (requestId !== latestPreviewRequest.current) return;
+      setPreviewSnapshot({ fingerprint: requestedFingerprint, value });
+    } finally {
+      setPreviewing(false);
+    }
   };
 
   const approve = async () => {
+    if (saving || previewing) return;
     setSaving(true);
     try {
       await onApprove(allocations);
@@ -220,21 +229,29 @@ export function PaymentAllocationEditor({
                 {problem}
               </p>
             ) : null}
-            <button
+            <Button
               className="payments-allocation-editor__remove"
+              disabled={previewing || saving}
               onClick={() =>
                 setAllocations((current) => current.filter((_, position) => position !== index))
               }
+              size="sm"
               type="button"
+              variant="ghost"
             >
               Quitar obligación
-            </button>
+            </Button>
           </fieldset>
         );
       })}
-      <button disabled={!readyForPreview} onClick={() => void runPreview()} type="button">
-        Previsualizar aplicación
-      </button>
+      <Button
+        disabled={!readyForPreview || previewing || saving}
+        onClick={() => void runPreview()}
+        type="button"
+        variant="secondary"
+      >
+        {previewing ? 'Previsualizando…' : 'Previsualizar aplicación'}
+      </Button>
       {previewIsStale ? (
         <p role="status">Los cambios requieren una nueva previsualización antes de aprobar.</p>
       ) : null}
@@ -248,13 +265,13 @@ export function PaymentAllocationEditor({
           {preview.errors.map((error) => (
             <p key={error}>{error}</p>
           ))}
-          <button
-            disabled={preview.errors.length > 0 || saving}
+          <Button
+            disabled={preview.errors.length > 0 || saving || previewing}
             onClick={() => void approve()}
             type="button"
           >
             {saving ? 'Aprobando…' : 'Aprobar pago'}
-          </button>
+          </Button>
         </div>
       )}
     </div>

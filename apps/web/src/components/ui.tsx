@@ -7,14 +7,30 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: 'sm' | 'md';
 };
 
-export function Button({ className, variant = 'primary', size = 'md', ...props }: ButtonProps) {
+const busyButtonLabel =
+  /^(Guardando|Creando|Procesando|Aprobando|Enviando|Actualizando|Eliminando|Reversando|Marcando|Previsualizando|Subiendo|Importando|Publicando|Archivando|Cancelando|Reintentando|Cargando)…$/i;
+
+export function Button({
+  className,
+  variant = 'primary',
+  size = 'md',
+  children,
+  ...props
+}: ButtonProps) {
+  const inferredBusy =
+    props.disabled === true &&
+    typeof children === 'string' &&
+    busyButtonLabel.test(children.trim());
   return (
     <button
       {...props}
       className={['button', className].filter(Boolean).join(' ')}
+      data-busy={props['aria-busy'] === true || inferredBusy || undefined}
       data-size={size}
       data-variant={variant}
-    />
+    >
+      {children}
+    </button>
   );
 }
 
