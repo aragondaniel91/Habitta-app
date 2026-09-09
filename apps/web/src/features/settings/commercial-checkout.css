@@ -1,3 +1,29 @@
+.settings-commercial-card {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.settings-commercial-card .settings-section-heading {
+  margin-bottom: 18px;
+}
+
+.settings-commercial-card > .settings-account-profile {
+  padding-bottom: 18px;
+}
+
+.settings-commercial-card > .settings-account-details {
+  margin-top: 18px;
+}
+
+.settings-commercial-card > .settings-delivery-note {
+  margin-top: auto;
+  border-top: 0;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  background: var(--surface-subtle);
+}
+
 .settings-commercial-success {
   margin-top: 1rem;
 }

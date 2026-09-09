@@ -2,15 +2,20 @@
   border: 1px solid color-mix(in srgb, var(--red) 28%, var(--border));
 }
 
+.danger-zone__heading {
+  margin-bottom: 16px;
+}
+
 .danger-zone__heading h2 {
   color: var(--red);
 }
 
 .danger-zone__warning {
-  display: flex;
-  gap: 12px;
-  padding: 14px;
-  margin-block: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 18px;
   border: 1px solid color-mix(in srgb, var(--red) 22%, transparent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--red) 6%, transparent);
@@ -18,13 +23,17 @@
 
 .danger-zone__warning > span {
   display: grid;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   place-items: center;
   border-radius: 10px;
   color: var(--red);
   background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+
+.danger-zone__warning > div:not(.danger-zone__warning-action) {
+  min-width: 0;
 }
 
 .danger-zone__warning strong,
@@ -40,6 +49,18 @@
   color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.55;
+}
+
+.danger-zone__warning-action {
+  justify-self: end;
+}
+
+.danger-zone__warning-action .button {
+  white-space: nowrap;
+}
+
+.danger-zone__muted {
+  margin-top: 14px;
 }
 
 .danger-zone__confirm {
@@ -75,9 +96,25 @@
   margin-top: 12px;
 }
 
+@media (max-width: 860px) {
+  .danger-zone__warning {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: flex-start;
+  }
+
+  .danger-zone__warning-action {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .danger-zone__warning-action .button {
+    width: 100%;
+  }
+}
+
 @media (max-width: 640px) {
   .danger-zone__warning {
-    align-items: flex-start;
+    padding: 14px;
   }
 
   .danger-zone__actions {
