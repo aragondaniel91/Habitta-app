@@ -76,6 +76,18 @@ jobs:
               "              title={\n                search ? 'Sin coincidencias' : houseMode ? 'Aún no hay casas' : 'Aún no hay unidades'\n              }",
           )
 
+          legacy_test_path = 'apps/web/src/structure-management.test.ts'
+          replace_exact(
+              legacy_test_path,
+              "  it('keeps the secondary workspace focused on topology and buildings', async () => {",
+              "  it('keeps the secondary workspace topology-aware without sending house communities to buildings', async () => {",
+          )
+          replace_exact(
+              legacy_test_path,
+              "    expect(source).toContain('showUnitManagement ? (');\n    expect(source).toContain(\"{showUnitManagement && activeView === 'units'\");",
+              "    expect(source).toContain(\n      'const effectiveShowUnitManagement = showUnitManagement || houseMode;',\n    );\n    expect(source).toContain('effectiveShowUnitManagement ? (');\n    expect(source).toContain(\n      \"{effectiveShowUnitManagement && activeView === 'units'\",\n    );\n    expect(source).toContain(\n      \"if (houseMode && activeView === 'buildings') setActiveView('units')\",\n    );",
+          )
+
           test = Path('apps/web/src/hab507-house-community-structure-ux.test.ts')
           test.write_text("""import { readFileSync } from 'node:fs';
           import { describe, expect, it } from 'vitest';
@@ -100,6 +112,9 @@ jobs:
               expect(structurePage).toContain(
                 \"effectiveShowUnitManagement && activeView === 'units'\",
               );
+              expect(structurePage).toContain(
+                \"if (houseMode && activeView === 'buildings') setActiveView('units')\",
+              );
             });
 
             it('shows declared-house setup progress instead of an irrelevant inactive-units metric', () => {
@@ -113,9 +128,9 @@ jobs:
           """)
           PY
       - name: Format changed files
-        run: pnpm exec prettier --write apps/web/src/pages/UnitsPage.tsx apps/web/src/pages/StructureManagementPage.tsx apps/web/src/hab507-house-community-structure-ux.test.ts
-      - name: Run focused regression test
-        run: pnpm --filter @habitta/web test -- hab507-house-community-structure-ux.test.ts
+        run: pnpm exec prettier --write apps/web/src/pages/UnitsPage.tsx apps/web/src/pages/StructureManagementPage.tsx apps/web/src/structure-management.test.ts apps/web/src/hab507-house-community-structure-ux.test.ts
+      - name: Run web test suite
+        run: pnpm --filter @habitta/web test
       - name: Typecheck web
         run: pnpm --filter @habitta/web typecheck
       - name: Commit patch and remove one-shot workflow
@@ -124,6 +139,6 @@ jobs:
           rm .github/workflows/apply-house-community-structure-fix-once.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/web/src/pages/UnitsPage.tsx apps/web/src/pages/StructureManagementPage.tsx apps/web/src/hab507-house-community-structure-ux.test.ts .github/workflows/apply-house-community-structure-fix-once.yml
+          git add apps/web/src/pages/UnitsPage.tsx apps/web/src/pages/StructureManagementPage.tsx apps/web/src/structure-management.test.ts apps/web/src/hab507-house-community-structure-ux.test.ts .github/workflows/apply-house-community-structure-fix-once.yml
           git commit -m "fix: keep house communities out of building structure flow"
           git push origin HEAD:fix/house-community-structure-ux
