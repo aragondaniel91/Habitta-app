@@ -23,12 +23,16 @@ describe('physical structure management workspace', () => {
     expect(main).not.toContain("import './structure-management.css'");
   });
 
-  it('keeps the secondary workspace focused on topology and buildings', async () => {
+  it('keeps the secondary workspace topology-aware without sending house communities to buildings', async () => {
     const source = await readFile(pageUrl, 'utf8');
     expect(source).toContain('showUnitManagement = true');
     expect(source).toContain('Volver a Unidades');
-    expect(source).toContain('showUnitManagement ? (');
-    expect(source).toContain("{showUnitManagement && activeView === 'units'");
+    expect(source).toContain(
+      'const effectiveShowUnitManagement = showUnitManagement || houseMode;',
+    );
+    expect(source).toContain('effectiveShowUnitManagement ? (');
+    expect(source).toContain("{effectiveShowUnitManagement && activeView === 'units'");
+    expect(source).toContain("if (houseMode && activeView === 'buildings') setActiveView('units')");
   });
 
   it('supports topology-aware building administration and non-destructive unit editing', async () => {
