@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { Button } from '../../components/ui';
 import {
   archiveNotification,
   getNotifications,
@@ -30,7 +31,8 @@ export function NotificationCenter({
     [unreadOnly, setUnreadOnly] = useState(false),
     [onlyCurrent, setOnlyCurrent] = useState(true),
     [error, setError] = useState(''),
-    [loading, setLoading] = useState(false);
+    [loading, setLoading] = useState(false),
+    [markingAll, setMarkingAll] = useState(false);
   const load = useCallback(
     async (append = false) => {
       setLoading(true);
@@ -63,6 +65,19 @@ export function NotificationCenter({
     changed();
     await load();
   };
+  const markEverythingRead = async () => {
+    if (markingAll) return;
+    setMarkingAll(true);
+    setError('');
+    try {
+      await markAllRead(session, onlyCurrent ? condominiumId : undefined);
+      await refresh();
+    } catch {
+      setError('No se pudieron marcar las notificaciones como leídas.');
+    } finally {
+      setMarkingAll(false);
+    }
+  };
   return (
     <NotificationDropdown open={open} onClose={onClose}>
       <div className="notification-filters">
@@ -84,15 +99,9 @@ export function NotificationCenter({
         </label>
       </div>
       {error && <p role="alert">{error}</p>}
-      <button
-        onClick={() =>
-          void markAllRead(session, onlyCurrent ? condominiumId : undefined)
-            .then(refresh)
-            .catch(() => setError('No se pudieron marcar las notificaciones como leídas.'))
-        }
-      >
-        Marcar todas como leídas
-      </button>
+      <Button disabled={markingAll} onClick={() => void markEverythingRead()} size="sm" variant="secondary">
+        {markingAll ? 'Marcando…' : 'Marcar todas como leídas'}
+      </Button>
       <div>
         {items.map((item) => (
           <NotificationItem
@@ -117,9 +126,9 @@ export function NotificationCenter({
         {!loading && !items.length && <p className="empty">No tienes notificaciones.</p>}
       </div>
       {items.length >= 30 && (
-        <button disabled={loading} onClick={() => void load(true)}>
+        <Button disabled={loading} onClick={() => void load(true)} size="sm" variant="secondary">
           Cargar más
-        </button>
+        </Button>
       )}
       {loading && <p>Cargando…</p>}
       {condominiumId && (
