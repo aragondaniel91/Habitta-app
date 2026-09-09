@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { PaymentsIcon } from '../../components/icons';
 import { Badge, Surface } from '../../components/ui';
 import { loadCommercialSummary } from '../../lib/commercial';
 import type { CommercialSummary } from '../../lib/commercial';
@@ -86,11 +87,16 @@ export function CondominiumBillingPanel({ condominiumId, condominiumName, sessio
       </div>
 
       <div className="settings-commercial-section__scope-note">
-        <strong>Facturación de Habitta</strong>
-        <span>
-          Esta sección corresponde únicamente a la suscripción de la plataforma. No modifica cuotas,
-          pagos, cuentas bancarias ni movimientos financieros del condominio.
+        <span aria-hidden="true" className="settings-commercial-section__scope-icon">
+          <PaymentsIcon size={18} />
         </span>
+        <div>
+          <strong>Facturación de Habitta</strong>
+          <span>
+            Esta sección corresponde únicamente a la suscripción de la plataforma. No modifica
+            cuotas, pagos, cuentas bancarias ni movimientos financieros del condominio.
+          </span>
+        </div>
       </div>
 
       {loading ? (
