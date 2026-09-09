@@ -64,9 +64,7 @@ function DrawerFrame({
     const element = panel.current;
     if (!element) return undefined;
     const updateBusy = () =>
-      setCloseDisabled(
-        Boolean(element.querySelector('[data-busy="true"],[aria-busy="true"]')),
-      );
+      setCloseDisabled(Boolean(element.querySelector('[data-busy="true"],[aria-busy="true"]')));
     updateBusy();
     const observer = new MutationObserver(updateBusy);
     observer.observe(element, {
@@ -479,9 +477,7 @@ function ReviewPayment({
           }
         >
           <Select
-            disabled={
-              treasuryLoading || treasuryAccounts.length === 0 || processingAction !== null
-            }
+            disabled={treasuryLoading || treasuryAccounts.length === 0 || processingAction !== null}
             onChange={(event) => setSelectedTreasuryAccountId(event.target.value)}
             required={treasuryAccounts.length > 1}
             value={selectedTreasuryAccountId}
