@@ -1,0 +1,129 @@
+name: Apply House Community Structure Fix Once
+
+on:
+  push:
+    branches:
+      - fix/house-community-structure-ux
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/house-community-structure-ux
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply topology-aware UX patch
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path: str, old: str, new: str, expected: int = 1):
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'{path}: expected {expected} matches, found {count} for {old!r}')
+              file.write_text(text.replace(old, new))
+
+          units_path = 'apps/web/src/pages/UnitsPage.tsx'
+          replace_exact(
+              units_path,
+              "            {onConfigureStructure ? (\n              <Button onClick={onConfigureStructure} variant=\"secondary\">\n                {topology === 'unspecified' ? 'Definir tipo de propiedad' : 'Configurar estructura'}\n              </Button>\n            ) : null}",
+              "            {onConfigureStructure && supportsBuildingStructure(topology) ? (\n              <Button onClick={onConfigureStructure} variant=\"secondary\">\n                {topology === 'unspecified' ? 'Definir tipo de propiedad' : 'Configurar estructura'}\n              </Button>\n            ) : null}",
+          )
+
+          structure_path = 'apps/web/src/pages/StructureManagementPage.tsx'
+          replace_exact(
+              structure_path,
+              "  const houseMode = topology === 'house_community';\n  const singleBuildingMode = topology === 'single_building';",
+              "  const houseMode = topology === 'house_community';\n  const effectiveShowUnitManagement = showUnitManagement || houseMode;\n  const singleBuildingMode = topology === 'single_building';",
+          )
+          replace_exact(
+              structure_path,
+              "            {showUnitManagement ? (",
+              "            {effectiveShowUnitManagement ? (",
+              expected=2,
+          )
+          replace_exact(
+              structure_path,
+              "        {showUnitManagement && activeView === 'units' ? (",
+              "        {effectiveShowUnitManagement && activeView === 'units' ? (",
+          )
+          replace_exact(
+              structure_path,
+              "          <span>\n            {houseMode || singleBuildingMode ? 'Unidades declaradas' : 'Edificios declarados'}\n          </span>",
+              "          <span>\n            {houseMode\n              ? 'Casas declaradas'\n              : singleBuildingMode\n                ? 'Unidades declaradas'\n                : 'Edificios declarados'}\n          </span>",
+          )
+          replace_exact(
+              structure_path,
+              "        <Surface className=\"structure-metric\">\n          <span>{showBuildings ? 'Sin edificio asignado' : 'Unidades inactivas'}</span>\n          <strong>{showBuildings ? unassignedUnits : units.length - activeUnits}</strong>\n          <small>\n            {showBuildings ? 'Áreas comunes o pendientes de ubicar' : 'Historial preservado'}\n          </small>\n        </Surface>",
+              "        <Surface className=\"structure-metric\">\n          <span>{showBuildings ? 'Sin edificio asignado' : 'Pendientes de configurar'}</span>\n          <strong>\n            {showBuildings\n              ? unassignedUnits\n              : typeof profile?.declared_unit_count === 'number'\n                ? Math.max(profile.declared_unit_count - units.length, 0)\n                : '—'}\n          </strong>\n          <small>\n            {showBuildings\n              ? 'Áreas comunes o pendientes de ubicar'\n              : typeof profile?.declared_unit_count === 'number'\n                ? `${units.length} de ${profile.declared_unit_count} registradas`\n                : 'Cantidad declarada no disponible'}\n          </small>\n        </Surface>",
+          )
+          replace_exact(
+              structure_path,
+              "              title={search ? 'Sin coincidencias' : 'Aún no hay unidades'}",
+              "              title={\n                search ? 'Sin coincidencias' : houseMode ? 'Aún no hay casas' : 'Aún no hay unidades'\n              }",
+          )
+
+          test = Path('apps/web/src/hab507-house-community-structure-ux.test.ts')
+          test.write_text("""import { readFileSync } from 'node:fs';
+          import { describe, expect, it } from 'vitest';
+
+          const unitsPage = readFileSync(new URL('./pages/UnitsPage.tsx', import.meta.url), 'utf8');
+          const structurePage = readFileSync(
+            new URL('./pages/StructureManagementPage.tsx', import.meta.url),
+            'utf8',
+          );
+
+          describe('HAB-507 house-community structure UX', () => {
+            it('does not offer building-structure navigation to a house community', () => {
+              expect(unitsPage).toContain(
+                'onConfigureStructure && supportsBuildingStructure(topology)',
+              );
+            });
+
+            it('keeps a direct structure deep link on house/unit management instead of buildings', () => {
+              expect(structurePage).toContain(
+                'const effectiveShowUnitManagement = showUnitManagement || houseMode;',
+              );
+              expect(structurePage).toContain(
+                \"effectiveShowUnitManagement && activeView === 'units'\",
+              );
+            });
+
+            it('shows declared-house setup progress instead of an irrelevant inactive-units metric', () => {
+              expect(structurePage).toContain(\"'Casas declaradas'\");
+              expect(structurePage).toContain(\"'Pendientes de configurar'\");
+              expect(structurePage).toContain(
+                'Math.max(profile.declared_unit_count - units.length, 0)',
+              );
+            });
+          });
+          """)
+          PY
+      - name: Format changed files
+        run: pnpm exec prettier --write apps/web/src/pages/UnitsPage.tsx apps/web/src/pages/StructureManagementPage.tsx apps/web/src/hab507-house-community-structure-ux.test.ts
+      - name: Run focused regression test
+        run: pnpm --filter @habitta/web test -- hab507-house-community-structure-ux.test.ts
+      - name: Typecheck web
+        run: pnpm --filter @habitta/web typecheck
+      - name: Commit patch and remove one-shot workflow
+        shell: bash
+        run: |
+          rm .github/workflows/apply-house-community-structure-fix-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/pages/UnitsPage.tsx apps/web/src/pages/StructureManagementPage.tsx apps/web/src/hab507-house-community-structure-ux.test.ts .github/workflows/apply-house-community-structure-fix-once.yml
+          git commit -m "fix: keep house communities out of building structure flow"
+          git push origin HEAD:fix/house-community-structure-ux
