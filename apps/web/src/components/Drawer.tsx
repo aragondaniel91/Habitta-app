@@ -17,6 +17,8 @@ type Props = {
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  /** Prevent Escape, backdrop and close-button dismissal while a mutation is in flight. */
+  closeDisabled?: boolean;
   /** Opt-in to the shared Habitta workspace visual contract without changing legacy drawers. */
   presentation?: 'legacy' | 'workspace';
   /** Rendered next to the close button, for actions that belong to the panel itself. */
@@ -32,8 +34,10 @@ type Props = {
 export function useDialogBehavior(
   panel: { current: HTMLElement | null },
   onClose: () => void,
+  closeDisabled = false,
 ): void {
   const onCloseRef = useRef(onClose);
+  const closeDisabledRef = useRef(closeDisabled);
   const previouslyFocusedRef = useRef<HTMLElement | null>(
     typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null),
   );
@@ -42,6 +46,10 @@ export function useDialogBehavior(
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    closeDisabledRef.current = closeDisabled;
+  }, [closeDisabled]);
 
   useEffect(() => {
     if (focusRestoreTimerRef.current !== null) {
@@ -60,7 +68,7 @@ export function useDialogBehavior(
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onCloseRef.current();
+        if (!closeDisabledRef.current) onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panel.current) return;
@@ -105,12 +113,13 @@ export function Drawer({
   onClose,
   children,
   wide = false,
+  closeDisabled = false,
   presentation = 'legacy',
   headerActions,
 }: Props) {
   const panel = useRef<HTMLElement>(null);
   const workspace = presentation === 'workspace';
-  useDialogBehavior(panel, onClose);
+  useDialogBehavior(panel, onClose, closeDisabled);
 
   return (
     <div
@@ -125,6 +134,7 @@ export function Drawer({
         className={[`${prefix}-drawer-backdrop`, workspace ? 'ux-drawer-backdrop' : '']
           .filter(Boolean)
           .join(' ')}
+        disabled={closeDisabled}
         onClick={onClose}
         tabIndex={-1}
         type="button"
@@ -153,7 +163,13 @@ export function Drawer({
           </div>
           <div className="drawer-header-actions">
             {headerActions}
-            <Button aria-label="Cerrar" onClick={onClose} size="sm" variant="ghost">
+            <Button
+              aria-label="Cerrar"
+              disabled={closeDisabled}
+              onClick={onClose}
+              size="sm"
+              variant="ghost"
+            >
               ×
             </Button>
           </div>
