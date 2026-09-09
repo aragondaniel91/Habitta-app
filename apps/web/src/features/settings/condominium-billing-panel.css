@@ -1,6 +1,6 @@
 .settings-commercial-section {
   display: grid;
-  gap: 1rem;
+  gap: 1.1rem;
   scroll-margin-top: calc(var(--topbar-height) + 1rem);
 }
 
@@ -8,17 +8,21 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1.25rem;
+}
+
+.settings-commercial-section__header > div {
+  min-width: 0;
 }
 
 .settings-commercial-section__header h2 {
-  margin: 0.22rem 0 0.25rem;
+  margin: 0.22rem 0 0.3rem;
   color: var(--text-strong);
   font-size: var(--ux-heading-section);
 }
 
 .settings-commercial-section__header p {
-  max-width: 72ch;
+  max-width: 78ch;
   margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
@@ -27,11 +31,30 @@
 
 .settings-commercial-section__scope-note {
   display: grid;
-  gap: 0.2rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid var(--border);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--blue) 20%, var(--border));
   border-radius: var(--radius-md);
-  background: var(--surface-subtle);
+  background: color-mix(in srgb, var(--blue-soft) 62%, var(--surface));
+}
+
+.settings-commercial-section__scope-icon {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--blue) 12%, var(--surface));
+  color: var(--blue);
+}
+
+.settings-commercial-section__scope-note > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.18rem;
 }
 
 .settings-commercial-section__scope-note strong {
@@ -39,7 +62,7 @@
   font-size: 0.78rem;
 }
 
-.settings-commercial-section__scope-note span {
+.settings-commercial-section__scope-note span:not(.settings-commercial-section__scope-icon) {
   color: var(--muted);
   font-size: 0.72rem;
   line-height: 1.5;
@@ -47,13 +70,18 @@
 
 .settings-commercial-section__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(360px, 0.88fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .settings-commercial-section__grid > * {
   min-width: 0;
+  height: 100%;
+}
+
+.settings-commercial-section__grid > :only-child {
+  grid-column: 1 / -1;
 }
 
 .settings-commercial-section__loading {
@@ -65,10 +93,19 @@
   .settings-commercial-section__grid {
     grid-template-columns: 1fr;
   }
+
+  .settings-commercial-section__grid > :only-child {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 720px) {
   .settings-commercial-section__header {
     display: grid;
+  }
+
+  .settings-commercial-section__scope-note {
+    align-items: start;
+    padding: 0.9rem;
   }
 }
