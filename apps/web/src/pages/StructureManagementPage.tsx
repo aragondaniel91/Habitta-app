@@ -132,6 +132,7 @@ export function StructureManagementPage({
 
   const topology = profile?.property_topology ?? 'unspecified';
   const houseMode = topology === 'house_community';
+  const effectiveShowUnitManagement = showUnitManagement || houseMode;
   const singleBuildingMode = topology === 'single_building';
   const multiBuildingMode = topology === 'multi_building_complex';
   const showBuildings = !houseMode;
@@ -352,7 +353,7 @@ export function StructureManagementPage({
                 {singleBuildingMode ? 'Crear edificio' : 'Nueva torre o edificio'}
               </Button>
             ) : null}
-            {showUnitManagement ? (
+            {effectiveShowUnitManagement ? (
               <Button
                 disabled={singleBuildingMode && buildings.length !== 1}
                 onClick={() => setEditor({ kind: 'unit', unit: null })}
@@ -417,16 +418,30 @@ export function StructureManagementPage({
         </Surface>
         <Surface className="structure-metric">
           <span>
-            {houseMode || singleBuildingMode ? 'Unidades declaradas' : 'Edificios declarados'}
+            {houseMode
+              ? 'Casas declaradas'
+              : singleBuildingMode
+                ? 'Unidades declaradas'
+                : 'Edificios declarados'}
           </span>
           <strong>{declaredStructure ?? '—'}</strong>
           <small>{topologyLabels[topology]}</small>
         </Surface>
         <Surface className="structure-metric">
-          <span>{showBuildings ? 'Sin edificio asignado' : 'Unidades inactivas'}</span>
-          <strong>{showBuildings ? unassignedUnits : units.length - activeUnits}</strong>
+          <span>{showBuildings ? 'Sin edificio asignado' : 'Pendientes de configurar'}</span>
+          <strong>
+            {showBuildings
+              ? unassignedUnits
+              : typeof profile?.declared_unit_count === 'number'
+                ? Math.max(profile.declared_unit_count - units.length, 0)
+                : '—'}
+          </strong>
           <small>
-            {showBuildings ? 'Áreas comunes o pendientes de ubicar' : 'Historial preservado'}
+            {showBuildings
+              ? 'Áreas comunes o pendientes de ubicar'
+              : typeof profile?.declared_unit_count === 'number'
+                ? `${units.length} de ${profile.declared_unit_count} registradas`
+                : 'Cantidad declarada no disponible'}
           </small>
         </Surface>
       </div>
@@ -434,7 +449,7 @@ export function StructureManagementPage({
       <Surface className="structure-workspace">
         <div className="structure-toolbar">
           <div className="structure-tabs" aria-label="Vista de estructura" role="tablist">
-            {showUnitManagement ? (
+            {effectiveShowUnitManagement ? (
               <button
                 aria-selected={activeView === 'units'}
                 data-active={activeView === 'units'}
@@ -475,7 +490,7 @@ export function StructureManagementPage({
           </label>
         </div>
 
-        {showUnitManagement && activeView === 'units' ? (
+        {effectiveShowUnitManagement && activeView === 'units' ? (
           filteredUnits.length ? (
             <div className="structure-unit-list">
               <div className="structure-unit-list__head" aria-hidden="true">
@@ -547,7 +562,13 @@ export function StructureManagementPage({
               }
               icon={<UnitsIcon size={25} />}
               onAction={() => setEditor({ kind: 'unit', unit: null })}
-              title={search ? 'Sin coincidencias' : 'Aún no hay unidades'}
+              title={
+                search
+                  ? 'Sin coincidencias'
+                  : houseMode
+                    ? 'Aún no hay casas'
+                    : 'Aún no hay unidades'
+              }
             />
           )
         ) : filteredBuildings.length ? (

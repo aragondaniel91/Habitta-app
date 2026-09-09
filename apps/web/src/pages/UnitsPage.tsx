@@ -262,7 +262,7 @@ export function UnitsPage({
             >
               {topology === 'house_community' ? 'Nueva casa' : 'Nueva unidad'}
             </Button>
-            {onConfigureStructure ? (
+            {onConfigureStructure && supportsBuildingStructure(topology) ? (
               <Button onClick={onConfigureStructure} variant="secondary">
                 {topology === 'unspecified' ? 'Definir tipo de propiedad' : 'Configurar estructura'}
               </Button>
