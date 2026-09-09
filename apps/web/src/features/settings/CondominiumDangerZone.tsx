@@ -114,6 +114,13 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
               privados asociados a esta residencia.
             </p>
           </div>
+          {capability?.canDelete && !armed ? (
+            <div className="danger-zone__warning-action">
+              <Button onClick={() => setArmed(true)} size="sm" variant="danger">
+                Quiero eliminar esta residencia
+              </Button>
+            </div>
+          ) : null}
         </div>
 
         {!capability ? <p className="danger-zone__muted">Verificando autorización…</p> : null}
@@ -123,12 +130,6 @@ export function CondominiumDangerZone({ condominiumId, condominiumName, session 
             Solo el propietario de la organización puede eliminar una residencia completa. Los
             administradores del condominio no tienen este permiso.
           </p>
-        ) : null}
-
-        {capability?.canDelete && !armed ? (
-          <Button onClick={() => setArmed(true)} size="sm" variant="danger">
-            Quiero eliminar esta residencia
-          </Button>
         ) : null}
 
         {capability?.canDelete && armed && !databaseDeleted ? (
