@@ -10,9 +10,17 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 const busyButtonLabel =
   /^(Guardando|Creando|Procesando|Aprobando|Enviando|Actualizando|Eliminando|Reversando|Marcando|Previsualizando|Subiendo|Importando|Publicando|Archivando|Cancelando|Reintentando|Cargando)…$/i;
 
-export function Button({ className, variant = 'primary', size = 'md', children, ...props }: ButtonProps) {
+export function Button({
+  className,
+  variant = 'primary',
+  size = 'md',
+  children,
+  ...props
+}: ButtonProps) {
   const inferredBusy =
-    props.disabled === true && typeof children === 'string' && busyButtonLabel.test(children.trim());
+    props.disabled === true &&
+    typeof children === 'string' &&
+    busyButtonLabel.test(children.trim());
   return (
     <button
       {...props}
