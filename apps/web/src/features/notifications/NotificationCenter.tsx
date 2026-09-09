@@ -99,7 +99,12 @@ export function NotificationCenter({
         </label>
       </div>
       {error && <p role="alert">{error}</p>}
-      <Button disabled={markingAll} onClick={() => void markEverythingRead()} size="sm" variant="secondary">
+      <Button
+        disabled={markingAll}
+        onClick={() => void markEverythingRead()}
+        size="sm"
+        variant="secondary"
+      >
         {markingAll ? 'Marcando…' : 'Marcar todas como leídas'}
       </Button>
       <div>
