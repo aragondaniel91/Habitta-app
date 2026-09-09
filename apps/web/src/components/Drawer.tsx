@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './ui';
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
+const BUSY_DESCENDANT = '[data-busy="true"],[aria-busy="true"]';
 
 type Props = {
   /**
@@ -118,8 +119,26 @@ export function Drawer({
   headerActions,
 }: Props) {
   const panel = useRef<HTMLElement>(null);
+  const [descendantBusy, setDescendantBusy] = useState(false);
   const workspace = presentation === 'workspace';
-  useDialogBehavior(panel, onClose, closeDisabled);
+  const effectiveCloseDisabled = closeDisabled || descendantBusy;
+
+  useEffect(() => {
+    const element = panel.current;
+    if (!element) return undefined;
+    const updateBusy = () => setDescendantBusy(Boolean(element.querySelector(BUSY_DESCENDANT)));
+    updateBusy();
+    const observer = new MutationObserver(updateBusy);
+    observer.observe(element, {
+      attributes: true,
+      attributeFilter: ['aria-busy', 'data-busy'],
+      childList: true,
+      subtree: true,
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  useDialogBehavior(panel, onClose, effectiveCloseDisabled);
 
   return (
     <div
@@ -134,7 +153,7 @@ export function Drawer({
         className={[`${prefix}-drawer-backdrop`, workspace ? 'ux-drawer-backdrop' : '']
           .filter(Boolean)
           .join(' ')}
-        disabled={closeDisabled}
+        disabled={effectiveCloseDisabled}
         onClick={onClose}
         tabIndex={-1}
         type="button"
@@ -165,7 +184,7 @@ export function Drawer({
             {headerActions}
             <Button
               aria-label="Cerrar"
-              disabled={closeDisabled}
+              disabled={effectiveCloseDisabled}
               onClick={onClose}
               size="sm"
               variant="ghost"
