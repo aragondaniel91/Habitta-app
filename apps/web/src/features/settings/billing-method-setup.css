@@ -29,10 +29,16 @@
   background: var(--surface-raised);
 }
 
+.settings-billing-method__security > div,
+.settings-billing-method__action > div {
+  min-width: 0;
+}
+
 .settings-billing-method__security p,
 .settings-billing-method__action p {
   margin: 4px 0 0;
   color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .settings-billing-method__status {
@@ -40,21 +46,16 @@
 }
 
 .settings-billing-method__action {
-  display: flex;
-  gap: 18px;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  gap: 14px;
   padding: 16px;
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
 }
 
-.settings-billing-method__action > div {
-  min-width: 0;
-}
-
 .settings-billing-method__action button {
-  flex: 0 0 auto;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .settings-billing-method__notice {
@@ -62,11 +63,6 @@
 }
 
 @media (max-width: 720px) {
-  .settings-billing-method__action {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .settings-billing-method__action button {
     width: 100%;
   }
