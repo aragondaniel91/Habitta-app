@@ -76,8 +76,8 @@ export function CondominiumBillingPanel({ condominiumId, condominiumName, sessio
           <span className="settings-kicker">Plan y facturación</span>
           <h2 id="settings-billing-title">Suscripción de Habitta</h2>
           <p>
-            Consulta el plan contratado por {condominiumName}, su próximo cobro y el método utilizado
-            para pagar Habitta.
+            Consulta el plan contratado por {condominiumName}, su próximo cobro y el método
+            utilizado para pagar Habitta.
           </p>
         </div>
         <Badge tone={canManageBilling ? 'success' : 'neutral'}>
