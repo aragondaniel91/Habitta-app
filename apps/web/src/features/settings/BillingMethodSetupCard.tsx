@@ -14,8 +14,9 @@ import './billing-method-setup.css';
 type Props = {
   condominiumId: string;
   session: Session;
-  // Fetched once by the shared parent (CondominiumDangerZone) and passed down here, so this card
-  // and CommercialSummaryCard read the same data instead of each firing their own request for it.
+  canManageBilling: boolean;
+  // Fetched once by the dedicated billing parent and passed down here, so this card and
+  // CommercialSummaryCard read the same authoritative commercial state.
   summary: CommercialSummary | null;
   refresh: () => Promise<CommercialSummary>;
 };
@@ -27,7 +28,13 @@ const clearReturnState = () => {
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 };
 
-export function BillingMethodSetupCard({ condominiumId, session, summary, refresh }: Props) {
+export function BillingMethodSetupCard({
+  canManageBilling,
+  condominiumId,
+  session,
+  summary,
+  refresh,
+}: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -90,6 +97,7 @@ export function BillingMethodSetupCard({ condominiumId, session, summary, refres
   const trialing = summary.status === 'trialing';
 
   const beginSetup = async () => {
+    if (!canManageBilling || loading) return;
     setLoading(true);
     setError(null);
     setNotice(null);
@@ -123,12 +131,12 @@ export function BillingMethodSetupCard({ condominiumId, session, summary, refres
     <Surface className="settings-panel settings-billing-method">
       <div className="settings-section-heading">
         <div>
-          <span className="settings-kicker">Facturación SaaS</span>
+          <span className="settings-kicker">Facturación Habitta</span>
           <h2>Método de pago</h2>
           <p>
             {ready
               ? 'Tu método de pago está preparado para la suscripción de Habitta.'
-              : 'Configura el método que Habitta podrá usar después de tu prueba y bajo las condiciones que ya aceptaste.'}
+              : 'Configura el método que Habitta podrá usar después de tu prueba y bajo las condiciones comerciales aceptadas.'}
           </p>
         </div>
         <Badge tone={ready ? 'success' : 'warning'}>{ready ? 'Configurado' : 'Pendiente'}</Badge>
@@ -164,17 +172,28 @@ export function BillingMethodSetupCard({ condominiumId, session, summary, refres
         <div className="settings-billing-method__action">
           <div>
             <strong>
-              {trialing
-                ? 'Hoy no se realiza ningún cobro'
-                : 'Este paso no realiza un cargo inmediato'}
+              {!canManageBilling
+                ? 'La gestión de facturación requiere al propietario de la organización'
+                : trialing
+                  ? 'Hoy no se realiza ningún cobro'
+                  : 'Este paso no realiza un cargo inmediato'}
             </strong>
             <p>
-              Stripe te pedirá el método de pago. Habitta sólo lo considerará listo después de
-              validar el webhook firmado del proveedor.
+              {canManageBilling
+                ? 'Stripe te pedirá el método de pago. Habitta sólo lo considerará listo después de validar el webhook firmado del proveedor.'
+                : 'Puedes consultar el plan y el estado del método de pago, pero sólo el propietario de la organización puede cambiar la forma de pago de Habitta.'}
             </p>
           </div>
-          <Button disabled={loading} onClick={() => void beginSetup()} type="button">
-            {loading ? 'Abriendo Stripe…' : 'Configurar método de pago seguro'}
+          <Button
+            disabled={loading || !canManageBilling}
+            onClick={() => void beginSetup()}
+            type="button"
+          >
+            {loading
+              ? 'Abriendo Stripe…'
+              : canManageBilling
+                ? 'Configurar método de pago seguro'
+                : 'Requiere propietario'}
           </Button>
         </div>
       )}
