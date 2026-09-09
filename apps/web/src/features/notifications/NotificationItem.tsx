@@ -1,3 +1,4 @@
+import { Button } from '../../components/ui';
 import type { Notification } from './types';
 
 export function NotificationItem({
@@ -13,14 +14,20 @@ export function NotificationItem({
 }) {
   return (
     <article className={item.read_at ? 'notification read' : 'notification'}>
-      <button onClick={onRead}>
+      <Button className="notification__content" onClick={onRead} type="button" variant="ghost">
         <strong>{item.title}</strong>
         <span>{item.body}</span>
         <small>{new Date(item.created_at).toLocaleString('es-VE')}</small>
-      </button>
+      </Button>
       <div>
-        {item.action_url && <button onClick={onNavigate}>Ver detalle</button>}
-        <button onClick={onArchive}>Archivar</button>
+        {item.action_url ? (
+          <Button onClick={onNavigate} size="sm" type="button" variant="secondary">
+            Ver detalle
+          </Button>
+        ) : null}
+        <Button onClick={onArchive} size="sm" type="button" variant="ghost">
+          Archivar
+        </Button>
       </div>
     </article>
   );
