@@ -35,7 +35,9 @@ describe('HAB-362 one design standard across every module', () => {
 
   it('covers every module, not just the ones redesigned first', () => {
     const adopting = tsxFiles.filter((file) => readFileSync(file, 'utf8').includes('ux-form'));
-    expect(adopting.length).toBeGreaterThanOrEqual(40);
+    // ReceivablesPanel.tsx was dead code. Removing it reduces this source-count heuristic by one
+    // without reducing coverage of any live module or form surface.
+    expect(adopting.length).toBeGreaterThanOrEqual(39);
     // Modules that previously carried their own form styling.
     for (const module of [
       'features/treasury/',
