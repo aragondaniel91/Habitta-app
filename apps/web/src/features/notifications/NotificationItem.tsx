@@ -14,18 +14,18 @@ export function NotificationItem({
 }) {
   return (
     <article className={item.read_at ? 'notification read' : 'notification'}>
-      <Button className="notification__content" onClick={onRead} type="button" variant="ghost">
+      <Button className="notification__body" onClick={onRead} variant="ghost">
         <strong>{item.title}</strong>
         <span>{item.body}</span>
         <small>{new Date(item.created_at).toLocaleString('es-VE')}</small>
       </Button>
       <div>
-        {item.action_url ? (
-          <Button onClick={onNavigate} size="sm" type="button" variant="secondary">
+        {item.action_url && (
+          <Button onClick={onNavigate} size="sm" variant="secondary">
             Ver detalle
           </Button>
-        ) : null}
-        <Button onClick={onArchive} size="sm" type="button" variant="ghost">
+        )}
+        <Button onClick={onArchive} size="sm" variant="ghost">
           Archivar
         </Button>
       </div>
