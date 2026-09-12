@@ -261,6 +261,7 @@ export function PersonEditorDrawerV3({
 
   return (
     <Drawer
+      closeDisabled={saving}
       description={
         editing
           ? 'Actualiza la identidad y el contacto sin cambiar sus relaciones históricas.'
