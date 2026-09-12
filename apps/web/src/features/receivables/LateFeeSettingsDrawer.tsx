@@ -149,7 +149,13 @@ export function LateFeeSettingsDrawer({ condominiumId, session, canManage, onClo
 
   return (
     <>
-      <Drawer eyebrow="Cobranza" onClose={onClose} prefix="late-fees" title="Recargos por mora">
+      <Drawer
+        closeDisabled={saving}
+        eyebrow="Cobranza"
+        onClose={onClose}
+        prefix="late-fees"
+        title="Recargos por mora"
+      >
         {loading || !form ? (
           <p className="late-fees-drawer__loading">Cargando política...</p>
         ) : (
