@@ -129,6 +129,7 @@ export function PaymentCaptureDrawer({
 
   return (
     <Drawer
+      closeDisabled={saving}
       eyebrow={editing ? 'Corrección de pago' : 'Registro guiado'}
       onClose={onClose}
       prefix="payments"
@@ -226,7 +227,7 @@ export function PaymentCaptureDrawer({
               pattern="^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$"
               placeholder="0.00"
               required
-            />
+          />
           </Field>
           <Field label="Nombre del pagador">
             <input
