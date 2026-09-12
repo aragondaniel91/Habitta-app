@@ -322,6 +322,7 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
 
       {drawer === 'detail' && selected ? (
         <Drawer
+          closeDisabled={acting}
           eyebrow="Asamblea"
           onClose={() => setDrawer(null)}
           prefix="governance"
@@ -415,7 +416,7 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
                         {presentIds.has(snapshot.id) ? (
                           <strong>Presente</strong>
                         ) : (
-                          <Button
+                        <Button
                             disabled={acting}
                             onClick={async () => {
                               setActing(true);
@@ -648,6 +649,7 @@ function CreateAssemblyDrawer({
   };
   return (
     <Drawer
+      closeDisabled={saving}
       eyebrow="Gobernanza formal"
       onClose={onClose}
       prefix="governance"
