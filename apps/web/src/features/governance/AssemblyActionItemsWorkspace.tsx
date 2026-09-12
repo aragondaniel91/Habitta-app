@@ -720,6 +720,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
 
       {editor ? (
         <Drawer
+          closeDisabled={saving}
           eyebrow={editor.mode === 'create' ? 'Nuevo compromiso' : 'Edición controlada'}
           onClose={closeEditor}
           prefix="action-items"
