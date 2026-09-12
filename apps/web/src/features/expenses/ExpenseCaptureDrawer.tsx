@@ -80,6 +80,7 @@ export function ExpenseCaptureDrawer({
 
   return (
     <Drawer
+      closeDisabled={saving}
       eyebrow="Captura guiada"
       onClose={onClose}
       prefix="expenses"
