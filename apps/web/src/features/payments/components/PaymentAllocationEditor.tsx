@@ -120,7 +120,6 @@ export function PaymentAllocationEditor({
     allocations.length > 0 && allocations.every((allocation) => !allocationProblem(allocation));
 
   const runPreview = async () => {
-    if (previewing || saving) return;
     const requestId = ++latestPreviewRequest.current;
     const requestedAllocations = allocations.map((allocation) => ({ ...allocation }));
     const requestedFingerprint = allocationPreviewFingerprint(
@@ -133,12 +132,11 @@ export function PaymentAllocationEditor({
       if (requestId !== latestPreviewRequest.current) return;
       setPreviewSnapshot({ fingerprint: requestedFingerprint, value });
     } finally {
-      setPreviewing(false);
+      if (requestId === latestPreviewRequest.current) setPreviewing(false);
     }
   };
 
   const approve = async () => {
-    if (saving || previewing) return;
     setSaving(true);
     try {
       await onApprove(allocations);
@@ -231,7 +229,6 @@ export function PaymentAllocationEditor({
             ) : null}
             <Button
               className="payments-allocation-editor__remove"
-              disabled={previewing || saving}
               onClick={() =>
                 setAllocations((current) => current.filter((_, position) => position !== index))
               }
@@ -245,7 +242,7 @@ export function PaymentAllocationEditor({
         );
       })}
       <Button
-        disabled={!readyForPreview || previewing || saving}
+        disabled={!readyForPreview || previewing}
         onClick={() => void runPreview()}
         type="button"
         variant="secondary"
@@ -266,7 +263,7 @@ export function PaymentAllocationEditor({
             <p key={error}>{error}</p>
           ))}
           <Button
-            disabled={preview.errors.length > 0 || saving || previewing}
+            disabled={preview.errors.length > 0 || saving}
             onClick={() => void approve()}
             type="button"
           >
