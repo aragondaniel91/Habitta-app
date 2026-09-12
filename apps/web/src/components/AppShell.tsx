@@ -90,6 +90,7 @@ export function AppShell({
   });
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const profilePopoverId = useId();
+  const notificationMenuRef = useRef<HTMLDivElement>(null);
 
   const selectedCondominium = condominiums.find((item) => item.id === selectedCondominiumId);
   const selectedOrganization = organizations.find(
@@ -155,6 +156,17 @@ export function AppShell({
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [profileOpen]);
+
+  useEffect(() => {
+    if (!notificationOpen) return undefined;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!notificationMenuRef.current?.contains(event.target as Node)) {
+        onCloseNotifications();
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [notificationOpen, onCloseNotifications]);
 
   const openHelp = (initialView: HelpState['initialView']) => {
     setHelpState({ open: true, initialView });
@@ -305,7 +317,15 @@ export function AppShell({
           </div>
 
           <div className="topbar__actions">
-            <NotificationBell session={session} onOpen={onOpenNotifications} />
+            <div className="notification-menu" ref={notificationMenuRef}>
+              <NotificationBell session={session} onOpen={onOpenNotifications} />
+              <NotificationCenter
+                condominiumId={selectedCondominiumId}
+                onClose={onCloseNotifications}
+                open={notificationOpen}
+                session={session}
+              />
+            </div>
             <div className="profile-menu" ref={profileMenuRef}>
               <button
                 aria-controls={profilePopoverId}
@@ -337,13 +357,6 @@ export function AppShell({
             </div>
           </div>
         </header>
-
-        <NotificationCenter
-          condominiumId={selectedCondominiumId}
-          onClose={onCloseNotifications}
-          open={notificationOpen}
-          session={session}
-        />
 
         <main className="main-content">
           {contextMessage ? (
