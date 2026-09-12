@@ -5,6 +5,9 @@ const apiClientUrl = new URL('./lib/api.ts', import.meta.url);
 const notificationApiUrl = new URL('./features/notifications/api.ts', import.meta.url);
 const paymentApiUrl = new URL('./features/payments/api.ts', import.meta.url);
 const peopleApiUrl = new URL('./features/people/api.ts', import.meta.url);
+// ReceivablesPage.tsx (not features/receivables/ReceivablesPanel.tsx, which was dead code and has
+// been removed) is the real, in-use receivables screen and its API client.
+const receivablesPageUrl = new URL('./pages/ReceivablesPage.tsx', import.meta.url);
 
 describe('API base URL configuration', () => {
   it('prefers the release variable before the legacy variable and localhost fallback', async () => {
@@ -21,17 +24,19 @@ describe('API base URL configuration', () => {
   });
 
   it('keeps feature clients on the shared API base URL', async () => {
-    const [notifications, payments, people] = await Promise.all([
+    const [notifications, payments, people, receivables] = await Promise.all([
       readFile(notificationApiUrl, 'utf8'),
       readFile(paymentApiUrl, 'utf8'),
       readFile(peopleApiUrl, 'utf8'),
+      readFile(receivablesPageUrl, 'utf8'),
     ]);
 
     expect(notifications).toContain("import { apiRequest } from '../../lib/api'");
     expect(payments).toContain("import { apiBaseUrl } from '../../lib/api'");
     expect(people).toContain("import { apiBaseUrl } from '../../lib/api'");
+    expect(receivables).toContain("import { apiRequest } from '../lib/api'");
 
-    for (const source of [notifications, payments, people]) {
+    for (const source of [notifications, payments, people, receivables]) {
       expect(source).not.toContain('import.meta.env.VITE_API_URL');
       expect(source).not.toContain('http://localhost:8787');
     }
