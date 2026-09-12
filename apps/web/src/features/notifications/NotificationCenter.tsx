@@ -32,7 +32,7 @@ export function NotificationCenter({
     [onlyCurrent, setOnlyCurrent] = useState(true),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(false),
-    [markingAll, setMarkingAll] = useState(false);
+    [markingAllRead, setMarkingAllRead] = useState(false);
   const load = useCallback(
     async (append = false) => {
       setLoading(true);
@@ -65,19 +65,6 @@ export function NotificationCenter({
     changed();
     await load();
   };
-  const markEverythingRead = async () => {
-    if (markingAll) return;
-    setMarkingAll(true);
-    setError('');
-    try {
-      await markAllRead(session, onlyCurrent ? condominiumId : undefined);
-      await refresh();
-    } catch {
-      setError('No se pudieron marcar las notificaciones como leídas.');
-    } finally {
-      setMarkingAll(false);
-    }
-  };
   return (
     <NotificationDropdown open={open} onClose={onClose}>
       <div className="notification-filters">
@@ -100,12 +87,18 @@ export function NotificationCenter({
       </div>
       {error && <p role="alert">{error}</p>}
       <Button
-        disabled={markingAll}
-        onClick={() => void markEverythingRead()}
+        disabled={markingAllRead}
+        onClick={() => {
+          setMarkingAllRead(true);
+          void markAllRead(session, onlyCurrent ? condominiumId : undefined)
+            .then(refresh)
+            .catch(() => setError('No se pudieron marcar las notificaciones como leídas.'))
+            .finally(() => setMarkingAllRead(false));
+        }}
         size="sm"
         variant="secondary"
       >
-        {markingAll ? 'Marcando…' : 'Marcar todas como leídas'}
+        {markingAllRead ? 'Marcando…' : 'Marcar todas como leídas'}
       </Button>
       <div>
         {items.map((item) => (
@@ -132,7 +125,7 @@ export function NotificationCenter({
       </div>
       {items.length >= 30 && (
         <Button disabled={loading} onClick={() => void load(true)} size="sm" variant="secondary">
-          Cargar más
+          {loading ? 'Cargando…' : 'Cargar más'}
         </Button>
       )}
       {loading && <p>Cargando…</p>}
