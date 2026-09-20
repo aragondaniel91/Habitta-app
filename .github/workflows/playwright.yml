@@ -49,7 +49,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install Playwright test dependencies
         if: steps.scope.outputs.relevant == 'true'
-        run: npm install --prefix e2e --no-package-lock --ignore-scripts --no-audit --no-fund
+        run: npm ci --prefix e2e --ignore-scripts --no-audit --no-fund
       - name: Typecheck Playwright configuration
         if: steps.scope.outputs.relevant == 'true'
         run: pnpm exec tsc -p e2e/tsconfig.json --noEmit

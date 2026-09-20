@@ -91,7 +91,7 @@ jobs:
       # exited 0 without running anything. npm --prefix is the form playwright.yml already proves.
       - name: Install E2E dependencies
         if: steps.scope.outputs.relevant == 'true'
-        run: npm install --prefix e2e --no-package-lock --ignore-scripts --no-audit --no-fund
+        run: npm ci --prefix e2e --ignore-scripts --no-audit --no-fund
 
       - name: Typecheck E2E suite
         if: steps.scope.outputs.relevant == 'true'

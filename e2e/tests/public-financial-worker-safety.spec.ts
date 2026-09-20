@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 const specUrl = new URL('./financial-worker-api.spec.ts', import.meta.url);
 const configUrl = new URL('../playwright.config.ts', import.meta.url);
 const workflowUrl = new URL('../../.github/workflows/financial-e2e.yml', import.meta.url);
+const workspaceUrl = new URL('../../pnpm-workspace.yaml', import.meta.url);
 
 test('mantiene el ciclo por Worker limitado a Supabase y Worker locales', async () => {
   const source = await readFile(specUrl, 'utf8');
@@ -25,11 +26,14 @@ test('arranca el Worker local solo cuando existen credenciales de Supabase', asy
 
 test('ejecuta el E2E financiero de verdad y ante cambios en la API', async () => {
   const workflow = await readFile(workflowUrl, 'utf8');
+  const workspace = await readFile(workspaceUrl, 'utf8');
 
   // Filtering on a package outside the pnpm workspace matched nothing and exited 0, so every
   // step passed without running. npm --prefix is the form playwright.yml already proves works.
   expect(workflow).not.toContain('run: pnpm --filter @habitta/e2e');
-  expect(workflow).toContain('npm install --prefix e2e');
+  expect(workspace).not.toMatch(/(^|\n)\s*-\s*e2e\s*($|\n)/);
+  expect(workflow).toContain('npm ci --prefix e2e');
+  expect(workflow).not.toContain('npm install --prefix e2e --no-package-lock');
   expect(workflow).toContain('npm --prefix e2e run test:financial');
   /*
    * The guarantee this pinned is that a change to the Worker or the shared packages cannot land
