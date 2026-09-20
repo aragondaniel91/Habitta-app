@@ -13,7 +13,7 @@ The public suite starts the local Vite application and validates the unauthentic
 Run it with:
 
 ```bash
-npm install --prefix e2e --no-package-lock --ignore-scripts --no-audit --no-fund
+npm ci --prefix e2e --ignore-scripts --no-audit --no-fund
 npm --prefix e2e exec -- playwright install chromium
 pnpm exec tsc -p e2e/tsconfig.json --noEmit
 npm --prefix e2e run test:public
@@ -56,3 +56,15 @@ Once the isolated fixture is available, the financial suite will cover:
 6. open the generated receipt;
 7. exercise rejection/correction;
 8. verify another condominium cannot read the records.
+
+The reproducible fresh-clone bootstrap is:
+
+```bash
+pnpm install --frozen-lockfile
+npm ci --prefix e2e --ignore-scripts --no-audit --no-fund
+npm --prefix e2e exec -- playwright install chromium
+pnpm exec tsc -p e2e/tsconfig.json --noEmit
+npm --prefix e2e run test:public
+```
+
+The e2e package remains intentionally isolated from the pnpm workspace. Its dependency graph is fixed by `e2e/package-lock.json`; browser binaries are provisioned explicitly by the Playwright install command above. CI uses the same lockfile-backed install and provisions Chromium with `--with-deps`.
