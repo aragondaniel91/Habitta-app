@@ -540,7 +540,7 @@ export function StructureManagementPage({
                     </div>
                     <div data-label="Estado">
                       <Badge tone={unit.status === 'active' ? 'success' : 'neutral'}>
-                        {unit.status === 'active' ? 'Activa' : 'Inactiva'}
+                        {unit.status === 'active' ? 'Activa' : 'Archivada'}
                       </Badge>
                     </div>
                     <Button
@@ -602,7 +602,7 @@ export function StructureManagementPage({
                       <strong>{activeBuildingUnits}</strong> activas
                     </span>
                     <span>
-                      <strong>{buildingUnits.length - activeBuildingUnits}</strong> inactivas
+                      <strong>{buildingUnits.length - activeBuildingUnits}</strong> archivadas
                     </span>
                   </div>
                 </article>
@@ -762,12 +762,12 @@ export function StructureManagementPage({
                   </Field>
 
                   <Field
-                    hint="Inactiva conserva pagos, cuotas, propietarios y ocupaciones históricas."
+                    hint="Archivada conserva pagos, cuotas, propietarios y ocupaciones históricas."
                     label="Estado"
                   >
                     <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
                       <option value="active">Activa</option>
-                      <option value="inactive">Inactiva / archivada</option>
+                      <option value="inactive">Archivada</option>
                     </Select>
                   </Field>
                 </FormGrid>

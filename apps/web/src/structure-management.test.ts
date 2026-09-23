@@ -50,7 +50,7 @@ describe('physical structure management workspace', () => {
     expect(source).toContain('Casas y unidades');
     expect(source).toContain("method: building ? 'PATCH' : 'POST'");
     expect(source).toContain("method: unit ? 'PATCH' : 'POST'");
-    expect(source).toContain('Inactiva / archivada');
+    expect(source).toContain('Archivada');
     expect(source).toContain('Sin edificio asignado');
     expect(source).toContain(
       "import { Dialog, DialogBody, DialogFooter } from '../components/Dialog'",
