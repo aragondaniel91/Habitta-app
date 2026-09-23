@@ -40,7 +40,20 @@ describe('HAB-262 Units UX redesign', () => {
     expect(detail).toContain('/units/${unit.id}/occupancies');
     expect(detail).toContain('/people`');
     expect(detail).toContain("current ? 'Actual' : 'Histórica'");
+    expect(detail).toContain('alícuota como participación estructural');
     expect(detail).toContain('pagos, cuotas, propietarios, ocupaciones y movimientos');
+  });
+
+  it('uses consistent active and archived language and explains preservation before archival', async () => {
+    const editor = await read('./features/units/UnitEditor.tsx');
+    const page = await read('./pages/UnitsPage.tsx');
+
+    expect(editor).toContain('<option value="active">Activa</option>');
+    expect(editor).toContain('<option value="inactive">Archivada</option>');
+    expect(editor).toContain('alícuota como participación estructural');
+    expect(page).toContain('confirmLabel="Archivar unidad"');
+    expect(page).toContain('Archivar retira esta unidad de la operación diaria.');
+    expect(page).toContain('pagos, cuotas y movimientos financieros existentes');
   });
 
   it('uses shared drawer/form primitives with custom validation and UUID-backed buildings', async () => {

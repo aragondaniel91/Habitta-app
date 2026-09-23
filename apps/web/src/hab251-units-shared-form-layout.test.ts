@@ -40,7 +40,8 @@ describe('HAB-251/HAB-262 Units shared form layout', () => {
     expect(unitEditorSource).toContain('buildings[0]?.id');
     expect(unitEditorSource).toContain('<option key={building.id} value={building.id}>');
     expect(unitEditorSource).toContain('ownershipPercentage > 100');
-    expect(unitEditorSource).toContain('Inactiva / archivada');
+    expect(unitEditorSource).toContain('<option value="inactive">Archivada</option>');
+    expect(unitEditorSource).toContain('alícuota como participación estructural');
     expect(structureSource).toContain('const selectedBuildingId = houseMode');
     expect(structureSource).toContain('buildings[0]?.id');
     expect(structureSource).toContain('<option key={building.id} value={building.id}>');

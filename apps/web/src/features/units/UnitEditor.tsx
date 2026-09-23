@@ -279,7 +279,7 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
               />
             </Field>
             <Field
-              hint="Archivar conserva pagos, cuotas, propietarios y ocupaciones históricas."
+              hint="Archivar conserva la alícuota como participación estructural, además de pagos, cuotas, propietarios y ocupaciones históricas."
               label="Estado"
             >
               <Select
@@ -287,7 +287,7 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
                 value={draft.status}
               >
                 <option value="active">Activa</option>
-                <option value="inactive">Inactiva / archivada</option>
+                <option value="inactive">Archivada</option>
               </Select>
             </Field>
           </FormGrid>

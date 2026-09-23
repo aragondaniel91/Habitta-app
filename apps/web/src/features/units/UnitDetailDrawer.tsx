@@ -320,8 +320,8 @@ export function UnitDetailDrawer({
       <WorkspaceSection
         description={
           unit.status === 'active'
-            ? 'Archivar desactiva la unidad para la operación diaria, pero conserva pagos, cuotas, propietarios, ocupaciones y movimientos.'
-            : 'Reactivar devuelve la unidad a la operación diaria sin reconstruir su historial.'
+            ? 'Archivar retira la unidad de la operación diaria y conserva la alícuota como participación estructural, además de pagos, cuotas, propietarios, ocupaciones y movimientos.'
+            : 'Reactivar devuelve la unidad a la operación diaria sin reconstruir su participación estructural ni su historial.'
         }
         icon={<CheckCircleIcon size={18} />}
         title={unit.status === 'active' ? 'Archivar unidad' : 'Reactivar unidad'}

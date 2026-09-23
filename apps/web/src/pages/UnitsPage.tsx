@@ -509,7 +509,7 @@ export function UnitsPage({
           busy={saving}
           busyLabel="Archivando…"
           confirmLabel="Archivar unidad"
-          description="Archivar esta unidad no elimina su historial. Habitta conservará pagos, cuotas, propietarios, ocupaciones y movimientos asociados."
+          description="Archivar retira esta unidad de la operación diaria. Conserva la alícuota como participación estructural y los pagos, cuotas y movimientos financieros existentes, además de propietarios y ocupaciones históricas."
           onCancel={() => setArchiveTarget(null)}
           onConfirm={() => void setUnitStatus(archiveTarget, 'inactive')}
           title="¿Archivar esta unidad?"
