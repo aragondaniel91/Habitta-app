@@ -15,6 +15,10 @@ Este directorio es la fuente de verdad del contenido de ayuda para administrador
 - Para actividad administrativa consolidada, consulta [Registro de auditoría](./audit-log.md).
 - Para saber qué existe hoy y qué todavía pertenece al roadmap, consulta [Estado de funcionalidades](./feature-status.md).
 
+## Captura de walkthroughs
+
+- Para capturar recorridos de Producción de forma segura, consulta [Captura de walkthroughs de Producción](./production-walkthrough-capture.md).
+
 ## Autoridad de ayuda por módulo
 
 Este manual es orientación, enlaces y estado de capacidades; no es una autoridad independiente para flujos de pantalla. La fuente canónica es la metadata de solo lectura `MODULE_HELP` en `apps/web/src/features/help/module-help.ts`: cada tema usa el topicId `module-help.<route>` y `MODULE_HELP_CONTENT_VERSION`. Las pantallas y estos manuales deben referir esa metadata sin duplicar su contenido.
