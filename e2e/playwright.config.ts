@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 const localBaseUrl = 'http://127.0.0.1:4173';
 const baseURL = process.env.E2E_BASE_URL || localBaseUrl;
 const useLocalWebServer = !process.env.E2E_BASE_URL;
+const platformAdminBaseUrl = 'http://127.0.0.1:4174';
 
 // The Worker only boots for the financial project, which is the run that owns Supabase
 // credentials. Public browser runs never set them, so they keep starting just the web app.
@@ -32,6 +33,17 @@ const webServers = [
           cwd: '..',
           env: localWebEnvironment,
           url: localBaseUrl,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+      ]
+    : []),
+  ...(useLocalWebServer
+    ? [
+        {
+          command: 'node e2e/scripts/platform-admin-local-server.mjs',
+          cwd: '..',
+          url: platformAdminBaseUrl,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
         },
@@ -90,6 +102,12 @@ export default defineConfig({
       name: 'financial-chromium',
       testMatch: /financial-.*\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // This project is intentionally local-only: it has no production credentials or email.
+      name: 'platform-admin-local',
+      testMatch: /platform-admin-local-.*\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: platformAdminBaseUrl },
     },
   ],
 });

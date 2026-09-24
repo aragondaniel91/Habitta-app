@@ -44,6 +44,21 @@ E2E_FIXTURE_ID
 
 Authentication state files belong under `e2e/playwright/.auth/` and must never be committed. Playwright storage state can impersonate a test user.
 
+## Local Platform Admin suite
+
+`platform-admin-local` is a test-only HAB-484/HAB-486 harness. With `E2E_BASE_URL` unset it serves the raw Platform Admin files on `127.0.0.1:4174`, generates an in-memory local `config.js`, seeds the existing browser session before navigation, and intercepts only that surface's Supabase and Worker requests. It uses no privileged credentials and makes no email delivery request or simulation.
+
+The test submits the real onboarding form, uses future-relative invitation expiry, and covers pending, accepted, and completed onboarding rows along with Customer 360 and Comercial content/link navigation.
+
+Run it with:
+
+```bash
+pnpm exec tsc -p e2e/tsconfig.json --noEmit
+npm --prefix e2e exec -- playwright test --project=platform-admin-local
+```
+
+When `E2E_BASE_URL` is set, the harness does not start the local Platform Admin server. The local-only project probes `127.0.0.1:4174` and skips cleanly when it is unavailable; public projects retain their existing base URL and behavior.
+
 ## Planned financial flow
 
 Once the isolated fixture is available, the financial suite will cover:
