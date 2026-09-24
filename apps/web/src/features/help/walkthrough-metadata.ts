@@ -13,21 +13,67 @@ export type WalkthroughWorkflowId =
   | 'settings';
 
 export type WalkthroughAudience = 'Administrator' | 'Resident';
-export type WalkthroughStatus = 'pending-production-capture';
+export type WalkthroughStatus = 'pending-production-capture' | 'captured-production';
 
-export type WalkthroughCapture = {
-  status: WalkthroughStatus;
+type PendingProductionCapture = {
+  status: 'pending-production-capture';
   screenshotAsset: null;
 };
 
-export type WalkthroughMetadata = {
+export type CapturedProductionEvidence = {
+  status: 'captured-production';
+  screenshotAsset: string;
+  capturedAt: string;
+  sourceUrl: string;
+  piiReview: 'approved';
+  releaseSha: string;
+};
+
+export type WalkthroughCapture = PendingProductionCapture | CapturedProductionEvidence;
+
+type CapturedProductionEvidenceInput = Omit<CapturedProductionEvidence, 'status' | 'piiReview'> & {
+  piiReview: string;
+};
+
+export function createCapturedProductionEvidence({
+  piiReview,
+  releaseSha,
+  ...evidence
+}: CapturedProductionEvidenceInput): CapturedProductionEvidence {
+  if (piiReview !== 'approved') {
+    throw new Error('Captured production evidence requires an approved PII review.');
+  }
+
+  if (!/^[a-fA-F0-9]{40}$/.test(releaseSha)) {
+    throw new Error('Captured production evidence requires a 40-character hexadecimal release SHA.');
+  }
+
+  return {
+    status: 'captured-production',
+    ...evidence,
+    piiReview,
+    releaseSha,
+  };
+}
+
+type WalkthroughMetadataBase = {
   workflowId: WalkthroughWorkflowId;
   audience: WalkthroughAudience;
   version: typeof WALKTHROUGH_METADATA_VERSION;
-  status: WalkthroughStatus;
-  capture: WalkthroughCapture;
   canonicalTopicId?: ModuleHelpTopicId;
 };
+
+export type WalkthroughMetadata = WalkthroughMetadataBase &
+  (
+    | {
+        status: 'pending-production-capture';
+        capture: PendingProductionCapture;
+      }
+    | {
+        status: 'captured-production';
+        capture: CapturedProductionEvidence;
+      }
+  );
 
 export const WALKTHROUGH_METADATA = [
   {
