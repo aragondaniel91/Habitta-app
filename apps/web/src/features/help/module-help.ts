@@ -2,7 +2,13 @@ import type { AppRoute } from '../../navigation';
 
 export type ImportKind = 'units' | 'people' | 'opening_balances';
 
+export const MODULE_HELP_CONTENT_VERSION = '1.0' as const;
+
+export type ModuleHelpTopicId = `module-help.${AppRoute['key']}`;
+
 export type ModuleHelpContent = {
+  topicId: ModuleHelpTopicId;
+  contentVersion: typeof MODULE_HELP_CONTENT_VERSION;
   purpose: string;
   actions: string[];
   steps: string[];
@@ -14,8 +20,16 @@ export type ModuleHelpContent = {
   importKinds?: ImportKind[];
 };
 
-export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
+type ModuleHelpByRoute = {
+  [RouteKey in AppRoute['key']]: ModuleHelpContent & {
+    topicId: `module-help.${RouteKey}`;
+  };
+};
+
+export const MODULE_HELP: ModuleHelpByRoute = {
   dashboard: {
+    topicId: 'module-help.dashboard',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Te da una lectura rápida de cobranza, pagos, morosidad, unidades y actividad reciente del condominio sin sustituir los módulos donde se ejecutan las operaciones.',
     actions: [
@@ -52,6 +66,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Cada usuario ve únicamente los bloques y acciones permitidos por sus roles y por la autorización del servidor.',
   },
   units: {
+    topicId: 'module-help.units',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Administra el inventario físico del condominio: casas, apartamentos, locales, depósitos, estacionamientos y, cuando aplica, su estructura por edificios o torres.',
     actions: [
@@ -90,6 +106,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     importKinds: ['units'],
   },
   people: {
+    topicId: 'module-help.people',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Mantiene una sola identidad por persona y organiza, por separado, sus relaciones con unidades, roles en la comunidad, acceso digital y notas administrativas.',
     actions: [
@@ -129,6 +147,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     importKinds: ['people'],
   },
   maintenance: {
+    topicId: 'module-help.maintenance',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Controla activos físicos, mantenimiento preventivo, inspecciones, órdenes de trabajo y evidencias/costos sin perder la trazabilidad técnica.',
     actions: [
@@ -166,6 +186,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Los roles de gestión pueden crear y actualizar mantenimiento; junta y contabilidad pueden tener acceso de consulta o a evidencia según autorización.',
   },
   fees: {
+    topicId: 'module-help.fees',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Gestiona cuotas y cuentas por cobrar: cargos ordinarios recurrentes, extraordinarios, puntuales, mora, saldos iniciales, estados de cuenta y otras herramientas de cobranza.',
     actions: [
@@ -205,6 +227,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
     importKinds: ['opening_balances'],
   },
   payments: {
+    topicId: 'module-help.payments',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Registra comprobantes, valida pagos, aplica fondos a obligaciones y conserva recibos/reversos con trazabilidad por moneda.',
     actions: [
@@ -243,6 +267,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Registrar, revisar y aprobar son permisos distintos. La interfaz y el servidor limitan cada acción según el rol asignado.',
   },
   treasury: {
+    topicId: 'module-help.treasury',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Controla cuentas bancarias y caja mediante movimientos inmutables, transferencias internas y conciliaciones contra estados de cuenta.',
     actions: [
@@ -281,6 +307,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Administradores y contadores autorizados gestionan tesorería; la junta puede tener acceso de consulta.',
   },
   expenses: {
+    topicId: 'module-help.expenses',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Registra egresos operativos con categoría, proveedor, soporte, aprobación, pago, anulación y trazabilidad por moneda.',
     actions: [
@@ -319,6 +347,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Los permisos separan preparación, aprobación y otras transiciones; el servidor vuelve a validar cada operación.',
   },
   budgets: {
+    topicId: 'module-help.budgets',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Planifica gastos por período, categoría y moneda, conserva versiones aprobadas y compara el presupuesto con la ejecución real.',
     actions: [
@@ -357,6 +387,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Administradores y contadores pueden preparar presupuestos; la aprobación requiere el rol administrativo autorizado.',
   },
   reports: {
+    topicId: 'module-help.reports',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Convierte cargos, cobros y cartera en una lectura financiera por período, moneda y unidad, sin fabricar egresos ni conversiones.',
     actions: [
@@ -393,6 +425,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'El acceso a reportes depende del rol; la vista es de lectura y no modifica libros financieros.',
   },
   community: {
+    topicId: 'module-help.community',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Resume la composición de la comunidad, la calidad del directorio y la estructura residencial usando términos que corresponden al tipo real de propiedad.',
     actions: [
@@ -429,6 +463,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'La información y los accesos rápidos visibles se limitan según el rol del usuario.',
   },
   documents: {
+    topicId: 'module-help.documents',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Organiza archivos privados en carpetas y categorías, controla audiencia y retención, conserva versiones y registra descargas.',
     actions: [
@@ -467,6 +503,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Administración, contabilidad, asistentes autorizados y junta pueden gestionar según su rol; residentes sólo ven documentos permitidos por audiencia y relación activa.',
   },
   governance: {
+    topicId: 'module-help.governance',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Gestiona decisiones formales mediante propuestas, votaciones, reglas, asambleas, actas y acuerdos con quórum e historial.',
     actions: [
@@ -505,6 +543,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'La creación y gestión requieren roles autorizados; cada votante sólo puede ejercer los votos que el servidor determine como elegibles.',
   },
   requests: {
+    topicId: 'module-help.requests',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Da seguimiento a solicitudes de residentes o áreas comunes desde su creación hasta resolución/cierre, con prioridad, responsable, comentarios, archivos e historial.',
     actions: [
@@ -543,6 +583,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Residentes pueden crear/consultar según su acceso; el equipo autorizado gestiona asignación, estados, notas y categorías.',
   },
   announcements: {
+    topicId: 'module-help.announcements',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Crea comunicaciones segmentadas, programadas o publicadas con audiencia, prioridad, adjuntos, lectura y trazabilidad.',
     actions: [
@@ -581,6 +623,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Sólo roles autorizados crean, programan, publican o archivan; la audiencia y las relaciones activas limitan quién puede ver el contenido.',
   },
   team: {
+    topicId: 'module-help.team',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Controla quién puede administrar el condominio, qué rol tiene y qué invitaciones administrativas siguen pendientes.',
     actions: [
@@ -619,6 +663,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'Sólo administradores con la facultad correspondiente pueden gestionar el equipo y los accesos del condominio.',
   },
   audit: {
+    topicId: 'module-help.audit',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Permite investigar actividad administrativa consolidada sin modificar el historial original; es un espacio de consulta read-only.',
     actions: [
@@ -655,6 +701,8 @@ export const MODULE_HELP: Record<AppRoute['key'], ModuleHelpContent> = {
       'El workspace está reservado a administradores autorizados y el servidor valida nuevamente el acceso a los eventos.',
   },
   settings: {
+    topicId: 'module-help.settings',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
       'Configura recordatorios globales del condominio y las preferencias personales de notificaciones, separando claramente lo administrable de lo restringido por rol.',
     actions: [
