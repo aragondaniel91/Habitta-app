@@ -4,6 +4,10 @@ Estado: **Disponible hoy** con el Resident Portal de HAB-156.
 
 Esta guía describe la experiencia de propietarios e inquilinos dentro de la misma aplicación web de Habitta. Los permisos reales siempre los determina el backend y las políticas RLS de Supabase; ocultar o mostrar una acción en la interfaz no reemplaza esas reglas.
 
+## Ayuda canónica por módulo
+
+Esta guía es orientación de alto nivel, no una autoridad independiente para los flujos de pantalla. Para instrucciones vigentes, consulta la metadata de solo lectura `MODULE_HELP` en `apps/web/src/features/help/module-help.ts`, usando el topicId canónico `module-help.<route>` y su `MODULE_HELP_CONTENT_VERSION`. Las referencias representativas del residente son `module-help.dashboard`, `module-help.fees`, `module-help.payments`, `module-help.requests`, `module-help.announcements` y `module-help.governance`; no se debe copiar aquí el contenido de esos temas.
+
 ## Inicio
 
 Al entrar a `/app/dashboard`, un usuario que solo tenga roles de residente (`owner` y/o `tenant`) verá el dashboard de residente en lugar del dashboard administrativo.

@@ -15,6 +15,10 @@ Este directorio es la fuente de verdad del contenido de ayuda para administrador
 - Para actividad administrativa consolidada, consulta [Registro de auditoría](./audit-log.md).
 - Para saber qué existe hoy y qué todavía pertenece al roadmap, consulta [Estado de funcionalidades](./feature-status.md).
 
+## Autoridad de ayuda por módulo
+
+Este manual es orientación, enlaces y estado de capacidades; no es una autoridad independiente para flujos de pantalla. La fuente canónica es la metadata de solo lectura `MODULE_HELP` en `apps/web/src/features/help/module-help.ts`: cada tema usa el topicId `module-help.<route>` y `MODULE_HELP_CONTENT_VERSION`. Las pantallas y estos manuales deben referir esa metadata sin duplicar su contenido.
+
 ## Regla de documentación
 
 Todo PR que cambie materialmente un flujo visible para el usuario debe actualizar la sección correspondiente de este manual en el mismo cambio. No se debe describir como disponible una función que todavía no esté integrada en `main`.
@@ -52,7 +56,7 @@ Comprobantes, facturas y otros archivos privados usan rutas protegidas. No deben
 | Registro de auditoría administrativa | [Auditoría](./audit-log.md) | Disponible hoy para administrador |
 | Estado de módulos y roadmap visible | [Estado de funcionalidades](./feature-status.md) | Disponible hoy |
 | Capturas anotadas por flujo | Pendiente de incorporación cerca del piloto/lanzamiento | Planificado |
-| Help Center navegable dentro de la app | Debe consumir/reutilizar esta fuente de verdad | Planificado |
+| Help Center navegable dentro de la app | Debe consumir/reutilizar `MODULE_HELP` como fuente canónica | Planificado |
 
 ## Convención de estados
 

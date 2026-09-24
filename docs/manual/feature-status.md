@@ -4,6 +4,10 @@ Corte: **14 de agosto de 2026**.
 
 Este documento evita mezclar funcionalidades existentes con roadmap. “Disponible hoy” significa que el módulo/flujo existe en `main`; no significa que haya alcanzado su última versión comercial.
 
+## Autoridad de ayuda por módulo
+
+Este estado no duplica ni sustituye los temas de ayuda. El detalle de cada módulo procede exclusivamente de la metadata de solo lectura `MODULE_HELP` en `apps/web/src/features/help/module-help.ts`, identificada por `module-help.<route>` y `MODULE_HELP_CONTENT_VERSION`; por tanto, este documento no es una autoridad independiente para flujos de pantalla.
+
 ## Disponible hoy
 
 | Área | Capacidades disponibles |
@@ -68,7 +72,7 @@ Existen adjuntos privados dentro de módulos. Todavía no equivale al gestor doc
 | Gestor documental comunitario | Carpetas/categorías/versionado/permisos/retención y enlaces transversales. |
 | Exportación/retención de auditoría | Export formal del audit feed y políticas/controles adicionales de retención sobre la base read-only existente. |
 | Integration/outbox foundation ampliada | Outbox, webhooks firmados, reintentos/DLQ y health de integraciones de terceros. |
-| Help Center dentro de la app | Navegación de ayuda basada en esta fuente canónica, evitando contenido duplicado. |
+| Help Center dentro de la app | Navegación de ayuda basada en `MODULE_HELP` como fuente canónica, evitando contenido duplicado. |
 | Capturas/recorridos anotados | Se incorporarán cerca del piloto/lanzamiento cuando la UI sea suficientemente estable. |
 | Apps móviles nativas | Aplicaciones para iOS y Android sobre la misma API/backend, con experiencia accesible y push notifications. |
 
