@@ -95,7 +95,8 @@ describe('HAB-263 Personas + Unidades responsive and visual QA', () => {
     expect(styles).toContain('min-width: 320px');
     expect(peopleCss).toContain('@media (max-width: 860px)');
     expect(peopleCss).toContain('@media (max-width: 560px)');
-    expect(unitsCss).toContain('@media (max-width: 1180px)');
+    expect(unitsCss).toContain('@media (max-width: 1280px)');
+    expect(unitsCss).not.toContain('@media (max-width: 1180px)');
     expect(unitsCss).toContain('@media (max-width: 860px)');
     expect(unitsCss).toContain('@media (max-width: 560px)');
     expect(qaCss).toContain('max-width: 100%');

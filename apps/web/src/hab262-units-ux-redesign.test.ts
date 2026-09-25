@@ -80,7 +80,13 @@ describe('HAB-262 Units UX redesign', () => {
     expect(css).toContain('.units-v3-list__head');
     expect(css).toContain('.units-v3-row');
     expect(css).toContain('.units-v3-detail-facts');
-    expect(css).toContain('@media (max-width: 1180px)');
+    expect(css).toContain('@media (max-width: 1280px)');
+    expect(css).not.toContain('@media (max-width: 1180px)');
+    expect(css).toContain('.units-v3-page > .page-header');
+    expect(css).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+    expect(css).toContain('.units-v3-row__fact');
+    expect(css).toContain('.units-v3-row__status');
+    expect(css).toContain('white-space: normal');
     expect(css).toContain('@media (max-width: 860px)');
     expect(css).toContain('@media (max-width: 560px)');
     expect(css).toContain('grid-template-columns: 1fr');
