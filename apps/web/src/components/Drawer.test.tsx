@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Drawer } from './Drawer';
+import { createOverlayStack, Drawer } from './Drawer';
 
 const drawerSource = readFileSync(new URL('./Drawer.tsx', import.meta.url), 'utf8');
 
@@ -53,11 +53,54 @@ describe('Drawer', () => {
     expect(html).not.toContain('<span></span>');
   });
 
-  it('closes on Escape and restores focus to whatever opened it', () => {
+  it('closes a single overlay on Escape and restores focus to whatever opened it', () => {
     expect(drawerSource).toContain("event.key === 'Escape'");
-    expect(drawerSource).toContain('onCloseRef.current();');
+    expect(drawerSource).toContain('overlayStack.handleEscape(');
     expect(drawerSource).toContain('previouslyFocusedRef.current?.focus?.()');
     expect(drawerSource).toContain("event.key !== 'Tab'");
+  });
+
+  it('gives Escape ownership to the topmost mounted overlay, then returns it to the overlay below', () => {
+    const stack = createOverlayStack();
+    const drawer = stack.mount();
+    const confirmation = stack.mount();
+    let drawerCloses = 0;
+    let confirmationCloses = 0;
+    const event = { stopPropagation: () => undefined };
+
+    expect(stack.isTopmost(drawer)).toBe(false);
+    expect(stack.isTopmost(confirmation)).toBe(true);
+    expect(stack.handleEscape(drawer, event, () => drawerCloses++, false)).toBe(false);
+    expect(stack.handleEscape(confirmation, event, () => confirmationCloses++, false)).toBe(true);
+    expect(drawerCloses).toBe(0);
+    expect(confirmationCloses).toBe(1);
+
+    stack.unmount(confirmation);
+
+    expect(stack.isTopmost(drawer)).toBe(true);
+    expect(stack.handleEscape(drawer, event, () => drawerCloses++, false)).toBe(true);
+    expect(drawerCloses).toBe(1);
+  });
+
+  it('keeps a busy or close-disabled top overlay from leaking Escape to an underlying overlay', () => {
+    const stack = createOverlayStack();
+    const drawer = stack.mount();
+    const confirmation = stack.mount();
+    let drawerCloses = 0;
+    let confirmationCloses = 0;
+    let propagationStopped = false;
+    const event = { stopPropagation: () => (propagationStopped = true) };
+
+    expect(stack.handleEscape(confirmation, event, () => confirmationCloses++, true)).toBe(true);
+    expect(stack.handleEscape(drawer, event, () => drawerCloses++, false)).toBe(false);
+    expect(confirmationCloses).toBe(0);
+    expect(drawerCloses).toBe(0);
+    expect(propagationStopped).toBe(true);
+  });
+
+  it('unmounts the closed top overlay before restoring focus to its underlying target', () => {
+    expect(drawerSource).toContain('overlayStack.unmount(overlay);');
+    expect(drawerSource).toContain('previouslyFocusedRef.current?.focus?.();');
   });
 
   it('defers and cancels focus restoration so StrictMode replay cannot steal autofocus', () => {
