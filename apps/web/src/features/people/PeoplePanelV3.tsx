@@ -377,9 +377,6 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     [units, buildings, ownerships, occupancies, communicationAssignments, invitations],
   );
 
-  const relationshipForDrawer = relationTarget?.unitId
-    ? (relationships.find((item) => item.unitId === relationTarget.unitId) ?? null)
-    : null;
   const renderedSelectionVersion = selectionVersionRef.current;
 
   const deliveryByInvitationId = useMemo(() => {
@@ -1492,7 +1489,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
             if (ownsSelection(selected.id, renderedSelectionVersion)) setPendingClose(target);
           }}
           person={selected}
-          relationship={relationshipForDrawer}
+          relationships={relationships}
           session={session}
           units={units}
         />

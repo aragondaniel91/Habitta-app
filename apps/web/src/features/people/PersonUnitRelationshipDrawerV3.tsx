@@ -5,6 +5,11 @@ import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid, FormSection } from '../../components/FormLayout';
 import { Badge, Button, Field, Select } from '../../components/ui';
 import type { PersonUnitRelationshipSummary } from './person-unit-relationships';
+import {
+  canCreateRelationshipState,
+  relationshipDraftForUnit,
+  relationshipForUnit,
+} from './person-unit-relationship-draft';
 import { directoryUnitLabel, occupancyLabels } from './relationship-model';
 import { peopleApi } from './api';
 import type { Building, FinancialRecipientRole, Occupancy, Person, Unit } from './types';
@@ -27,7 +32,7 @@ export function PersonUnitRelationshipDrawerV3({
   person,
   units,
   buildings,
-  relationship,
+  relationships,
   initialUnitId,
   onClose,
   onChanged,
@@ -38,13 +43,13 @@ export function PersonUnitRelationshipDrawerV3({
   person: Person;
   units: Unit[];
   buildings: Building[];
-  relationship?: PersonUnitRelationshipSummary | null;
+  relationships: PersonUnitRelationshipSummary[];
   initialUnitId?: string | undefined;
   onClose: () => void;
   onChanged: (message: string) => Promise<void> | void;
   onRequestClose: (target: CloseTarget) => void;
 }) {
-  const [unitId, setUnitId] = useState(initialUnitId ?? relationship?.unitId ?? '');
+  const [unitId, setUnitId] = useState(initialUnitId ?? '');
   const [percentage, setPercentage] = useState('');
   const [occupancyType, setOccupancyType] = useState<Occupancy['occupancy_type']>('tenant');
   const [financialRole, setFinancialRole] = useState<FinancialRecipientRole>('none');
@@ -53,27 +58,28 @@ export function PersonUnitRelationshipDrawerV3({
   const [error, setError] = useState('');
 
   const availableUnits = useMemo(() => units.filter((unit) => unit.status !== 'inactive'), [units]);
-  const selectedRelationship = relationship?.unitId === unitId ? relationship : null;
+  const selectedRelationship = relationshipForUnit(relationships, unitId);
   const unit = units.find((item) => item.id === unitId);
   const unitLabel =
     selectedRelationship?.unitLabel ??
     (unit ? directoryUnitLabel(unit, buildings) : 'Selecciona una unidad');
 
   useEffect(() => {
-    setUnitId(initialUnitId ?? relationship?.unitId ?? '');
-  }, [initialUnitId, relationship?.unitId]);
+    setUnitId(initialUnitId ?? '');
+  }, [initialUnitId]);
 
   useEffect(() => {
-    const communication = selectedRelationship?.currentCommunication;
-    setFinancialRole(communication?.financial_role ?? 'none');
-    setGeneralRecipient(communication?.general_recipient ?? false);
-    setPercentage('');
+    const draft = relationshipDraftForUnit(selectedRelationship);
+    setFinancialRole(draft.financialRole);
+    setGeneralRecipient(draft.generalRecipient);
+    setPercentage(draft.ownershipPercentage);
+    setOccupancyType(draft.occupancyType);
     setError('');
-  }, [unitId, selectedRelationship?.currentCommunication?.id]);
+  }, [unitId, selectedRelationship]);
 
   const createOwnership = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!unitId) return;
+    if (!unitId || !canCreateRelationshipState(selectedRelationship, 'ownership')) return;
     const numeric = percentage ? Number(percentage) : null;
     if (numeric != null && (!Number.isFinite(numeric) || numeric <= 0 || numeric > 100)) {
       setError('La participación debe ser mayor que 0 y hasta 100.');
@@ -103,7 +109,7 @@ export function PersonUnitRelationshipDrawerV3({
 
   const createOccupancy = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!unitId) return;
+    if (!unitId || !canCreateRelationshipState(selectedRelationship, 'occupancy')) return;
     setBusy('occupancy');
     setError('');
     try {
@@ -175,7 +181,7 @@ export function PersonUnitRelationshipDrawerV3({
         >
           <Field label="Unidad">
             <Select
-              disabled={Boolean(initialUnitId || relationship?.unitId)}
+              disabled={Boolean(initialUnitId)}
               onChange={(event) => setUnitId(event.target.value)}
               value={unitId}
             >
