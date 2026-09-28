@@ -128,6 +128,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   const [statusFilter, setStatusFilter] = useState('');
   const [tab, setTab] = useState<PeopleProfileTab>('summary');
   const [loading, setLoading] = useState(true);
+  const [directoryLoadError, setDirectoryLoadError] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
   // Detail refreshes are deliberately non-destructive.  Once a profile has loaded,
   // retain its controls and form fields while a later request is in flight.
@@ -266,6 +267,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       if (clearFeedback) {
         setError('');
         clearProfileLoadFeedback();
+        setDirectoryLoadError('');
       }
       try {
         const [peopleItems, unitItems, buildingItems] = await Promise.all([
@@ -276,6 +278,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         setPeople(peopleItems);
         setUnits(unitItems);
         setBuildings(buildingItems);
+        setDirectoryLoadError('');
         setSelected((current) =>
           current ? (peopleItems.find((person) => person.id === current.id) ?? current) : current,
         );
@@ -283,13 +286,15 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       } catch (requestError) {
         const directoryError =
           requestError instanceof Error ? requestError.message : 'No se pudo cargar Personas.';
-        showActionError(directoryError);
+        clearProfileLoadFeedback();
+        setDirectoryLoadError(directoryError);
+        setError('');
         return directoryError;
       } finally {
         setLoading(false);
       }
     },
-    [clearProfileLoadFeedback, condominiumId, session, showActionError],
+    [clearProfileLoadFeedback, condominiumId, session],
   );
 
   const loadPersonContext = useCallback(
@@ -358,6 +363,41 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       return matchesQuery && (!statusFilter || status === statusFilter);
     });
   }, [people, query, statusFilter]);
+
+  const directoryEmptyState = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const queryMatches = normalizedQuery
+      ? people.filter((person) => personSearchText(person).includes(normalizedQuery))
+      : people;
+    const filtersCauseNoResults =
+      filtered.length === 0 && Boolean(statusFilter) && queryMatches.length > 0;
+
+    if (directoryLoadError && people.length === 0) {
+      return {
+        title: 'No se pudo cargar el directorio',
+        description: directoryLoadError,
+        actionLabel: 'Reintentar',
+        tone: 'error' as const,
+      };
+    }
+    if (people.length === 0) {
+      return {
+        title: 'Aún no hay personas registradas',
+        description: 'Cuando agregues Personas, aparecerán aquí.',
+      };
+    }
+    if (filtersCauseNoResults) {
+      return {
+        title: 'Ninguna persona coincide con el filtro',
+        description: 'Restablece el filtro de estado para ver más personas.',
+        actionLabel: 'Restablecer filtro',
+      };
+    }
+    return {
+      title: 'No encontramos resultados para tu búsqueda',
+      description: 'Prueba con otro nombre, documento, correo o teléfono.',
+    };
+  }, [directoryLoadError, filtered.length, people, query, statusFilter]);
 
   const accessOptions = useMemo(
     () => residentAccessOptions(ownerships, occupancies),
@@ -532,7 +572,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     const selectionVersion = selectionVersionRef.current;
     const savedMode = personEditor;
     setPersonEditor(null);
-    const directoryReloadError = await loadDirectory(false);
+    await loadDirectory(false);
     // A create selects its new person even if another profile was initially open.  In
     // either mode, a selection made while the directory was refreshing wins.
     if (selectionVersionRef.current !== selectionVersion) return;
@@ -550,7 +590,6 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     }
     setSelected(person);
     setTab('summary');
-    if (directoryReloadError) showActionError(directoryReloadError);
     let loadVersion: number | null = null;
     try {
       await refreshSelected(person.id, nextSelectionVersion, successMessage, (version) => {
@@ -842,7 +881,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     setTab('digital-access');
   };
 
-  if (loading && !people.length) {
+  if (loading && !people.length && !directoryLoadError) {
     return (
       <div className="people-v3-workspace" aria-label="Cargando personas">
         <Skeleton className="skeleton--title" />
@@ -1344,6 +1383,14 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
             ) : null}
           </InlineNotice>
         ) : null}
+        {directoryLoadError && people.length > 0 ? (
+          <InlineNotice tone="error" title="No se pudo actualizar el directorio">
+            {directoryLoadError}
+            <Button onClick={() => void loadDirectory()} size="sm" type="button" variant="ghost">
+              Reintentar
+            </Button>
+          </InlineNotice>
+        ) : null}
         {invitationListReloadRetry ? (
           <InlineNotice tone="error">
             {invitationListReloadRetry.error}
@@ -1372,20 +1419,20 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           <WorkspaceMetricCard
             icon={<PeopleIcon size={18} />}
             label="Personas"
-            value={people.length}
+            value={directoryLoadError && people.length === 0 ? '—' : people.length}
             detail="Registros únicos"
           />
           <WorkspaceMetricCard
             icon={<CheckCircleIcon size={18} />}
             label="Activas"
-            value={activePeople}
+            value={directoryLoadError && people.length === 0 ? '—' : activePeople}
             detail="Vigentes en la comunidad"
             tone="green"
           />
           <WorkspaceMetricCard
             icon={<BellIcon size={18} />}
             label="Con contacto"
-            value={connectedPeople}
+            value={directoryLoadError && people.length === 0 ? '—' : connectedPeople}
             detail="Correo o teléfono disponible"
             tone="neutral"
           />
@@ -1393,14 +1440,20 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
 
         <div className="people-v3-layout">
           <PeopleDirectoryView
+            countsUnavailable={Boolean(directoryLoadError && people.length === 0)}
             onClearFilters={() => {
-              setQuery('');
+              if (directoryLoadError && people.length === 0) {
+                void loadDirectory(false);
+                return;
+              }
               setStatusFilter('');
             }}
             onQueryChange={setQuery}
             onSelect={(person) => void selectPerson(person)}
             onStatusFilterChange={setStatusFilter}
             people={filtered}
+            totalPeople={people.length}
+            emptyState={directoryEmptyState}
             query={query}
             selectedId={selected?.id}
             statusFilter={statusFilter}

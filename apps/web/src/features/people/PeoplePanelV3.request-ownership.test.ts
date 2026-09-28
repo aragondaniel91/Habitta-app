@@ -120,6 +120,23 @@ function click(label: string) {
   if (!button) throw new Error(`Button not found: ${label}; visible: ${document.body.textContent}`);
   act(() => button.click());
 }
+function changeDirectorySearch(value: string) {
+  const input = document.querySelector('input[type="search"]') as HTMLInputElement | null;
+  if (!input) throw new Error('Directory search input not found');
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+function changeDirectoryStatus(value: string) {
+  const select = document.querySelector('.people-v3-directory select') as HTMLSelectElement | null;
+  if (!select) throw new Error('Directory status filter not found');
+  act(() => {
+    select.value = value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
 
 describe('PeoplePanelV3 request ownership', () => {
   let host: HTMLDivElement;
@@ -184,6 +201,182 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(host.textContent).not.toContain('Unit A');
     expect(host.textContent).not.toContain('A failed');
     expect(host.textContent).not.toContain('A saved');
+  });
+
+  it('describes a genuinely empty Personas directory without a filter-reset action', async () => {
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    api.mockImplementation((path: string) => {
+      if (path.endsWith('/people') || path.endsWith('/units') || path.endsWith('/buildings')) {
+        return Promise.resolve([]);
+      }
+      return Promise.resolve({});
+    });
+    await act(async () => {
+      root.render(
+        createElement(PeoplePanelV3, {
+          condominiumId: 'empty',
+          condominiumName: 'Empty',
+          session: {} as never,
+        }),
+      );
+    });
+    await flush();
+
+    expect(host.textContent).toContain('Aún no hay personas registradas');
+    expect(host.textContent).not.toContain('Restablecer filtro');
+    expect(host.textContent).not.toContain('Limpiar filtros');
+  });
+
+  it('offers a reset only when a status filter removes otherwise matching people', async () => {
+    changeDirectoryStatus('inactive');
+    await flush();
+
+    expect(host.textContent).toContain('Ninguna persona coincide con el filtro');
+    expect(host.textContent).toContain('Restablecer filtro');
+    click('Restablecer filtro');
+    await flush();
+
+    expect(host.textContent).toContain('A Resident');
+    expect((document.querySelector('.people-v3-directory select') as HTMLSelectElement).value).toBe(
+      '',
+    );
+  });
+
+  it('describes search-only no results without offering a filter reset', async () => {
+    changeDirectoryStatus('active');
+    changeDirectorySearch('no existe');
+    await flush();
+
+    expect(host.textContent).toContain('No encontramos resultados para tu búsqueda');
+    expect(host.textContent).not.toContain('Restablecer filtro');
+  });
+
+  it('keeps directory metrics sourced from the full directory when results are filtered', async () => {
+    changeDirectorySearch('a resident');
+    await flush();
+
+    const metricValues = Array.from(
+      host.querySelectorAll('.ux-metric-card strong'),
+      (item) => item.textContent,
+    );
+    expect(metricValues).toEqual(['2', '2', '2']);
+    expect(host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label')).toBe(
+      'Personas mostradas: 1 de 2',
+    );
+    expect(host.querySelector('.people-v3-directory__footer')?.textContent).toContain(
+      'Mostrando 1 de 2 personas registradas',
+    );
+  });
+
+  it('retries a failed directory load and recovers its results', async () => {
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    let directoryAttempts = 0;
+    api.mockImplementation((path: string) => {
+      if (path.endsWith('/people')) {
+        directoryAttempts += 1;
+        return directoryAttempts === 1
+          ? Promise.reject(new Error('Directory unavailable'))
+          : Promise.resolve(people);
+      }
+      if (path.endsWith('/units') || path.endsWith('/buildings')) return Promise.resolve([]);
+      return Promise.resolve({});
+    });
+    await act(async () => {
+      root.render(
+        createElement(PeoplePanelV3, {
+          condominiumId: 'failed',
+          condominiumName: 'Failed',
+          session: {} as never,
+        }),
+      );
+    });
+    await flush();
+
+    expect(host.textContent).toContain('No se pudo cargar el directorio');
+    expect(host.textContent).toContain('Directory unavailable');
+    expect(Array.from(host.querySelectorAll('.ux-metric-card strong'), (item) => item.textContent)).toEqual([
+      '—',
+      '—',
+      '—',
+    ]);
+    expect(host.querySelector('.people-v3-directory__heading .badge')?.textContent).toBe('—');
+    expect(host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label')).toBe(
+      'Personas mostradas: Sin datos',
+    );
+    expect(host.querySelector('.people-v3-directory__footer')?.textContent).toContain(
+      'Conteo no disponible',
+    );
+    expect(host.querySelector('.people-v3-directory__footer')?.textContent).not.toContain(
+      'Mostrando 0 de 0',
+    );
+    click('Reintentar');
+    await flush();
+
+    expect(directoryAttempts).toBe(2);
+    expect(host.textContent).toContain('A Resident');
+    expect(host.textContent).not.toContain('No se pudo cargar el directorio');
+    expect(Array.from(host.querySelectorAll('.ux-metric-card strong'), (item) => item.textContent)).toEqual([
+      '2',
+      '2',
+      '2',
+    ]);
+    expect(host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label')).toBe(
+      'Personas mostradas: 2 de 2',
+    );
+    expect(host.querySelector('.people-v3-directory__footer')?.textContent).toContain(
+      'Mostrando 2 de 2 personas registradas',
+    );
+  });
+
+  it('announces a first-load directory failure and retains retry focus while another retry fails', async () => {
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    const retry = deferred<never[]>();
+    let directoryAttempts = 0;
+    api.mockImplementation((path: string) => {
+      if (path.endsWith('/people')) {
+        directoryAttempts += 1;
+        return directoryAttempts === 1
+          ? Promise.reject(new Error('Directory unavailable'))
+          : retry.promise;
+      }
+      if (path.endsWith('/units') || path.endsWith('/buildings')) return Promise.resolve([]);
+      return Promise.resolve({});
+    });
+    await act(async () => {
+      root.render(
+        createElement(PeoplePanelV3, {
+          condominiumId: 'failed-retry',
+          condominiumName: 'Failed retry',
+          session: {} as never,
+        }),
+      );
+    });
+    await flush();
+
+    const alert = host.querySelector('[role="alert"]');
+    const retryButton = Array.from(host.querySelectorAll('button')).find(
+      (button) => button.textContent?.includes('Reintentar'),
+    );
+    expect(alert?.textContent).toContain('No se pudo cargar el directorio');
+    expect(alert?.textContent).toContain('Directory unavailable');
+    expect(host.querySelector('.people-v3-directory .empty-state')).toBeNull();
+    expect(retryButton).toBeTruthy();
+
+    retryButton?.focus();
+    await act(async () => retryButton?.click());
+
+    expect(directoryAttempts).toBe(2);
+    expect(document.activeElement).toBe(retryButton);
+    expect(host.querySelector('[role="alert"]')).toBe(alert);
+
+    await act(async () => retry.reject(new Error('Directory still unavailable')));
+    await flush();
+
+    expect(document.activeElement).toBe(retryButton);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Directory still unavailable');
   });
 
   it('drops stale invitation and revoke re-lists after selection changes', async () => {
@@ -454,7 +647,8 @@ describe('PeoplePanelV3 request ownership', () => {
           : Promise.resolve(relationship('a'));
       }
       if (path.endsWith('/people')) return Promise.resolve(people);
-      if (path.endsWith('/units')) return Promise.resolve([{ id: 'u1', code: '101', status: 'active' }]);
+      if (path.endsWith('/units'))
+        return Promise.resolve([{ id: 'u1', code: '101', status: 'active' }]);
       if (path.endsWith('/buildings')) return Promise.resolve([]);
       if (path.includes('communication-responsibilities')) return Promise.resolve(communication);
       return Promise.resolve(notes);
@@ -477,9 +671,9 @@ describe('PeoplePanelV3 request ownership', () => {
     });
     click('Crear invitación');
     await flush();
-    expect(host.querySelector<HTMLInputElement>('[aria-label="Enlace seguro de invitación"]')?.value).toBe(
-      'https://invite',
-    );
+    expect(
+      host.querySelector<HTMLInputElement>('[aria-label="Enlace seguro de invitación"]')?.value,
+    ).toBe('https://invite');
 
     click('Resumen');
     await flush();
@@ -493,9 +687,9 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(host.textContent).toContain('Profile refresh failed');
     expect(host.textContent).toContain('Reintentar');
     expect(host.textContent).toContain('Invitar a Habitta');
-    expect(host.querySelector<HTMLInputElement>('[aria-label="Enlace seguro de invitación"]')?.value).toBe(
-      'https://invite',
-    );
+    expect(
+      host.querySelector<HTMLInputElement>('[aria-label="Enlace seguro de invitación"]')?.value,
+    ).toBe('https://invite');
 
     click('Reintentar');
     await flush();
@@ -503,9 +697,9 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(host.textContent).not.toContain('Profile refresh failed');
     expect(host.textContent).not.toContain('Reintentar');
     expect(host.textContent).toContain('Invitar a Habitta');
-    expect(host.querySelector<HTMLInputElement>('[aria-label="Enlace seguro de invitación"]')?.value).toBe(
-      'https://invite',
-    );
+    expect(
+      host.querySelector<HTMLInputElement>('[aria-label="Enlace seguro de invitación"]')?.value,
+    ).toBe('https://invite');
   });
 
   it('reports a saved edit when its profile refresh fails and offers retry', async () => {
@@ -928,13 +1122,19 @@ describe('PeoplePanelV3 request ownership', () => {
 
   it('preserves a failed edit directory reload without resetting the selected profile', async () => {
     let directoryLoads = 1;
+    let relationshipLoads = 0;
     api.mockImplementation((path: string) => {
       if (path.endsWith('/people'))
         return ++directoryLoads === 1
           ? Promise.resolve(people)
           : Promise.reject(new Error('Edit directory failed'));
       if (path.endsWith('/units') || path.endsWith('/buildings')) return Promise.resolve([]);
-      if (path.includes('/relationships')) return Promise.resolve(relationship('a'));
+      if (path.includes('/relationships')) {
+        relationshipLoads += 1;
+        return relationshipLoads === 1
+          ? Promise.resolve(relationship('a'))
+          : Promise.reject(new Error('Edit profile failed'));
+      }
       if (path.includes('communication-responsibilities')) return Promise.resolve(communication);
       return Promise.resolve(notes);
     });
@@ -945,6 +1145,9 @@ describe('PeoplePanelV3 request ownership', () => {
     await flush();
 
     expect(host.textContent).toContain('Edit directory failed');
+    expect(host.textContent).toContain('No se pudo actualizar el directorio');
+    expect(host.textContent).toContain('Edit profile failed');
+    expect(host.textContent).toContain('Reintentar');
     expect(host.textContent).toContain('A edit saved');
     expect(host.textContent).toContain('A Resident');
     expect(host.textContent).toContain('Vincular unidad');
@@ -964,6 +1167,8 @@ describe('PeoplePanelV3 request ownership', () => {
     await flush();
 
     expect(host.textContent).toContain('Create directory failed');
+    expect(host.textContent).toContain('No se pudo actualizar el directorio');
+    expect(host.textContent).toContain('Reintentar');
     expect(host.textContent).toContain('C create saved');
     expect(host.textContent).toContain('C Resident');
   });

@@ -8,7 +8,7 @@ import {
   PeopleIcon,
   UnitsIcon,
 } from '../../components/icons';
-import { WorkspaceTab, WorkspaceTabs } from '../../components/WorkspaceUi';
+import { InlineNotice, WorkspaceTab, WorkspaceTabs } from '../../components/WorkspaceUi';
 import { residentRoleLabel } from '../../lib/residentAccess';
 import type { ResidentInvitation } from '../../lib/residentAccess';
 import type { PersonUnitRelationshipSummary } from './person-unit-relationships';
@@ -36,18 +36,29 @@ function personDocumentLabel(person: Person) {
 
 export function PeopleDirectoryView({
   people,
+  totalPeople,
+  countsUnavailable = false,
   selectedId,
   query,
   statusFilter,
+  emptyState,
   onQueryChange,
   onStatusFilterChange,
   onSelect,
   onClearFilters,
 }: {
   people: Person[];
+  totalPeople: number;
+  countsUnavailable?: boolean;
   selectedId?: string | null | undefined;
   query: string;
   statusFilter: string;
+  emptyState: {
+    title: string;
+    description: string;
+    actionLabel?: string;
+    tone?: 'error';
+  };
   onQueryChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
   onSelect: (person: Person) => void;
@@ -60,7 +71,16 @@ export function PeopleDirectoryView({
           <span>Directorio</span>
           <h2>Personas registradas</h2>
         </div>
-        <Badge tone="info">{people.length}</Badge>
+        <Badge
+          aria-label={
+            countsUnavailable
+              ? 'Personas mostradas: Sin datos'
+              : `Personas mostradas: ${people.length} de ${totalPeople}`
+          }
+          tone="info"
+        >
+          {countsUnavailable ? '—' : people.length}
+        </Badge>
       </div>
 
       <div className="people-v3-directory__filters ux-form">
@@ -106,18 +126,29 @@ export function PeopleDirectoryView({
             </button>
           ))}
         </div>
+      ) : emptyState.tone === 'error' ? (
+        <InlineNotice tone="error" title={emptyState.title}>
+          {emptyState.description}
+          {emptyState.actionLabel ? (
+            <Button onClick={onClearFilters} size="sm" type="button" variant="ghost">
+              {emptyState.actionLabel}
+            </Button>
+          ) : null}
+        </InlineNotice>
       ) : (
         <EmptyState
-          actionLabel="Limpiar filtros"
-          description="Prueba otra búsqueda o muestra todos los estados."
+          actionLabel={emptyState.actionLabel}
+          description={emptyState.description}
           icon={<PeopleIcon size={26} />}
-          onAction={onClearFilters}
-          title="No encontramos personas"
+          onAction={emptyState.actionLabel ? onClearFilters : undefined}
+          title={emptyState.title}
         />
       )}
 
       <footer className="people-v3-directory__footer">
-        {people.length} {people.length === 1 ? 'resultado' : 'resultados'}
+        {countsUnavailable
+          ? 'Conteo no disponible'
+          : `Mostrando ${people.length} de ${totalPeople} ${totalPeople === 1 ? 'persona registrada' : 'personas registradas'}`}
       </footer>
     </Surface>
   );
