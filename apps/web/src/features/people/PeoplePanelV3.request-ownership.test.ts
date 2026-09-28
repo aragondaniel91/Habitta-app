@@ -120,6 +120,13 @@ function click(label: string) {
   if (!button) throw new Error(`Button not found: ${label}; visible: ${document.body.textContent}`);
   act(() => button.click());
 }
+function directoryPersonButton(label: string) {
+  const button = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('.people-v3-directory__item'),
+  ).find((item) => item.textContent?.includes(label));
+  if (!button) throw new Error(`Directory person not found: ${label}`);
+  return button;
+}
 function changeDirectorySearch(value: string) {
   const input = document.querySelector('input[type="search"]') as HTMLInputElement | null;
   if (!input) throw new Error('Directory search input not found');
@@ -180,6 +187,27 @@ describe('PeoplePanelV3 request ownership', () => {
   afterEach(() => {
     act(() => root.unmount());
     host.remove();
+  });
+
+  it('marks only the current directory person and transfers that state after click and keyboard activation', async () => {
+    const a = directoryPersonButton('A Resident');
+    const b = directoryPersonButton('B Resident');
+
+    expect(a.getAttribute('aria-current')).toBeNull();
+    expect(b.getAttribute('aria-current')).toBeNull();
+
+    await act(async () => a.click());
+    expect(a.getAttribute('aria-current')).toBe('true');
+    expect(b.getAttribute('aria-current')).toBeNull();
+
+    // Native buttons activate on Enter. jsdom does not perform that default action,
+    // so dispatch the browser-equivalent click after the keyboard event.
+    await act(async () => {
+      b.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+      b.click();
+    });
+    expect(a.getAttribute('aria-current')).toBeNull();
+    expect(b.getAttribute('aria-current')).toBe('true');
   });
 
   it('keeps B complete when A finishes late, without A relationships, invitations, messages, or errors', async () => {

@@ -109,6 +109,7 @@ export function PeopleDirectoryView({
         <div className="people-v3-directory__list">
           {people.map((person) => (
             <button
+              aria-current={selectedId === person.id ? 'true' : undefined}
               className="people-v3-directory__item"
               data-selected={selectedId === person.id || undefined}
               key={person.id}
