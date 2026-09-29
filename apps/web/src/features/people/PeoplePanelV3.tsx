@@ -123,6 +123,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   const [adminNoteRevisions, setAdminNoteRevisions] = useState<PersonAdminNoteRevision[]>([]);
   const [adminNotesAuthorized, setAdminNotesAuthorized] = useState(false);
   const [adminNoteDraft, setAdminNoteDraft] = useState('');
+  const [adminNoteError, setAdminNoteError] = useState('');
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -172,6 +173,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   // indicator, so retain each in-flight operation until it finishes or selection changes.
   const operationNonceRef = useRef(0);
   const activeOperationsRef = useRef(new Map<number, string>());
+  const adminNoteInputRef = useRef<HTMLTextAreaElement>(null);
 
   const clearPersonState = useCallback(() => {
     requestOwnershipRef.current.clear();
@@ -186,6 +188,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     setAdminNoteRevisions([]);
     setAdminNotesAuthorized(false);
     setAdminNoteDraft('');
+    setAdminNoteError('');
     setDetailLoading(false);
     setHasLoadedSelectedProfile(false);
     setBusyAction('');
@@ -800,11 +803,13 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     if (!selected || !adminNotesAuthorized) return;
     const content = adminNoteDraft.trim();
     if (!content) {
-      showActionError(
+      setAdminNoteError(
         'Escribe una nota o usa “Limpiar nota” para conservar el cambio en el historial.',
       );
+      adminNoteInputRef.current?.focus();
       return;
     }
+    setAdminNoteError('');
     const personId = selected.id;
     const selectionVersion = selectionVersionRef.current;
     const operationId = beginOperation('admin-note');
@@ -1112,13 +1117,18 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         >
           <Field
             hint="Máximo 4.000 caracteres. Cada guardado crea una nueva revisión auditable."
+            error={adminNoteError}
             label="Nota administrativa"
           >
             <textarea
               className="input"
               maxLength={4000}
-              onChange={(event) => setAdminNoteDraft(event.target.value)}
+              onChange={(event) => {
+                setAdminNoteDraft(event.target.value);
+                if (adminNoteError) setAdminNoteError('');
+              }}
               placeholder="Preferencia de contacto, seguimiento administrativo o contexto operativo…"
+              ref={adminNoteInputRef}
               rows={6}
               value={adminNoteDraft}
             />

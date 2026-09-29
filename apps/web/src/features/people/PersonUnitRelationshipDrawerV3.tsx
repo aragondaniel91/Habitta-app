@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
@@ -56,6 +56,8 @@ export function PersonUnitRelationshipDrawerV3({
   const [generalRecipient, setGeneralRecipient] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [percentageError, setPercentageError] = useState('');
+  const percentageInputRef = useRef<HTMLInputElement>(null);
 
   const availableUnits = useMemo(() => units.filter((unit) => unit.status !== 'inactive'), [units]);
   const selectedRelationship = relationshipForUnit(relationships, unitId);
@@ -75,6 +77,7 @@ export function PersonUnitRelationshipDrawerV3({
     setPercentage(draft.ownershipPercentage);
     setOccupancyType(draft.occupancyType);
     setError('');
+    setPercentageError('');
   }, [unitId, selectedRelationship]);
 
   const createOwnership = async (event: FormEvent<HTMLFormElement>) => {
@@ -82,9 +85,11 @@ export function PersonUnitRelationshipDrawerV3({
     if (!unitId || !canCreateRelationshipState(selectedRelationship, 'ownership')) return;
     const numeric = percentage ? Number(percentage) : null;
     if (numeric != null && (!Number.isFinite(numeric) || numeric <= 0 || numeric > 100)) {
-      setError('La participación debe ser mayor que 0 y hasta 100.');
+      setPercentageError('La participación debe ser mayor que 0 y hasta 100.');
+      percentageInputRef.current?.focus();
       return;
     }
+    setPercentageError('');
     setBusy('ownership');
     setError('');
     try {
@@ -179,7 +184,7 @@ export function PersonUnitRelationshipDrawerV3({
           title="Unidad"
           variant="card"
         >
-          <Field label="Unidad">
+          <Field label="Unidad" required>
             <Select
               disabled={Boolean(initialUnitId)}
               onChange={(event) => setUnitId(event.target.value)}
@@ -246,12 +251,20 @@ export function PersonUnitRelationshipDrawerV3({
                   onSubmit={(event) => void createOwnership(event)}
                 >
                   <FormGrid>
-                    <Field hint="Opcional. Mayor que 0 y hasta 100." label="Participación (%)">
+                    <Field
+                      error={percentageError}
+                      hint="Opcional. Mayor que 0 y hasta 100."
+                      label="Participación (%)"
+                    >
                       <input
                         className="input"
                         inputMode="decimal"
-                        onChange={(event) => setPercentage(event.target.value)}
+                        onChange={(event) => {
+                          setPercentage(event.target.value);
+                          if (percentageError) setPercentageError('');
+                        }}
                         placeholder="Ej. 100"
+                        ref={percentageInputRef}
                         value={percentage}
                       />
                     </Field>
