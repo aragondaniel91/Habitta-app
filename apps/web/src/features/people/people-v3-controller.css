@@ -245,6 +245,26 @@
 }
 
 @media (max-width: 860px) {
+  .people-v3-drawer.ux-drawer-panel {
+    min-height: 0;
+    max-height: 100dvh;
+  }
+
+  .people-v3-drawer__header.ux-drawer-panel__header {
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .people-v3-drawer__body.ux-drawer-panel__body {
+    min-height: 0;
+    overflow-x: hidden;
+    padding: 1rem;
+  }
+
+  .people-v3-drawer__header .ux-drawer-panel__description {
+    overflow-wrap: anywhere;
+  }
+
   .people-v3-layout,
   .people-v3-loading-grid {
     grid-template-columns: 1fr;
@@ -259,6 +279,7 @@
   .people-v3-inline-form > .button,
   .people-v3-access-form > .button {
     width: 100%;
+    min-height: 44px;
   }
 
   .people-v3-history__list article {
@@ -267,6 +288,11 @@
 
   .people-v3-history__list .people-v3-action-row {
     grid-column: 1 / -1;
+  }
+
+  .people-v3-inline-form > *,
+  .people-v3-access-form > * {
+    min-width: 0;
   }
 }
 
@@ -282,6 +308,7 @@
   .people-v3-action-row .button,
   .people-v3-invitation-link .button {
     width: 100%;
+    min-height: 44px;
   }
 
   .people-v3-tab-content {
@@ -297,5 +324,30 @@
   .people-v3-history__list article > .badge,
   .people-v3-invitation-link > div {
     justify-self: start;
+  }
+}
+
+@media (max-width: 420px) {
+  .people-v3-drawer__header.ux-drawer-panel__header {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .people-v3-drawer__body.ux-drawer-panel__body {
+    padding: 0.9rem;
+  }
+
+  .people-v3-workspace,
+  .people-v3-tab-stack,
+  .people-v3-tab-content {
+    min-width: 0;
+  }
+
+  .people-v3-history__list article {
+    padding: 0.7rem;
+  }
+
+  .people-v3-check-row {
+    min-height: 44px;
+    padding: 0.55rem 0.7rem;
   }
 }

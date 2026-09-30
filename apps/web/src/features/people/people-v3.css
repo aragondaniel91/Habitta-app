@@ -370,6 +370,7 @@
   }
 
   .people-v3-profile-header__actions {
+    flex-wrap: wrap;
     padding: 0 1.1rem;
   }
 
@@ -439,5 +440,29 @@
 
   .people-v3-unit-card__actions .button {
     width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .people-v3-directory,
+  .people-v3-profile,
+  .people-v3-profile-header,
+  .people-v3-unit-card {
+    min-width: 0;
+  }
+
+  .people-v3-directory,
+  .people-v3-tab-content {
+    padding-inline: 0.7rem;
+  }
+
+  .people-v3-profile-header__identity {
+    gap: 0.7rem;
+    padding-inline: 0.8rem;
+  }
+
+  .people-v3-profile-tabs {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
   }
 }
