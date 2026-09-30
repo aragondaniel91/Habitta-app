@@ -983,9 +983,17 @@ describe('PeoplePanelV3 request ownership', () => {
 
     expect(host.textContent).toContain('101');
     expect(host.textContent).toContain('A edit saved');
+    const successStatus = host.querySelector('[role="status"]');
+    expect(successStatus).not.toBeNull();
+    expect(successStatus?.getAttribute('aria-live')).toBe('polite');
+    expect(successStatus?.getAttribute('aria-atomic')).toBe('true');
 
     click('Vincular unidad');
     await flush();
+    // The status node remains mounted while adjacent UI changes, avoiding a second
+    // announcement of the same completed edit.
+    expect(host.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(host.querySelector('[role="status"]')).toBe(successStatus);
     expect(host.querySelector('[role="dialog"]')).not.toBeNull();
     click('Request relationship close');
     await flush();
@@ -1017,6 +1025,8 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(host.textContent).toContain('C Resident');
     expect(host.textContent).toContain('101');
     expect(host.textContent).toContain('C create saved');
+    expect(host.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('C create saved');
   });
 
   it('keeps a created invitation successful when its re-list fails and retries only the list', async () => {

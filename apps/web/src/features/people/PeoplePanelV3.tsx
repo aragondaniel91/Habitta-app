@@ -1420,7 +1420,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           </InlineNotice>
         ) : null}
         {message ? (
-          <InlineNotice tone="success" title="Listo">
+          <InlineNotice announce tone="success" title="Listo">
             {message}
           </InlineNotice>
         ) : null}
