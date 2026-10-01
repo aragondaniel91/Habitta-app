@@ -356,6 +356,11 @@
 }
 
 @media (max-width: 860px) {
+  .people-v3-profile-anchor {
+    min-width: 0;
+    scroll-margin-top: calc(var(--topbar-height) + 1rem);
+  }
+
   .people-v3-directory {
     position: static;
     max-height: none;

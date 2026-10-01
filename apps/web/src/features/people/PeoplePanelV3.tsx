@@ -36,6 +36,7 @@ import {
   PeopleProfileEmpty,
   PersonProfileHeader,
   PersonUnitRelationshipCard,
+  type DirectorySelectionInteraction,
   type PeopleProfileTab,
 } from './PeopleWorkspaceComponents';
 import {
@@ -87,6 +88,28 @@ type InvitationListReloadRetry = {
   successMessage: string;
   error: string;
 };
+
+type PendingProfileReveal = {
+  personId: string;
+  selectionVersion: number;
+  interaction: DirectorySelectionInteraction;
+};
+
+const profileRevealTolerance = 24;
+
+function profileRevealHasSettled(profile: HTMLElement) {
+  const scrollMarginTop = Number.parseFloat(window.getComputedStyle(profile).scrollMarginTop);
+  if (!Number.isFinite(scrollMarginTop)) return false;
+
+  return Math.abs(profile.getBoundingClientRect().top - scrollMarginTop) <= profileRevealTolerance;
+}
+
+function profileRevealScrollTarget(profile: HTMLElement) {
+  const scrollMarginTop = Number.parseFloat(window.getComputedStyle(profile).scrollMarginTop);
+  if (!Number.isFinite(scrollMarginTop)) return null;
+
+  return window.scrollY + profile.getBoundingClientRect().top - scrollMarginTop;
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(value));
@@ -174,6 +197,10 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   const operationNonceRef = useRef(0);
   const activeOperationsRef = useRef(new Map<number, string>());
   const adminNoteInputRef = useRef<HTMLTextAreaElement>(null);
+  const profileRevealRef = useRef<HTMLDivElement>(null);
+  const profileHeadingRef = useRef<HTMLHeadingElement>(null);
+  const profileRevealFrameRef = useRef<number | null>(null);
+  const profileFocusCleanupRef = useRef<(() => void) | null>(null);
 
   const clearPersonState = useCallback(() => {
     requestOwnershipRef.current.clear();
@@ -210,6 +237,110 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       selectionVersionRef.current === selectionVersion &&
       requestOwnershipRef.current.ownsSelection(personId, selectionVersion),
     [],
+  );
+
+  const cancelPendingProfileReveal = useCallback(() => {
+    if (profileRevealFrameRef.current !== null) {
+      const cancelFrame = window.cancelAnimationFrame ?? window.clearTimeout;
+      cancelFrame(profileRevealFrameRef.current);
+      profileRevealFrameRef.current = null;
+    }
+    profileFocusCleanupRef.current?.();
+    profileFocusCleanupRef.current = null;
+  }, []);
+
+  const scheduleProfileReveal = useCallback(
+    ({ personId, selectionVersion, interaction }: PendingProfileReveal) => {
+      cancelPendingProfileReveal();
+      if (typeof window === 'undefined' || !window.matchMedia?.('(max-width: 860px)').matches) {
+        return;
+      }
+
+      const requestFrame =
+        window.requestAnimationFrame ??
+        ((callback: FrameRequestCallback) => window.setTimeout(callback, 0));
+      profileRevealFrameRef.current = requestFrame(() => {
+        profileRevealFrameRef.current = null;
+        if (!ownsSelection(personId, selectionVersion)) return;
+
+        const profile = profileRevealRef.current;
+        if (!profile) return;
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const revealProfile = (behavior: ScrollBehavior) => {
+          const target = profileRevealScrollTarget(profile);
+          if (target === null) {
+            profile.scrollIntoView({ behavior, block: 'start' });
+            return;
+          }
+
+          // Native scrollIntoView can settle short of the profile's scroll margin after
+          // either pointer or keyboard selection. Use the measured document offset so
+          // both interactions land below the fixed top bar.
+          window.scrollTo({ behavior, top: target });
+        };
+        revealProfile(reducedMotion ? 'auto' : 'smooth');
+
+        if (interaction !== 'keyboard' && !reducedMotion) {
+          const cleanupPointerFallback = () => window.clearTimeout(fallbackTimer);
+          const fallbackTimer = window.setTimeout(() => {
+            // A pointer click retains focus in the directory, so it has no focus
+            // completion event. Correct an interrupted smooth scroll after it has
+            // had a chance to settle.
+            if (ownsSelection(personId, selectionVersion) && !profileRevealHasSettled(profile)) {
+              revealProfile('auto');
+            }
+            if (profileFocusCleanupRef.current === cleanupPointerFallback) {
+              profileFocusCleanupRef.current = null;
+            }
+          }, 1000);
+          profileFocusCleanupRef.current = cleanupPointerFallback;
+        } else if (interaction === 'keyboard') {
+          const focusProfileHeading = () => {
+            if (!ownsSelection(personId, selectionVersion)) return;
+            profileHeadingRef.current?.focus({ preventScroll: true });
+          };
+
+          if (reducedMotion) {
+            focusProfileHeading();
+            return;
+          }
+
+          const completeProfileReveal = (forceFocus = false) => {
+            // Focus can cause its own scroll. Ignore an earlier scrollend until the
+            // profile anchor has reached the same margin used by scrollIntoView.
+            if (!forceFocus && !profileRevealHasSettled(profile)) {
+              revealProfile('smooth');
+              return false;
+            }
+
+            profileFocusCleanupRef.current?.();
+            focusProfileHeading();
+            return true;
+          };
+          const onScrollEnd = () => {
+            completeProfileReveal();
+          };
+          const fallbackTimer = window.setTimeout(() => {
+            // Do not let the focus fallback mask an incomplete reveal. A final
+            // instant correction gives keyboard users the same anchored result if a
+            // browser does not deliver a usable scrollend event.
+            revealProfile('auto');
+            completeProfileReveal(true);
+          }, 1000);
+          window.addEventListener('scrollend', onScrollEnd);
+          profileFocusCleanupRef.current = () => {
+            window.removeEventListener('scrollend', onScrollEnd);
+            window.clearTimeout(fallbackTimer);
+          };
+        }
+      });
+    },
+    [cancelPendingProfileReveal, ownsSelection],
+  );
+
+  useEffect(
+    () => cancelPendingProfileReveal,
+    [cancelPendingProfileReveal],
   );
   const ownsProfileLoad = useCallback(
     (personId: string, selectionVersion: number, loadVersion: number) =>
@@ -447,7 +578,10 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     (invitation) => residentInvitationDisplayStatus(invitation) === 'pending',
   );
 
-  const selectPerson = async (person: Person) => {
+  const selectPerson = async (
+    person: Person,
+    interaction: DirectorySelectionInteraction = 'pointer',
+  ) => {
     const personChanged = selected?.id !== person.id;
     if (personChanged) clearPersonState();
     const ownership = requestOwnershipRef.current.select(person.id);
@@ -455,6 +589,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     const loadVersion = (profileLoadVersionRef.current = ownership.loadVersion);
     selectedPersonIdRef.current = person.id;
     setSelected(person);
+    scheduleProfileReveal({ personId: person.id, selectionVersion, interaction });
     setDetailLoading(true);
     setError('');
     setProfileLoadError(false);
@@ -1459,7 +1594,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
               setStatusFilter('');
             }}
             onQueryChange={setQuery}
-            onSelect={(person) => void selectPerson(person)}
+            onSelect={(person, interaction) => void selectPerson(person, interaction)}
             onStatusFilterChange={setStatusFilter}
             people={filtered}
             totalPeople={people.length}
@@ -1469,53 +1604,56 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
             statusFilter={statusFilter}
           />
 
-          <Surface aria-busy={detailLoading || undefined} className="people-v3-profile">
-            {!selected && detailLoading ? (
-              <div className="people-v3-profile-loading">
-                <Skeleton className="skeleton--title" />
-                <Skeleton className="skeleton--card" />
-              </div>
-            ) : selected && profileUnavailableAfterLoadError ? (
-              <div className="people-v3-profile-loading" role="status">
-                <p>No se pudieron cargar los detalles del perfil.</p>
-                <Button
-                  onClick={() => void retrySelectedProfile(selected.id, renderedSelectionVersion)}
-                  size="sm"
-                  type="button"
-                >
-                  Reintentar
-                </Button>
-              </div>
-            ) : selected ? (
-              <>
-                <PersonProfileHeader
-                  actions={
-                    shouldShowInitialProfileSkeleton(
-                      detailLoading,
-                      hasLoadedSelectedProfile,
-                    ) ? undefined : (
-                      <Button onClick={() => setRelationTarget({})} size="sm">
-                        Vincular unidad
-                      </Button>
-                    )
-                  }
-                  onEdit={() => setPersonEditor('edit')}
-                  onTabChange={setTab}
-                  person={selected}
-                  tab={tab}
-                />
-                <div className="people-v3-tab-content" role="tabpanel">
-                  {shouldShowInitialProfileSkeleton(detailLoading, hasLoadedSelectedProfile) ? (
-                    <Skeleton className="skeleton--card" />
-                  ) : (
-                    renderTab()
-                  )}
+          <div className="people-v3-profile-anchor" ref={profileRevealRef}>
+            <Surface aria-busy={detailLoading || undefined} className="people-v3-profile">
+              {!selected && detailLoading ? (
+                <div className="people-v3-profile-loading">
+                  <Skeleton className="skeleton--title" />
+                  <Skeleton className="skeleton--card" />
                 </div>
-              </>
-            ) : (
-              <PeopleProfileEmpty onCreate={() => setPersonEditor('create')} />
-            )}
-          </Surface>
+              ) : selected && profileUnavailableAfterLoadError ? (
+                <div className="people-v3-profile-loading" role="status">
+                  <p>No se pudieron cargar los detalles del perfil.</p>
+                  <Button
+                    onClick={() => void retrySelectedProfile(selected.id, renderedSelectionVersion)}
+                    size="sm"
+                    type="button"
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              ) : selected ? (
+                <>
+                  <PersonProfileHeader
+                    actions={
+                      shouldShowInitialProfileSkeleton(
+                        detailLoading,
+                        hasLoadedSelectedProfile,
+                      ) ? undefined : (
+                        <Button onClick={() => setRelationTarget({})} size="sm">
+                          Vincular unidad
+                        </Button>
+                      )
+                    }
+                    onEdit={() => setPersonEditor('edit')}
+                    onTabChange={setTab}
+                    person={selected}
+                    headingRef={profileHeadingRef}
+                    tab={tab}
+                  />
+                  <div className="people-v3-tab-content" role="tabpanel">
+                    {shouldShowInitialProfileSkeleton(detailLoading, hasLoadedSelectedProfile) ? (
+                      <Skeleton className="skeleton--card" />
+                    ) : (
+                      renderTab()
+                    )}
+                  </div>
+                </>
+              ) : (
+                <PeopleProfileEmpty onCreate={() => setPersonEditor('create')} />
+              )}
+            </Surface>
+          </div>
         </div>
       </div>
 

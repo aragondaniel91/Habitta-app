@@ -145,6 +145,27 @@ function changeDirectoryStatus(value: string) {
   });
 }
 
+function setViewport({
+  mobile,
+  reducedMotion = false,
+}: {
+  mobile: boolean;
+  reducedMotion?: boolean;
+}) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      matches: query.includes('max-width: 860px') ? mobile : reducedMotion,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+}
+
 describe('PeoplePanelV3 request ownership', () => {
   let host: HTMLDivElement;
   let root: Root;
@@ -187,6 +208,161 @@ describe('PeoplePanelV3 request ownership', () => {
   afterEach(() => {
     act(() => root.unmount());
     host.remove();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('settles a pointer-selected mobile profile at its top-bar offset without moving focus', async () => {
+    vi.useFakeTimers();
+    setViewport({ mobile: true });
+    const a = directoryPersonButton('A Resident');
+    a.focus();
+    const profileAnchor = host.querySelector('.people-v3-profile-anchor') as HTMLDivElement;
+    let profileTop = 407.64;
+    vi.stubGlobal('scrollY', 1091);
+    vi.spyOn(profileAnchor, 'getBoundingClientRect').mockImplementation(
+      () => ({ top: profileTop }) as DOMRect,
+    );
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+      scrollMarginTop: '80px',
+    } as CSSStyleDeclaration);
+    function scrollToMock(options?: ScrollToOptions): void;
+    function scrollToMock(x?: number, y?: number): void;
+    function scrollToMock(options?: ScrollToOptions | number): void {
+      if (typeof options !== 'number' && options?.behavior === 'auto') profileTop = 80;
+    }
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(scrollToMock);
+
+    await act(async () => {
+      a.click();
+      await vi.advanceTimersByTimeAsync(20);
+    });
+
+    const scrollOptions = scrollTo.mock.calls[0]?.[0] as ScrollToOptions;
+    expect(scrollOptions.behavior).toBe('smooth');
+    expect(scrollOptions.top).toBeCloseTo(1418.64);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(scrollTo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ behavior: 'auto', top: expect.closeTo(1418.64) }),
+    );
+    expect(profileAnchor.getBoundingClientRect().top).toBe(80);
+    expect(document.activeElement).toBe(a);
+  });
+
+  it('focuses a keyboard-selected mobile profile heading after its smooth reveal completes', async () => {
+    setViewport({ mobile: true });
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const b = directoryPersonButton('B Resident');
+    b.focus();
+    const profileAnchor = host.querySelector('.people-v3-profile-anchor') as HTMLDivElement;
+    let profileTop = 616;
+    vi.spyOn(profileAnchor, 'getBoundingClientRect').mockImplementation(
+      () => ({ top: profileTop }) as DOMRect,
+    );
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+      scrollMarginTop: '88px',
+    } as CSSStyleDeclaration);
+
+    await act(async () => {
+      b.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+      b.click();
+    });
+    await flush();
+
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 528 });
+    expect(document.activeElement).toBe(b);
+
+    await act(async () => window.dispatchEvent(new Event('scrollend')));
+
+    expect(document.activeElement).toBe(b);
+    expect(scrollTo).toHaveBeenCalledTimes(2);
+
+    profileTop = 88;
+    await act(async () => window.dispatchEvent(new Event('scrollend')));
+
+    expect(document.activeElement).toBe(host.querySelector('.people-v3-profile-header h2'));
+  });
+
+  it('corrects a stalled keyboard reveal before the focus fallback runs', async () => {
+    vi.useFakeTimers();
+    setViewport({ mobile: true });
+    let profileTop = 616;
+    function scrollToMock(options?: ScrollToOptions): void;
+    function scrollToMock(x?: number, y?: number): void;
+    function scrollToMock(options?: ScrollToOptions | number): void {
+      if (typeof options !== 'number' && options?.behavior === 'auto') profileTop = 88;
+    }
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(scrollToMock);
+    const b = directoryPersonButton('B Resident');
+    b.focus();
+    const profileAnchor = host.querySelector('.people-v3-profile-anchor') as HTMLDivElement;
+    vi.spyOn(profileAnchor, 'getBoundingClientRect').mockImplementation(
+      () => ({ top: profileTop }) as DOMRect,
+    );
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+      scrollMarginTop: '88px',
+    } as CSSStyleDeclaration);
+
+    await act(async () => {
+      b.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+      b.click();
+      await vi.advanceTimersByTimeAsync(20);
+    });
+
+    expect(document.activeElement).toBe(b);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(scrollTo).toHaveBeenLastCalledWith({ behavior: 'auto', top: 528 });
+    expect(profileAnchor.getBoundingClientRect().top).toBe(88);
+    expect(document.activeElement).toBe(host.querySelector('.people-v3-profile-header h2'));
+  });
+
+  it('ignores a superseded mobile selection reveal', async () => {
+    setViewport({ mobile: true });
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    await act(async () => {
+      directoryPersonButton('A Resident').click();
+      directoryPersonButton('B Resident').click();
+    });
+    await flush();
+
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('.people-v3-profile-header h2')?.textContent).toBe('B Resident');
+  });
+
+  it('uses instant mobile scrolling when reduced motion is preferred', async () => {
+    setViewport({ mobile: true, reducedMotion: true });
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+    await act(async () => directoryPersonButton('A Resident').click());
+    await flush();
+
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }));
+  });
+
+  it('does not reveal or move focus for a desktop directory selection', async () => {
+    setViewport({ mobile: false });
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    const a = directoryPersonButton('A Resident');
+    a.focus();
+
+    await act(async () => a.click());
+    await flush();
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(a);
   });
 
   it('marks only the current directory person and transfers that state after click and keyboard activation', async () => {
@@ -289,9 +465,9 @@ describe('PeoplePanelV3 request ownership', () => {
       (item) => item.textContent,
     );
     expect(metricValues).toEqual(['2', '2', '2']);
-    expect(host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label')).toBe(
-      'Personas mostradas: 1 de 2',
-    );
+    expect(
+      host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label'),
+    ).toBe('Personas mostradas: 1 de 2');
     expect(host.querySelector('.people-v3-directory__footer')?.textContent).toContain(
       'Mostrando 1 de 2 personas registradas',
     );
@@ -324,15 +500,13 @@ describe('PeoplePanelV3 request ownership', () => {
 
     expect(host.textContent).toContain('No se pudo cargar el directorio');
     expect(host.textContent).toContain('Directory unavailable');
-    expect(Array.from(host.querySelectorAll('.ux-metric-card strong'), (item) => item.textContent)).toEqual([
-      '—',
-      '—',
-      '—',
-    ]);
+    expect(
+      Array.from(host.querySelectorAll('.ux-metric-card strong'), (item) => item.textContent),
+    ).toEqual(['—', '—', '—']);
     expect(host.querySelector('.people-v3-directory__heading .badge')?.textContent).toBe('—');
-    expect(host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label')).toBe(
-      'Personas mostradas: Sin datos',
-    );
+    expect(
+      host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label'),
+    ).toBe('Personas mostradas: Sin datos');
     expect(host.querySelector('.people-v3-directory__footer')?.textContent).toContain(
       'Conteo no disponible',
     );
@@ -345,14 +519,12 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(directoryAttempts).toBe(2);
     expect(host.textContent).toContain('A Resident');
     expect(host.textContent).not.toContain('No se pudo cargar el directorio');
-    expect(Array.from(host.querySelectorAll('.ux-metric-card strong'), (item) => item.textContent)).toEqual([
-      '2',
-      '2',
-      '2',
-    ]);
-    expect(host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label')).toBe(
-      'Personas mostradas: 2 de 2',
-    );
+    expect(
+      Array.from(host.querySelectorAll('.ux-metric-card strong'), (item) => item.textContent),
+    ).toEqual(['2', '2', '2']);
+    expect(
+      host.querySelector('.people-v3-directory__heading .badge')?.getAttribute('aria-label'),
+    ).toBe('Personas mostradas: 2 de 2');
     expect(host.querySelector('.people-v3-directory__footer')?.textContent).toContain(
       'Mostrando 2 de 2 personas registradas',
     );
@@ -385,8 +557,8 @@ describe('PeoplePanelV3 request ownership', () => {
     await flush();
 
     const alert = host.querySelector('[role="alert"]');
-    const retryButton = Array.from(host.querySelectorAll('button')).find(
-      (button) => button.textContent?.includes('Reintentar'),
+    const retryButton = Array.from(host.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Reintentar'),
     );
     expect(alert?.textContent).toContain('No se pudo cargar el directorio');
     expect(alert?.textContent).toContain('Directory unavailable');
@@ -404,7 +576,9 @@ describe('PeoplePanelV3 request ownership', () => {
     await flush();
 
     expect(document.activeElement).toBe(retryButton);
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Directory still unavailable');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      'Directory still unavailable',
+    );
   });
 
   it('drops stale invitation and revoke re-lists after selection changes', async () => {

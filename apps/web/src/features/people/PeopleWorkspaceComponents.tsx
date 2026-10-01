@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode, type Ref } from 'react';
 import { Badge, Button, EmptyState, Field, Select, Surface } from '../../components/ui';
 import {
   BellIcon,
@@ -17,6 +17,8 @@ import type { Person } from './types';
 
 export type PeopleProfileTab =
   'summary' | 'units' | 'community-roles' | 'private-notes' | 'digital-access';
+
+export type DirectorySelectionInteraction = 'keyboard' | 'pointer';
 
 export function personDisplayName(person: Person) {
   return `${person.first_name} ${person.last_name}`.trim();
@@ -61,9 +63,11 @@ export function PeopleDirectoryView({
   };
   onQueryChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
-  onSelect: (person: Person) => void;
+  onSelect: (person: Person, interaction: DirectorySelectionInteraction) => void;
   onClearFilters: () => void;
 }) {
+  const keyboardSelectionRef = useRef(false);
+
   return (
     <Surface className="people-v3-directory">
       <div className="people-v3-directory__heading">
@@ -113,7 +117,16 @@ export function PeopleDirectoryView({
               className="people-v3-directory__item"
               data-selected={selectedId === person.id || undefined}
               key={person.id}
-              onClick={() => onSelect(person)}
+              onClick={() => {
+                const interaction = keyboardSelectionRef.current ? 'keyboard' : 'pointer';
+                keyboardSelectionRef.current = false;
+                onSelect(person, interaction);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  keyboardSelectionRef.current = true;
+                }
+              }}
               type="button"
             >
               <span className="people-v3-avatar">{personDisplayInitials(person)}</span>
@@ -161,12 +174,14 @@ export function PersonProfileHeader({
   onEdit,
   onTabChange,
   actions,
+  headingRef,
 }: {
   person: Person;
   tab: PeopleProfileTab;
   onEdit: () => void;
   onTabChange: (tab: PeopleProfileTab) => void;
   actions?: ReactNode;
+  headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
     <header className="people-v3-profile-header">
@@ -176,7 +191,9 @@ export function PersonProfileHeader({
         </span>
         <div>
           <div className="people-v3-profile-header__name">
-            <h2>{personDisplayName(person)}</h2>
+            <h2 ref={headingRef} tabIndex={-1}>
+              {personDisplayName(person)}
+            </h2>
             <Badge tone={person.status === 'inactive' ? 'neutral' : 'success'}>
               {person.status === 'inactive' ? 'Inactiva' : 'Activa'}
             </Badge>
