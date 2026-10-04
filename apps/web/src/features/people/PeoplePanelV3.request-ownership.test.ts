@@ -1385,6 +1385,58 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(host.textContent).toContain('C Resident');
   });
 
+  it('drops a late directory response after the condominium scope changes', async () => {
+    const firstDirectory = deferred<Person[]>();
+    api.mockImplementation((path: string) => {
+      if (path === '/v1/condominiums/c1/people') return firstDirectory.promise;
+      if (path === '/v1/condominiums/c1/units' || path === '/v1/condominiums/c1/buildings') {
+        return firstDirectory.promise.then(() => []);
+      }
+      if (path === '/v1/condominiums/c2/people') return Promise.resolve([person('c')]);
+      if (path === '/v1/condominiums/c2/units' || path === '/v1/condominiums/c2/buildings') {
+        return Promise.resolve([]);
+      }
+      return Promise.resolve([]);
+    });
+
+    await act(async () => {
+      root.render(
+        createElement(PeoplePanelV3, {
+          condominiumId: 'c0',
+          condominiumName: 'Previous condominium',
+          session: {} as never,
+        }),
+      );
+    });
+    await flush();
+    await act(async () => {
+      root.render(
+        createElement(PeoplePanelV3, {
+          condominiumId: 'c1',
+          condominiumName: 'First condominium',
+          session: {} as never,
+        }),
+      );
+    });
+    await flush();
+    await act(async () => {
+      root.render(
+        createElement(PeoplePanelV3, {
+          condominiumId: 'c2',
+          condominiumName: 'Second condominium',
+          session: {} as never,
+        }),
+      );
+    });
+    await flush();
+    await act(async () => firstDirectory.resolve(people));
+    await flush();
+
+    expect(host.textContent).toContain('C Resident');
+    expect(host.textContent).not.toContain('A Resident');
+    expect(host.textContent).not.toContain('B Resident');
+  });
+
   it('replaces a profile retry with a later invitation mutation failure', async () => {
     let relationshipLoads = 0;
     api.mockImplementation((path: string) => {

@@ -186,6 +186,12 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   // rather than state so that completions can be rejected before they enqueue updates.
   const selectionVersionRef = useRef(0);
   const requestOwnershipRef = useRef(new PersonRequestOwnership());
+  // Directory requests are independent from profile requests. Keep their scope
+  // explicit so a late response from a previously selected condominium can never
+  // repopulate this workspace with another tenant's directory.
+  const directoryRequestVersionRef = useRef(0);
+  const directoryCondominiumIdRef = useRef(condominiumId);
+  directoryCondominiumIdRef.current = condominiumId;
   const selectedPersonIdRef = useRef<string | null>(null);
   const profileLoadVersionRef = useRef(0);
   // Keep the error's load token separate from non-profile errors so that a
@@ -397,6 +403,11 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
 
   const loadDirectory = useCallback(
     async (clearFeedback = true) => {
+      const requestVersion = ++directoryRequestVersionRef.current;
+      const requestCondominiumId = condominiumId;
+      const ownsDirectoryRequest = () =>
+        directoryRequestVersionRef.current === requestVersion &&
+        directoryCondominiumIdRef.current === requestCondominiumId;
       setLoading(true);
       if (clearFeedback) {
         setError('');
@@ -409,6 +420,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           peopleApi<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
           peopleApi<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
         ]);
+        if (!ownsDirectoryRequest()) return null;
         setPeople(peopleItems);
         setUnits(unitItems);
         setBuildings(buildingItems);
@@ -418,6 +430,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         );
         return null;
       } catch (requestError) {
+        if (!ownsDirectoryRequest()) return null;
         const directoryError =
           requestError instanceof Error ? requestError.message : 'No se pudo cargar Personas.';
         clearProfileLoadFeedback();
@@ -425,7 +438,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         setError('');
         return directoryError;
       } finally {
-        setLoading(false);
+        if (ownsDirectoryRequest()) setLoading(false);
       }
     },
     [clearProfileLoadFeedback, condominiumId, session],
