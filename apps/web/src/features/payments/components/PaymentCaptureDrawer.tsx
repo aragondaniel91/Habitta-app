@@ -18,6 +18,7 @@ import type { Payment, PaymentMethod } from '../types';
  */
 export type PaymentUnitOption = { id: string; label: string };
 import { PaymentProofUploader } from './PaymentProofUploader';
+import { PaymentProofPreview } from './PaymentProofPreview';
 
 export function PaymentCaptureDrawer({
   condominiumId,
@@ -45,6 +46,7 @@ export function PaymentCaptureDrawer({
   const [message, setMessage] = useState('');
   const [savedPayment, setSavedPayment] = useState<Payment>();
   const [proofSaved, setProofSaved] = useState(false);
+  const [proofRefreshKey, setProofRefreshKey] = useState(0);
   const [selectedMethodId, setSelectedMethodId] = useState(
     payment?.payment_method_id ?? methods.find((item) => item.is_active)?.id ?? '',
   );
@@ -296,11 +298,22 @@ export function PaymentCaptureDrawer({
               condominiumId={condominiumId}
               onDone={(nextMessage) => {
                 setMessage(nextMessage);
-                if (nextMessage === 'Comprobante guardado.') setProofSaved(true);
+                if (nextMessage === 'Comprobante guardado.') {
+                  setProofSaved(true);
+                  setProofRefreshKey((current) => current + 1);
+                }
               }}
               paymentId={savedPayment.id}
               session={session}
             />
+            {proofSaved ? (
+              <PaymentProofPreview
+                condominiumId={condominiumId}
+                paymentId={savedPayment.id}
+                refreshKey={proofRefreshKey}
+                session={session}
+              />
+            ) : null}
           </div>
           <FormActions className="financial-capture-footer" sticky>
             <Button

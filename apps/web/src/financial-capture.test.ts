@@ -54,6 +54,9 @@ describe('financial capture orchestration', () => {
     expect(capture).toContain(`paymentId={${saved}.id}`);
     expect(capture).toContain('requiresProof && !proofSaved');
     expect(capture).toContain('<FormActions className="financial-capture-footer" sticky>');
+    expect(capture).toContain("import { PaymentProofPreview } from './PaymentProofPreview'");
+    expect(capture).toContain('setProofRefreshKey((current) => current + 1)');
+    expect(capture).toContain('refreshKey={proofRefreshKey}');
   });
 
   it('keeps expense proof upload on the expense draft returned by creation', async () => {

@@ -74,6 +74,7 @@ export function AccountDrawer({
     account_reference?: string | null;
     is_active?: boolean;
     balance?: string | number | null;
+    latest_movement_at?: string | null;
   };
   onClose: () => void;
   onSubmit: (input: {
@@ -87,7 +88,10 @@ export function AccountDrawer({
 }) {
   const editing = Boolean(account);
   // A settled account cannot be reinterpreted: the balance it already reported would change.
-  const hasMovements = editing && Number(account?.balance ?? 0) !== 0;
+  // A zero balance does not mean an unused account: deposits and withdrawals can net to zero.
+  // The API guards the immutable history, so match its real predicate instead of allowing a
+  // change that will only end in a 409 response.
+  const hasMovements = editing && Boolean(account?.latest_movement_at);
   const [name, setName] = useState(account?.name ?? '');
   const [accountType, setAccountType] = useState(account?.account_type ?? 'bank');
   const [currencyCode, setCurrencyCode] = useState(account?.currency_code ?? 'USD');

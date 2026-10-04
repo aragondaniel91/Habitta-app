@@ -54,6 +54,8 @@ describe('treasury drawer layout migration', () => {
     expect(drawers).toContain('account.currency_code === origin?.currency_code');
     expect(drawers).toContain('!toAccountId ||');
     expect(drawers).toContain('overdraftReason.trim().length < 5');
+    expect(drawers).toContain('Boolean(account?.latest_movement_at)');
+    expect(drawers).not.toContain("Number(account?.balance ?? 0) !== 0");
   });
 
   it('keeps every cancel action non-submitting', async () => {
