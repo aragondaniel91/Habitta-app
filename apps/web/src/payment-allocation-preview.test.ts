@@ -1,9 +1,11 @@
-import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { allocationPreviewFingerprint } from './features/payments/allocation-preview';
-import type { AllocationInput } from './features/payments/types';
-
-const source = (relative: string) => readFile(new URL(relative, import.meta.url), 'utf8');
+import {
+  approvalAllocations,
+  previewIsCurrent,
+  snapshotForLatestPreview,
+} from './features/payments/allocation-preview-state';
+import type { AllocationInput, AllocationPreview } from './features/payments/types';
 
 const baseAllocation: AllocationInput = {
   receivableItemId: '11111111-1111-4111-8111-111111111111',
@@ -13,7 +15,16 @@ const baseAllocation: AllocationInput = {
   receivableCurrencyCode: 'USD',
 };
 
-describe('payment allocation preview fingerprint', () => {
+const preview: AllocationPreview = {
+  total_used: '10.00',
+  remaining: '0.00',
+  errors: [],
+  warnings: [],
+  recognized_by_currency: {},
+  allocations: [],
+};
+
+describe('payment allocation preview state', () => {
   it('changes for every approval-relevant allocation field', () => {
     const baseline = allocationPreviewFingerprint([baseAllocation], 'USD');
     const variants: AllocationInput[] = [
@@ -31,35 +42,43 @@ describe('payment allocation preview fingerprint', () => {
     expect(allocationPreviewFingerprint([baseAllocation], 'VES')).not.toBe(baseline);
   });
 
-  it('is stable for an unchanged payload and sensitive to row order', () => {
-    const second: AllocationInput = {
-      ...baseAllocation,
-      receivableItemId: '22222222-2222-4222-8222-222222222222',
-      paymentAmount: '5.00',
-      receivableAmount: '5.00',
-    };
-    const fingerprint = allocationPreviewFingerprint([baseAllocation, second], 'USD');
+  it('rejects approval after an amount change makes its preview stale', () => {
+    const snapshot = snapshotForLatestPreview({
+      latestRequestId: 1,
+      requestId: 1,
+      allocations: [baseAllocation],
+      paymentCurrency: 'USD',
+      value: preview,
+    });
+    const changedAllocations = [
+      { ...baseAllocation, paymentAmount: '11.00', receivableAmount: '11.00' },
+    ];
 
-    expect(allocationPreviewFingerprint([baseAllocation, second], 'USD')).toBe(fingerprint);
-    expect(allocationPreviewFingerprint([second, baseAllocation], 'USD')).not.toBe(fingerprint);
+    expect(previewIsCurrent(snapshot, changedAllocations, 'USD')).toBe(false);
+    expect(approvalAllocations(snapshot, changedAllocations, 'USD')).toBeUndefined();
   });
 
-  it('only enables approval for a preview matching the current payload', async () => {
-    const editor = await source('./features/payments/components/PaymentAllocationEditor.tsx');
+  it('ignores an out-of-order response and confirms the exact current preview payload', () => {
+    expect(
+      snapshotForLatestPreview({
+        latestRequestId: 2,
+        requestId: 1,
+        allocations: [baseAllocation],
+        paymentCurrency: 'USD',
+        value: preview,
+      }),
+    ).toBeUndefined();
 
-    expect(editor).toContain('previewSnapshot?.fingerprint === currentFingerprint');
-    expect(editor).toContain(
-      'const preview = previewIsCurrent ? previewSnapshot?.value : undefined',
-    );
-    expect(editor).toContain('Los cambios requieren una nueva previsualización antes de aprobar.');
-    expect(editor).toContain('const requestedAllocations = allocations.map');
-    expect(editor).toContain('setPreviewSnapshot({ fingerprint: requestedFingerprint, value })');
-  });
+    const latestSnapshot = snapshotForLatestPreview({
+      latestRequestId: 2,
+      requestId: 2,
+      allocations: [baseAllocation],
+      paymentCurrency: 'USD',
+      value: preview,
+    });
+    const confirmedAllocations = approvalAllocations(latestSnapshot, [baseAllocation], 'USD');
 
-  it('ignores an older preview response after a newer preview request starts', async () => {
-    const editor = await source('./features/payments/components/PaymentAllocationEditor.tsx');
-
-    expect(editor).toContain('const requestId = ++latestPreviewRequest.current');
-    expect(editor).toContain('if (requestId !== latestPreviewRequest.current) return;');
+    expect(confirmedAllocations).toEqual([baseAllocation]);
+    expect(confirmedAllocations).not.toBe(latestSnapshot?.allocations);
   });
 });

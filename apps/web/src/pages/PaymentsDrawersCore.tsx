@@ -4,8 +4,9 @@ import type { Session } from '@supabase/supabase-js';
 import { useDialogBehavior } from '../components/Drawer';
 import { PaymentsIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
-import { paymentApi, paymentProof } from '../features/payments/api';
+import { paymentApi } from '../features/payments/api';
 import { PaymentAllocationEditor } from '../features/payments/components/PaymentAllocationEditor';
+import { PaymentProofPreview } from '../features/payments/components/PaymentProofPreview';
 import { PaymentProofUploader } from '../features/payments/components/PaymentProofUploader';
 import type {
   AllocationInput,
@@ -419,20 +420,18 @@ function ReviewPayment({
             {processingAction === 'start-review' ? 'Procesando…' : 'Iniciar revisión'}
           </Button>
         ) : null}
-        <Button
-          disabled={processingAction !== null}
-          onClick={() =>
-            void paymentProof(`${endpoint}/proof`, session)
-              .then((value) => {
-                if (value instanceof Blob)
-                  window.open(URL.createObjectURL(value), '_blank', 'noopener,noreferrer');
-              })
-              .catch((error: Error) => setMessage(error.message))
-          }
-          variant="secondary"
-        >
-          Ver comprobante
-        </Button>
+      </div>
+      <div className="payments-proof-section">
+        <div className="payments-form__section-heading">
+          <strong>Comprobante</strong>
+          <span>Verifica que monto, fecha y referencia coincidan con el comprobante.</span>
+        </div>
+        <PaymentProofPreview
+          condominiumId={condominiumId}
+          missingHint="Si el método exige comprobante, usa «Solicitar corrección» e indica que falta adjuntarlo."
+          paymentId={payment.id}
+          session={session}
+        />
       </div>
       <div className="payments-review__decision">
         <Field label="Motivo para corrección, rechazo o reverso">

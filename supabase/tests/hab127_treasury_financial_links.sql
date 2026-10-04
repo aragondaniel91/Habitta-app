@@ -1,5 +1,5 @@
 begin;
-select plan(11);
+select plan(13);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -89,6 +89,31 @@ select public.payment_transition(
   'under_review',
   null
 );
+
+-- Exercise both treasury-selection authorization paths as a principal with no review role.
+reset role;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000012799', true);
+select throws_ok(
+  $$select public.select_payment_treasury_account(
+      (select (payload #>> '{condominium,id}')::uuid from hab127_workspace),
+      (select (payment).id from hab127_payment),
+      (select (account).id from hab127_account)
+    )$$,
+  '42501',
+  'payment treasury selection denied',
+  'non-reviewer treasury selection RPC uses SQLSTATE 42501'
+);
+select throws_ok(
+  $$update public.payments
+      set treasury_account_id = (select (account).id from hab127_account)
+    where id = (select (payment).id from hab127_payment)$$,
+  '42501',
+  'payment treasury selection denied',
+  'non-reviewer treasury selection uses SQLSTATE 42501'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000012701', true);
 select public.approve_payment(
   (select (payload #>> '{condominium,id}')::uuid from hab127_workspace),
   (select (payment).id from hab127_payment),

@@ -24,6 +24,11 @@ export type PaymentMethod = {
   requires_reference: boolean;
   method_type: string;
   is_active: boolean;
+  account_holder?: string | null;
+  bank_name?: string | null;
+  account_identifier_masked?: string | null;
+  phone_masked?: string | null;
+  email_masked?: string | null;
 };
 export type Receivable = {
   id: string;

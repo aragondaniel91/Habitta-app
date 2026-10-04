@@ -78,6 +78,21 @@ export const movementKindLabels: Record<TreasuryMovementKind, string> = {
   reversal: 'Reverso',
 };
 
+export const accountTypeHints: Record<TreasuryAccountType, string> = {
+  bank: 'Cuenta en una institución financiera; concíliala contra el estado de cuenta del banco.',
+  cash: 'Efectivo custodiado por la administración (caja chica o caja de cobros).',
+};
+
+/** Plain-language guidance shown under the movement type, one line per recordable kind. */
+export const movementKindHints: Partial<Record<TreasuryMovementKind, string>> = {
+  opening_balance:
+    'Saldo con el que la cuenta empieza en Habitta. Solo se admite en una cuenta sin movimientos.',
+  deposit: 'Entrada de dinero que no proviene de un pago aprobado (por ejemplo, un aporte).',
+  withdrawal: 'Salida de dinero: pagos a proveedores, gastos o retiros de caja.',
+  fee: 'Comisión o cargo bancario descontado por la institución.',
+  adjustment: 'Corrección para cuadrar el saldo con el estado de cuenta; explica la causa.',
+};
+
 /** Kinds an administrator may record directly; the rest are produced by their own operation. */
 export const recordableKinds: TreasuryMovementKind[] = [
   'opening_balance',
@@ -119,6 +134,17 @@ export const formatTreasuryDate = (value: string | null) => {
     ? '—'
     : date.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
 };
+
+/** Mirrors the API money contract: decimal strings only, positive, and at most two decimals. */
+export const isPositiveTreasuryAmount = (value: string) =>
+  /^(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,2})?$/.test(value) &&
+  value !== '0' &&
+  value !== '0.0' &&
+  value !== '0.00';
+
+/** Reconciliation statements are balances, so the API deliberately allows signed and zero values. */
+export const isTreasuryBalance = (value: string) =>
+  /^-?(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,2})?$/.test(value);
 
 /** Accounts never mix currencies, so the workspace totals one figure per currency. */
 export const balancesByCurrency = (accounts: TreasuryAccount[]) => {

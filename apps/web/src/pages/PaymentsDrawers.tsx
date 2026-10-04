@@ -83,8 +83,17 @@ function PaymentMethodsView({
   methods: PaymentMethod[];
   onChanged: Props['onChanged'];
 }) {
+  const roles = useCondominiumRoles();
+  const manage = canManage(roles);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [editing, setEditing] = useState<PaymentMethod | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<PaymentMethod | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const methodPath = (id?: string) =>
+    `/v1/condominiums/${condominiumId}/payment-methods${id ? `/${id}` : ''}`;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -93,8 +102,8 @@ function PaymentMethodsView({
     setSaving(true);
     setMessage('');
     try {
-      await paymentApi(`/v1/condominiums/${condominiumId}/payment-methods`, session, {
-        method: 'POST',
+      await paymentApi(methodPath(editing?.id), session, {
+        method: editing ? 'PATCH' : 'POST',
         body: JSON.stringify({
           methodType: String(values.methodType),
           displayName: String(values.displayName),
@@ -107,15 +116,54 @@ function PaymentMethodsView({
           instructions: String(values.instructions ?? ''),
           requiresReference: values.requiresReference === 'on',
           requiresProof: values.requiresProof === 'on',
-          isActive: true,
+          isActive: editing ? editing.is_active : true,
         }),
       });
       form.reset();
-      await onChanged('Método de pago creado.');
+      const wasEditing = Boolean(editing);
+      setEditing(null);
+      await onChanged(wasEditing ? 'Método de pago actualizado.' : 'Método de pago creado.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo crear el método.');
+      setMessage(error instanceof Error ? error.message : 'No se pudo guardar el método.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleActive = async (method: PaymentMethod) => {
+    if (toggling) return;
+    setToggling(method.id);
+    setMessage('');
+    try {
+      await paymentApi(methodPath(method.id), session, {
+        method: 'PATCH',
+        body: JSON.stringify({ isActive: !method.is_active }),
+      });
+      await onChanged(
+        method.is_active
+          ? 'Método desactivado. Ya no se ofrecerá en pagos nuevos; los pagos existentes lo conservan.'
+          : 'Método reactivado.',
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No se pudo cambiar el estado.');
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  const deleteMethod = async () => {
+    if (!deleting || deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError('');
+    try {
+      await paymentApi(methodPath(deleting.id), session, { method: 'DELETE' });
+      setDeleting(null);
+      if (editing?.id === deleting.id) setEditing(null);
+      await onChanged('Método de pago eliminado.');
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar el método.');
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -137,72 +185,198 @@ function PaymentMethodsView({
                 {method.is_active ? 'Activo' : 'Inactivo'}
               </Badge>
             </div>
+            {manage ? (
+              <div className="payments-method-list__actions">
+                <Button
+                  disabled={saving || toggling !== null}
+                  onClick={() => {
+                    setMessage('');
+                    setEditing(method);
+                  }}
+                  size="sm"
+                  variant="ghost"
+                >
+                  Editar
+                </Button>
+                <Button
+                  disabled={saving || toggling !== null}
+                  onClick={() => void toggleActive(method)}
+                  size="sm"
+                  variant="ghost"
+                >
+                  {toggling === method.id
+                    ? 'Guardando…'
+                    : method.is_active
+                      ? 'Desactivar'
+                      : 'Reactivar'}
+                </Button>
+                <Button
+                  disabled={saving || toggling !== null}
+                  onClick={() => {
+                    setDeleteError('');
+                    setDeleting(method);
+                  }}
+                  size="sm"
+                  variant="ghost"
+                >
+                  Eliminar
+                </Button>
+              </div>
+            ) : null}
           </article>
         ))}
       </div>
-      <form
-        className="payments-form payments-method-form ux-form"
-        onSubmit={(event) => void submit(event)}
-      >
-        <div className="payments-form__section-heading">
-          <strong>Agregar método</strong>
-          <span>Publica instrucciones claras para residentes y administradores.</span>
-        </div>
-        {message ? <div className="payments-form__message">{message}</div> : null}
-        <div className="payments-form__grid">
-          <Field label="Tipo">
-            <Select name="methodType">
-              <option value="bank_transfer">Transferencia bancaria</option>
-              <option value="pago_movil">Pago Móvil</option>
-              <option value="zelle">Zelle</option>
-              <option value="cash">Efectivo</option>
-              <option value="other">Otro</option>
-            </Select>
+      {manage ? (
+        <form
+          className="payments-form payments-method-form ux-form"
+          key={editing?.id ?? 'new'}
+          onSubmit={(event) => void submit(event)}
+        >
+          <div className="payments-form__section-heading">
+            <strong>{editing ? `Editar «${editing.display_name}»` : 'Agregar método'}</strong>
+            <span>
+              {editing
+                ? 'Los cambios aplican a pagos nuevos. Los recibos emitidos conservan los datos con los que se aprobaron.'
+                : 'Publica instrucciones claras para residentes y administradores.'}
+            </span>
+          </div>
+          {message ? <div className="payments-form__message">{message}</div> : null}
+          <div className="payments-form__grid">
+            <Field label="Tipo">
+              <Select defaultValue={editing?.method_type ?? 'bank_transfer'} name="methodType">
+                <option value="bank_transfer">Transferencia bancaria</option>
+                <option value="pago_movil">Pago Móvil</option>
+                <option value="zelle">Zelle</option>
+                <option value="cash">Efectivo</option>
+                <option value="international_transfer">Transferencia internacional</option>
+                <option value="paypal_manual">PayPal (manual)</option>
+                <option value="other">Otro</option>
+              </Select>
+            </Field>
+            <Field
+              hint={editing ? 'Cambiarla no afecta pagos ya registrados con este método.' : undefined}
+              label="Moneda"
+            >
+              <Select defaultValue={editing?.currency_code ?? 'USD'} name="currencyCode">
+                <option>USD</option>
+                <option>VES</option>
+              </Select>
+            </Field>
+          </div>
+          <Field label="Nombre visible">
+            <input
+              className="input"
+              defaultValue={editing?.display_name}
+              name="displayName"
+              required
+            />
           </Field>
-          <Field label="Moneda">
-            <Select name="currencyCode">
-              <option>USD</option>
-              <option>VES</option>
-            </Select>
+          <div className="payments-form__grid">
+            <Field label="Titular">
+              <input
+                className="input"
+                defaultValue={editing?.account_holder ?? ''}
+                name="accountHolder"
+              />
+            </Field>
+            <Field label="Banco">
+              <input className="input" defaultValue={editing?.bank_name ?? ''} name="bankName" />
+            </Field>
+          </div>
+          <div className="payments-form__grid">
+            <Field label="Cuenta enmascarada">
+              <input
+                className="input"
+                defaultValue={editing?.account_identifier_masked ?? ''}
+                name="accountIdentifierMasked"
+                placeholder="****1234"
+              />
+            </Field>
+            <Field label="Teléfono enmascarado">
+              <input
+                className="input"
+                defaultValue={editing?.phone_masked ?? ''}
+                name="phoneMasked"
+                placeholder="****5678"
+              />
+            </Field>
+          </div>
+          <Field label="Correo enmascarado">
+            <input
+              className="input"
+              defaultValue={editing?.email_masked ?? ''}
+              name="emailMasked"
+              placeholder="a***@correo.com"
+            />
           </Field>
-        </div>
-        <Field label="Nombre visible">
-          <input className="input" name="displayName" required />
-        </Field>
-        <div className="payments-form__grid">
-          <Field label="Titular">
-            <input className="input" name="accountHolder" />
+          <Field label="Instrucciones">
+            <textarea
+              className="payments-textarea"
+              defaultValue={editing?.instructions ?? ''}
+              name="instructions"
+            />
           </Field>
-          <Field label="Banco">
-            <input className="input" name="bankName" />
-          </Field>
-        </div>
-        <div className="payments-form__grid">
-          <Field label="Cuenta enmascarada">
-            <input className="input" name="accountIdentifierMasked" placeholder="****1234" />
-          </Field>
-          <Field label="Teléfono enmascarado">
-            <input className="input" name="phoneMasked" placeholder="****5678" />
-          </Field>
-        </div>
-        <Field label="Correo enmascarado">
-          <input className="input" name="emailMasked" placeholder="a***@correo.com" />
-        </Field>
-        <Field label="Instrucciones">
-          <textarea className="payments-textarea" name="instructions" />
-        </Field>
-        <div className="payments-checkbox-row">
-          <label>
-            <input name="requiresReference" type="checkbox" /> Exigir referencia
-          </label>
-          <label>
-            <input name="requiresProof" type="checkbox" /> Exigir comprobante
-          </label>
-        </div>
-        <Button disabled={saving} type="submit">
-          {saving ? 'Creando…' : 'Crear método'}
-        </Button>
-      </form>
+          <div className="payments-checkbox-row">
+            <label>
+              <input
+                defaultChecked={editing?.requires_reference ?? false}
+                name="requiresReference"
+                type="checkbox"
+              />{' '}
+              Exigir referencia
+            </label>
+            <label>
+              <input
+                defaultChecked={editing?.requires_proof ?? false}
+                name="requiresProof"
+                type="checkbox"
+              />{' '}
+              Exigir comprobante
+            </label>
+          </div>
+          <div className="payments-review__actions">
+            {editing ? (
+              <Button
+                disabled={saving}
+                onClick={() => {
+                  setMessage('');
+                  setEditing(null);
+                }}
+                type="button"
+                variant="secondary"
+              >
+                Cancelar edición
+              </Button>
+            ) : null}
+            <Button disabled={saving} type="submit">
+              {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear método'}
+            </Button>
+          </div>
+        </form>
+      ) : null}
+
+      {deleting ? (
+        <ConfirmDialog
+          busy={deleteBusy}
+          busyLabel="Eliminando método…"
+          confirmLabel="Eliminar método"
+          description="Solo se puede eliminar un método que ningún pago ha usado. Si ya tiene pagos, desactívalo: dejará de ofrecerse y el historial queda intacto."
+          destructive
+          onCancel={() => {
+            if (deleteBusy) return;
+            setDeleting(null);
+            setDeleteError('');
+          }}
+          onConfirm={() => void deleteMethod()}
+          title={`Eliminar «${deleting.display_name}»`}
+        >
+          {deleteError ? (
+            <div className="payments-form__message" role="alert">
+              {deleteError}
+            </div>
+          ) : null}
+        </ConfirmDialog>
+      ) : null}
     </div>
   );
 }

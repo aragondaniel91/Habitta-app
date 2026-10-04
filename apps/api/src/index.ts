@@ -648,13 +648,35 @@ const rpcAllocations = (
     fx_rate_source: allocation.fxRateSource ?? null,
     fx_rate_at: allocation.fxRateAt ?? null,
   }));
+// Domain failures raised by the payment RPCs that the client can explain to the administrator.
+// Only these exact messages are forwarded as `reason`; anything else stays opaque.
+const readableFailureReasons = new Set([
+  'payment cannot be submitted',
+  'payment reference required',
+  'payment proof required',
+  'payment update denied',
+  'invalid payment draft',
+  'invalid payment method or unit',
+  'invalid payment method or currency',
+  'invalid represented person',
+  'invalid transition',
+  'invalid payment status',
+  'invalid payment allocations',
+  'payment not found',
+  'payment not reversible',
+  'reversal reason required',
+  'treasury account can only be selected while payment is under review',
+  'payment method not found',
+  'payment method in use',
+  'idempotency conflict',
+]);
 const responseJson = async (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   response: Response,
   successStatus: 200 | 201 = 200,
   failureStatus: 400 | 403 | 404 | 409 = 409,
 ) => {
-  const value = (await response.json()) as { code?: string };
+  const value = (await response.json()) as { code?: string; message?: string };
   if (response.ok) return c.json(value, successStatus);
   const status: 400 | 403 | 404 | 409 =
     response.status === 401 || response.status === 403 || value.code === '42501'
@@ -662,7 +684,12 @@ const responseJson = async (
       : value.code === '23505'
         ? 409
         : failureStatus;
-  return c.json({ error: status === 403 ? 'Forbidden' : 'Request conflict' }, status);
+  if (status === 403) return c.json({ error: 'Forbidden' }, status);
+  const reason =
+    typeof value.message === 'string' && readableFailureReasons.has(value.message)
+      ? value.message
+      : undefined;
+  return c.json({ error: 'Request conflict', ...(reason ? { reason } : {}) }, status);
 };
 
 app.get('/v1/condominiums/:id/announcements', async (c) => {
@@ -993,7 +1020,14 @@ app.post('/v1/condominiums/:id/payment-methods', async (c) => {
   return c.json(await r.json(), r.ok ? 201 : 403);
 });
 app.patch('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
-  const p = await body(c, paymentMethodSchema.partial());
+  // Empty strings are clear operations only for editable optional details. Creation continues to
+  // require a valid email when one is supplied.
+  const p = await body(
+    c,
+    paymentMethodSchema.partial().extend({
+      emailMasked: z.union([z.string().email(), z.literal('')]).optional(),
+    }),
+  );
   if (p instanceof Response) return p;
   const r = await rest(
     c,
@@ -1004,14 +1038,32 @@ app.patch('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
         method_type: p.methodType,
         display_name: p.displayName,
         currency_code: p.currencyCode,
-        instructions: p.instructions,
+        account_holder: p.accountHolder === '' ? null : p.accountHolder,
+        bank_name: p.bankName === '' ? null : p.bankName,
+        account_identifier_masked:
+          p.accountIdentifierMasked === '' ? null : p.accountIdentifierMasked,
+        phone_masked: p.phoneMasked === '' ? null : p.phoneMasked,
+        email_masked: p.emailMasked === '' ? null : p.emailMasked,
+        instructions: p.instructions === '' ? null : p.instructions,
         requires_reference: p.requiresReference,
         requires_proof: p.requiresProof,
         is_active: p.isActive,
+        updated_at: new Date().toISOString(),
       }),
     },
   );
-  return c.json(await r.json(), r.ok ? 200 : 403);
+  if (!r.ok) return responseJson(c, r, 200, 409);
+  // RLS hides rows the caller may not update, so an empty result is either a missing method or a
+  // caller without payment-method management rights; neither leaks which one.
+  const rows = (await r.json()) as unknown[];
+  return rows.length ? c.json(rows[0]) : c.json({ error: 'Payment method not found' }, 404);
+});
+app.delete('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
+  const r = await rpc(c, 'delete_payment_method', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_method: uuidSchema.parse(c.req.param('methodId')),
+  });
+  return responseJson(c, r, 200, 409);
 });
 app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
   const allowed = await rpc(c, 'can_review_payments', {
@@ -1067,14 +1119,14 @@ app.patch('/v1/condominiums/:id/payments/:paymentId', async (c) => {
     reference_value: p.reference ?? null,
     notes_value: p.notes ?? null,
   });
-  return c.json(await r.json(), r.ok ? 200 : 409);
+  return responseJson(c, r, 200, 409);
 });
 app.post('/v1/condominiums/:id/payments/:paymentId/submit', async (c) => {
   const r = await rpc(c, 'submit_payment', {
     target: uuidSchema.parse(c.req.param('id')),
     target_payment: uuidSchema.parse(c.req.param('paymentId')),
   });
-  return c.json(await r.json(), r.ok ? 200 : 409);
+  return responseJson(c, r, 200, 409);
 });
 const paymentTransition =
   (state: 'under_review' | 'correction_requested' | 'rejected') =>
@@ -1087,7 +1139,7 @@ const paymentTransition =
       next_status: state,
       reason: 'reason' in p ? p.reason : null,
     });
-    return c.json(await r.json(), r.ok ? 200 : 409);
+    return responseJson(c, r, 200, 409);
   };
 app.post(
   '/v1/condominiums/:id/payments/:paymentId/start-review',
@@ -1106,7 +1158,7 @@ app.post('/v1/condominiums/:id/payments/:paymentId/approve', async (c) => {
     target_payment: uuidSchema.parse(c.req.param('paymentId')),
     allocations: rpcAllocations(p.allocations),
   });
-  return c.json(await r.json(), r.ok ? 200 : 409);
+  return responseJson(c, r, 200, 409);
 });
 app.post('/v1/condominiums/:id/payments/:paymentId/reverse', async (c) => {
   const p = await body(c, paymentReasonSchema);
@@ -1116,7 +1168,7 @@ app.post('/v1/condominiums/:id/payments/:paymentId/reverse', async (c) => {
     target_payment: uuidSchema.parse(c.req.param('paymentId')),
     reason: p.reason,
   });
-  return c.json(await r.json(), r.ok ? 200 : 409);
+  return responseJson(c, r, 200, 409);
 });
 app.post('/v1/condominiums/:id/payments/:paymentId/allocation-preview', async (c) => {
   const p = await body(c, approvePaymentSchema);

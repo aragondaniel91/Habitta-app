@@ -6,9 +6,14 @@ import { Drawer } from '../../components/Drawer';
 import {
   accountTypeLabels,
   formatTreasuryAmount,
+  isPositiveTreasuryAmount,
+  isTreasuryBalance,
+  accountTypeHints,
+  movementKindHints,
   movementKindLabels,
   recordableKinds,
   type TreasuryAccount,
+  type TreasuryAccountType,
   type TreasuryMovementKind,
 } from './types';
 
@@ -130,7 +135,7 @@ export function AccountDrawer({
           />
         </Field>
         <FormGrid>
-          <Field label="Tipo">
+          <Field hint={accountTypeHints[accountType as TreasuryAccountType]} label="Tipo">
             <Select
               disabled={hasMovements}
               onChange={(event) => {
@@ -235,13 +240,15 @@ export function MovementDrawer({
   const [adjustmentDirection, setAdjustmentDirection] = useState<'credit' | 'debit'>('credit');
 
   const account = accounts.find((item) => item.id === accountId);
-  const numericAmount = Number(amount);
+  const amountIsValid = isPositiveTreasuryAmount(amount);
+  const numericAmount = amountIsValid ? Number(amount) : 0;
   const isDebit =
     movementKind === 'withdrawal' ||
     movementKind === 'fee' ||
     (movementKind === 'adjustment' && adjustmentDirection === 'debit');
   const projectedBalance = Number(account?.balance ?? 0) - numericAmount;
   const overdraft = isDebit && numericAmount > 0 && projectedBalance < 0;
+  const cannotSubmit = !accountId || !amountIsValid || description.trim().length < 2;
 
   const { saving, error, submit } = useSubmit(() =>
     onSubmit({
@@ -263,6 +270,17 @@ export function MovementDrawer({
             {error}
           </div>
         ) : null}
+        {!accounts.length ? (
+          <div className="treasury-inline-alert" role="status">
+            Aún no hay cuentas activas. Crea una cuenta desde «Nueva cuenta» (o reactiva una
+            archivada) antes de registrar movimientos.
+          </div>
+        ) : null}
+        <p className="treasury-form__note" role="note">
+          Cada movimiento queda en el historial de la cuenta con su fecha, monto y autor. Los pagos
+          aprobados, los gastos pagados y las transferencias internas se registran solos; usa este
+          formulario para depósitos, retiros, comisiones bancarias o ajustes fuera de esos flujos.
+        </p>
         <Field label="Cuenta">
           <Select
             onChange={(event) => {
@@ -281,11 +299,7 @@ export function MovementDrawer({
         </Field>
         <FormGrid>
           <Field
-            hint={
-              movementKind === 'opening_balance'
-                ? 'Solo se admite en una cuenta sin movimientos.'
-                : undefined
-            }
+            hint={movementKindHints[movementKind]}
             label="Tipo"
           >
             <Select
@@ -333,6 +347,7 @@ export function MovementDrawer({
           <input
             className="input"
             inputMode="decimal"
+            pattern="^(0|[1-9][0-9]{0,15})([.][0-9]{1,2})?$"
             onChange={(event) => {
               setAmount(event.target.value);
               setConfirmOverdraft(false);
@@ -390,7 +405,9 @@ export function MovementDrawer({
           </Button>
           <Button
             disabled={
-              saving || (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
+              saving ||
+              cannotSubmit ||
+              (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
             }
             type="submit"
           >
@@ -430,9 +447,16 @@ export function TransferDrawer({
   const destinations = accounts.filter(
     (account) => account.id !== fromAccountId && account.currency_code === origin?.currency_code,
   );
-  const numericAmount = Number(amount);
+  const amountIsValid = isPositiveTreasuryAmount(amount);
+  const numericAmount = amountIsValid ? Number(amount) : 0;
   const projectedBalance = Number(origin?.balance ?? 0) - numericAmount;
   const overdraft = numericAmount > 0 && projectedBalance < 0;
+  const cannotSubmit =
+    !fromAccountId ||
+    !toAccountId ||
+    !amountIsValid ||
+    description.trim().length < 2 ||
+    !destinations.length;
 
   const { saving, error, submit } = useSubmit(() =>
     onSubmit({
@@ -453,6 +477,18 @@ export function TransferDrawer({
             {error}
           </div>
         ) : null}
+        {accounts.length < 2 ? (
+          <div className="treasury-inline-alert" role="status">
+            Para transferir necesitas al menos dos cuentas activas en la misma moneda. Crea la
+            cuenta que falta desde «Nueva cuenta» y vuelve a intentarlo.
+          </div>
+        ) : null}
+        <p className="treasury-form__note" role="note">
+          Una transferencia interna mueve fondos entre dos cuentas del condominio en la misma moneda.
+          Habitta registra una salida en la cuenta origen y una entrada en la cuenta destino con la
+          misma fecha, así que el saldo total no cambia. Para cambiar de moneda, registra un retiro y
+          un depósito por separado e indica la tasa aplicada en la descripción.
+        </p>
         <Field label="Cuenta origen">
           <Select
             onChange={(event) => {
@@ -492,6 +528,7 @@ export function TransferDrawer({
             <input
               className="input"
               inputMode="decimal"
+              pattern="^(0|[1-9][0-9]{0,15})([.][0-9]{1,2})?$"
               onChange={(event) => {
                 setAmount(event.target.value);
                 setConfirmOverdraft(false);
@@ -560,7 +597,7 @@ export function TransferDrawer({
           <Button
             disabled={
               saving ||
-              !toAccountId ||
+              cannotSubmit ||
               (overdraft && (!confirmOverdraft || overdraftReason.trim().length < 5))
             }
             type="submit"
@@ -597,6 +634,8 @@ export function ReconciliationDrawer({
   const [endsOn, setEndsOn] = useState(today);
   const [statementOpeningBalance, setOpening] = useState('');
   const [statementClosingBalance, setClosing] = useState('');
+  const amountsAreValid =
+    isTreasuryBalance(statementOpeningBalance) && isTreasuryBalance(statementClosingBalance);
   const { saving, error, submit } = useSubmit(() =>
     onSubmit({ accountId, startsOn, endsOn, statementOpeningBalance, statementClosingBalance }),
   );
@@ -607,6 +646,12 @@ export function ReconciliationDrawer({
         {error ? (
           <div className="treasury-inline-alert" role="alert">
             {error}
+          </div>
+        ) : null}
+        {!accounts.length ? (
+          <div className="treasury-inline-alert" role="status">
+            Aún no hay cuentas activas para conciliar. Crea una cuenta desde «Nueva cuenta» antes de
+            iniciar una conciliación.
           </div>
         ) : null}
         <Field label="Cuenta">
@@ -643,6 +688,7 @@ export function ReconciliationDrawer({
             <input
               className="input"
               inputMode="decimal"
+              pattern="^-?(0|[1-9][0-9]{0,15})([.][0-9]{1,2})?$"
               onChange={(event) => setOpening(event.target.value)}
               placeholder="0.00"
               required
@@ -653,6 +699,7 @@ export function ReconciliationDrawer({
             <input
               className="input"
               inputMode="decimal"
+              pattern="^-?(0|[1-9][0-9]{0,15})([.][0-9]{1,2})?$"
               onChange={(event) => setClosing(event.target.value)}
               placeholder="0.00"
               required
@@ -664,7 +711,12 @@ export function ReconciliationDrawer({
           <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
             Cancelar
           </Button>
-          <Button disabled={saving} type="submit">
+          <Button
+            disabled={
+              saving || !accountId || !startsOn || !endsOn || startsOn > endsOn || !amountsAreValid
+            }
+            type="submit"
+          >
             {saving ? 'Creando…' : 'Crear conciliación'}
           </Button>
         </FormActions>

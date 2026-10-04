@@ -173,6 +173,7 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     create: '/v1/condominiums/:id/payment-methods',
     classification: 'configuration',
     correction: '/v1/condominiums/:id/payment-methods/:methodId',
+    note: 'PATCH edits or deactivates; DELETE (delete_payment_method) removes only a method no payment references.',
   },
   {
     module: 'payments',

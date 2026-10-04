@@ -8,6 +8,11 @@ import {
   isPositiveMoneyAmount,
   moneyExceeds,
 } from './features/payments/allocation-amounts';
+import {
+  approvalAllocations,
+  previewIsCurrent,
+  snapshotForLatestPreview,
+} from './features/payments/allocation-preview-state';
 
 const editorSource = readFileSync(
   fileURLToPath(
@@ -64,11 +69,32 @@ describe('HAB-459 guided payment allocations', () => {
   });
 
   it('keeps preview as the mandatory freshness gate before approval', () => {
-    expect(editorSource).toContain('allocationPreviewFingerprint');
-    expect(editorSource).toContain('previewIsCurrent');
-    expect(editorSource).toContain('Los cambios requieren una nueva previsualización');
-    expect(editorSource).toContain('disabled={!readyForPreview || previewing || saving}');
-    expect(editorSource).toContain('disabled={preview.errors.length > 0 || saving || previewing}');
-    expect(editorSource).toContain("previewing ? 'Previsualizando…' : 'Previsualizar aplicación'");
+    const allocation = {
+      receivableItemId: '11111111-1111-4111-8111-111111111111',
+      paymentAmount: '10.00',
+      receivableAmount: '10.00',
+      paymentCurrencyCode: 'USD',
+      receivableCurrencyCode: 'USD',
+    };
+    const snapshot = snapshotForLatestPreview({
+      latestRequestId: 1,
+      requestId: 1,
+      allocations: [allocation],
+      paymentCurrency: 'USD',
+      value: {
+        total_used: '10.00',
+        remaining: '0.00',
+        errors: [],
+        warnings: [],
+        recognized_by_currency: {},
+        allocations: [],
+      },
+    });
+
+    expect(previewIsCurrent(snapshot, [allocation], 'USD')).toBe(true);
+    expect(approvalAllocations(snapshot, [allocation], 'USD')).toEqual([allocation]);
+    expect(
+      approvalAllocations(snapshot, [{ ...allocation, paymentAmount: '11.00' }], 'USD'),
+    ).toBeUndefined();
   });
 });

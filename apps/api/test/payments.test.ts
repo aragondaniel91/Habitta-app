@@ -77,6 +77,25 @@ describe('manual payment validation', () => {
     );
     expect(source).not.toMatch(/\b(?:Number|parseFloat)\s*\(/);
   });
+  it('uses SQLSTATE 42501 for payment authorization without matching message text', async () => {
+    const read = (path: string) =>
+      import('node:fs/promises').then((fs) => fs.readFile(new URL(path, import.meta.url), 'utf8'));
+    const [api, authorizationMigration] = await Promise.all([
+      read('../src/index.ts'),
+      read(
+        '../../../supabase/migrations/20261002000000_habrem17908887541291_payment_authorization_sqlstate.sql',
+      ),
+    ]);
+
+    expect(api).toContain("value.code === '42501'");
+    expect(api).not.toContain('paymentAuthorizationFailure');
+    expect(authorizationMigration).toMatch(/errcode='42501', message='payment submission denied'/);
+    expect(authorizationMigration).toMatch(/errcode='42501', message='payment update denied'/);
+    expect(authorizationMigration).toMatch(/errcode='42501', message='approval denied'/);
+    expect(authorizationMigration).toMatch(
+      /errcode = '42501', message = 'payment treasury selection denied'/,
+    );
+  });
 });
 
 describe('payment HTTP routes', () => {
@@ -117,6 +136,45 @@ describe('payment HTTP routes', () => {
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error });
   });
+  it('clears optional payment-method details without changing omitted fields', async () => {
+    let updateBody = '';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        if (String(input).includes('/auth/v1/user')) return auth();
+        updateBody = String(init?.body);
+        return Response.json([{ id: payment }]);
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payment-methods/${payment}`,
+      {
+        method: 'PATCH',
+        headers: { ...token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountHolder: '',
+          bankName: '',
+          accountIdentifierMasked: '',
+          phoneMasked: '',
+          emailMasked: '',
+          instructions: '',
+        }),
+      },
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(updateBody)).toMatchObject({
+      account_holder: null,
+      bank_name: null,
+      account_identifier_masked: null,
+      phone_masked: null,
+      email_masked: null,
+      instructions: null,
+    });
+    expect(JSON.parse(updateBody)).not.toHaveProperty('display_name');
+  });
   it('sends the real preview RPC payload with decimal strings', async () => {
     let rpcBody = '';
     vi.stubGlobal(
@@ -143,6 +201,89 @@ describe('payment HTTP routes', () => {
       allocations: [],
     });
   });
+  it.each([
+    [
+      'create',
+      'POST',
+      `/v1/condominiums/${condo}/payments`,
+      {
+        unitId: condo,
+        paymentMethodId: payment,
+        paymentDate: '2026-07-01',
+        originalAmount: '1.00',
+        originalCurrencyCode: 'USD',
+        payerName: 'A',
+        idempotencyKey: 'denied-create',
+      },
+    ],
+    [
+      'update',
+      'PATCH',
+      `/v1/condominiums/${condo}/payments/${payment}`,
+      {
+        paymentMethodId: condo,
+        paymentDate: '2026-07-01',
+        originalAmount: '1.00',
+        originalCurrencyCode: 'USD',
+        payerName: 'A',
+      },
+    ],
+    ['submit', 'POST', `/v1/condominiums/${condo}/payments/${payment}/submit`, undefined],
+    [
+      'start review',
+      'POST',
+      `/v1/condominiums/${condo}/payments/${payment}/start-review`,
+      undefined,
+    ],
+    [
+      'request correction',
+      'POST',
+      `/v1/condominiums/${condo}/payments/${payment}/request-correction`,
+      { reason: 'Missing proof' },
+    ],
+    [
+      'reject',
+      'POST',
+      `/v1/condominiums/${condo}/payments/${payment}/reject`,
+      { reason: 'Duplicate' },
+    ],
+    [
+      'approve',
+      'POST',
+      `/v1/condominiums/${condo}/payments/${payment}/approve`,
+      { allocations: [] },
+    ],
+    [
+      'reverse',
+      'POST',
+      `/v1/condominiums/${condo}/payments/${payment}/reverse`,
+      { reason: 'Duplicate' },
+    ],
+  ])(
+    'returns 403 when the %s RPC reports SQLSTATE 42501',
+    async (_operation, method, path, payload) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: string | URL | Request) =>
+          String(input).includes('/auth/v1/user')
+            ? auth()
+            : Response.json(
+                { code: '42501', message: 'authorization wording may change' },
+                { status: 400 },
+              ),
+        ),
+      );
+
+      const headers = payload ? { ...token, 'Content-Type': 'application/json' } : token;
+      const request = payload
+        ? { method, headers, body: JSON.stringify(payload) }
+        : { method, headers };
+      const response = await app.request(path, request, env());
+
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ error: 'Forbidden' });
+    },
+  );
   it('rejects empty, oversized, and unsupported proofs', async () => {
     vi.stubGlobal(
       'fetch',

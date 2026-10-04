@@ -106,6 +106,10 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
     () => new Map(data.accounts.map((account) => [account.id, account])),
     [data.accounts],
   );
+  const activeAccounts = useMemo(
+    () => data.accounts.filter((account) => account.is_active),
+    [data.accounts],
+  );
   const openReconciliations = data.reconciliations.filter((item) => item.status === 'draft');
 
   const afterWrite = async (text: string) => {
@@ -128,7 +132,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                 Nueva cuenta
               </Button>
               <Button
-                disabled={data.accounts.length < 2}
+                disabled={activeAccounts.length < 2}
                 onClick={() => setDrawer('transfer')}
                 size="sm"
                 variant="secondary"
@@ -136,7 +140,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                 Transferencia
               </Button>
               <Button
-                disabled={!data.accounts.length}
+                disabled={!activeAccounts.length}
                 onClick={() => setDrawer('movement')}
                 size="sm"
               >
@@ -236,13 +240,15 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                         {formatTreasuryAmount(account.balance, account.currency_code)}
                       </td>
                       <td>
-                        <Button
-                          onClick={() => setEditingAccountId(account.id)}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          Editar
-                        </Button>
+                        {manage ? (
+                          <Button
+                            onClick={() => setEditingAccountId(account.id)}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            Editar
+                          </Button>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -336,7 +342,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
             </div>
             {manage ? (
               <Button
-                disabled={!data.accounts.length}
+                disabled={!activeAccounts.length}
                 onClick={() => setDrawer('reconciliation')}
                 size="sm"
                 variant="secondary"
@@ -534,7 +540,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
       ) : null}
       {drawer === 'movement' ? (
         <MovementDrawer
-          accounts={data.accounts}
+          accounts={activeAccounts}
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
             await recordTreasuryMovement(condominiumId, session, input);
@@ -544,7 +550,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
       ) : null}
       {drawer === 'transfer' ? (
         <TransferDrawer
-          accounts={data.accounts}
+          accounts={activeAccounts}
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
             await createTreasuryTransfer(condominiumId, session, input);
@@ -554,7 +560,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
       ) : null}
       {drawer === 'reconciliation' ? (
         <ReconciliationDrawer
-          accounts={data.accounts}
+          accounts={activeAccounts}
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
             await createTreasuryReconciliation(condominiumId, session, input);
