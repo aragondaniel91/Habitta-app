@@ -88,6 +88,7 @@ export function UnitsPage({
   } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<DirectoryUnit | null>(null);
   const [saving, setSaving] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -117,7 +118,7 @@ export function UnitsPage({
     return () => {
       active = false;
     };
-  }, [condominiumId, session]);
+  }, [condominiumId, reloadNonce, session]);
 
   useEffect(() => {
     setSelectedUnit(null);
@@ -190,12 +191,14 @@ export function UnitsPage({
     if (!editor) return;
     setSaving(true);
     setNotice(null);
+    let saved = false;
     try {
       await apiRequest(
         `/v1/condominiums/${condominiumId}/units${editor.mode === 'edit' ? `/${editor.unit?.id}` : ''}`,
         session,
         { method: editor.mode === 'edit' ? 'PATCH' : 'POST', body: JSON.stringify(input) },
       );
+      saved = true;
       await refreshDirectory();
       setEditor(null);
       setSelectedUnit(null);
@@ -206,8 +209,16 @@ export function UnitsPage({
     } catch (reason) {
       setNotice({
         tone: 'error',
-        text: reason instanceof Error ? reason.message : 'No se pudo guardar la unidad.',
+        text: saved
+          ? 'La unidad se guardó, pero no se pudo actualizar el directorio. Intenta recargarlo.'
+          : reason instanceof Error
+            ? reason.message
+            : 'No se pudo guardar la unidad.',
       });
+      if (saved) {
+        setEditor(null);
+        setSelectedUnit(null);
+      }
     } finally {
       setSaving(false);
     }
@@ -216,11 +227,13 @@ export function UnitsPage({
   const setUnitStatus = async (unit: DirectoryUnit, nextStatus: 'active' | 'inactive') => {
     setSaving(true);
     setNotice(null);
+    let saved = false;
     try {
       await apiRequest(`/v1/condominiums/${condominiumId}/units/${unit.id}`, session, {
         method: 'PATCH',
         body: JSON.stringify({ status: nextStatus }),
       });
+      saved = true;
       await refreshDirectory();
       setArchiveTarget(null);
       setSelectedUnit(null);
@@ -234,8 +247,16 @@ export function UnitsPage({
     } catch (reason) {
       setNotice({
         tone: 'error',
-        text: reason instanceof Error ? reason.message : 'No se pudo actualizar el estado.',
+        text: saved
+          ? 'El estado de la unidad se actualizó, pero no se pudo actualizar el directorio. Intenta recargarlo.'
+          : reason instanceof Error
+            ? reason.message
+            : 'No se pudo actualizar el estado.',
       });
+      if (saved) {
+        setArchiveTarget(null);
+        setSelectedUnit(null);
+      }
     } finally {
       setSaving(false);
     }
@@ -390,8 +411,10 @@ export function UnitsPage({
 
         {loadError ? (
           <EmptyState
+            actionLabel="Reintentar"
             description={loadError}
             icon={<UnitsIcon size={26} />}
+            onAction={() => setReloadNonce((current) => current + 1)}
             title="No pudimos cargar las unidades"
           />
         ) : null}

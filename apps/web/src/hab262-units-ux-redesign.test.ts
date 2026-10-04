@@ -44,16 +44,25 @@ describe('HAB-262 Units UX redesign', () => {
     expect(detail).toContain('pagos, cuotas, propietarios, ocupaciones y movimientos');
   });
 
-  it('uses consistent active and archived language and explains preservation before archival', async () => {
+  it('uses the dedicated archive flow and explains preservation before archival', async () => {
     const editor = await read('./features/units/UnitEditor.tsx');
     const page = await read('./pages/UnitsPage.tsx');
 
-    expect(editor).toContain('<option value="active">Activa</option>');
-    expect(editor).toContain('<option value="inactive">Archivada</option>');
-    expect(editor).toContain('alícuota como participación estructural');
+    expect(editor).not.toContain("update('status'");
     expect(page).toContain('confirmLabel="Archivar unidad"');
     expect(page).toContain('Archivar retira esta unidad de la operación diaria.');
     expect(page).toContain('pagos, cuotas y movimientos financieros existentes');
+  });
+
+  it('lets an administrator retry an unavailable directory and distinguishes a saved mutation from a refresh failure', async () => {
+    const page = await read('./pages/UnitsPage.tsx');
+
+    expect(page).toContain('actionLabel="Reintentar"');
+    expect(page).toContain('setReloadNonce((current) => current + 1)');
+    expect(page).toContain('La unidad se guardó, pero no se pudo actualizar el directorio.');
+    expect(page).toContain(
+      'El estado de la unidad se actualizó, pero no se pudo actualizar el directorio.',
+    );
   });
 
   it('uses shared drawer/form primitives with custom validation and UUID-backed buildings', async () => {

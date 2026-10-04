@@ -33,15 +33,15 @@ describe('HAB-251/HAB-262 Units shared form layout', () => {
     expect(sharedStylesSource).toContain('grid-template-columns: minmax(0, 1fr)');
   });
 
-  it('preserves topology, UUID-backed building selection and archive semantics', () => {
+  it('preserves topology and UUID-backed building selection while keeping lifecycle changes out of editing', () => {
     expect(unitEditorSource).toContain("buildingRequired = topology === 'multi_building_complex'");
     expect(unitEditorSource).toContain('const buildingId = houseCommunity');
     expect(unitEditorSource).toContain('? null');
     expect(unitEditorSource).toContain('buildings[0]?.id');
     expect(unitEditorSource).toContain('<option key={building.id} value={building.id}>');
     expect(unitEditorSource).toContain('ownershipPercentage > 100');
-    expect(unitEditorSource).toContain('<option value="inactive">Archivada</option>');
-    expect(unitEditorSource).toContain('alícuota como participación estructural');
+    expect(unitEditorSource).not.toContain("update('status'");
+    expect(unitEditorSource).not.toContain('value="inactive"');
     expect(structureSource).toContain('const selectedBuildingId = houseMode');
     expect(structureSource).toContain('buildings[0]?.id');
     expect(structureSource).toContain('<option key={building.id} value={building.id}>');

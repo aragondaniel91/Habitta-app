@@ -186,6 +186,29 @@ const list =
     const value = await r.json();
     return c.json(value, r.ok ? 200 : 400);
   };
+
+const unitExistsInCondominium = async (
+  c: Context<{ Bindings: Bindings; Variables: Variables }>,
+  condominiumId: string,
+  unitId: string,
+) => {
+  const response = await rest(
+    c,
+    `units?id=eq.${unitId}&condominium_id=eq.${condominiumId}&select=id`,
+  );
+  if (!response.ok) return false;
+  return Boolean(((await response.json()) as unknown[])[0]);
+};
+
+const listUnitRelationships = (table: 'unit_owners' | 'unit_occupancies') =>
+  async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
+    const condominiumId = uuidSchema.parse(c.req.param('id'));
+    const unitId = uuidSchema.parse(c.req.param('unitId'));
+    if (!(await unitExistsInCondominium(c, condominiumId, unitId)))
+      return c.json({ error: 'Unit not found' }, 404);
+    const response = await rest(c, `${table}?unit_id=eq.${unitId}&select=*`);
+    return c.json(await response.json(), response.ok ? 200 : 400);
+  };
 // NOTE (HAB-483 cleanup): the legacy `app.get('/v1/condominiums/:id/people', list(...))` that used
 // to live here was removed. It was dead code: `admin-invitations.ts` registers the same path earlier
 // (see the comment there) specifically to shadow this generic list helper.
@@ -236,14 +259,18 @@ app.patch('/v1/condominiums/:id/people/:personId', async (c) => {
   );
   return c.json(await r.json(), r.ok ? 200 : 400);
 });
-app.get('/v1/condominiums/:id/units/:unitId/owners', list('unit_owners', 'unit_id=eq.:unitId'));
+app.get('/v1/condominiums/:id/units/:unitId/owners', listUnitRelationships('unit_owners'));
 app.post('/v1/condominiums/:id/units/:unitId/owners', async (c) => {
   const p = await body(c, ownerInputSchema);
   if (p instanceof Response) return p;
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const unitId = uuidSchema.parse(c.req.param('unitId'));
+  if (!(await unitExistsInCondominium(c, condominiumId, unitId)))
+    return c.json({ error: 'Unit not found' }, 404);
   const r = await rest(c, 'unit_owners', {
     method: 'POST',
     body: JSON.stringify({
-      unit_id: uuidSchema.parse(c.req.param('unitId')),
+      unit_id: unitId,
       person_id: p.personId,
       ownership_percentage: p.ownershipPercentage ?? null,
       is_primary_contact: p.isPrimaryContact,
@@ -255,15 +282,19 @@ app.post('/v1/condominiums/:id/units/:unitId/owners', async (c) => {
 });
 app.get(
   '/v1/condominiums/:id/units/:unitId/occupancies',
-  list('unit_occupancies', 'unit_id=eq.:unitId'),
+  listUnitRelationships('unit_occupancies'),
 );
 app.post('/v1/condominiums/:id/units/:unitId/occupancies', async (c) => {
   const p = await body(c, occupancyInputSchema);
   if (p instanceof Response) return p;
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const unitId = uuidSchema.parse(c.req.param('unitId'));
+  if (!(await unitExistsInCondominium(c, condominiumId, unitId)))
+    return c.json({ error: 'Unit not found' }, 404);
   const r = await rest(c, 'unit_occupancies', {
     method: 'POST',
     body: JSON.stringify({
-      unit_id: uuidSchema.parse(c.req.param('unitId')),
+      unit_id: unitId,
       person_id: p.personId,
       occupancy_type: p.occupancyType,
       is_primary_contact: p.isPrimaryContact,
