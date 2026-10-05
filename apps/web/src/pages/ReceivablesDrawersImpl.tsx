@@ -8,6 +8,7 @@ import { Badge, Button, EmptyState, Field, Select, Skeleton } from '../component
 import { apiRequest } from '../lib/api';
 import { csvFileName, downloadCsv } from '../lib/csv-export';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import { createStatementCsv } from '../lib/reports';
 import { unitReferenceLabel } from '../lib/unit-domain';
 import {
@@ -118,6 +119,7 @@ export function ReceivablesDrawerHost({
   onClose,
   onRefresh,
 }: Props) {
+  const manage = canManage(useCondominiumRoles());
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [reverseReason, setReverseReason] = useState('');
@@ -326,6 +328,10 @@ export function ReceivablesDrawerHost({
 
   if (!mode) return null;
 
+  // These drawers create or import financial records. Keep this presentation boundary aligned
+  // with the database authorization, including if a stale client attempts to reopen a mode.
+  if (!manage && ['manual', 'batch', 'opening'].includes(mode)) return null;
+
   if (mode === 'receivable' && selectedReceivable) {
     return (
       <Drawer eyebrow="Detalle de cuota" onClose={onClose} title={selectedReceivable.description}>
@@ -381,7 +387,7 @@ export function ReceivablesDrawerHost({
             </dd>
           </div>
         </dl>
-        {!isSettledReceivable(selectedReceivable) ? (
+        {manage && !isSettledReceivable(selectedReceivable) ? (
           <section className="receivables-danger-zone">
             <div>
               <strong>Reversar cargo</strong>
