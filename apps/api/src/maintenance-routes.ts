@@ -166,7 +166,13 @@ const serviceLogSchema = z
 const generationSchema = z.object({ throughDate: z.string().date().optional() });
 
 const body = async <T>(c: AppContext, schema: z.ZodType<T>) => {
-  const parsed = schema.safeParse(await c.req.json());
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  const parsed = schema.safeParse(payload);
   return parsed.success ? parsed.data : c.json({ error: parsed.error.flatten() }, 400);
 };
 

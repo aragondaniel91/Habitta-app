@@ -73,4 +73,8 @@ describe('maintenance routes contract', () => {
     expect(source).toContain("value.message?.includes('version conflict')");
     expect(source).toContain("value.message?.includes('not found')");
   });
+
+  it('treats malformed mutation bodies as client validation errors', () => {
+    expect(source).toContain("return c.json({ error: 'Invalid JSON body' }, 400)");
+  });
 });

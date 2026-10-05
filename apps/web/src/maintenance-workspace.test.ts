@@ -69,6 +69,12 @@ describe('maintenance administrator workspace integration', () => {
     expect(documentApiSource).toContain("headers.set('X-Quote-Id', metadata.quoteId)");
   });
 
+  it('surfaces private evidence download failures in the financial workspace', () => {
+    expect(financialSource).toContain('const downloadAttachment = async');
+    expect(financialSource).toContain("'No se pudo descargar el archivo de la orden.'");
+    expect(financialSource).toContain('onClick={() => void downloadAttachment(attachment)}');
+  });
+
   it('loads dedicated responsive styles inside the maintenance chunk', () => {
     expect(operationsSource).toContain("import '../maintenance.css'");
     expect(wrapperSource).toContain("import '../features/maintenance/maintenance-financial.css'");
