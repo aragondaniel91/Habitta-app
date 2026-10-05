@@ -133,6 +133,13 @@
   background: var(--hq-brand-soft);
   color: var(--hq-success);
 }
+.resident-requests__message--retry {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hq-space-3);
+  justify-content: space-between;
+}
 
 .resident-requests__workspace {
   display: grid;

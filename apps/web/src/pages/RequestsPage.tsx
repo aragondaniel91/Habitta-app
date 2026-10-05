@@ -26,6 +26,7 @@ import {
   nextRequestStatuses,
   personName,
   priorityLabels,
+  requestDetailLoadError,
   statusGroups,
   statusLabels,
 } from '../lib/service-requests';
@@ -570,6 +571,7 @@ function RequestDetailDrawer({
 }) {
   const [detail, setDetail] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detailError, setDetailError] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [status, setStatus] = useState<ServiceRequestStatus>(request.status);
@@ -585,6 +587,7 @@ function RequestDetailDrawer({
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
+    setDetailError('');
     const base = `/v1/condominiums/${condominiumId}/requests/${request.id}`;
     const [comments, events, attachments] = await Promise.allSettled([
       apiRequest<ServiceRequestComment[]>(`${base}/comments`, session),
@@ -596,6 +599,7 @@ function RequestDetailDrawer({
       events: events.status === 'fulfilled' ? events.value : [],
       attachments: attachments.status === 'fulfilled' ? attachments.value : [],
     });
+    setDetailError(requestDetailLoadError({ comments, events, attachments }));
     setLoading(false);
   }, [condominiumId, request.id, session]);
 
@@ -836,6 +840,18 @@ function RequestDetailDrawer({
             <span>Actividad</span>
             <p>Historial inmutable de cambios y conversaciones.</p>
           </div>
+          {detailError ? (
+            <div
+              className="requests-inline-message requests-inline-message--retry"
+              data-tone="error"
+              role="alert"
+            >
+              <span>{detailError}</span>
+              <Button onClick={() => void loadDetail()} size="sm" type="button" variant="ghost">
+                Reintentar
+              </Button>
+            </div>
+          ) : null}
           {loading || !detail ? (
             <Skeleton className="requests-detail-skeleton" />
           ) : (

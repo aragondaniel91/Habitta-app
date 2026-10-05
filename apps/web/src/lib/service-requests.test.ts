@@ -4,6 +4,7 @@ import {
   getRequestStats,
   isOverdueRequest,
   nextRequestStatuses,
+  requestDetailLoadError,
   type ServiceRequestRecord,
 } from './service-requests';
 
@@ -96,5 +97,22 @@ describe('service request workspace helpers', () => {
     expect(nextRequestStatuses('submitted')).toEqual(['acknowledged', 'in_progress']);
     expect(nextRequestStatuses('resolved')).toEqual(['in_progress', 'closed']);
     expect(nextRequestStatuses('closed')).toEqual([]);
+  });
+
+  it('identifies partial detail failures instead of treating them as an empty history', () => {
+    expect(
+      requestDetailLoadError({
+        comments: { status: 'fulfilled', value: [] },
+        events: { status: 'rejected', reason: new Error('offline') },
+        attachments: { status: 'rejected', reason: new Error('offline') },
+      }),
+    ).toBe('No se pudieron cargar: historial, archivos.');
+    expect(
+      requestDetailLoadError({
+        comments: { status: 'fulfilled', value: [] },
+        events: { status: 'fulfilled', value: [] },
+        attachments: { status: 'fulfilled', value: [] },
+      }),
+    ).toBe('');
   });
 });
