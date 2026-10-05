@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(18);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -310,6 +310,47 @@ select throws_ok(
   'P0001',
   'assembly agenda is frozen after the meeting starts',
   'agenda cannot be changed after assembly starts'
+);
+
+reset role;
+
+-- A same-condominium agenda item is still not valid evidence for a different assembly.
+-- The composite tenancy key alone cannot enforce this relationship.
+insert into public.assemblies (
+  id, condominium_id, title, scheduled_at, status, started_at, created_by, updated_by
+)
+values (
+  '16900000-0000-0000-0000-000000000041',
+  (select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+  'Otra asamblea HAB-169', now(), 'scheduled', null,
+  '16900000-0000-0000-0000-000000000001', '16900000-0000-0000-0000-000000000001'
+);
+
+insert into public.assembly_agenda_items (
+  id, assembly_id, condominium_id, title, sort_order, created_by
+)
+values (
+  '16900000-0000-0000-0000-000000000042',
+  '16900000-0000-0000-0000-000000000041',
+  (select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+  'Punto de otra asamblea', 0, '16900000-0000-0000-0000-000000000001'
+);
+
+update public.assemblies
+set status = 'in_progress', started_at = now()
+where id = '16900000-0000-0000-0000-000000000041';
+
+select throws_ok(
+  $$select public.create_assembly_resolution(
+    (select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_assembly),
+    'Vínculo inválido',
+    'No se puede enlazar la agenda de otra asamblea.',
+    '16900000-0000-0000-0000-000000000042'
+  )$$,
+  'P0001',
+  'agenda item not found for assembly',
+  'a resolution cannot link an agenda item from another assembly in the same condominium'
 );
 
 select * from finish();

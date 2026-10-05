@@ -762,22 +762,24 @@ export function GovernancePage({ condominiumId, condominiumName, session }: Prop
                 ) : (
                   <p>No hay documentos adjuntos.</p>
                 )}
-                <PrivateDocumentUploader
-                  defaultDocumentType={
-                    selectedProposal.category === 'budget' ? 'budget' : 'support'
-                  }
-                  documentTypes={[
-                    { value: 'quote', label: 'Cotización' },
-                    { value: 'budget', label: 'Presupuesto' },
-                    { value: 'support', label: 'Soporte' },
-                    { value: 'minutes', label: 'Acta' },
-                    { value: 'other', label: 'Otro' },
-                  ]}
-                  onUploaded={() => loadDetail(selectedProposal)}
-                  path={`/v1/condominiums/${condominiumId}/governance-proposals/${selectedProposal.id}/attachments`}
-                  session={session}
-                  title="Adjuntar documento privado"
-                />
+                {manage ? (
+                  <PrivateDocumentUploader
+                    defaultDocumentType={
+                      selectedProposal.category === 'budget' ? 'budget' : 'support'
+                    }
+                    documentTypes={[
+                      { value: 'quote', label: 'Cotización' },
+                      { value: 'budget', label: 'Presupuesto' },
+                      { value: 'support', label: 'Soporte' },
+                      { value: 'minutes', label: 'Acta' },
+                      { value: 'other', label: 'Otro' },
+                    ]}
+                    onUploaded={() => loadDetail(selectedProposal)}
+                    path={`/v1/condominiums/${condominiumId}/governance-proposals/${selectedProposal.id}/attachments`}
+                    session={session}
+                    title="Adjuntar documento privado"
+                  />
+                ) : null}
               </section>
 
               <section className="governance-results">
