@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { filterExpenses, getExpenseStatusCounts, nextExpenseActions } from './expenses';
+import {
+  filterExpenses,
+  getExpenseStatusCounts,
+  isValidExpenseAmount,
+  nextExpenseActions,
+} from './expenses';
 import type { ExpenseRecord } from './expenses';
 
 const expense = (values: Partial<ExpenseRecord>): ExpenseRecord => ({
@@ -56,5 +61,14 @@ describe('expense workspace helpers', () => {
     expect(nextExpenseActions('pending_approval')).toEqual(['approve', 'void']);
     expect(nextExpenseActions('approved')).toEqual(['mark-paid', 'void']);
     expect(nextExpenseActions('paid')).toEqual([]);
+  });
+
+  it('accepts only positive amounts with at most two decimal places', () => {
+    expect(isValidExpenseAmount('0.01')).toBe(true);
+    expect(isValidExpenseAmount('999.9')).toBe(true);
+    expect(isValidExpenseAmount('0')).toBe(false);
+    expect(isValidExpenseAmount('-1')).toBe(false);
+    expect(isValidExpenseAmount('1.234')).toBe(false);
+    expect(isValidExpenseAmount('1e2')).toBe(false);
   });
 });

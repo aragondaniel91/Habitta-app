@@ -64,7 +64,7 @@ describe('financial capture orchestration', () => {
     const capture = await source('./features/expenses/ExpenseCaptureDrawer.tsx');
 
     expect(page).toContain('ExpenseCaptureDrawer');
-    expect(capture).toContain('setCreatedExpense(expense)');
+    expect(capture).toContain('setCreatedExpense(savedExpense)');
     expect(capture).toContain('/expenses/${createdExpense.id}/attachments');
     expect(capture).toContain('setProofSaved(true)');
     expect(capture).toContain('JPEG, PNG, WebP o PDF');
@@ -102,6 +102,41 @@ describe('financial capture orchestration', () => {
 
     // Expense capture keeps the original absolute rule: it has no send-for-review step at all.
     expect(expenseCapture).not.toContain('/submit');
+  });
+
+  it('keeps draft correction in the capture drawer and treasury selection in the approved detail', async () => {
+    const page = await source('./pages/ExpensesPage.tsx');
+    const capture = await source('./features/expenses/ExpenseCaptureDrawer.tsx');
+
+    expect(page).toContain("drawer === 'edit' && selectedExpense?.status === 'draft'");
+    expect(page).toContain('Editar borrador');
+    expect(capture).toContain("method: expense ? 'PATCH' : 'POST'");
+    expect(capture).toContain('expectedVersion: expense?.version');
+    expect(capture).toContain(
+      'categoryId === expense.category_id ? undefined : categoryId',
+    );
+    expect(capture).toContain(
+      "vendorId === (expense.vendor_id ?? '') ? undefined : vendorId || undefined",
+    );
+    expect(capture).toContain(
+      'invoiceNumber: expense ? invoiceNumber : invoiceNumber || undefined',
+    );
+    expect(capture).toContain(
+      'paymentMethod: expense ? paymentMethod : paymentMethod || undefined',
+    );
+    expect(capture).toContain(
+      'paymentReference: expense ? paymentReference : paymentReference || undefined',
+    );
+    expect(capture).toContain('notes: expense ? notes : notes || undefined');
+    expect(capture).toContain(
+      '.filter((item) => item.is_active || item.id === categoryId)',
+    );
+    expect(capture).toContain(
+      '.filter((item) => item.is_active || item.id === vendorId)',
+    );
+    expect(page).toContain('/treasury/expenses/${selectedExpense.id}/account');
+    expect(page).toContain("selectedExpense.status === 'approved' && treasuryAccounts.length");
+    expect(page).toContain('Guardar cuenta');
   });
 
   it('submits completed resident and admin captures to review only after the required proof', async () => {
