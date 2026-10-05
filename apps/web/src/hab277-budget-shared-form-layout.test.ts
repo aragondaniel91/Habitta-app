@@ -28,11 +28,12 @@ describe('HAB-277 Budget shared form layout', () => {
     expect(budgets).toContain('amount: line.amount');
     expect(budgets).toContain('requestId: editor.requestId');
     expect(budgets).toContain('revisionNote: editor.revisionNote || undefined');
-    expect(budgets).toContain('Number(line.amount) > 0');
+    expect(budgets).toContain('isValidBudgetAmount(line.amount)');
   });
 
   it('preserves period validation, role-gated approval and reporting semantics', () => {
     expect(budgets).toContain('editor.endsOn >= editor.startsOn');
+    expect(budgets).toContain('editor.lines.length > 0 &&\n    !duplicateLines &&');
     expect(budgets).toContain("const canApprove = roles.includes('condominium_admin')");
     expect(budgets).toContain("action: 'submit' | 'approve'");
     expect(budgets).toContain('/actual-vs-budget`');

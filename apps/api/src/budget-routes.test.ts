@@ -17,6 +17,7 @@ describe('budget API contract', () => {
     expect(source).toContain("rpc(c, 'create_budget_revision'");
     expect(source).toContain("rpc(c, 'submit_budget_version'");
     expect(source).toContain("rpc(c, 'approve_budget_version'");
+    expect(source).toContain("rpc(c, 'reject_budget_version'");
     expect(source).toContain("rpc(c, 'get_budget_actual_vs_budget'");
     expect(source).toContain("target_type: 'budget'");
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
@@ -26,5 +27,12 @@ describe('budget API contract', () => {
     const source = await readFile(routeUrl, 'utf8');
     expect(source).toContain('Budget category and currency pairs must be unique');
     expect(source).toContain('currencyCode.toUpperCase()');
+  });
+
+  it('requires an accountable rejection reason before invoking the lifecycle RPC', async () => {
+    const source = await readFile(routeUrl, 'utf8');
+    expect(source).toContain('const budgetRejectionSchema');
+    expect(source).toContain('reason: z.string().trim().min(3).max(500)');
+    expect(source).toContain("versions/:versionId/reject");
   });
 });

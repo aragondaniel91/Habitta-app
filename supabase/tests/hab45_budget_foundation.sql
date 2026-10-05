@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(23);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, raw_user_meta_data, created_at, updated_at
@@ -248,6 +248,79 @@ select public.approve_budget_version(
   (select (version).id from hab45_revision)
 );
 
+create temporary table hab45_rejected_revision as
+select public.create_budget_revision(
+  (select (payload #>> '{condominium,id}')::uuid from hab45_workspace_a),
+  (select (version).budget_period_id from hab45_revision),
+  jsonb_build_array(
+    jsonb_build_object(
+      'category_id', (
+        select id from public.expense_categories
+        where condominium_id = (select (payload #>> '{condominium,id}')::uuid from hab45_workspace_a)
+          and code = 'maintenance'
+      ),
+      'currency_code', 'USD',
+      'amount', 1300
+    )
+  ),
+  '45000000-0000-0000-0000-000000000103',
+  'Versión para revisión'
+) as version;
+
+select public.submit_budget_version(
+  (select (payload #>> '{condominium,id}')::uuid from hab45_workspace_a),
+  (select (version).budget_period_id from hab45_rejected_revision),
+  (select (version).id from hab45_rejected_revision)
+);
+
+select is(
+  (
+    public.reject_budget_version(
+      (select (payload #>> '{condominium,id}')::uuid from hab45_workspace_a),
+      (select (version).budget_period_id from hab45_rejected_revision),
+      (select (version).id from hab45_rejected_revision),
+      'Separar el soporte de mantenimiento antes de aprobar.'
+    )
+  ).status::text,
+  'rejected',
+  'approvers can reject the current pending version'
+);
+
+select is(
+  (
+    select rejection_reason
+    from public.budget_versions
+    where id = (select (version).id from hab45_rejected_revision)
+  ),
+  'Separar el soporte de mantenimiento antes de aprobar.',
+  'the rejection reason is retained with immutable budget history'
+);
+
+create temporary table hab45_rejection_recovery as
+select public.create_budget_revision(
+  (select (payload #>> '{condominium,id}')::uuid from hab45_workspace_a),
+  (select (version).budget_period_id from hab45_rejected_revision),
+  jsonb_build_array(
+    jsonb_build_object(
+      'category_id', (
+        select id from public.expense_categories
+        where condominium_id = (select (payload #>> '{condominium,id}')::uuid from hab45_workspace_a)
+          and code = 'maintenance'
+      ),
+      'currency_code', 'USD',
+      'amount', 1300
+    )
+  ),
+  '45000000-0000-0000-0000-000000000104',
+  'Corrección posterior al rechazo'
+) as version;
+
+select is(
+  (select (version).version_number from hab45_rejection_recovery),
+  4,
+  'a rejected version can be followed by a new immutable draft revision'
+);
+
 select is(
   (
     select status::text from public.budget_versions
@@ -351,8 +424,8 @@ select is(
     from public.budget_versions
     where budget_period_id = (select (version).budget_period_id from hab45_revision)
   ),
-  2,
-  'both approved budget versions remain available as history'
+  4,
+  'approved, rejected, and corrective draft versions remain available as history'
 );
 
 select is(

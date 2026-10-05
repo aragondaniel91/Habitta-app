@@ -1,4 +1,9 @@
-export type BudgetVersionStatus = 'draft' | 'pending_approval' | 'approved' | 'superseded';
+export type BudgetVersionStatus =
+  | 'draft'
+  | 'pending_approval'
+  | 'approved'
+  | 'rejected'
+  | 'superseded';
 
 export type BudgetPeriod = {
   id: string;
@@ -22,6 +27,8 @@ export type BudgetVersion = {
   revision_note: string | null;
   submitted_at: string | null;
   approved_at: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
   superseded_at: string | null;
   created_at: string;
 };
@@ -57,6 +64,7 @@ export const budgetStatusLabels: Record<BudgetVersionStatus, string> = {
   draft: 'Borrador',
   pending_approval: 'Pendiente de aprobación',
   approved: 'Aprobado',
+  rejected: 'Rechazado',
   superseded: 'Reemplazado',
 };
 
@@ -77,6 +85,18 @@ export function budgetTotalsByCurrency(lines: BudgetLine[]) {
     totals[line.currency_code] = (totals[line.currency_code] ?? 0) + Number(line.amount);
     return totals;
   }, {});
+}
+
+/** Mirrors the API money contract so line errors are caught before a draft is submitted. */
+export function isValidBudgetAmount(value: string) {
+  return /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(value.trim()) && Number(value) > 0;
+}
+
+export function hasDuplicateBudgetCategoryCurrency(lines: Array<Pick<BudgetLine, 'category_id' | 'currency_code'>>) {
+  const keys = lines
+    .filter((line) => line.category_id && line.currency_code.trim())
+    .map((line) => `${line.category_id}:${line.currency_code.trim().toUpperCase()}`);
+  return new Set(keys).size !== keys.length;
 }
 
 export function formatBudgetMoney(value: string | number, currencyCode: string) {
