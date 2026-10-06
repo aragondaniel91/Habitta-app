@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ReportsIcon } from '../components/icons';
@@ -88,39 +88,87 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
   const [filters, setFilters] = useState<AuditFilters>(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState<AuditFilters>(initialFilters);
   const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [eventsCondominiumId, setEventsCondominiumId] = useState(condominiumId);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const requestId = useRef(0);
+  const activeCondominiumId = useRef(condominiumId);
+  const lastLoad = useRef({
+    scope: '',
+    filters: initialFilters,
+    offset: -1,
+    load: null as unknown,
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const rows = await apiRequest<AuditEvent[]>(
-        buildPath(condominiumId, appliedFilters, offset),
-        session,
-      );
-      setEvents(rows);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudo cargar el registro de auditoría.',
-      );
-    } finally {
-      setLoading(false);
+  // Invalidate requests during render so stale rows cannot appear under a new scope.
+  if (activeCondominiumId.current !== condominiumId) {
+    activeCondominiumId.current = condominiumId;
+    requestId.current += 1;
+  }
+
+  const load = useCallback(
+    async (scope: string, nextFilters: AuditFilters, nextOffset: number) => {
+      const currentRequestId = ++requestId.current;
+      setLoading(true);
+      setError('');
+      try {
+        const rows = await apiRequest<AuditEvent[]>(
+          buildPath(scope, nextFilters, nextOffset),
+          session,
+        );
+        if (requestId.current === currentRequestId && activeCondominiumId.current === scope) {
+          setEvents(rows);
+          setEventsCondominiumId(scope);
+        }
+      } catch (requestError) {
+        if (requestId.current === currentRequestId && activeCondominiumId.current === scope)
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : 'No se pudo cargar el registro de auditoría.',
+          );
+      } finally {
+        if (requestId.current === currentRequestId && activeCondominiumId.current === scope) {
+          setLoading(false);
+        }
+      }
+    },
+    [session],
+  );
+
+  useEffect(() => {
+    const scopeChanged = lastLoad.current.scope !== condominiumId;
+    const filtersToLoad = scopeChanged ? initialFilters : appliedFilters;
+    const offsetToLoad = scopeChanged ? 0 : offset;
+
+    if (
+      !scopeChanged &&
+      lastLoad.current.filters === filtersToLoad &&
+      lastLoad.current.offset === offsetToLoad &&
+      lastLoad.current.load === load
+    ) {
+      return;
     }
-  }, [appliedFilters, condominiumId, offset, session]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+    if (scopeChanged) {
+      setFilters(initialFilters);
+      setAppliedFilters(initialFilters);
+      setOffset(0);
+      setEvents([]);
+      setEventsCondominiumId(condominiumId);
+    }
 
-  useEffect(() => {
-    setFilters(initialFilters);
-    setAppliedFilters(initialFilters);
-    setOffset(0);
-  }, [condominiumId]);
+    lastLoad.current = {
+      scope: condominiumId,
+      filters: filtersToLoad,
+      offset: offsetToLoad,
+      load,
+    };
+    void load(condominiumId, filtersToLoad, offsetToLoad);
+  }, [appliedFilters, condominiumId, load, offset]);
+
+  const visibleEvents = eventsCondominiumId === condominiumId ? events : [];
 
   const activeFilterCount = useMemo(
     () => Object.values(appliedFilters).filter((value) => Boolean(value)).length,
@@ -259,7 +307,12 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
               : `Todos los eventos · página ${Math.floor(offset / PAGE_SIZE) + 1}`}
           </span>
         </div>
-        <Button disabled={loading} onClick={() => void load()} size="sm" variant="secondary">
+        <Button
+          disabled={loading}
+          onClick={() => void load(condominiumId, appliedFilters, offset)}
+          size="sm"
+          variant="secondary"
+        >
           Actualizar
         </Button>
       </div>
@@ -271,7 +324,7 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
               <Skeleton className="skeleton--card" key={index} />
             ))}
           </div>
-        ) : events.length ? (
+        ) : visibleEvents.length ? (
           <>
             <div className="audit-table-scroll">
               <table className="audit-table">
@@ -287,7 +340,7 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map((auditEvent) => (
+                  {visibleEvents.map((auditEvent) => (
                     <tr key={auditEvent.event_id}>
                       <td>
                         <time dateTime={auditEvent.occurred_at}>
@@ -339,7 +392,7 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
             </div>
 
             <div aria-label="Eventos de auditoría" className="audit-mobile-list">
-              {events.map((auditEvent) => (
+              {visibleEvents.map((auditEvent) => (
                 <article className="audit-mobile-card" key={auditEvent.event_id}>
                   <header>
                     <div>
@@ -426,10 +479,10 @@ export function AuditLogPage({ condominiumId, condominiumName, session }: Props)
           Anterior
         </Button>
         <span>
-          Filas {events.length ? offset + 1 : 0}–{offset + events.length}
+          Filas {visibleEvents.length ? offset + 1 : 0}–{offset + visibleEvents.length}
         </span>
         <Button
-          disabled={loading || events.length < PAGE_SIZE}
+          disabled={loading || visibleEvents.length < PAGE_SIZE}
           onClick={() => setOffset((current) => current + PAGE_SIZE)}
           size="sm"
           variant="secondary"
