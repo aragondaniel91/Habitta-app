@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -95,7 +95,20 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // A response belongs to the condominium that started it, not to the access token in effect at
+  // that time. A Supabase session token refresh keeps the same tenant and must not be treated as
+  // a scope change -- only a condominium switch invalidates in-flight requests and resets the
+  // page, so stale units/people/buildings from a previous condominium can never render beneath
+  // the new condominium's header.
+  const scopeKeyRef = useRef(condominiumId);
+  scopeKeyRef.current = condominiumId;
+  const latestRequest = useRef(0);
+  const ownsScope = useCallback((requestScope: string) => scopeKeyRef.current === requestScope, []);
+
   const load = useCallback(async () => {
+    const requestScope = condominiumId;
+    const requestId = ++latestRequest.current;
+    const ownsRequest = () => ownsScope(requestScope) && requestId === latestRequest.current;
     setLoading(true);
     setError('');
     try {
@@ -106,6 +119,7 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
         apiRequest<CommunityPerson[]>(`${base}/people`, session),
         apiRequest<CondominiumProfile[]>(base, session).catch(() => []),
       ]);
+      if (!ownsRequest()) return;
       setData({
         units,
         buildings,
@@ -113,15 +127,30 @@ export function CommunityPage({ condominiumId, condominiumName, session, onNavig
         propertyTopology: profile[0]?.property_topology ?? 'unspecified',
       });
     } catch (requestError) {
+      if (!ownsRequest()) return;
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo cargar la comunidad.',
       );
     } finally {
-      setLoading(false);
+      if (ownsRequest()) setLoading(false);
     }
-  }, [condominiumId, session]);
+  }, [condominiumId, ownsScope, session]);
 
   useEffect(() => {
+    // Runs only when the condominium itself changes, not on a same-tenant session token refresh.
+    // Invalidate every in-flight request and drop the previous condominium's community data and
+    // error before the replacement request begins, so stale data can never render beneath the
+    // new condominium's header.
+    latestRequest.current += 1;
+    setData(null);
+    setError('');
+    setLoading(true);
+  }, [condominiumId]);
+
+  useEffect(() => {
+    // Also runs on a same-condominium session token refresh, but that path never resets the
+    // state above first, so it refetches silently while keeping the previously loaded data on
+    // screen until the refreshed response lands.
     void load();
   }, [load]);
 
