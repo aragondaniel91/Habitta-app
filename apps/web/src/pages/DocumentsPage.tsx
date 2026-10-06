@@ -188,8 +188,33 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
   const [versionNote, setVersionNote] = useState('');
   const [linkType, setLinkType] = useState<CommunityDocumentLinkType>('announcement');
   const [linkTargetId, setLinkTargetId] = useState('');
+  // A response belongs to the condominium that started it, not to the access token in effect at
+  // that time. A Supabase session token refresh keeps the same tenant and must not be treated
+  // as a scope change -- only a condominium switch invalidates in-flight requests and resets the
+  // page. Keeping this identity in a ref lets an old request reject itself as soon as the
+  // condominium changes, before the replacement effect has had a chance to run.
+  const scopeKey = condominiumId;
+  const scopeKeyRef = useRef(scopeKey);
+  scopeKeyRef.current = scopeKey;
+  const latestLibraryRequest = useRef(0);
+  const latestDetailRequest = useRef(0);
+  const ownsScope = useCallback((requestScope: string) => scopeKeyRef.current === requestScope, []);
+  // A mutation's trailing detail reload targets the document it acted on. If the user has since
+  // selected a different document, that reload must not overwrite the newly selected document's
+  // versions, links or download history.
+  const selectedDocumentIdRef = useRef(selectedDocumentId);
+  selectedDocumentIdRef.current = selectedDocumentId;
+  const ownsDetail = useCallback(
+    (requestScope: string, documentId: string) =>
+      ownsScope(requestScope) && selectedDocumentIdRef.current === documentId,
+    [ownsScope],
+  );
 
   const loadLibrary = useCallback(async () => {
+    const requestScope = scopeKey;
+    const requestId = ++latestLibraryRequest.current;
+    const ownsRequest = () =>
+      ownsScope(requestScope) && requestId === latestLibraryRequest.current;
     setLoading(true);
     setError('');
     try {
@@ -198,6 +223,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
         listCommunityDocumentFolders(condominiumId, session),
         listCommunityDocuments(condominiumId, session),
       ]);
+      if (!ownsRequest()) return;
       setCategories(categoryRows);
       setFolders(folderRows);
       setDocuments(documentRows);
@@ -205,27 +231,34 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
         documentRows.some((item) => item.id === current) ? current : (documentRows[0]?.id ?? ''),
       );
     } catch (requestError) {
+      if (!ownsRequest()) return;
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'No se pudo cargar la biblioteca de documentos.',
       );
     } finally {
-      setLoading(false);
+      if (ownsRequest()) setLoading(false);
     }
-  }, [condominiumId, session]);
-
-  const latestDetailRequest = useRef(0);
+  }, [condominiumId, ownsScope, scopeKey, session]);
 
   const loadDetail = useCallback(
     async (documentId: string) => {
+      const requestScope = scopeKey;
       const requestId = ++latestDetailRequest.current;
+      const ownsRequest = () =>
+        ownsScope(requestScope) && requestId === latestDetailRequest.current;
       if (!documentId) {
         setVersions([]);
         setLinks([]);
         setDownloadEvents([]);
         return;
       }
+      // Do not leave a previous document's sensitive metadata on screen while a new selection
+      // is resolving.
+      setVersions([]);
+      setLinks([]);
+      setDownloadEvents([]);
       setDetailLoading(true);
       try {
         const [versionRows, linkRows, eventRows] = await Promise.all([
@@ -236,25 +269,41 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
         // A newer detail request may have started (and even finished) while this one was in
         // flight -- e.g. the user clicked a second document before the first request settled.
         // Discard this response so it cannot clobber the newer one with stale data.
-        if (requestId !== latestDetailRequest.current) return;
+        if (!ownsRequest()) return;
         setVersions(versionRows);
         setLinks(linkRows);
         setDownloadEvents(eventRows);
       } catch (requestError) {
-        if (requestId !== latestDetailRequest.current) return;
+        if (!ownsRequest()) return;
         setError(
           requestError instanceof Error
             ? requestError.message
             : 'No se pudo cargar el detalle del documento.',
         );
       } finally {
-        if (requestId === latestDetailRequest.current) setDetailLoading(false);
+        if (ownsRequest()) setDetailLoading(false);
       }
     },
-    [condominiumId, session],
+    [condominiumId, ownsScope, scopeKey, session],
   );
 
   useEffect(() => {
+    // Invalidate every in-flight result and remove tenant/document-scoped information before
+    // beginning the replacement library request. This must only run when the condominium itself
+    // changes -- a same-tenant session token refresh must not clear the page or discard
+    // in-progress composer input and navigation state.
+    latestLibraryRequest.current += 1;
+    latestDetailRequest.current += 1;
+    setCategories([]);
+    setFolders([]);
+    setDocuments([]);
+    setVersions([]);
+    setLinks([]);
+    setDownloadEvents([]);
+    setDetailLoading(false);
+    setLoading(true);
+    setSaving(false);
+    setError('');
     setSelectedDocumentId('');
     setSelectedFolderId('');
     setSelectedCategoryId('');
@@ -264,8 +313,14 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
     setComposer(null);
     setArchiveDialogOpen(false);
     setNotice('');
+  }, [condominiumId]);
+
+  useEffect(() => {
+    // Runs on every condominium change and also on a background session token refresh, but the
+    // latter never clears the arrays above first, so it refetches silently without a skeleton
+    // flash or state reset.
     void loadLibrary();
-  }, [condominiumId, loadLibrary]);
+  }, [loadLibrary]);
 
   useEffect(() => {
     void loadDetail(selectedDocumentId);
@@ -357,6 +412,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
         return;
       }
     }
+    const requestScope = scopeKey;
     setSaving(true);
     setError('');
     try {
@@ -382,6 +438,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
             'Versión inicial',
           );
         } catch (uploadError) {
+          if (!ownsScope(requestScope)) return;
           setComposer(null);
           setError(
             uploadError instanceof Error
@@ -389,20 +446,24 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
               : 'El documento se creó, pero no se pudo guardar el archivo inicial. Puedes agregarlo desde el detalle.',
           );
           await loadLibrary();
+          if (!ownsScope(requestScope)) return;
           setSelectedDocumentId(created.id);
           return;
         }
       }
+      if (!ownsScope(requestScope)) return;
       setComposer(null);
       setNotice(initialFile ? 'Documento y versión inicial guardados.' : 'Documento creado.');
       await loadLibrary();
+      if (!ownsScope(requestScope)) return;
       setSelectedDocumentId(created.id);
     } catch (requestError) {
+      if (!ownsScope(requestScope)) return;
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo crear el documento.',
       );
     } finally {
-      setSaving(false);
+      if (ownsScope(requestScope)) setSaving(false);
     }
   };
 
@@ -432,6 +493,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
   const saveFolder = async (event: FormEvent) => {
     event.preventDefault();
     if (!folderName.trim()) return;
+    const requestScope = scopeKey;
     setSaving(true);
     setError('');
     try {
@@ -449,10 +511,12 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
           parentFolderId: folderParentId || undefined,
         });
       }
+      if (!ownsScope(requestScope)) return;
       setComposer(null);
       setNotice(editingFolderId ? 'Carpeta actualizada.' : 'Carpeta creada.');
       await loadLibrary();
     } catch (requestError) {
+      if (!ownsScope(requestScope)) return;
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -461,13 +525,14 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
             : 'No se pudo crear la carpeta.',
       );
     } finally {
-      setSaving(false);
+      if (ownsScope(requestScope)) setSaving(false);
     }
   };
 
   const saveCategory = async (event: FormEvent) => {
     event.preventDefault();
     if (!categoryName.trim()) return;
+    const requestScope = scopeKey;
     setSaving(true);
     setError('');
     try {
@@ -487,10 +552,12 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
           defaultRetentionDays: categoryRetention ? Number(categoryRetention) : undefined,
         });
       }
+      if (!ownsScope(requestScope)) return;
       setComposer(null);
       setNotice(editingCategoryId ? 'Categoría actualizada.' : 'Categoría creada.');
       await loadLibrary();
     } catch (requestError) {
+      if (!ownsScope(requestScope)) return;
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -499,7 +566,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
             : 'No se pudo crear la categoría.',
       );
     } finally {
-      setSaving(false);
+      if (ownsScope(requestScope)) setSaving(false);
     }
   };
 
@@ -511,39 +578,50 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       setError(fileError);
       return;
     }
+    const requestScope = scopeKey;
+    const documentId = selectedDocument.id;
     setSaving(true);
     setError('');
     try {
       await uploadCommunityDocumentVersion(
         condominiumId,
-        selectedDocument.id,
+        documentId,
         session,
         versionFile,
         versionNote,
       );
+      if (!ownsScope(requestScope)) return;
       setVersionFile(null);
       setVersionNote('');
       setNotice('Nueva versión guardada sin alterar el historial anterior.');
-      await Promise.all([loadLibrary(), loadDetail(selectedDocument.id)]);
+      await loadLibrary();
+      if (!ownsDetail(requestScope, documentId)) return;
+      await loadDetail(documentId);
     } catch (requestError) {
+      if (!ownsScope(requestScope)) return;
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'No se pudo guardar la nueva versión.',
       );
     } finally {
-      setSaving(false);
+      if (ownsScope(requestScope)) setSaving(false);
     }
   };
 
   const downloadVersion = async (version: CommunityDocumentVersion) => {
     if (!selectedDocument) return;
+    const requestScope = scopeKey;
+    const documentId = selectedDocument.id;
     setError('');
     try {
-      await downloadCommunityDocumentVersion(condominiumId, selectedDocument.id, version, session);
+      await downloadCommunityDocumentVersion(condominiumId, documentId, version, session);
+      if (!ownsScope(requestScope)) return;
       setNotice('Descarga autorizada y registrada en la auditoría.');
-      await loadDetail(selectedDocument.id);
+      if (!ownsDetail(requestScope, documentId)) return;
+      await loadDetail(documentId);
     } catch (requestError) {
+      if (!ownsScope(requestScope)) return;
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo descargar el archivo.',
       );
@@ -552,20 +630,25 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
 
   const archiveSelectedDocument = async () => {
     if (!selectedDocument || selectedDocument.status !== 'active') return;
+    const requestScope = scopeKey;
+    const documentId = selectedDocument.id;
     setSaving(true);
     setError('');
     try {
-      await archiveCommunityDocument(condominiumId, selectedDocument.id, session);
+      await archiveCommunityDocument(condominiumId, documentId, session);
+      if (!ownsScope(requestScope)) return;
       setArchiveDialogOpen(false);
       setNotice('Documento archivado. El historial permanece intacto.');
       await loadLibrary();
-      await loadDetail(selectedDocument.id);
+      if (!ownsDetail(requestScope, documentId)) return;
+      await loadDetail(documentId);
     } catch (requestError) {
+      if (!ownsScope(requestScope)) return;
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo archivar el documento.',
       );
     } finally {
-      setSaving(false);
+      if (ownsScope(requestScope)) setSaving(false);
     }
   };
 
@@ -575,22 +658,27 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
       setError('Ingresa un UUID válido del registro relacionado.');
       return;
     }
+    const requestScope = scopeKey;
+    const documentId = selectedDocument.id;
     setSaving(true);
     setError('');
     try {
-      await linkCommunityDocument(condominiumId, selectedDocument.id, session, {
+      await linkCommunityDocument(condominiumId, documentId, session, {
         targetType: linkType,
         targetId: linkTargetId.trim(),
       });
+      if (!ownsScope(requestScope)) return;
       setLinkTargetId('');
       setNotice('Registro relacionado vinculado al documento.');
-      await loadDetail(selectedDocument.id);
+      if (!ownsDetail(requestScope, documentId)) return;
+      await loadDetail(documentId);
     } catch (requestError) {
+      if (!ownsScope(requestScope)) return;
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo vincular el registro.',
       );
     } finally {
-      setSaving(false);
+      if (ownsScope(requestScope)) setSaving(false);
     }
   };
 
