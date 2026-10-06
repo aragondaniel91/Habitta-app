@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -332,8 +332,21 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [period, setPeriod] = useState<ReportPeriod>(6);
 
+  // A response belongs to the condominium that started it, not to the access token in effect at
+  // that time. A Supabase session token refresh keeps the same tenant and must not be treated as
+  // a scope change -- only a condominium switch invalidates in-flight requests and resets the
+  // page, so stale financial data from a previous condominium can never render beneath the new
+  // condominium's header.
+  const scopeKeyRef = useRef(condominiumId);
+  scopeKeyRef.current = condominiumId;
+  const latestRequest = useRef(0);
+  const ownsScope = useCallback((requestScope: string) => scopeKeyRef.current === requestScope, []);
+
   const load = useCallback(
     async (background = false) => {
+      const requestScope = condominiumId;
+      const requestId = ++latestRequest.current;
+      const ownsRequest = () => ownsScope(requestScope) && requestId === latestRequest.current;
       if (!background) setLoading(true);
       setError('');
       try {
@@ -353,21 +366,43 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
             session,
           ),
         ]);
+        // A newer request (a condominium switch, most often) may have started -- and even
+        // finished -- while this one was in flight. Discard this response so it cannot clobber
+        // the newer one with stale figures.
+        if (!ownsRequest()) return;
         setData({ units, receivables, payments, summaries, aging });
       } catch (requestError) {
+        if (!ownsRequest()) return;
         setError(
           requestError instanceof Error
             ? requestError.message
             : 'No se pudieron cargar los reportes financieros.',
         );
       } finally {
-        if (!background) setLoading(false);
+        if (!background && ownsRequest()) setLoading(false);
       }
     },
-    [condominiumId, session],
+    [condominiumId, ownsScope, session],
   );
 
   useEffect(() => {
+    // Runs only when the condominium itself changes, not on a same-tenant session token refresh.
+    // Invalidate every in-flight request and drop the previous condominium's financial data,
+    // error and currency selection before the replacement request begins, so stale figures can
+    // never render beneath the new condominium's header. The period filter also resets since it
+    // is a view preference over that data, not a credential.
+    latestRequest.current += 1;
+    setData(null);
+    setError('');
+    setSelectedCurrency('');
+    setPeriod(6);
+    setLoading(true);
+  }, [condominiumId]);
+
+  useEffect(() => {
+    // Also runs on a same-condominium session token refresh, but that path never resets the
+    // state above first, so it refetches silently without discarding the selected period or
+    // currency.
     void load();
   }, [load]);
 
