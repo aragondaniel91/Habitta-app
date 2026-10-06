@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -15,7 +15,7 @@ import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { supportsBuildingStructure, unitReferenceLabel } from '../lib/unit-domain';
 import type { PropertyTopology } from '../lib/unit-domain';
-import { canManage, useCondominiumRoles } from '../lib/roles';
+import { useCondominiumRoles } from '../lib/roles';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import {
@@ -467,6 +467,8 @@ function AnnouncementDetailDrawer({
   buildings,
   units,
   propertyTopology,
+  canManageAnnouncements,
+  canReviewAnnouncements,
   onClose,
   onChanged,
 }: {
@@ -476,6 +478,8 @@ function AnnouncementDetailDrawer({
   buildings: AnnouncementBuilding[];
   units: AnnouncementUnit[];
   propertyTopology: PropertyTopology;
+  canManageAnnouncements: boolean;
+  canReviewAnnouncements: boolean;
   onClose: () => void;
   onChanged: (announcement?: AnnouncementRecord) => Promise<void>;
 }) {
@@ -500,27 +504,46 @@ function AnnouncementDetailDrawer({
   const [publishAt, setPublishAt] = useState(
     announcement.publish_at ? announcement.publish_at.slice(0, 16) : '',
   );
+  const detailRequest = useRef(0);
+  const loadedAnnouncementId = useRef(announcement.id);
 
   const loadDetail = useCallback(async () => {
+    const request = ++detailRequest.current;
     setLoading(true);
+    setError('');
     const base = `/v1/condominiums/${condominiumId}/announcements/${announcement.id}`;
     const [recipients, events, attachments] = await Promise.allSettled([
       apiRequest<AnnouncementRecipient[]>(`${base}/recipients`, session),
-      apiRequest<AnnouncementEvent[]>(`${base}/events`, session),
+      canReviewAnnouncements
+        ? apiRequest<AnnouncementEvent[]>(`${base}/events`, session)
+        : Promise.resolve([] as AnnouncementEvent[]),
       apiRequest<AnnouncementAttachment[]>(`${base}/attachments`, session),
     ]);
+    if (request !== detailRequest.current) return;
+    const unavailable = [
+      recipients.status === 'rejected' ? 'destinatarios' : '',
+      events.status === 'rejected' ? 'actividad' : '',
+      attachments.status === 'rejected' ? 'archivos' : '',
+    ].filter(Boolean);
     setDetail({
       recipients: recipients.status === 'fulfilled' ? recipients.value : [],
       events: events.status === 'fulfilled' ? events.value : [],
       attachments: attachments.status === 'fulfilled' ? attachments.value : [],
     });
+    if (unavailable.length)
+      setError(`No se pudieron cargar: ${unavailable.join(', ')}. Intenta nuevamente.`);
     setLoading(false);
-  }, [announcement.id, condominiumId, session]);
+  }, [announcement.id, canReviewAnnouncements, condominiumId, session]);
 
   useEffect(() => {
     void loadDetail();
+    return () => {
+      detailRequest.current += 1;
+    };
   }, [loadDetail]);
   useEffect(() => {
+    if (loadedAnnouncementId.current === announcement.id) return;
+    loadedAnnouncementId.current = announcement.id;
     setTitle(announcement.title);
     setSummary(announcement.summary);
     setBody(announcement.body);
@@ -676,7 +699,7 @@ function AnnouncementDetailDrawer({
         </div>
       </div>
 
-      {editable ? (
+      {editable && canManageAnnouncements ? (
         <Surface className="announcement-editor">
           <div className="announcements-section-heading">
             <span>Contenido y audiencia</span>
@@ -759,7 +782,7 @@ function AnnouncementDetailDrawer({
         </Surface>
       )}
 
-      {editable ? (
+      {editable && canManageAnnouncements ? (
         <Surface className="announcement-scheduler">
           <div className="announcements-section-heading">
             <span>Programación</span>
@@ -796,11 +819,14 @@ function AnnouncementDetailDrawer({
       {error ? (
         <div className="announcements-inline-message" data-tone="error">
           {error}
+          <Button disabled={loading || saving} onClick={() => void loadDetail()} size="sm" variant="ghost">
+            Reintentar carga
+          </Button>
         </div>
       ) : null}
 
       <div className="announcement-detail-grid">
-        <section>
+        {canReviewAnnouncements ? <section>
           <div className="announcements-section-heading">
             <span>Actividad</span>
             <p>Historial inmutable del comunicado.</p>
@@ -810,7 +836,7 @@ function AnnouncementDetailDrawer({
           ) : (
             <EventTimeline events={detail.events} />
           )}
-        </section>
+        </section> : null}
         <aside>
           <Surface className="announcement-reach-panel">
             <div className="announcements-section-heading">
@@ -886,15 +912,17 @@ function AnnouncementDetailDrawer({
             ) : (
               <div className="announcement-detail-empty">No hay archivos adjuntos.</div>
             )}
-            <PrivateDocumentUploader
-              disabled={announcement.status === 'published' || announcement.status === 'archived'}
-              onUploaded={loadDetail}
-              path={`/v1/condominiums/${condominiumId}/announcements/${announcement.id}/attachments`}
-              session={session}
-              title="Adjuntar documento privado"
-            />
+            {canManageAnnouncements ? (
+              <PrivateDocumentUploader
+                disabled={announcement.status === 'published' || announcement.status === 'archived'}
+                onUploaded={loadDetail}
+                path={`/v1/condominiums/${condominiumId}/announcements/${announcement.id}/attachments`}
+                session={session}
+                title="Adjuntar documento privado"
+              />
+            ) : null}
           </Surface>
-          {published ? (
+          {published && canManageAnnouncements ? (
             <Surface className="announcement-archive-panel">
               <div className="announcements-section-heading">
                 <span>Finalizar vigencia</span>
@@ -918,7 +946,8 @@ function AnnouncementDetailDrawer({
 
 export function AnnouncementsPage({ condominiumId, condominiumName, session }: Props) {
   const roles = useCondominiumRoles();
-  const manage = canManage(roles);
+  const manage = roles.includes('condominium_admin') || roles.includes('assistant');
+  const review = manage || roles.includes('board_member');
   const [data, setData] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -926,8 +955,15 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
   const [filters, setFilters] = useState<AnnouncementFilters>(initialFilters);
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [selectedId, setSelectedId] = useState('');
+  const loadRequest = useRef(0);
+  // A mutation started in condominium A can resolve after the viewer has switched to
+  // condominium B. Its result must not be merged into B's workspace just because the
+  // promise happened to settle while B was on screen.
+  const scopeKeyRef = useRef(condominiumId);
+  scopeKeyRef.current = condominiumId;
 
   const load = useCallback(async () => {
+    const request = ++loadRequest.current;
     setLoading(true);
     setError('');
     setWarning('');
@@ -938,6 +974,7 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
       apiRequest<AnnouncementUnit[]>(`${base}/units`, session),
       apiRequest<CondominiumProfile[]>(base, session),
     ]);
+    if (request !== loadRequest.current) return;
     if (announcements.status === 'rejected') {
       setError(
         announcements.reason instanceof Error
@@ -967,6 +1004,9 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
 
   useEffect(() => {
     void load();
+    return () => {
+      loadRequest.current += 1;
+    };
   }, [load]);
   useEffect(() => {
     setFilters(initialFilters);
@@ -983,10 +1023,12 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
   const selected = data?.announcements.find((item) => item.id === selectedId);
 
   const handleChanged = async (updated?: AnnouncementRecord) => {
+    const requestScope = condominiumId;
     if (!updated) {
-      await load();
+      if (requestScope === scopeKeyRef.current) await load();
       return;
     }
+    if (requestScope !== scopeKeyRef.current) return;
     setData((current) =>
       current
         ? {
@@ -998,6 +1040,12 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
         : current,
     );
     setSelectedId(updated.id);
+  };
+
+  const handleCreated = async (created: AnnouncementRecord) => {
+    const requestScope = condominiumId;
+    await handleChanged(created);
+    if (requestScope === scopeKeyRef.current) setDrawer('detail');
   };
 
   if (loading && !data) return <AnnouncementsLoading />;
@@ -1167,10 +1215,7 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
           buildings={data.buildings}
           condominiumId={condominiumId}
           onClose={() => setDrawer(null)}
-          onCreated={(created) => {
-            void handleChanged(created);
-            setDrawer('detail');
-          }}
+          onCreated={(created) => void handleCreated(created)}
           session={session}
           units={data.units}
           propertyTopology={data.propertyTopology}
@@ -1186,6 +1231,8 @@ export function AnnouncementsPage({ condominiumId, condominiumName, session }: P
           session={session}
           units={data.units}
           propertyTopology={data.propertyTopology}
+          canManageAnnouncements={manage}
+          canReviewAnnouncements={review}
         />
       ) : null}
     </div>
