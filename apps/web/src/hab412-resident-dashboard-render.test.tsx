@@ -77,7 +77,7 @@ describe('HAB-412 the dashboard obeys the rules of hooks', () => {
     // render" the instant the data arrives. That shipped, and no unit test could see it: this suite
     // renders no DOM, so nothing here ever reaches a second render. The authenticated browser spec
     // caught it, and this keeps the ordering honest between runs of that much slower gate.
-    const firstEarlyReturn = dashboard.indexOf('if (loading && !data) return');
+    const firstEarlyReturn = dashboard.indexOf('if (loading && !currentData) return');
     expect(firstEarlyReturn).toBeGreaterThan(0);
 
     const afterReturns = dashboard.slice(firstEarlyReturn);

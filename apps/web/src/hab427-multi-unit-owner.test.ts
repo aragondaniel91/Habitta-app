@@ -133,7 +133,7 @@ describe('HAB-427 the resident dashboard', () => {
   it('keeps the consolidated view on the summary function', () => {
     // HAB-427 adds a per-unit answer; it does not replace the condominium-wide one.
     expect(dashboard).toContain('/receivables/summary`');
-    expect(dashboard).toContain('sortReceivableSummaries(data?.summaries ?? [])');
+    expect(dashboard).toContain('sortReceivableSummaries(currentData?.summaries ?? [])');
   });
 
   it('offers the selector only to an owner of several units', () => {
@@ -145,7 +145,7 @@ describe('HAB-427 the resident dashboard', () => {
   it('still declares every hook before the early returns', () => {
     // Same contract as HAB-412: a hook below `if (loading && !data) return` crashes the dashboard
     // for every resident the moment the data arrives, and no DOM-less test can see it.
-    const firstEarlyReturn = dashboard.indexOf('if (loading && !data) return');
+    const firstEarlyReturn = dashboard.indexOf('if (loading && !currentData) return');
     expect(firstEarlyReturn).toBeGreaterThan(0);
     const afterReturns = dashboard.slice(firstEarlyReturn);
     for (const hook of ['useMemo(', 'useState(', 'useEffect(', 'useCallback(']) {

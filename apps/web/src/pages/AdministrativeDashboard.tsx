@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -65,6 +65,8 @@ type DashboardData = {
   reviewQueue: DashboardPayment[];
   reviewQueueAvailable: boolean;
 };
+
+type ScopedDashboardData = DashboardData & { scope: string };
 
 type Props = {
   condominiumId: string;
@@ -319,14 +321,19 @@ export function AdministrativeDashboard({
   session,
   onNavigate,
 }: Props) {
-  const [data, setData] = useState<DashboardData | null>(null);
+  // The scope deliberately excludes the access token. A token refresh for the same person may
+  // retain the last useful view; a condominium or user change may never render it.
+  const scope = `${condominiumId}:${session.user.id}`;
+  const requestVersion = useRef(0);
+  const [data, setData] = useState<ScopedDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<{ scope: string; message: string } | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState('');
 
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
-    setError('');
+    setError(null);
     try {
       const reviewQueueRequest = apiRequest<DashboardPayment[]>(
         `/v1/condominiums/${condominiumId}/payments/review-queue`,
@@ -393,7 +400,9 @@ export function AdministrativeDashboard({
         }),
       ]);
 
+      if (version !== requestVersion.current) return;
       setData({
+        scope,
         units: unitsResult.value,
         people: peopleResult.value,
         summaries: summariesResult.value,
@@ -403,8 +412,7 @@ export function AdministrativeDashboard({
         reviewQueue: reviewQueueResult.value.items,
         reviewQueueAvailable: reviewQueueResult.value.available,
       });
-      setError(
-        buildDashboardSourceWarning([
+      const warning = buildDashboardSourceWarning([
           unitsResult,
           peopleResult,
           summariesResult,
@@ -412,29 +420,48 @@ export function AdministrativeDashboard({
           receivablesResult,
           paymentsResult,
           reviewQueueResult,
-        ]),
-      );
+      ]);
+      setError(warning ? { scope, message: warning } : null);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudo cargar el dashboard administrativo.',
-      );
+      if (version !== requestVersion.current) return;
+      setError({
+        scope,
+        message:
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo cargar el dashboard administrativo.',
+      });
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
-  }, [condominiumId, session]);
+  }, [condominiumId, scope, session]);
 
   useEffect(() => {
     void load();
+    return () => {
+      // A new scope or a same-scope refresh owns all subsequent state writes.
+      requestVersion.current += 1;
+    };
   }, [load]);
+
+  useEffect(() => {
+    setSelectedCurrency('');
+  }, [scope]);
+
+  const currentData = data?.scope === scope ? data : null;
+  const currentError = error?.scope === scope ? error.message : '';
 
   const currencies = useMemo(
     () =>
-      data
-        ? getDashboardCurrencies(data.summaries, data.aging, data.receivables, data.payments)
+      currentData
+        ? getDashboardCurrencies(
+            currentData.summaries,
+            currentData.aging,
+            currentData.receivables,
+            currentData.payments,
+          )
         : [],
-    [data],
+    [currentData],
   );
 
   useEffect(() => {
@@ -444,29 +471,36 @@ export function AdministrativeDashboard({
   }, [currencies, selectedCurrency]);
 
   const activity = useMemo(
-    () => (data ? buildRecentActivity(data.receivables, data.payments, data.units, 6) : []),
-    [data],
+    () =>
+      currentData
+        ? buildRecentActivity(currentData.receivables, currentData.payments, currentData.units, 6)
+        : [],
+    [currentData],
   );
   const recentPayments = useMemo(
-    () => (data ? getRecentPayments(data.payments, data.units) : []),
-    [data],
+    () => (currentData ? getRecentPayments(currentData.payments, currentData.units) : []),
+    [currentData],
   );
   const monthlySeries = useMemo(
     () =>
-      data && selectedCurrency
-        ? buildMonthlyFinancialSeries(data.receivables, data.payments, selectedCurrency)
+      currentData && selectedCurrency
+        ? buildMonthlyFinancialSeries(
+            currentData.receivables,
+            currentData.payments,
+            selectedCurrency,
+          )
         : [],
-    [data, selectedCurrency],
+    [currentData, selectedCurrency],
   );
 
-  if (loading && !data) return <DashboardLoading />;
+  if (loading && !currentData) return <DashboardLoading />;
 
-  if (error && !data) {
+  if (currentError && !currentData) {
     return (
       <Surface className="dashboard-error">
         <EmptyState
           actionLabel="Intentar nuevamente"
-          description={error}
+          description={currentError}
           icon={<CommunityIcon size={26} />}
           onAction={() => void load()}
           title="No pudimos cargar el resumen"
@@ -475,12 +509,14 @@ export function AdministrativeDashboard({
     );
   }
 
-  if (!data) return null;
+  if (!currentData) return <DashboardLoading />;
 
-  const activeUnits = data.units.filter((unit) => unit.status === 'active').length;
-  const activePeople = data.people.filter((person) => person.status !== 'inactive').length;
-  const summaries = sortReceivableSummaries(data.summaries);
-  const selectedAging = data.aging.find((row) => row.currency_code === selectedCurrency);
+  const dashboardData = currentData;
+
+  const activeUnits = dashboardData.units.filter((unit) => unit.status === 'active').length;
+  const activePeople = dashboardData.people.filter((person) => person.status !== 'inactive').length;
+  const summaries = sortReceivableSummaries(dashboardData.summaries);
+  const selectedAging = dashboardData.aging.find((row) => row.currency_code === selectedCurrency);
   const feesRoute = routeByKey('fees');
   const paymentsRoute = routeByKey('payments');
   const unitsRoute = routeByKey('units');
@@ -495,9 +531,9 @@ export function AdministrativeDashboard({
   }));
   const collectionRows = currencies.map((currencyCode) => ({
     currencyCode,
-    value: getCollectionsThisMonth(data.payments, currencyCode),
+    value: getCollectionsThisMonth(dashboardData.payments, currencyCode),
   }));
-  const delinquencyRows = data.aging.map((row) => ({
+  const delinquencyRows = dashboardData.aging.map((row) => ({
     currencyCode: row.currency_code,
     value: getDelinquencyRate(row),
   }));
@@ -521,9 +557,9 @@ export function AdministrativeDashboard({
         title={condominiumName}
       />
 
-      {error ? (
+      {currentError ? (
         <div className="dashboard-inline-alert" role="status">
-          {error} Se mantienen los últimos datos cargados.
+          {currentError} Se mantienen los últimos datos cargados.
         </div>
       ) : null}
 
@@ -545,7 +581,7 @@ export function AdministrativeDashboard({
           <CurrencyValues emptyLabel="Sin cobros" rows={collectionRows} />
         </MetricCard>
         <MetricCard
-          footer={`${data.units.length} ${data.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total.`}
+          footer={`${dashboardData.units.length} ${dashboardData.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total.`}
           icon={(props) => <UnitsIcon {...props} />}
           label="Unidades activas"
           tone="navy"
@@ -684,13 +720,13 @@ export function AdministrativeDashboard({
               onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
               type="button"
             >
-              <span data-tone={data.reviewQueue.length ? 'warning' : 'success'}>
+              <span data-tone={dashboardData.reviewQueue.length ? 'warning' : 'success'}>
                 <PaymentsIcon size={19} />
               </span>
               <div>
                 <strong>
-                  {data.reviewQueueAvailable
-                    ? `${data.reviewQueue.length} pagos por revisar`
+                  {dashboardData.reviewQueueAvailable
+                    ? `${dashboardData.reviewQueue.length} pagos por revisar`
                     : 'Bandeja de pagos restringida'}
                 </strong>
                 <small>Validación manual de referencias y comprobantes.</small>
@@ -745,7 +781,7 @@ export function AdministrativeDashboard({
             <button onClick={() => unitsRoute && onNavigate(unitsRoute)} type="button">
               <UnitsIcon size={21} />
               <span>Unidades</span>
-              <strong>{data.units.length}</strong>
+              <strong>{dashboardData.units.length}</strong>
             </button>
             <button onClick={() => peopleRoute && onNavigate(peopleRoute)} type="button">
               <PeopleIcon size={21} />

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
   AnnouncementsIcon,
@@ -81,6 +81,8 @@ type ResidentDashboardData = {
   proposals: GovernanceProposal[];
 };
 
+type ScopedResidentDashboardData = ResidentDashboardData & { scope: string };
+
 const routeByKey = (key: AppRoute['key']) => APP_ROUTES.find((route) => route.key === key);
 
 const paymentStatusLabels: Record<string, string> = {
@@ -130,6 +132,10 @@ function ResidentDashboardLoading() {
 }
 
 export function ResidentDashboard({ condominiumId, condominiumName, session, onNavigate }: Props) {
+  // An access-token refresh is safe to display through; a different condominium or person is not.
+  const scope = `${condominiumId}:${session.user.id}`;
+  const requestVersion = useRef(0);
+  const previousScope = useRef(scope);
   const roles = useCondominiumRoles();
   const tenantOnly = isTenantOnly(roles);
   // Family members and authorized occupants have no financial standing in the database, so the
@@ -139,16 +145,17 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
   // Requests and governance are denied to family members and authorized occupants by the database,
   // so neither is fetched nor offered. Owner and tenant keep both exactly as before.
   const showsResidentOperations = canAccessResidentOperations(roles);
-  const [data, setData] = useState<ResidentDashboardData | null>(null);
+  const [data, setData] = useState<ScopedResidentDashboardData | null>(null);
   // '' means every unit. An owner of one unit never sees this; an owner of several starts on the
   // consolidated view, because "what do I owe in total" is the question they open the app with.
   const [selectedUnitId, setSelectedUnitId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [warning, setWarning] = useState('');
+  const [warning, setWarning] = useState<{ scope: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
-    setWarning('');
+    setWarning(null);
     const base = `/v1/condominiums/${condominiumId}`;
     // Pass factories, not already-created promises. Calling apiRequest before the capability check
     // starts fetch immediately even if the returned promise is later discarded.
@@ -205,7 +212,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     if (requests.status === 'rejected') failed.push('solicitudes');
     if (proposals.status === 'rejected') failed.push('votaciones');
 
+    if (version !== requestVersion.current) return;
     setData({
+      scope,
       units: units.status === 'fulfilled' ? units.value : [],
       buildings: buildings.status === 'fulfilled' ? buildings.value : [],
       financialUnits: financialUnits.status === 'fulfilled' ? financialUnits.value : [],
@@ -217,24 +226,34 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       proposals: proposals.status === 'fulfilled' ? proposals.value : [],
     });
     if (failed.length) {
-      setWarning(
+      setWarning({ scope, message:
         `No se pudieron actualizar: ${failed.join(', ')}. Los demás datos siguen disponibles.`,
-      );
+      });
     }
-    setLoading(false);
-  }, [condominiumId, session, showsFinancialContext, showsResidentOperations]);
+    if (version === requestVersion.current) setLoading(false);
+  }, [condominiumId, scope, session, showsFinancialContext, showsResidentOperations]);
 
   useEffect(() => {
+    if (previousScope.current !== scope) {
+      previousScope.current = scope;
+      setSelectedUnitId('');
+    }
     void load();
+    return () => {
+      requestVersion.current += 1;
+    };
   }, [load]);
 
+  const currentData = data?.scope === scope ? data : null;
+  const currentWarning = warning?.scope === scope ? warning.message : '';
+
   const unitLabels = useMemo(
-    () => residentUnitLabels(data?.units ?? [], data?.buildings ?? []),
-    [data?.units, data?.buildings],
+    () => residentUnitLabels(currentData?.units ?? [], currentData?.buildings ?? []),
+    [currentData?.units, currentData?.buildings],
   );
   const financialUnits = useMemo(
-    () => financialUnitOptions(data?.financialUnits ?? [], unitLabels),
-    [data?.financialUnits, unitLabels],
+    () => financialUnitOptions(currentData?.financialUnits ?? [], unitLabels),
+    [currentData?.financialUnits, unitLabels],
   );
   // The selection only ever narrows what is already visible, so a stale id -- a unit sold between
   // two loads -- falls back to the consolidated view rather than to an empty one.
@@ -243,8 +262,8 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     [financialUnits, selectedUnitId],
   );
   const selectedRows = useMemo(
-    () => rowsForSelection(data?.financialUnits ?? [], activeUnitId),
-    [data?.financialUnits, activeUnitId],
+    () => rowsForSelection(currentData?.financialUnits ?? [], activeUnitId),
+    [currentData?.financialUnits, activeUnitId],
   );
   // Consolidated, the summary function stays the authority. Narrowed to one unit, the per-unit
   // rows do -- both read the same ledger, so the two never disagree about the same money.
@@ -259,8 +278,8 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
               total_credits: row.total_credits,
             })),
           )
-        : sortReceivableSummaries(data?.summaries ?? []),
-    [activeUnitId, selectedRows, data?.summaries],
+        : sortReceivableSummaries(currentData?.summaries ?? []),
+    [activeUnitId, selectedRows, currentData?.summaries],
   );
   // Grouped by unit for "Mis propiedades", in the same order as the selector.
   const propertyCards = useMemo(
@@ -268,14 +287,14 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       financialUnits.map((unit) => ({
         ...unit,
         balances: currencyRows(
-          (data?.financialUnits ?? []).filter((row) => row.unit_id === unit.id),
+          (currentData?.financialUnits ?? []).filter((row) => row.unit_id === unit.id),
         ),
       })),
-    [financialUnits, data?.financialUnits],
+    [financialUnits, currentData?.financialUnits],
   );
   const nextDue = useMemo(
     () =>
-      [...(data?.receivables ?? [])]
+      [...(currentData?.receivables ?? [])]
         .filter(
           (item) =>
             (!activeUnitId || item.unit_id === activeUnitId) &&
@@ -283,11 +302,11 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
             !['paid', 'settled', 'reversed'].includes(item.status),
         )
         .sort((left, right) => dueTime(left) - dueTime(right))[0],
-    [data?.receivables, activeUnitId],
+    [currentData?.receivables, activeUnitId],
   );
   const recentPayments = useMemo(
     () =>
-      [...(data?.payments ?? [])]
+      [...(currentData?.payments ?? [])]
         .filter((payment) => !activeUnitId || payment.unit_id === activeUnitId)
         .sort((left, right) =>
           (right.payment_date || right.created_at || '').localeCompare(
@@ -295,11 +314,11 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           ),
         )
         .slice(0, 4),
-    [data?.payments, activeUnitId],
+    [currentData?.payments, activeUnitId],
   );
   const importantAnnouncements = useMemo(
     () =>
-      [...(data?.announcements ?? [])]
+      [...(currentData?.announcements ?? [])]
         .filter((item) => activeAnnouncement(item))
         .sort((left, right) => {
           const rank = { urgent: 0, important: 1, normal: 2 } as const;
@@ -311,23 +330,23 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           );
         })
         .slice(0, 3),
-    [data?.announcements],
+    [currentData?.announcements],
   );
   const openRequests = useMemo(
     () =>
-      [...(data?.requests ?? [])]
+      [...(currentData?.requests ?? [])]
         .filter((item) => isOpenRequest(item.status))
         .sort((left, right) => right.updated_at.localeCompare(left.updated_at))
         .slice(0, 3),
-    [data?.requests],
+    [currentData?.requests],
   );
   const openVotes = useMemo(
     () =>
-      [...(data?.proposals ?? [])]
+      [...(currentData?.proposals ?? [])]
         .filter((item) => item.status === 'open' && Date.parse(item.closes_at) > Date.now())
         .sort((left, right) => left.closes_at.localeCompare(right.closes_at))
         .slice(0, 3),
-    [data?.proposals],
+    [currentData?.proposals],
   );
 
   // Declared with the other hooks, above the early returns. It used to sit below them, so the
@@ -338,7 +357,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
   // dashboard already said which condominium; it never said which unit was theirs or whether they
   // hold it as owner or tenant, which is most of what makes a residential app feel like one.
   const residentContext = useMemo(() => {
-    const labels = (data?.units ?? [])
+    const labels = (currentData?.units ?? [])
       .map((unit) => residentUnitLabel(unitLabels, unit.id))
       .filter(Boolean);
     // Never the identifier. A unit without a readable code says nothing worth showing.
@@ -360,10 +379,10 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
             ? 'Ocupante autorizado'
             : null;
     return { unit, standing, unitCount: labels.length };
-  }, [data?.units, unitLabels, roles]);
+  }, [currentData?.units, unitLabels, roles]);
 
-  if (loading && !data) return <ResidentDashboardLoading />;
-  if (!data) return null;
+  if (loading && !currentData) return <ResidentDashboardLoading />;
+  if (!currentData) return <ResidentDashboardLoading />;
 
   const paymentsRoute = showsFinancialContext ? routeByKey('payments') : undefined;
   const feesRoute = showsFinancialContext ? routeByKey('fees') : undefined;
@@ -417,9 +436,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         </div>
       ) : null}
 
-      {warning ? (
+      {currentWarning ? (
         <div className="resident-dashboard__warning" role="status">
-          {warning}
+          {currentWarning}
         </div>
       ) : null}
 
