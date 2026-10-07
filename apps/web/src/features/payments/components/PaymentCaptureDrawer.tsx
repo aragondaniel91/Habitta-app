@@ -139,7 +139,7 @@ export function PaymentCaptureDrawer({
       {!savedPayment ? (
         <form className="payments-form ux-form" onSubmit={(event) => void saveDetails(event)}>
           {message ? <div className="payments-form__message">{message}</div> : null}
-          {payment?.correction_reason ? (
+          {payment?.status === 'correction_requested' && payment.correction_reason ? (
             <div className="payments-form__notice">
               <strong>La administración solicitó una corrección:</strong>{' '}
               {payment.correction_reason}
@@ -282,6 +282,12 @@ export function PaymentCaptureDrawer({
             <strong>2. Comprobante</strong>
           </div>
           {message ? <div className="payments-form__message">{message}</div> : null}
+          {savedPayment.status === 'correction_requested' && savedPayment.correction_reason ? (
+            <div className="payments-form__notice">
+              <strong>La administración solicitó una corrección:</strong>{' '}
+              {savedPayment.correction_reason}
+            </div>
+          ) : null}
           <div className="financial-capture-summary">
             <span>{editing ? 'Corrección guardada' : 'Datos del pago'}</span>
             <strong>{savedPayment.payer_name}</strong>

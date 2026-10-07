@@ -1,5 +1,5 @@
 begin;
-select plan(101);
+select plan(106);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('80000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@pay.test','x',now(),now()),
@@ -123,7 +123,12 @@ select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003'
 select lives_ok($$select public.payment_transition('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'correction_requested','fix')$$,'reviewer requests correction');
 select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='assistant')),0::bigint,'correction request does not change ledger');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000007',true);
+select lives_ok($$select public.update_payment_draft('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'81130000-0000-0000-0000-000000000004',current_date,4,'USD','Assistant corrected',null,'Corrected details')$$,'submitter can save a returned payment');
+select is((select status::text from public.payments where idempotency_key='assistant'),'correction_requested','saving a returned payment preserves correction status');
+select is((select correction_reason from public.payments where idempotency_key='assistant'),'fix','saving a returned payment preserves the correction instruction');
 select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'));
+select is((select status::text from public.payments where idempotency_key='assistant'),'submitted','explicit resubmission moves the returned payment to submitted');
+select is((select correction_reason from public.payments where idempotency_key='assistant'),null,'resubmission clears the active correction instruction');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
 select lives_ok($$select public.payment_transition('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'rejected','duplicate')$$,'reviewer rejects payment');
 select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='assistant')),0::bigint,'rejection does not change ledger');
@@ -178,7 +183,7 @@ select is((select array_agg(coalesce(previous_status::text,'-') order by sequenc
 select is((select count(*) from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='approved'),1::bigint,'idempotent approval does not duplicate the approval event');
 select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='reversed'),'bank reversal','reversal event keeps its reason');
 select is((select actor_user_id from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='approved'),'80000000-0000-0000-0000-000000000003'::uuid,'approval event records the reviewer who approved');
-select is((select array_agg(event_type order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant')),'{created,submitted,correction_requested,submitted,rejected}','correction and rejection are both recorded');
+select is((select array_agg(event_type order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant')),'{created,submitted,correction_requested,updated,submitted,rejected}','correction, edit, resubmission and rejection are all recorded');
 select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant') and event_type='correction_requested'),'fix','correction event keeps its reason');
 select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant') and event_type='rejected'),'duplicate','rejection event keeps its reason');
 

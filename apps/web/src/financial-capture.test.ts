@@ -112,9 +112,7 @@ describe('financial capture orchestration', () => {
     expect(page).toContain('Editar borrador');
     expect(capture).toContain("method: expense ? 'PATCH' : 'POST'");
     expect(capture).toContain('expectedVersion: expense?.version');
-    expect(capture).toContain(
-      'categoryId === expense.category_id ? undefined : categoryId',
-    );
+    expect(capture).toContain('categoryId === expense.category_id ? undefined : categoryId');
     expect(capture).toContain(
       "vendorId === (expense.vendor_id ?? '') ? undefined : vendorId || undefined",
     );
@@ -128,12 +126,8 @@ describe('financial capture orchestration', () => {
       'paymentReference: expense ? paymentReference : paymentReference || undefined',
     );
     expect(capture).toContain('notes: expense ? notes : notes || undefined');
-    expect(capture).toContain(
-      '.filter((item) => item.is_active || item.id === categoryId)',
-    );
-    expect(capture).toContain(
-      '.filter((item) => item.is_active || item.id === vendorId)',
-    );
+    expect(capture).toContain('.filter((item) => item.is_active || item.id === categoryId)');
+    expect(capture).toContain('.filter((item) => item.is_active || item.id === vendorId)');
     expect(page).toContain('/treasury/expenses/${selectedExpense.id}/account');
     expect(page).toContain("selectedExpense.status === 'approved' && treasuryAccounts.length");
     expect(page).toContain('Guardar cuenta');
@@ -171,5 +165,17 @@ describe('financial capture orchestration', () => {
     expect(admin).toContain('Completa datos/comprobante y envía el pago a validación.');
     expect(admin).toContain('Corrección solicitada:');
     expect(admin).toContain("setDrawer({ type: 'edit', payment })");
+  });
+
+  it('keeps an active correction instruction visible after saving until resubmission', async () => {
+    const capture = await source('./features/payments/components/PaymentCaptureDrawer.tsx');
+
+    expect(capture).toContain(
+      "payment?.status === 'correction_requested' && payment.correction_reason",
+    );
+    expect(capture).toContain(
+      "savedPayment.status === 'correction_requested' && savedPayment.correction_reason",
+    );
+    expect(capture).toContain('payments/${savedPayment.id}/submit');
   });
 });

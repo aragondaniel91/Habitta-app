@@ -223,6 +223,41 @@ describe('payment HTTP routes', () => {
       allocations: [],
     });
   });
+  it('returns the correction state preserved by the draft-update RPC', async () => {
+    let rpcBody = '';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        if (String(input).includes('/auth/v1/user')) return auth();
+        rpcBody = String(init?.body);
+        return Response.json([
+          { id: payment, status: 'correction_requested', correction_reason: 'Missing proof' },
+        ]);
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}`,
+      {
+        method: 'PATCH',
+        headers: { ...token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentMethodId: condo,
+          paymentDate: '2026-07-01',
+          originalAmount: '1.00',
+          originalCurrencyCode: 'USD',
+          payerName: 'A',
+        }),
+      },
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject([
+      { status: 'correction_requested', correction_reason: 'Missing proof' },
+    ]);
+    expect(JSON.parse(rpcBody)).toMatchObject({ target: condo, target_payment: payment });
+  });
   it.each([
     [
       'create',
