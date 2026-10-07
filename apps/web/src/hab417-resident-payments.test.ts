@@ -36,8 +36,8 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
       '`/v1/condominiums/${condominiumId}/payments/${savedPayment.id}/submit`',
     );
     expect(captureDrawer).toContain("{ method: 'POST' }");
-    expect(captureDrawer).toContain("await onComplete('Pago enviado a validación.')");
-    expect(captureDrawer).toContain('Enviar a validación');
+    expect(captureDrawer).toContain('Estado: enviado a revisión.');
+    expect(captureDrawer).toContain('Registrar y enviar a revisión');
   });
 
   it('keeps draft and correction states actionable but never exposes reviewer actions', () => {

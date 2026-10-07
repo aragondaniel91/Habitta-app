@@ -22,7 +22,7 @@ const normalizeJsonBody = (body: BodyInit | null | undefined, preserveEmptyStrin
 /** Spanish explanation and next step for each domain reason the API forwards. */
 export const paymentFailureMessages: Record<string, string> = {
   'independent payment approval required':
-    'Requiere aprobaci\u00f3n de otro revisor. Este pago fue registrado por ti y debe aprobarlo otro revisor.',
+    'Requiere aprobaci\u00f3n de otro revisor independiente.',
   'payment cannot be submitted':
     'Este pago ya no está en borrador ni devuelto para corrección, así que no puede enviarse otra vez. Actualiza la lista para ver su estado actual.',
   'payment reference required':
@@ -45,7 +45,8 @@ export const paymentFailureMessages: Record<string, string> = {
     'El pago ya no está pendiente de revisión. Actualiza la lista para ver su estado actual.',
   'invalid payment allocations':
     'La aplicación del pago ya no es válida (saldos o montos cambiaron). Vuelve a calcular la vista previa antes de aprobar.',
-  'payment not found': 'No encontramos el pago. Es posible que se haya eliminado o pertenezca a otro condominio.',
+  'payment not found':
+    'No encontramos el pago. Es posible que se haya eliminado o pertenezca a otro condominio.',
   'payment not reversible': 'Solo se pueden reversar pagos aprobados.',
   'reversal reason required': 'Indica el motivo del reverso.',
   'treasury account can only be selected while payment is under review':
@@ -79,8 +80,7 @@ export const paymentFailureMessage = (data: unknown) => {
   const value = (data ?? {}) as { error?: unknown; reason?: unknown };
   if (typeof value.reason === 'string' && paymentFailureMessages[value.reason])
     return paymentFailureMessages[value.reason]!;
-  if (typeof value.error === 'string')
-    return genericFailureMessages[value.error] ?? value.error;
+  if (typeof value.error === 'string') return genericFailureMessages[value.error] ?? value.error;
   if (value.error && typeof value.error === 'object')
     return 'Revisa los datos del formulario: hay campos con un formato inválido.';
   return 'No se pudo completar la operación.';

@@ -57,6 +57,13 @@
   margin-top: 0.25rem;
 }
 
+.financial-capture-next-step {
+  display: block;
+  margin-top: 0.75rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 @media (max-width: 560px) {
   .financial-capture-progress {
     grid-template-columns: 1fr;

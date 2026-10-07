@@ -141,7 +141,7 @@ describe('financial capture orchestration', () => {
     // A completed capture ends by handing the payment to review. It is still not approval,
     // allocation or a treasury posting, and the assertions above continue to forbid all three.
     expect(capture).toContain('submitOnComplete = false');
-    expect(capture).toContain('if (!submitOnComplete) {');
+    expect(capture).toContain('if (!sendForReview || !submitOnComplete) {');
     expect(capture).toMatch(/payments\/\$\{savedPayment\.id\}\/submit/);
 
     // The precondition lives in the handler, not only in the button's disabled state: a guard that
@@ -155,6 +155,8 @@ describe('financial capture orchestration', () => {
     expect(resident).toContain('submitOnComplete');
     expect(admin).toContain('submitOnComplete');
     expect(admin).toContain("drawer?.type === 'create' || drawer?.type === 'edit'");
+    expect(capture).toContain('Guardar pendiente de revisión');
+    expect(capture).toContain('Registrar y enviar a revisión');
   });
 
   it('explains action-required payment states and gives the admin a direct correction path', async () => {

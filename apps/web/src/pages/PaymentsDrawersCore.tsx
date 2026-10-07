@@ -8,13 +8,14 @@ import { paymentApi } from '../features/payments/api';
 import { PaymentAllocationEditor } from '../features/payments/components/PaymentAllocationEditor';
 import { PaymentProofPreview } from '../features/payments/components/PaymentProofPreview';
 import { PaymentProofUploader } from '../features/payments/components/PaymentProofUploader';
-import type {
-  AllocationInput,
-  AllocationPreview,
-  Payment,
-  PaymentMethod,
-  PaymentReceipt,
-  Receivable,
+import {
+  paymentActorLabel,
+  type AllocationInput,
+  type AllocationPreview,
+  type Payment,
+  type PaymentMethod,
+  type PaymentReceipt,
+  type Receivable,
 } from '../features/payments/types';
 import type { TreasuryAccount } from '../features/treasury/types';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
@@ -389,6 +390,16 @@ export function ReviewPayment({
           <strong>{payment.payer_name}</strong>
         </div>
         <div>
+          <span>Registrado por</span>
+          <strong>{paymentActorLabel(payment.submitted_by_user_id, payment, session.user)}</strong>
+        </div>
+        {payment.reviewed_by ? (
+          <div>
+            <span>Revisado por</span>
+            <strong>{paymentActorLabel(payment.reviewed_by, payment, session.user)}</strong>
+          </div>
+        ) : null}
+        <div>
           <span>Monto</span>
           <strong>
             {formatDashboardAmount(payment.original_amount, payment.original_currency_code)}
@@ -412,6 +423,12 @@ export function ReviewPayment({
         </div>
       ) : null}
       {message ? <div className="payments-form__message">{message}</div> : null}
+      {!canApprove ? (
+        <div className="payments-form__notice" role="status">
+          Próximo paso: otro revisor debe validar y aprobar este pago. El registrador no puede
+          aprobarlo cuando existe un revisor independiente.
+        </div>
+      ) : null}
       <div className="payments-review__actions">
         {payment.status === 'submitted' ? (
           <Button
@@ -465,7 +482,7 @@ export function ReviewPayment({
         <div className="payments-form__message" role="status">
           <strong>{independentApprovalTitle}</strong>
           <br />
-          Este pago fue registrado por ti y debe aprobarlo otro revisor.
+          Este pago debe aprobarlo otro revisor.
         </div>
       ) : null}
       {canApprove ? (

@@ -144,6 +144,78 @@ describe('payment HTTP routes', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual([{ id: payment, can_approve: false }]);
   });
+  it('keeps payer data separate from the authenticated registrar in payment detail', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/auth/v1/user')) return auth();
+        if (url.includes('/rpc/can_approve_payment')) return Response.json(false);
+        if (url.includes('/rest/v1/payments?')) {
+          return Response.json([
+            {
+              id: payment,
+              payer_name: 'Pagador real',
+              submitted_by_user_id: '00000000-0000-0000-0000-000000000003',
+              reviewed_by: null,
+              approved_by: null,
+            },
+          ]);
+        }
+        return Response.json([]);
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}`,
+      { headers: token },
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      payer_name: 'Pagador real',
+      submitted_by_user_id: '00000000-0000-0000-0000-000000000003',
+      can_approve: false,
+    });
+  });
+  it('adds only real payment actor names to payment detail', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/auth/v1/user')) return auth();
+        if (url.includes('/rpc/can_approve_payment')) return Response.json(false);
+        if (url.includes('/rpc/list_payment_actor_names')) {
+          return Response.json([
+            { user_id: '00000000-0000-0000-0000-000000000004', full_name: 'Carlos Revisor' },
+          ]);
+        }
+        if (url.includes('/rest/v1/payments?')) {
+          return Response.json([
+            {
+              id: payment,
+              payer_name: 'Pagador real',
+              submitted_by_user_id: '00000000-0000-0000-0000-000000000003',
+              approved_by: '00000000-0000-0000-0000-000000000004',
+            },
+          ]);
+        }
+        return Response.json([]);
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}`,
+      { headers: token },
+      env(),
+    );
+
+    expect(await response.json()).toMatchObject({
+      payer_name: 'Pagador real',
+      actor_names: { '00000000-0000-0000-0000-000000000004': 'Carlos Revisor' },
+    });
+  });
   it.each([
     [`/v1/condominiums/${condo}/payments/${payment}`, 'Payment not found'],
     [`/v1/condominiums/${condo}/payments/${payment}/receipt`, 'Receipt not found'],

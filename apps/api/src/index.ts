@@ -46,6 +46,7 @@ import { recurringDuesRoutes } from './recurring-dues-routes';
 import { unitsDirectoryRoutes } from './units-directory-routes';
 import { tenancyRoutes } from './tenancy-routes';
 import { withinRateLimit } from './http-security';
+import { attachPaymentActorNames } from './payment-actor-names';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
@@ -176,17 +177,6 @@ app.get('/v1/condominiums/:id', async (c) =>
 // via `adminInvitationRoutes` earlier in this file) already registers the same paths and Hono
 // dispatches to the first matching handler. `structure-routes.ts` is the live implementation and
 // also handles unit-code conflicts (409) and not-found (404), which this dead copy never did.
-const list =
-  (table: string, filter: string) =>
-  async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
-    const resolved = filter
-      .replace(':unitId', filter.includes(':unitId') ? uuidSchema.parse(c.req.param('unitId')) : '')
-      .replace(':id', filter.includes(':id') ? uuidSchema.parse(c.req.param('id')) : '');
-    const r = await rest(c, `${table}?${resolved}&select=*`);
-    const value = await r.json();
-    return c.json(value, r.ok ? 200 : 400);
-  };
-
 const unitExistsInCondominium = async (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   condominiumId: string,
@@ -200,7 +190,8 @@ const unitExistsInCondominium = async (
   return Boolean(((await response.json()) as unknown[])[0]);
 };
 
-const listUnitRelationships = (table: 'unit_owners' | 'unit_occupancies') =>
+const listUnitRelationships =
+  (table: 'unit_owners' | 'unit_occupancies') =>
   async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
     const condominiumId = uuidSchema.parse(c.req.param('id'));
     const unitId = uuidSchema.parse(c.req.param('unitId'));
@@ -1118,7 +1109,11 @@ app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
       return { ...payment, can_approve: capability.ok && (await capability.json()) === true };
     }),
   );
-  return c.json(withApprovalCapability);
+  return c.json(
+    await attachPaymentActorNames(condominiumId, withApprovalCapability, (name, payload) =>
+      rpc(c, name, payload),
+    ),
+  );
 });
 // NOTE (HAB-483 cleanup): the legacy `financeList`-backed payments GET was removed here too — see the
 // note above `charge-concepts`.
@@ -1154,8 +1149,13 @@ app.get('/v1/condominiums/:id/payments/:paymentId', async (c) => {
     target: condominiumId,
     target_payment: paymentId,
   });
+  const [withActorNames] = await attachPaymentActorNames(
+    condominiumId,
+    [rows[0] as Record<string, unknown>],
+    (name, payload) => rpc(c, name, payload),
+  );
   return c.json({
-    ...(rows[0] as Record<string, unknown>),
+    ...withActorNames,
     can_approve: capability.ok && (await capability.json()) === true,
   });
 });

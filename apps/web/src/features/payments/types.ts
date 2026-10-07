@@ -14,7 +14,27 @@ export type Payment = {
   notes?: string;
   payment_method_id: string;
   submitted_for_person_id?: string;
+  submitted_by_user_id?: string;
+  reviewed_by?: string | null;
+  approved_by?: string | null;
+  rejected_by?: string | null;
+  reversed_by?: string | null;
+  actor_names?: Record<string, string>;
   can_approve?: boolean;
+};
+
+/** Payments persist actor ids; names are resolved from the payment-authorized API surface. */
+export const paymentActorLabel = (
+  actorUserId: string | null | undefined,
+  payment?: Pick<Payment, 'actor_names'>,
+  currentUser?: { id?: string; user_metadata?: { full_name?: unknown } },
+) => {
+  if (!actorUserId) return null;
+  const currentName =
+    actorUserId === currentUser?.id && typeof currentUser.user_metadata?.full_name === 'string'
+      ? currentUser.user_metadata.full_name.trim()
+      : '';
+  return currentName || payment?.actor_names?.[actorUserId] || 'Nombre no disponible';
 };
 export type PaymentMethod = {
   id: string;

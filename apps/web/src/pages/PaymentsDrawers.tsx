@@ -5,7 +5,12 @@ import { Drawer, useDialogBehavior } from '../components/Drawer';
 import { CheckCircleIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
 import { paymentApi } from '../features/payments/api';
-import type { Payment, PaymentMethod, PaymentReceipt } from '../features/payments/types';
+import {
+  paymentActorLabel,
+  type Payment,
+  type PaymentMethod,
+  type PaymentReceipt,
+} from '../features/payments/types';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import { canManage, useCondominiumRoles } from '../lib/roles';
 import {
@@ -254,7 +259,9 @@ function PaymentMethodsView({
               </Select>
             </Field>
             <Field
-              hint={editing ? 'Cambiarla no afecta pagos ya registrados con este método.' : undefined}
+              hint={
+                editing ? 'Cambiarla no afecta pagos ya registrados con este método.' : undefined
+              }
               label="Moneda"
             >
               <Select defaultValue={editing?.currency_code ?? 'USD'} name="currencyCode">
@@ -472,6 +479,18 @@ function ReceiptView({
             <span>Pagador</span>
             <strong>{receipt.snapshot.payment.payer}</strong>
           </div>
+          <div>
+            <span>Registrado por</span>
+            <strong>
+              {paymentActorLabel(payment.submitted_by_user_id, payment, session.user)}
+            </strong>
+          </div>
+          {payment.approved_by ? (
+            <div>
+              <span>Aprobado por</span>
+              <strong>{paymentActorLabel(payment.approved_by, payment, session.user)}</strong>
+            </div>
+          ) : null}
           <div>
             <span>Fecha</span>
             <strong>{formatDashboardDate(receipt.snapshot.payment.date)}</strong>
