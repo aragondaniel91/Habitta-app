@@ -298,6 +298,16 @@
   align-content: start;
 }
 
+/* Monto and Fecha reserve the same helper track, so they remain visual peers at every breakpoint. */
+.treasury-transfer-amount-date-grid {
+  align-items: stretch;
+}
+
+.treasury-transfer-amount-date-grid > .field {
+  grid-template-rows: calc(1.35 * var(--ux-text-md)) var(--ux-control-height) minmax(2.7em, auto);
+  align-content: start;
+}
+
 .treasury-balance-preview {
   margin: -0.35rem 0 0;
   color: var(--muted);

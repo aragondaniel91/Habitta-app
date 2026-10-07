@@ -601,7 +601,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
             await createTreasuryTransfer(condominiumId, session, input);
-            await afterWrite('Transferencia registrada.');
+            const origin = activeAccounts.find((account) => account.id === input.fromAccountId);
+            const destination = activeAccounts.find((account) => account.id === input.toAccountId);
+            await afterWrite(
+              `Transferencia registrada: ${formatTreasuryAmount(input.amount, origin?.currency_code ?? '')} de ${origin?.name ?? 'la cuenta origen'} a ${destination?.name ?? 'la cuenta destino'} · ${formatTreasuryDate(input.occurredOn)}.`,
+            );
           }}
         />
       ) : null}

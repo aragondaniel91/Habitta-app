@@ -46,6 +46,7 @@ export type TreasuryTransfer = {
   currency_code: string;
   occurred_on: string;
   description: string;
+  reference: string | null;
 };
 
 export type TreasuryReconciliation = {

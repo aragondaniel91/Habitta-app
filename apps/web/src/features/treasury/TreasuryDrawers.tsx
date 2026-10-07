@@ -506,28 +506,39 @@ export function TransferDrawer({
     amount: string;
     occurredOn: string;
     description: string;
+    reference?: string;
     overdraftReason?: string;
   }) => Promise<void>;
 }) {
-  const [fromAccountId, setFromAccountId] = useState(accounts[0]?.id ?? '');
-  const [toAccountId, setToAccountId] = useState(accounts[1]?.id ?? '');
+  const activeAccounts = accounts.filter((account) => account.is_active);
+  const [fromAccountId, setFromAccountId] = useState(activeAccounts[0]?.id ?? '');
+  const [toAccountId, setToAccountId] = useState('');
   const [amount, setAmount] = useState('');
   const [occurredOn, setOccurredOn] = useState(today);
   const [description, setDescription] = useState('');
+  const [reference, setReference] = useState('');
   const [confirmOverdraft, setConfirmOverdraft] = useState(false);
   const [overdraftReason, setOverdraftReason] = useState('');
 
-  const origin = accounts.find((account) => account.id === fromAccountId);
-  const destinations = accounts.filter(
+  const origin = activeAccounts.find((account) => account.id === fromAccountId);
+  const destinations = activeAccounts.filter(
     (account) => account.id !== fromAccountId && account.currency_code === origin?.currency_code,
   );
+  const destination = destinations.find((account) => account.id === toAccountId);
   const amountIsValid = isPositiveTreasuryAmount(amount);
   const numericAmount = amountIsValid ? Number(amount) : 0;
-  const projectedBalance = Number(origin?.balance ?? 0) - numericAmount;
-  const overdraft = numericAmount > 0 && projectedBalance < 0;
+  const projectedOriginBalance = projectTreasuryBalance(origin?.balance ?? 0, numericAmount, 'debit');
+  const projectedDestinationBalance = projectTreasuryBalance(
+    destination?.balance ?? 0,
+    numericAmount,
+    'credit',
+  );
+  const overdraft = numericAmount > 0 && projectedOriginBalance < 0;
   const cannotSubmit =
     !fromAccountId ||
     !toAccountId ||
+    toAccountId === fromAccountId ||
+    !destination ||
     !amountIsValid ||
     description.trim().length < 2 ||
     !destinations.length;
@@ -539,6 +550,7 @@ export function TransferDrawer({
       amount,
       occurredOn,
       description,
+      ...(reference.trim() ? { reference: reference.trim() } : {}),
       ...(overdraft ? { overdraftReason: overdraftReason.trim() } : {}),
     }),
   );
@@ -551,19 +563,19 @@ export function TransferDrawer({
             {error}
           </div>
         ) : null}
-        {accounts.length < 2 ? (
-          <div className="treasury-inline-alert" role="status">
-            Para transferir necesitas al menos dos cuentas activas en la misma moneda. Crea la
-            cuenta que falta desde «Nueva cuenta» y vuelve a intentarlo.
-          </div>
-        ) : null}
         <p className="treasury-form__note" role="note">
-          Una transferencia interna mueve fondos entre dos cuentas del condominio en la misma
-          moneda. Habitta registra una salida en la cuenta origen y una entrada en la cuenta destino
-          con la misma fecha, así que el saldo total no cambia. Para cambiar de moneda, registra un
-          retiro y un depósito por separado e indica la tasa aplicada en la descripción.
+          Una transferencia interna mueve fondos entre dos cuentas de tesorería Habitta del mismo
+          condominio y la misma moneda. Habitta registra el débito y el crédito automáticamente.
+          Para cambiar de moneda, registra las operaciones por separado.
         </p>
-        <Field label="Cuenta origen">
+        <Field
+          hint={
+            origin
+              ? `Saldo actual: ${formatTreasuryAmount(origin.balance, origin.currency_code)}.`
+              : undefined
+          }
+          label="Cuenta origen"
+        >
           <Select
             onChange={(event) => {
               setFromAccountId(event.target.value);
@@ -573,7 +585,8 @@ export function TransferDrawer({
             required
             value={fromAccountId}
           >
-            {accounts.map((account) => (
+            <option value="">Selecciona una cuenta</option>
+            {activeAccounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.name} · {account.currency_code}
               </option>
@@ -581,10 +594,17 @@ export function TransferDrawer({
           </Select>
         </Field>
         <Field
-          hint={destinations.length ? undefined : 'No hay otra cuenta en la misma moneda.'}
+          hint={
+            destinations.length
+              ? destination
+                ? `Saldo actual: ${formatTreasuryAmount(destination.balance, destination.currency_code)}.`
+                : 'Selecciona una cuenta activa en la misma moneda.'
+              : 'Se requiere otra cuenta activa en la misma moneda para realizar la transferencia.'
+          }
           label="Cuenta destino"
         >
           <Select
+            disabled={!origin || !destinations.length}
             onChange={(event) => setToAccountId(event.target.value)}
             required
             value={toAccountId}
@@ -597,8 +617,11 @@ export function TransferDrawer({
             ))}
           </Select>
         </Field>
-        <FormGrid>
-          <Field label="Monto">
+        <FormGrid className="treasury-transfer-amount-date-grid">
+          <Field
+            hint={origin ? `La transferencia se registrará en ${origin.currency_code}.` : undefined}
+            label={`Monto (${origin?.currency_code ?? 'moneda de la cuenta'})`}
+          >
             <input
               className="input"
               inputMode="decimal"
@@ -622,13 +645,33 @@ export function TransferDrawer({
             />
           </Field>
         </FormGrid>
+        {origin && destination && amountIsValid ? (
+          <p className="treasury-balance-preview" role="status">
+            Origen: {formatTreasuryAmount(origin.balance, origin.currency_code)} →{' '}
+            {formatTreasuryAmount(projectedOriginBalance, origin.currency_code)} · Destino:{' '}
+            {formatTreasuryAmount(destination.balance, destination.currency_code)} →{' '}
+            {formatTreasuryAmount(projectedDestinationBalance, destination.currency_code)}.
+          </p>
+        ) : null}
         <Field label="Descripción">
           <input
             className="input"
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="Fondeo de caja chica"
+            placeholder="Transferencia a caja operativa"
             required
             value={description}
+          />
+        </Field>
+        <Field
+          hint="Opcional: referencia de transacción bancaria, documento o control interno. No incluyas credenciales ni datos bancarios completos."
+          label="Referencia opcional"
+        >
+          <input
+            className="input"
+            maxLength={120}
+            onChange={(event) => setReference(event.target.value)}
+            placeholder="Ej. comprobante 00421"
+            value={reference}
           />
         </Field>
 
@@ -637,7 +680,7 @@ export function TransferDrawer({
             <strong>La cuenta origen quedará en negativo.</strong>
             <p>
               Saldo actual {formatTreasuryAmount(origin.balance, origin.currency_code)} · saldo
-              resultante {formatTreasuryAmount(projectedBalance, origin.currency_code)}.
+              resultante {formatTreasuryAmount(projectedOriginBalance, origin.currency_code)}.
             </p>
             <Field
               hint="Quedará guardado en la auditoría financiera."

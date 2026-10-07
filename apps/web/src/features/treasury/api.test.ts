@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '@supabase/supabase-js';
-import { recordTreasuryMovement } from './api';
+import { createTreasuryTransfer, recordTreasuryMovement } from './api';
 
 const session = { access_token: 'test-token' } as Session;
 
@@ -31,6 +31,35 @@ describe('recordTreasuryMovement', () => {
       accountId: 'account-1',
       reference: 'comprobante-00421',
       direction: 'credit',
+    });
+  });
+});
+
+describe('createTreasuryTransfer', () => {
+  it('persists an optional transfer reference in the transfer request', async () => {
+    const bodies: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+        bodies.push(String(init?.body));
+        return Response.json({});
+      }),
+    );
+
+    await createTreasuryTransfer('condo-1', session, {
+      fromAccountId: 'account-1',
+      toAccountId: 'account-2',
+      amount: '25.00',
+      occurredOn: '2026-10-07',
+      description: 'Transferencia a caja operativa',
+      reference: 'comprobante-00421',
+    });
+
+    expect(bodies).toHaveLength(1);
+    expect(JSON.parse(bodies[0]!)).toMatchObject({
+      fromAccountId: 'account-1',
+      toAccountId: 'account-2',
+      reference: 'comprobante-00421',
     });
   });
 });

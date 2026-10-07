@@ -6,6 +6,7 @@ import type { TreasuryAccount } from './types';
 
 const source = () => readFile(new URL('./TreasuryDrawers.tsx', import.meta.url), 'utf8');
 const pageSource = () => readFile(new URL('../../pages/TreasuryPage.tsx', import.meta.url), 'utf8');
+const stylesSource = () => readFile(new URL('../../treasury.css', import.meta.url), 'utf8');
 
 const accounts: TreasuryAccount[] = [
   {
@@ -53,7 +54,11 @@ describe('treasury drawer layout migration', () => {
       'const overdraft = isDebit && numericAmount > 0 && projectedBalance < 0',
     );
     expect(drawers).toContain('account.currency_code === origin?.currency_code');
+    expect(drawers).toContain('account.id !== fromAccountId');
+    expect(drawers).toContain('const activeAccounts = accounts.filter((account) => account.is_active);');
     expect(drawers).toContain('!toAccountId ||');
+    expect(drawers).toContain('toAccountId === fromAccountId ||');
+    expect(drawers).toContain('!destination ||');
     expect(drawers).toContain('overdraftReason.trim().length < 5');
     expect(drawers).toContain('Boolean(account?.latest_movement_at)');
     expect(drawers).not.toContain('Number(account?.balance ?? 0) !== 0');
@@ -123,5 +128,21 @@ describe('treasury drawer layout migration', () => {
     expect(page).toContain("formatTreasuryAmount(input.amount, account?.currency_code ?? '')");
     expect(page).toContain('formatTreasuryDate(input.occurredOn)');
     expect(page).not.toContain("afterWrite('Movimiento registrado.')");
+    expect(page).toContain("origin?.name ?? 'la cuenta origen'");
+    expect(page).toContain("destination?.name ?? 'la cuenta destino'");
+    expect(page).not.toContain("afterWrite('Transferencia registrada.')");
+  });
+
+  it('keeps transfer amount and date in shared tracks and preserves the financial transfer contract', async () => {
+    const [drawers, styles] = await Promise.all([source(), stylesSource()]);
+
+    expect(drawers).toContain('treasury-transfer-amount-date-grid');
+    expect(drawers).toContain('Monto (${origin?.currency_code');
+    expect(drawers).toContain('projectedOriginBalance');
+    expect(drawers).toContain('projectedDestinationBalance');
+    expect(drawers).toContain('Referencia opcional');
+    expect(drawers).toContain('Transferencia a caja operativa');
+    expect(styles).toContain('.treasury-transfer-amount-date-grid > .field');
+    expect(styles).toContain('minmax(2.7em, auto)');
   });
 });
