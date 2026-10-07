@@ -5,6 +5,7 @@ import { MovementDrawer, ReconciliationDrawer, TransferDrawer } from './Treasury
 import type { TreasuryAccount } from './types';
 
 const source = () => readFile(new URL('./TreasuryDrawers.tsx', import.meta.url), 'utf8');
+const pageSource = () => readFile(new URL('../../pages/TreasuryPage.tsx', import.meta.url), 'utf8');
 
 const accounts: TreasuryAccount[] = [
   {
@@ -55,7 +56,7 @@ describe('treasury drawer layout migration', () => {
     expect(drawers).toContain('!toAccountId ||');
     expect(drawers).toContain('overdraftReason.trim().length < 5');
     expect(drawers).toContain('Boolean(account?.latest_movement_at)');
-    expect(drawers).not.toContain("Number(account?.balance ?? 0) !== 0");
+    expect(drawers).not.toContain('Number(account?.balance ?? 0) !== 0');
   });
 
   it('keeps every cancel action non-submitting', async () => {
@@ -90,5 +91,37 @@ describe('treasury drawer layout migration', () => {
       expect(new RegExp(pattern).test('-10.50')).toBe(true);
       expect(new RegExp(pattern).test('10.50')).toBe(true);
     }
+  });
+
+  it('renders a shared Tipo/Fecha layout, currency-aware amount, and a safe optional reference', () => {
+    const html = renderToStaticMarkup(
+      <MovementDrawer accounts={accounts} onClose={onClose} onSubmit={onSubmit} />,
+    );
+
+    expect(html).toContain('treasury-movement-type-date-grid');
+    expect(html).toContain('Monto (USD)');
+    expect(html).toContain('Aporte extraordinario');
+    expect(html).toContain('Referencia opcional');
+    expect(html).toContain('No incluyas credenciales ni datos bancarios completos.');
+  });
+
+  it('preserves reference submission, overdraft confirmation, and audited opening-balance rules', async () => {
+    const drawers = await source();
+
+    expect(drawers).toContain('...(reference.trim() ? { reference: reference.trim() } : {}),');
+    expect(drawers).toContain('const projectedBalance = projectTreasuryBalance(');
+    expect(drawers).toContain('movementDirection,');
+    expect(drawers).toContain('overdraftReason.trim().length < 5');
+    expect(drawers).toContain('hint={movementKindHints[movementKind]}');
+  });
+
+  it('uses factual movement, account, currency amount, and date in the success copy', async () => {
+    const page = await pageSource();
+
+    expect(page).toContain('movementKindLabels[input.movementKind]');
+    expect(page).toContain("account?.name ?? 'la cuenta seleccionada'");
+    expect(page).toContain("formatTreasuryAmount(input.amount, account?.currency_code ?? '')");
+    expect(page).toContain('formatTreasuryDate(input.occurredOn)');
+    expect(page).not.toContain("afterWrite('Movimiento registrado.')");
   });
 });

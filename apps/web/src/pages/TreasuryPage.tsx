@@ -588,7 +588,10 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           }}
           onSubmit={async (input) => {
             await recordTreasuryMovement(condominiumId, session, input);
-            await afterWrite('Movimiento registrado.');
+            const account = activeAccounts.find((item) => item.id === input.accountId);
+            await afterWrite(
+              `${movementKindLabels[input.movementKind]} registrado en ${account?.name ?? 'la cuenta seleccionada'}: ${formatTreasuryAmount(input.amount, account?.currency_code ?? '')} · ${formatTreasuryDate(input.occurredOn)}.`,
+            );
           }}
         />
       ) : null}

@@ -86,11 +86,11 @@ export const accountTypeHints: Record<TreasuryAccountType, string> = {
 /** Plain-language guidance shown under the movement type, one line per recordable kind. */
 export const movementKindHints: Partial<Record<TreasuryMovementKind, string>> = {
   opening_balance:
-    'Saldo con el que la cuenta empieza en Habitta. Solo se admite en una cuenta sin movimientos.',
+    'Solo se admite en una cuenta sin movimientos y queda como movimiento auditado e inmutable.',
   deposit: 'Entrada de dinero que no proviene de un pago aprobado (por ejemplo, un aporte).',
   withdrawal: 'Salida de dinero: pagos a proveedores, gastos o retiros de caja.',
   fee: 'Comisión o cargo bancario descontado por la institución.',
-  adjustment: 'Corrección para cuadrar el saldo con el estado de cuenta; explica la causa.',
+  adjustment: 'Corrección para cuadrar el saldo; explica la causa e indica si aumenta o disminuye.',
 };
 
 /** Kinds an administrator may record directly; the rest are produced by their own operation. */
@@ -101,6 +101,18 @@ export const recordableKinds: TreasuryMovementKind[] = [
   'fee',
   'adjustment',
 ];
+
+/** Neutral examples for movements captured outside Habitta's automatic posting flows. */
+export const movementDescriptionPlaceholders: Record<TreasuryMovementKind, string> = {
+  opening_balance: 'Saldo inicial de la cuenta',
+  deposit: 'Aporte extraordinario',
+  withdrawal: 'Retiro de caja',
+  fee: 'Comisión bancaria',
+  adjustment: 'Ajuste por conciliación',
+  transfer_in: '',
+  transfer_out: '',
+  reversal: '',
+};
 
 /**
  * Deposits, withdrawals and fees always move funds the same way, so their direction is implied
@@ -141,6 +153,18 @@ export const isPositiveTreasuryAmount = (value: string) =>
   value !== '0' &&
   value !== '0.0' &&
   value !== '0.00';
+
+/** Applies the selected direction to a displayed balance without changing accounting rules. */
+export const projectTreasuryBalance = (
+  balance: string | number,
+  amount: string | number,
+  direction: 'credit' | 'debit',
+) => {
+  const current = Number(balance);
+  const movement = Number(amount);
+  if (!Number.isFinite(current) || !Number.isFinite(movement)) return 0;
+  return direction === 'debit' ? current - movement : current + movement;
+};
 
 /** Reconciliation statements are balances, so the API deliberately allows signed and zero values. */
 export const isTreasuryBalance = (value: string) =>

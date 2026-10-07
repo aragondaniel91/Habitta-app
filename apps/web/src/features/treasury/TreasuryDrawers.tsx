@@ -8,9 +8,11 @@ import {
   formatTreasuryAmount,
   isPositiveTreasuryAmount,
   isTreasuryBalance,
+  movementDescriptionPlaceholders,
   accountTypeHints,
   movementKindHints,
   movementKindLabels,
+  projectTreasuryBalance,
   recordableKinds,
   type TreasuryAccount,
   type TreasuryAccountType,
@@ -264,6 +266,7 @@ export function MovementDrawer({
     amount: string;
     occurredOn: string;
     description: string;
+    reference?: string;
     overdraftReason?: string;
     adjustmentDirection?: 'credit' | 'debit';
   }) => Promise<void>;
@@ -275,6 +278,7 @@ export function MovementDrawer({
   const [amount, setAmount] = useState('');
   const [occurredOn, setOccurredOn] = useState(today);
   const [description, setDescription] = useState('');
+  const [reference, setReference] = useState('');
   const [confirmOverdraft, setConfirmOverdraft] = useState(false);
   const [overdraftReason, setOverdraftReason] = useState('');
   // An adjustment can correct a balance up or down; unlike every other recordable kind, its
@@ -288,7 +292,12 @@ export function MovementDrawer({
     movementKind === 'withdrawal' ||
     movementKind === 'fee' ||
     (movementKind === 'adjustment' && adjustmentDirection === 'debit');
-  const projectedBalance = Number(account?.balance ?? 0) - numericAmount;
+  const movementDirection = isDebit ? 'debit' : 'credit';
+  const projectedBalance = projectTreasuryBalance(
+    account?.balance ?? 0,
+    numericAmount,
+    movementDirection,
+  );
   const overdraft = isDebit && numericAmount > 0 && projectedBalance < 0;
   const cannotSubmit = !accountId || !amountIsValid || description.trim().length < 2;
 
@@ -299,6 +308,7 @@ export function MovementDrawer({
       amount,
       occurredOn,
       description,
+      ...(reference.trim() ? { reference: reference.trim() } : {}),
       ...(overdraft ? { overdraftReason: overdraftReason.trim() } : {}),
       ...(movementKind === 'adjustment' ? { adjustmentDirection } : {}),
     }),
@@ -319,11 +329,17 @@ export function MovementDrawer({
           </div>
         ) : null}
         <p className="treasury-form__note" role="note">
-          Cada movimiento queda en el historial de la cuenta con su fecha, monto y autor. Los pagos
-          aprobados, los gastos pagados y las transferencias internas se registran solos; usa este
-          formulario para depósitos, retiros, comisiones bancarias o ajustes fuera de esos flujos.
+          Registra aquí solo movimientos fuera de los flujos automáticos. Los pagos aprobados,
+          gastos pagados y transferencias internas se contabilizan automáticamente.
         </p>
-        <Field label="Cuenta">
+        <Field
+          hint={
+            account
+              ? `Saldo actual: ${formatTreasuryAmount(account.balance, account.currency_code)}.`
+              : undefined
+          }
+          label="Cuenta"
+        >
           <Select
             onChange={(event) => {
               setAccountId(event.target.value);
@@ -339,11 +355,8 @@ export function MovementDrawer({
             ))}
           </Select>
         </Field>
-        <FormGrid>
-          <Field
-            hint={movementKindHints[movementKind]}
-            label="Tipo"
-          >
+        <FormGrid className="treasury-movement-type-date-grid">
+          <Field hint={movementKindHints[movementKind]} label="Tipo">
             <Select
               onChange={(event) => {
                 setMovementKind(event.target.value as TreasuryMovementKind);
@@ -385,7 +398,7 @@ export function MovementDrawer({
             </Select>
           </Field>
         ) : null}
-        <Field label="Monto">
+        <Field label={`Monto (${account?.currency_code ?? 'moneda de la cuenta'})`}>
           <input
             className="input"
             inputMode="decimal"
@@ -399,13 +412,32 @@ export function MovementDrawer({
             value={amount}
           />
         </Field>
+        {account && amountIsValid ? (
+          <p className="treasury-balance-preview" role="status">
+            Saldo actual: {formatTreasuryAmount(account.balance, account.currency_code)} · saldo
+            resultante: {formatTreasuryAmount(projectedBalance, account.currency_code)}.
+          </p>
+        ) : null}
         <Field label="Descripción">
           <input
             className="input"
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="Cobro de cuotas de agosto"
+            placeholder={movementDescriptionPlaceholders[movementKind]}
             required
             value={description}
+          />
+        </Field>
+
+        <Field
+          hint="Opcional: referencia de depósito, transacción, documento o control interno. No incluyas credenciales ni datos bancarios completos."
+          label="Referencia opcional"
+        >
+          <input
+            className="input"
+            maxLength={120}
+            onChange={(event) => setReference(event.target.value)}
+            placeholder="Ej. comprobante 00421"
+            value={reference}
           />
         </Field>
 
@@ -526,10 +558,10 @@ export function TransferDrawer({
           </div>
         ) : null}
         <p className="treasury-form__note" role="note">
-          Una transferencia interna mueve fondos entre dos cuentas del condominio en la misma moneda.
-          Habitta registra una salida en la cuenta origen y una entrada en la cuenta destino con la
-          misma fecha, así que el saldo total no cambia. Para cambiar de moneda, registra un retiro y
-          un depósito por separado e indica la tasa aplicada en la descripción.
+          Una transferencia interna mueve fondos entre dos cuentas del condominio en la misma
+          moneda. Habitta registra una salida en la cuenta origen y una entrada en la cuenta destino
+          con la misma fecha, así que el saldo total no cambia. Para cambiar de moneda, registra un
+          retiro y un depósito por separado e indica la tasa aplicada en la descripción.
         </p>
         <Field label="Cuenta origen">
           <Select

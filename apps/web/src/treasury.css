@@ -288,6 +288,23 @@
   align-content: start;
 }
 
+/* Shared field tracks keep Tipo and Fecha as peers while reserving the helper row on both. */
+.treasury-movement-type-date-grid {
+  align-items: stretch;
+}
+
+.treasury-movement-type-date-grid > .field {
+  grid-template-rows: calc(1.35 * var(--ux-text-md)) var(--ux-control-height) minmax(2.7em, auto);
+  align-content: start;
+}
+
+.treasury-balance-preview {
+  margin: -0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 960px) {
   .treasury-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -296,13 +313,13 @@
 
 .treasury-form__note {
   margin: 0 0 0.4rem;
-  border: 1px solid var(--amber-border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 0.65rem 0.85rem;
-  background: var(--amber-soft);
-  color: var(--amber);
+  background: color-mix(in srgb, var(--blue) 6%, var(--surface));
+  color: var(--text);
   font-size: 0.76rem;
-  font-weight: 600;
+  line-height: 1.45;
 }
 
 .treasury-reversal-reason {
