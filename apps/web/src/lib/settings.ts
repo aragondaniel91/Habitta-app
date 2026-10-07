@@ -1,4 +1,4 @@
-import type { NotificationPreference } from '../features/notifications/types';
+import type { NotificationPreference, NotificationSettings } from '../features/notifications/types';
 
 export const notificationTypes = [
   'receivable_created',
@@ -114,6 +114,21 @@ export function getChangedNotificationPreferences(
       previous.email_enabled !== preference.email_enabled
     );
   });
+}
+
+/** Whether editable condominium-wide notification rules differ from their loaded values. */
+export function hasNotificationSettingsChanges(
+  original: NotificationSettings | null,
+  current: NotificationSettings | null,
+) {
+  if (!original || !current) return false;
+  return (
+    original.email_enabled !== current.email_enabled ||
+    original.due_soon_enabled !== current.due_soon_enabled ||
+    original.due_soon_days !== current.due_soon_days ||
+    original.overdue_enabled !== current.overdue_enabled ||
+    original.timezone !== current.timezone
+  );
 }
 
 export function getNotificationChannelTotals(preferences: NotificationPreferenceDraft[]) {

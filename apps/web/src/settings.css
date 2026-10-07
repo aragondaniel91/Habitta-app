@@ -113,6 +113,14 @@
   font-size: clamp(1.2rem, 1.75vw, 1.55rem);
 }
 
+.settings-metric--timezone > strong {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+  font-size: clamp(0.95rem, 1.5vw, 1.35rem);
+  letter-spacing: -0.025em;
+}
+
 .settings-metric p {
   margin: 0;
   line-height: 1.45;
@@ -288,6 +296,7 @@
 .settings-rule-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 0.8rem;
   border-bottom: 1px solid var(--border);
   padding: 1rem 0;
@@ -295,7 +304,17 @@
 
 .settings-rule-grid .input,
 .settings-rule-grid select {
+  box-sizing: border-box;
+  height: 48px;
   min-height: 48px;
+}
+
+.settings-rule-grid .field {
+  grid-template-rows: auto 48px minmax(1.17rem, auto);
+}
+
+.settings-rule-grid .field__hint {
+  min-height: 1.17rem;
 }
 
 .settings-channel-legend {
