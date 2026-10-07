@@ -43,7 +43,7 @@ describe('treasury drawer layout migration', () => {
     const drawers = await source();
 
     expect(drawers).toContain('import { FormActions, FormGrid }');
-    expect(drawers.match(/<FormGrid>/g)).toHaveLength(5);
+    expect(drawers.match(/<FormGrid(?:\s|>)/g)).toHaveLength(5);
     expect(drawers.match(/<FormActions sticky>/g)).toHaveLength(4);
     expect(drawers).toContain(
       "movementKind === 'withdrawal' ||\n    movementKind === 'fee' ||\n    (movementKind === 'adjustment' && adjustmentDirection === 'debit');",

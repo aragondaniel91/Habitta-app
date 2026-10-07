@@ -34,6 +34,7 @@ export const createTreasuryAccount = (
     currencyCode: string;
     bankName?: string;
     accountReference?: string;
+    notes?: string;
   },
 ) =>
   apiRequest<TreasuryAccount>(`${base(condominiumId)}/accounts`, session, {
@@ -51,6 +52,7 @@ export const updateTreasuryAccount = (
     currencyCode: string;
     bankName?: string;
     accountReference?: string;
+    notes?: string;
     isActive: boolean;
   },
 ) =>

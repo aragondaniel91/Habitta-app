@@ -278,6 +278,16 @@
   gap: 1rem;
 }
 
+/* Keep type and currency controls aligned even when their helper copy wraps differently. */
+.treasury-account-type-grid {
+  align-items: stretch;
+}
+
+.treasury-account-type-grid .treasury-account-type-field {
+  grid-template-rows: calc(1.35 * var(--ux-text-md)) var(--ux-control-height) minmax(2.7em, auto);
+  align-content: start;
+}
+
 @media (max-width: 960px) {
   .treasury-grid {
     grid-template-columns: minmax(0, 1fr);

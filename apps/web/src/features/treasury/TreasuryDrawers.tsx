@@ -72,6 +72,7 @@ export function AccountDrawer({
     currency_code: string;
     bank_name?: string | null;
     account_reference?: string | null;
+    notes?: string | null;
     is_active?: boolean;
     balance?: string | number | null;
     latest_movement_at?: string | null;
@@ -83,6 +84,7 @@ export function AccountDrawer({
     currencyCode: string;
     bankName?: string;
     accountReference?: string;
+    notes?: string;
     isActive: boolean;
   }) => Promise<void>;
 }) {
@@ -97,16 +99,19 @@ export function AccountDrawer({
   const [currencyCode, setCurrencyCode] = useState(account?.currency_code ?? 'USD');
   const [bankName, setBankName] = useState(account?.bank_name ?? '');
   const [accountReference, setAccountReference] = useState(account?.account_reference ?? '');
+  const [notes, setNotes] = useState(account?.notes ?? '');
   const [isActive, setIsActive] = useState(account?.is_active ?? true);
   const { saving, error, submit } = useSubmit(() =>
     onSubmit({
       name,
       accountType,
       currencyCode,
-      // Only a bank account carries an institution name; a stale value typed in before switching
-      // away from "Banco" must never reach an account of another type.
+      // Bank details are meaningful only for bank accounts; hidden values must not reach the API.
       ...(accountType === 'bank' && bankName.trim() ? { bankName: bankName.trim() } : {}),
-      ...(accountReference.trim() ? { accountReference: accountReference.trim() } : {}),
+      ...(accountType === 'bank' && accountReference.trim()
+        ? { accountReference: accountReference.trim() }
+        : {}),
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
       isActive,
     }),
   );
@@ -133,13 +138,17 @@ export function AccountDrawer({
           <input
             className="input"
             onChange={(event) => setName(event.target.value)}
-            placeholder="Banco Nacional USD"
+            placeholder={accountType === 'bank' ? 'Cuenta bancaria principal' : 'Caja principal'}
             required
             value={name}
           />
         </Field>
-        <FormGrid>
-          <Field hint={accountTypeHints[accountType as TreasuryAccountType]} label="Tipo">
+        <FormGrid className="treasury-account-type-grid">
+          <Field
+            className="treasury-account-type-field"
+            hint={accountTypeHints[accountType as TreasuryAccountType]}
+            label="Tipo"
+          >
             <Select
               disabled={hasMovements}
               onChange={(event) => {
@@ -147,7 +156,10 @@ export function AccountDrawer({
                 setAccountType(nextType);
                 // "Institución financiera" only applies to bank accounts; clear it so a value
                 // typed before switching away can't resurface if the type is set back to "Banco".
-                if (nextType !== 'bank') setBankName('');
+                if (nextType !== 'bank') {
+                  setBankName('');
+                  setAccountReference('');
+                }
               }}
               value={accountType}
             >
@@ -158,7 +170,11 @@ export function AccountDrawer({
               ))}
             </Select>
           </Field>
-          <Field hint="Una cuenta nunca mezcla monedas." label="Moneda">
+          <Field
+            className="treasury-account-type-field"
+            hint="Una cuenta nunca mezcla monedas."
+            label="Moneda"
+          >
             <Select
               disabled={hasMovements}
               onChange={(event) => setCurrencyCode(event.target.value)}
@@ -180,12 +196,27 @@ export function AccountDrawer({
             />
           </Field>
         ) : null}
-        <Field label="Referencia">
-          <input
-            className="input"
-            onChange={(event) => setAccountReference(event.target.value)}
-            placeholder="0102-0000-00-0000000000"
-            value={accountReference}
+        {accountType === 'bank' ? (
+          <Field
+            hint="Últimos 4 dígitos, alias o referencia interna. No incluyas números completos de cuenta ni credenciales bancarias."
+            label="Identificador de cuenta"
+          >
+            <input
+              className="input"
+              maxLength={120}
+              onChange={(event) => setAccountReference(event.target.value)}
+              placeholder="•••• 4821"
+              value={accountReference}
+            />
+          </Field>
+        ) : null}
+        <Field hint="Opcional: deja solo una aclaracion operativa breve." label="Notas">
+          <textarea
+            className="textarea"
+            maxLength={1000}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={2}
+            value={notes}
           />
         </Field>
         {editing ? (
@@ -217,10 +248,15 @@ export function AccountDrawer({
 
 export function MovementDrawer({
   accounts,
+  initialAccountId,
+  initialMovementKind,
   onClose,
   onSubmit,
 }: {
   accounts: TreasuryAccount[];
+  /** Used only by the post-create balance path; regular movement entry always starts generic. */
+  initialAccountId?: string;
+  initialMovementKind?: TreasuryMovementKind;
   onClose: () => void;
   onSubmit: (input: {
     accountId: string;
@@ -232,8 +268,10 @@ export function MovementDrawer({
     adjustmentDirection?: 'credit' | 'debit';
   }) => Promise<void>;
 }) {
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
-  const [movementKind, setMovementKind] = useState<TreasuryMovementKind>('deposit');
+  const [accountId, setAccountId] = useState(initialAccountId ?? accounts[0]?.id ?? '');
+  const [movementKind, setMovementKind] = useState<TreasuryMovementKind>(
+    initialMovementKind ?? 'deposit',
+  );
   const [amount, setAmount] = useState('');
   const [occurredOn, setOccurredOn] = useState(today);
   const [description, setDescription] = useState('');

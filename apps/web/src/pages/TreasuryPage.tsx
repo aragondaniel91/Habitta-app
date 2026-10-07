@@ -77,6 +77,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [drawer, setDrawer] = useState<TreasuryDrawer>(null);
+  const [openingBalanceAccountId, setOpeningBalanceAccountId] = useState('');
   const [editingAccountId, setEditingAccountId] = useState('');
   const [transferToReverse, setTransferToReverse] = useState<string>('');
   const [reversalReason, setReversalReason] = useState('');
@@ -112,8 +113,9 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   );
   const openReconciliations = data.reconciliations.filter((item) => item.status === 'draft');
 
-  const afterWrite = async (text: string) => {
+  const afterWrite = async (text: string, nextOpeningBalanceAccountId = '') => {
     setDrawer(null);
+    setOpeningBalanceAccountId(nextOpeningBalanceAccountId);
     setMessage(text);
     await load();
   };
@@ -128,12 +130,22 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
         actions={
           manage ? (
             <>
-              <Button onClick={() => setDrawer('account')} size="sm" variant="secondary">
+              <Button
+                onClick={() => {
+                  setOpeningBalanceAccountId('');
+                  setDrawer('account');
+                }}
+                size="sm"
+                variant="secondary"
+              >
                 Nueva cuenta
               </Button>
               <Button
                 disabled={activeAccounts.length < 2}
-                onClick={() => setDrawer('transfer')}
+                onClick={() => {
+                  setOpeningBalanceAccountId('');
+                  setDrawer('transfer');
+                }}
                 size="sm"
                 variant="secondary"
               >
@@ -141,7 +153,10 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
               </Button>
               <Button
                 disabled={!activeAccounts.length}
-                onClick={() => setDrawer('movement')}
+                onClick={() => {
+                  setOpeningBalanceAccountId('');
+                  setDrawer('movement');
+                }}
                 size="sm"
               >
                 Registrar movimiento
@@ -162,6 +177,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
       {message ? (
         <div className="treasury-success-alert" role="status">
           <CheckCircleIcon size={17} /> {message}
+          {openingBalanceAccountId ? (
+            <Button onClick={() => setDrawer('movement')} size="sm" variant="secondary">
+              Registrar saldo inicial
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -242,7 +262,10 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                       <td>
                         {manage ? (
                           <Button
-                            onClick={() => setEditingAccountId(account.id)}
+                            onClick={() => {
+                              setOpeningBalanceAccountId('');
+                              setEditingAccountId(account.id);
+                            }}
                             size="sm"
                             variant="secondary"
                           >
@@ -261,7 +284,13 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
               icon={<PaymentsIcon size={28} />}
               title="Todavía no hay cuentas"
               {...(manage
-                ? { actionLabel: 'Nueva cuenta', onAction: () => setDrawer('account') }
+                ? {
+                    actionLabel: 'Nueva cuenta',
+                    onAction: () => {
+                      setOpeningBalanceAccountId('');
+                      setDrawer('account');
+                    },
+                  }
                 : {})}
             />
           )}
@@ -343,7 +372,10 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
             {manage ? (
               <Button
                 disabled={!activeAccounts.length}
-                onClick={() => setDrawer('reconciliation')}
+                onClick={() => {
+                  setOpeningBalanceAccountId('');
+                  setDrawer('reconciliation');
+                }}
                 size="sm"
                 variant="secondary"
               >
@@ -522,8 +554,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
         <AccountDrawer
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
-            await createTreasuryAccount(condominiumId, session, input);
-            await afterWrite('Cuenta creada.');
+            const account = await createTreasuryAccount(condominiumId, session, input);
+            await afterWrite(
+              'Cuenta creada. Si corresponde, registra el saldo inicial como un movimiento auditado.',
+              account.id,
+            );
           }}
         />
       ) : null}
@@ -541,7 +576,16 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
       {drawer === 'movement' ? (
         <MovementDrawer
           accounts={activeAccounts}
-          onClose={() => setDrawer(null)}
+          {...(openingBalanceAccountId
+            ? {
+                initialAccountId: openingBalanceAccountId,
+                initialMovementKind: 'opening_balance' as const,
+              }
+            : {})}
+          onClose={() => {
+            setOpeningBalanceAccountId('');
+            setDrawer(null);
+          }}
           onSubmit={async (input) => {
             await recordTreasuryMovement(condominiumId, session, input);
             await afterWrite('Movimiento registrado.');
