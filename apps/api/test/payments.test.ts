@@ -122,6 +122,28 @@ describe('payment HTTP routes', () => {
     ).toBe(200);
     expect(calls.some((url) => url.includes('status=in.(submitted,under_review)'))).toBe(true);
   });
+  it('returns the backend approval capability with each review-queue payment', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/auth/v1/user')) return auth();
+        if (url.includes('/rpc/can_review_payments')) return Response.json(true);
+        if (url.includes('/rpc/can_approve_payment')) return Response.json(false);
+        if (url.includes('/rest/v1/payments?')) return Response.json([{ id: payment }]);
+        return Response.json([]);
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/review-queue`,
+      { headers: token },
+      env(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([{ id: payment, can_approve: false }]);
+  });
   it.each([
     [`/v1/condominiums/${condo}/payments/${payment}`, 'Payment not found'],
     [`/v1/condominiums/${condo}/payments/${payment}/receipt`, 'Receipt not found'],
@@ -284,6 +306,35 @@ describe('payment HTTP routes', () => {
       expect(await response.json()).toEqual({ error: 'Forbidden' });
     },
   );
+  it('keeps the independent-approval reason on a forbidden approve response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) =>
+        String(input).includes('/auth/v1/user')
+          ? auth()
+          : Response.json(
+              { code: '42501', message: 'independent payment approval required' },
+              { status: 400 },
+            ),
+      ),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}/approve`,
+      {
+        method: 'POST',
+        headers: { ...token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allocations: [] }),
+      },
+      env(),
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: 'Forbidden',
+      reason: 'independent payment approval required',
+    });
+  });
   it('rejects empty, oversized, and unsupported proofs', async () => {
     vi.stubGlobal(
       'fetch',

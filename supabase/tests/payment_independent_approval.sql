@@ -1,5 +1,5 @@
 begin;
-select plan(6);
+select plan(9);
 
 -- HAB-455 regression: an accountant can both register and review payments, but
 -- must not approve their own submission when a different payment_reviewer is
@@ -95,6 +95,14 @@ select set_config(
   true
 );
 
+select ok(
+  not public.can_approve_payment(
+    '85520000-0000-0000-0000-000000000001',
+    '85550000-0000-0000-0000-000000000001'
+  ),
+  'submitter capability is blocked when a distinct reviewer exists'
+);
+
 select throws_ok(
   $$select public.approve_payment(
     '85520000-0000-0000-0000-000000000001',
@@ -107,6 +115,52 @@ select throws_ok(
 );
 
 reset role;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '85500000-0000-0000-0000-000000000002',
+  true
+);
+
+select ok(
+  public.can_approve_payment(
+    '85520000-0000-0000-0000-000000000001',
+    '85550000-0000-0000-0000-000000000001'
+  ),
+  'distinct payment reviewer capability allows approval'
+);
+
+reset role;
+
+delete from public.condominium_memberships
+where condominium_id = '85520000-0000-0000-0000-000000000001'
+  and user_id = '85500000-0000-0000-0000-000000000002'
+  and role = 'payment_reviewer';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '85500000-0000-0000-0000-000000000001',
+  true
+);
+
+select ok(
+  public.can_approve_payment(
+    '85520000-0000-0000-0000-000000000001',
+    '85550000-0000-0000-0000-000000000001'
+  ),
+  'submitter capability allows the one-person approval flow without a distinct reviewer'
+);
+
+reset role;
+
+insert into public.condominium_memberships(condominium_id, user_id, role)
+values (
+  '85520000-0000-0000-0000-000000000001',
+  '85500000-0000-0000-0000-000000000002',
+  'payment_reviewer'
+);
 
 select throws_ok(
   $$update public.payments

@@ -14,6 +14,7 @@ export type Payment = {
   notes?: string;
   payment_method_id: string;
   submitted_for_person_id?: string;
+  can_approve?: boolean;
 };
 export type PaymentMethod = {
   id: string;

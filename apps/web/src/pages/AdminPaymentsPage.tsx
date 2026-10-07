@@ -337,7 +337,17 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       return;
     }
     if (['submitted', 'under_review'].includes(payment.status)) {
-      setDrawer({ type: 'review', payment });
+      try {
+        const currentPayment = await paymentApi<Payment>(
+          `/v1/condominiums/${condominiumId}/payments/${payment.id}`,
+          session,
+        );
+        setDrawer({ type: 'review', payment: currentPayment });
+      } catch (requestError) {
+        setMessage(
+          requestError instanceof Error ? requestError.message : 'No se pudo abrir el pago.',
+        );
+      }
       return;
     }
     if (['approved', 'reversed'].includes(payment.status)) {

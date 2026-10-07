@@ -21,6 +21,8 @@ const normalizeJsonBody = (body: BodyInit | null | undefined, preserveEmptyStrin
 
 /** Spanish explanation and next step for each domain reason the API forwards. */
 export const paymentFailureMessages: Record<string, string> = {
+  'independent payment approval required':
+    'Requiere aprobaci\u00f3n de otro revisor. Este pago fue registrado por ti y debe aprobarlo otro revisor.',
   'payment cannot be submitted':
     'Este pago ya no está en borrador ni devuelto para corrección, así que no puede enviarse otra vez. Actualiza la lista para ver su estado actual.',
   'payment reference required':

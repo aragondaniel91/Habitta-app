@@ -282,7 +282,7 @@ function PaymentForm({
   );
 }
 
-function ReviewPayment({
+export function ReviewPayment({
   condominiumId,
   session,
   payment,
@@ -304,6 +304,8 @@ function ReviewPayment({
     payment.treasury_account_id ?? '',
   );
   const endpoint = `/v1/condominiums/${condominiumId}/payments/${payment.id}`;
+  const canApprove = payment.can_approve === true;
+  const independentApprovalTitle = 'Requiere aprobaci\u00f3n de otro revisor';
 
   useEffect(() => {
     let active = true;
@@ -459,71 +461,83 @@ function ReviewPayment({
           </Button>
         </div>
       </div>
-      <div className="payments-review__allocation">
-        <div className="payments-form__section-heading">
-          <strong>Aplicación del pago</strong>
-          <span>
-            Previsualiza la distribución antes de aprobar. Las monedas nunca se mezclan sin tasa
-            explícita.
-          </span>
+      {!canApprove ? (
+        <div className="payments-form__message" role="status">
+          <strong>{independentApprovalTitle}</strong>
+          <br />
+          Este pago fue registrado por ti y debe aprobarlo otro revisor.
         </div>
-        <Field
-          label="Cuenta de tesorería"
-          hint={
-            treasuryAccounts.length === 0 && !treasuryLoading
-              ? `No hay cuentas activas en ${payment.original_currency_code}; Habitta creará una cuenta transitoria claramente identificada.`
-              : 'El pago aprobado ingresará a esta cuenta.'
-          }
-        >
-          <Select
-            disabled={treasuryLoading || treasuryAccounts.length === 0 || processingAction !== null}
-            onChange={(event) => setSelectedTreasuryAccountId(event.target.value)}
-            required={treasuryAccounts.length > 1}
-            value={selectedTreasuryAccountId}
+      ) : null}
+      {canApprove ? (
+        <div className="payments-review__allocation">
+          <div className="payments-form__section-heading">
+            <strong>Aplicación del pago</strong>
+            <span>
+              Previsualiza la distribución antes de aprobar. Las monedas nunca se mezclan sin tasa
+              explícita.
+            </span>
+          </div>
+          <Field
+            label="Cuenta de tesorería"
+            hint={
+              treasuryAccounts.length === 0 && !treasuryLoading
+                ? `No hay cuentas activas en ${payment.original_currency_code}; Habitta creará una cuenta transitoria claramente identificada.`
+                : 'El pago aprobado ingresará a esta cuenta.'
+            }
           >
-            <option value="">
-              {treasuryLoading
-                ? 'Cargando cuentas…'
-                : treasuryAccounts.length === 0
-                  ? 'Cuenta transitoria automática'
-                  : 'Seleccionar cuenta'}
-            </option>
-            {treasuryAccounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} · {account.currency_code}
+            <Select
+              disabled={
+                treasuryLoading || treasuryAccounts.length === 0 || processingAction !== null
+              }
+              onChange={(event) => setSelectedTreasuryAccountId(event.target.value)}
+              required={treasuryAccounts.length > 1}
+              value={selectedTreasuryAccountId}
+            >
+              <option value="">
+                {treasuryLoading
+                  ? 'Cargando cuentas…'
+                  : treasuryAccounts.length === 0
+                    ? 'Cuenta transitoria automática'
+                    : 'Seleccionar cuenta'}
               </option>
-            ))}
-          </Select>
-        </Field>
-        <PaymentAllocationEditor
-          onApprove={async (allocations: AllocationInput[]) => {
-            setMessage('');
-            try {
-              await selectTreasuryAccountBeforeApproval();
-              await paymentApi(`${endpoint}/approve`, session, {
+              {treasuryAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} · {account.currency_code}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <PaymentAllocationEditor
+            onApprove={async (allocations: AllocationInput[]) => {
+              setMessage('');
+              try {
+                await selectTreasuryAccountBeforeApproval();
+                await paymentApi(`${endpoint}/approve`, session, {
+                  method: 'POST',
+                  body: JSON.stringify({ allocations }),
+                });
+                await onChanged('Pago aprobado, aplicado y registrado en tesorería.');
+              } catch (error) {
+                const nextMessage =
+                  error instanceof Error ? error.message : 'No se pudo aprobar el pago.';
+                setMessage(nextMessage);
+                throw error;
+              }
+            }}
+            onPreview={(allocations) =>
+              paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
                 method: 'POST',
                 body: JSON.stringify({ allocations }),
-              });
-              await onChanged('Pago aprobado, aplicado y registrado en tesorería.');
-            } catch (error) {
-              const nextMessage =
-                error instanceof Error ? error.message : 'No se pudo aprobar el pago.';
-              setMessage(nextMessage);
-              throw error;
+              })
             }
-          }}
-          onPreview={(allocations) =>
-            paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
-              method: 'POST',
-              body: JSON.stringify({ allocations }),
-            })
-          }
-          paymentCurrency={payment.original_currency_code}
-          receivables={receivables.filter(
-            (item) => item.unit_id === payment.unit_id && Number(item.outstanding_amount ?? 0) > 0,
-          )}
-        />
-      </div>
+            paymentCurrency={payment.original_currency_code}
+            receivables={receivables.filter(
+              (item) =>
+                item.unit_id === payment.unit_id && Number(item.outstanding_amount ?? 0) > 0,
+            )}
+          />
+        </div>
+      ) : null}
       {payment.status === 'approved' ? (
         <Button
           disabled={!reason.trim() || processingAction !== null}

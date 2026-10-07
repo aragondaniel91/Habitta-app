@@ -700,6 +700,7 @@ const readableFailureReasons = new Set([
   'payment method not found',
   'payment method in use',
   'idempotency conflict',
+  'independent payment approval required',
 ]);
 const responseJson = async (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
@@ -715,11 +716,11 @@ const responseJson = async (
       : value.code === '23505'
         ? 409
         : failureStatus;
-  if (status === 403) return c.json({ error: 'Forbidden' }, status);
   const reason =
     typeof value.message === 'string' && readableFailureReasons.has(value.message)
       ? value.message
       : undefined;
+  if (status === 403) return c.json({ error: 'Forbidden', ...(reason ? { reason } : {}) }, status);
   return c.json({ error: 'Request conflict', ...(reason ? { reason } : {}) }, status);
 };
 
@@ -1097,15 +1098,27 @@ app.delete('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
   return responseJson(c, r, 200, 409);
 });
 app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
   const allowed = await rpc(c, 'can_review_payments', {
-    target: uuidSchema.parse(c.req.param('id')),
+    target: condominiumId,
   });
   if (!allowed.ok || (await allowed.json()) !== true) return c.json({ error: 'Forbidden' }, 403);
   const r = await rest(
     c,
-    `payments?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&status=in.(submitted,under_review)&select=*&order=submitted_at.asc`,
+    `payments?condominium_id=eq.${condominiumId}&status=in.(submitted,under_review)&select=*&order=submitted_at.asc`,
   );
-  return c.json(await r.json(), r.ok ? 200 : 403);
+  if (!r.ok) return c.json(await r.json(), 403);
+  const payments = (await r.json()) as Array<Record<string, unknown>>;
+  const withApprovalCapability = await Promise.all(
+    payments.map(async (payment) => {
+      const capability = await rpc(c, 'can_approve_payment', {
+        target: condominiumId,
+        target_payment: payment.id,
+      });
+      return { ...payment, can_approve: capability.ok && (await capability.json()) === true };
+    }),
+  );
+  return c.json(withApprovalCapability);
 });
 // NOTE (HAB-483 cleanup): the legacy `financeList`-backed payments GET was removed here too — see the
 // note above `charge-concepts`.
@@ -1128,13 +1141,23 @@ app.post('/v1/condominiums/:id/payments', async (c) => {
   return responseJson(c, r, 201, 409);
 });
 app.get('/v1/condominiums/:id/payments/:paymentId', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const paymentId = uuidSchema.parse(c.req.param('paymentId'));
   const r = await rest(
     c,
-    `payments?id=eq.${uuidSchema.parse(c.req.param('paymentId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
+    `payments?id=eq.${paymentId}&condominium_id=eq.${condominiumId}&select=*`,
   );
   if (!r.ok) return c.json({ error: 'Request failed' }, r.status === 403 ? 403 : 404);
   const rows = (await r.json()) as unknown[];
-  return rows.length ? c.json(rows[0]) : c.json({ error: 'Payment not found' }, 404);
+  if (!rows.length) return c.json({ error: 'Payment not found' }, 404);
+  const capability = await rpc(c, 'can_approve_payment', {
+    target: condominiumId,
+    target_payment: paymentId,
+  });
+  return c.json({
+    ...(rows[0] as Record<string, unknown>),
+    can_approve: capability.ok && (await capability.json()) === true,
+  });
 });
 app.patch('/v1/condominiums/:id/payments/:paymentId', async (c) => {
   const p = await body(c, paymentUpdateSchema);
