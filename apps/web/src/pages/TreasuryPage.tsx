@@ -5,7 +5,6 @@ import { PageHeader } from '../components/PageHeader';
 import { ConfirmDialog } from '../components/Dialog';
 import { Badge, Button, EmptyState, InfoHint, Skeleton, Surface } from '../components/ui';
 import {
-  closeTreasuryReconciliation,
   createTreasuryAccount,
   updateTreasuryAccount,
   createTreasuryReconciliation,
@@ -14,6 +13,7 @@ import {
   loadTreasuryWorkspace,
   recordTreasuryMovement,
 } from '../features/treasury/api';
+import { ReconciliationWorkspace } from '../features/treasury/ReconciliationWorkspace';
 import {
   AccountDrawer,
   MovementDrawer,
@@ -83,6 +83,7 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   const [reversalReason, setReversalReason] = useState('');
   const [reversalError, setReversalError] = useState('');
   const [reversing, setReversing] = useState(false);
+  const [selectedReconciliationId, setSelectedReconciliationId] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +122,9 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   };
 
   const editingAccount = data.accounts.find((account) => account.id === editingAccountId);
+  const selectedReconciliation = data.reconciliations.find(
+    (item) => item.id === selectedReconciliationId,
+  );
 
   if (loading && !data.accounts.length && !error) return <TreasuryLoading />;
 
@@ -398,31 +402,22 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                             accountsById.get(item.account_id)?.currency_code ?? '',
                           )}`
                         : ''}
+                      {item.status === 'closed' && item.book_closing_balance !== null
+                        ? ` · libro ${formatTreasuryAmount(item.book_closing_balance, accountsById.get(item.account_id)?.currency_code ?? '')}`
+                        : ''}
                     </small>
                   </div>
                   <div className="treasury-reconciliation-list__actions">
                     <Badge tone={item.status === 'closed' ? 'success' : 'warning'}>
                       {item.status === 'closed' ? 'Cerrada' : 'Borrador'}
                     </Badge>
-                    {manage && item.status === 'draft' ? (
-                      <Button
-                        onClick={() =>
-                          void closeTreasuryReconciliation(condominiumId, session, item.id)
-                            .then(() => afterWrite('Conciliación cerrada.'))
-                            .catch((closeError: unknown) =>
-                              setError(
-                                closeError instanceof Error
-                                  ? closeError.message
-                                  : 'No se pudo cerrar la conciliación.',
-                              ),
-                            )
-                        }
-                        size="sm"
-                        variant="ghost"
-                      >
-                        Cerrar
-                      </Button>
-                    ) : null}
+                    <Button
+                      onClick={() => setSelectedReconciliationId(item.id)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      {item.status === 'draft' ? 'Conciliar' : 'Ver resultado'}
+                    </Button>
                   </div>
                 </li>
               ))}
@@ -436,6 +431,21 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           )}
         </Surface>
       </section>
+
+      {selectedReconciliation ? (
+        <ReconciliationWorkspace
+          account={accountsById.get(selectedReconciliation.account_id)}
+          canManage={manage}
+          condominiumId={condominiumId}
+          onClosed={async (closed) => {
+            await afterWrite(
+              `Conciliación cerrada: ${accountsById.get(closed.account_id)?.name ?? 'cuenta'} · ${formatTreasuryDate(closed.period_start)} — ${formatTreasuryDate(closed.period_end)} · libro ${formatTreasuryAmount(closed.book_closing_balance ?? '0', accountsById.get(closed.account_id)?.currency_code ?? '')} · diferencia ${formatTreasuryAmount(closed.difference ?? '0', accountsById.get(closed.account_id)?.currency_code ?? '')}.`,
+            );
+          }}
+          reconciliation={selectedReconciliation}
+          session={session}
+        />
+      ) : null}
 
       <Surface className="treasury-panel">
         <div className="treasury-section-heading">
@@ -614,8 +624,16 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           accounts={activeAccounts}
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
-            await createTreasuryReconciliation(condominiumId, session, input);
-            await afterWrite('Conciliación creada.');
+            const reconciliation = await createTreasuryReconciliation(
+              condominiumId,
+              session,
+              input,
+            );
+            setSelectedReconciliationId(reconciliation.id);
+            const account = activeAccounts.find((item) => item.id === input.accountId);
+            await afterWrite(
+              `Conciliación creada para ${account?.name ?? 'la cuenta'} · ${formatTreasuryDate(input.startsOn)} — ${formatTreasuryDate(input.endsOn)} · estado final ${formatTreasuryAmount(input.statementClosingBalance, account?.currency_code ?? '')}.`,
+            );
           }}
         />
       ) : null}

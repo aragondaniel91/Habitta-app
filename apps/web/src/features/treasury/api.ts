@@ -5,6 +5,7 @@ import type {
   TreasuryMovement,
   TreasuryMovementKind,
   TreasuryReconciliation,
+  TreasuryReconciliationWorkspace,
   TreasuryTransfer,
 } from './types';
 import { directionForKind } from './types';
@@ -188,11 +189,34 @@ export const createTreasuryReconciliation = (
     endsOn: string;
     statementOpeningBalance: string;
     statementClosingBalance: string;
+    notes?: string;
   },
 ) =>
   apiRequest<TreasuryReconciliation>(`${base(condominiumId)}/reconciliations`, session, {
     method: 'POST',
     body: JSON.stringify(input),
+  });
+
+export const loadTreasuryReconciliationWorkspace = (
+  condominiumId: string,
+  session: Session,
+  reconciliationId: string,
+  offset = 0,
+) =>
+  apiRequest<TreasuryReconciliationWorkspace>(
+    `${base(condominiumId)}/reconciliations/${reconciliationId}/workspace?offset=${offset}`,
+    session,
+  );
+
+export const matchTreasuryMovement = (
+  condominiumId: string,
+  session: Session,
+  reconciliationId: string,
+  movementId: string,
+) =>
+  apiRequest(`${base(condominiumId)}/reconciliations/${reconciliationId}/match`, session, {
+    method: 'POST',
+    body: JSON.stringify({ movementId }),
   });
 
 export const closeTreasuryReconciliation = (

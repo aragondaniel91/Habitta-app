@@ -55,7 +55,9 @@ describe('treasury drawer layout migration', () => {
     );
     expect(drawers).toContain('account.currency_code === origin?.currency_code');
     expect(drawers).toContain('account.id !== fromAccountId');
-    expect(drawers).toContain('const activeAccounts = accounts.filter((account) => account.is_active);');
+    expect(drawers).toContain(
+      'const activeAccounts = accounts.filter((account) => account.is_active);',
+    );
     expect(drawers).toContain('!toAccountId ||');
     expect(drawers).toContain('toAccountId === fromAccountId ||');
     expect(drawers).toContain('!destination ||');
@@ -96,6 +98,17 @@ describe('treasury drawer layout migration', () => {
       expect(new RegExp(pattern).test('-10.50')).toBe(true);
       expect(new RegExp(pattern).test('10.50')).toBe(true);
     }
+  });
+
+  it('makes the reconciliation form currency-aware and distinguishes the external statement', () => {
+    const html = renderToStaticMarkup(
+      <ReconciliationDrawer accounts={accounts} onClose={onClose} onSubmit={onSubmit} />,
+    );
+    expect(html).toContain('Saldo inicial del estado (USD)');
+    expect(html).toContain('Saldo final del estado (USD)');
+    expect(html).toContain('estado externo del banco o caja');
+    expect(html).toContain('saldo actual en Habitta');
+    expect(html).toContain('Notas');
   });
 
   it('renders a shared Tipo/Fecha layout, currency-aware amount, and a safe optional reference', () => {

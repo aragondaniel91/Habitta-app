@@ -527,7 +527,11 @@ export function TransferDrawer({
   const destination = destinations.find((account) => account.id === toAccountId);
   const amountIsValid = isPositiveTreasuryAmount(amount);
   const numericAmount = amountIsValid ? Number(amount) : 0;
-  const projectedOriginBalance = projectTreasuryBalance(origin?.balance ?? 0, numericAmount, 'debit');
+  const projectedOriginBalance = projectTreasuryBalance(
+    origin?.balance ?? 0,
+    numericAmount,
+    'debit',
+  );
   const projectedDestinationBalance = projectTreasuryBalance(
     destination?.balance ?? 0,
     numericAmount,
@@ -744,6 +748,7 @@ export function ReconciliationDrawer({
     endsOn: string;
     statementOpeningBalance: string;
     statementClosingBalance: string;
+    notes?: string;
   }) => Promise<void>;
 }) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
@@ -751,10 +756,19 @@ export function ReconciliationDrawer({
   const [endsOn, setEndsOn] = useState(today);
   const [statementOpeningBalance, setOpening] = useState('');
   const [statementClosingBalance, setClosing] = useState('');
+  const [notes, setNotes] = useState('');
+  const account = accounts.find((item) => item.id === accountId);
   const amountsAreValid =
     isTreasuryBalance(statementOpeningBalance) && isTreasuryBalance(statementClosingBalance);
   const { saving, error, submit } = useSubmit(() =>
-    onSubmit({ accountId, startsOn, endsOn, statementOpeningBalance, statementClosingBalance }),
+    onSubmit({
+      accountId,
+      startsOn,
+      endsOn,
+      statementOpeningBalance,
+      statementClosingBalance,
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
+    }),
   );
 
   return (
@@ -771,7 +785,14 @@ export function ReconciliationDrawer({
             iniciar una conciliación.
           </div>
         ) : null}
-        <Field label="Cuenta">
+        <Field
+          hint={
+            account
+              ? `Moneda: ${account.currency_code} · saldo actual en Habitta: ${formatTreasuryAmount(account.balance, account.currency_code)}.`
+              : undefined
+          }
+          label="Cuenta"
+        >
           <Select onChange={(event) => setAccountId(event.target.value)} required value={accountId}>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
@@ -800,8 +821,14 @@ export function ReconciliationDrawer({
             />
           </Field>
         </FormGrid>
-        <FormGrid>
-          <Field label="Saldo inicial del estado">
+        <p className="treasury-form__note" role="note">
+          Registra los saldos del estado externo del banco o caja, no los saldos contables de
+          Habitta.
+        </p>
+        <FormGrid className="treasury-reconciliation-balance-grid">
+          <Field
+            label={`Saldo inicial del estado (${account?.currency_code ?? 'moneda de la cuenta'})`}
+          >
             <input
               className="input"
               inputMode="decimal"
@@ -812,7 +839,9 @@ export function ReconciliationDrawer({
               value={statementOpeningBalance}
             />
           </Field>
-          <Field label="Saldo final del estado">
+          <Field
+            label={`Saldo final del estado (${account?.currency_code ?? 'moneda de la cuenta'})`}
+          >
             <input
               className="input"
               inputMode="decimal"
@@ -824,6 +853,15 @@ export function ReconciliationDrawer({
             />
           </Field>
         </FormGrid>
+        <Field hint="Opcional: una aclaración breve para este período." label="Notas">
+          <textarea
+            className="textarea"
+            maxLength={1000}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={2}
+            value={notes}
+          />
+        </Field>
         <FormActions sticky>
           <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
             Cancelar

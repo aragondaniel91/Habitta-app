@@ -61,6 +61,21 @@ export type TreasuryReconciliation = {
   difference: string | null;
   status: 'draft' | 'closed';
   closed_at: string | null;
+  notes?: string | null;
+};
+
+export type TreasuryReconciliationCandidate = TreasuryMovement & {
+  matched_in_reconciliation: boolean;
+  matched_reconciliation_id: string | null;
+};
+
+export type TreasuryReconciliationWorkspace = {
+  total_count: number;
+  matched_count: number;
+  matched_amount: string;
+  book_closing_balance: string;
+  difference: string;
+  items: TreasuryReconciliationCandidate[];
 };
 
 export const accountTypeLabels: Record<TreasuryAccountType, string> = {

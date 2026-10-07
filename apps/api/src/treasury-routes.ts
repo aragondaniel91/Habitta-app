@@ -351,6 +351,20 @@ treasuryRoutes.get('/:id/treasury/reconciliations/:reconciliationId/items', asyn
   return listJson(c, response);
 });
 
+treasuryRoutes.get('/:id/treasury/reconciliations/:reconciliationId/workspace', async (c) => {
+  const query = z
+    .object({ offset: z.coerce.number().int().min(0).default(0) })
+    .safeParse({ offset: c.req.query('offset') ?? 0 });
+  if (!query.success) return c.json({ error: query.error.flatten() }, 400);
+  const response = await rpc(c, 'get_treasury_reconciliation_workspace', {
+    target_condominium: condominiumId(c),
+    target_reconciliation: uuidSchema.parse(c.req.param('reconciliationId')),
+    page_size: 50,
+    page_offset: query.data.offset,
+  });
+  return responseJson(c, response);
+});
+
 treasuryRoutes.post('/:id/treasury/reconciliations/:reconciliationId/match', async (c) => {
   const payload = await body(c, treasuryMatchSchema);
   if (payload instanceof Response) return payload;
