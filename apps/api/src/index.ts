@@ -298,6 +298,9 @@ app.post('/v1/condominiums/:id/units/:unitId/occupancies', async (c) => {
 const assignmentPatchSchema = z.object({
   isPrimaryContact: z.boolean().optional(),
   ownershipPercentage: z.number().positive().max(100).optional(),
+  occupancyType: z
+    .enum(['owner_occupant', 'tenant', 'family_member', 'authorized_occupant'])
+    .optional(),
   endsAt: z.string().date().optional(),
 });
 async function patchAssignment(
@@ -322,6 +325,47 @@ async function patchAssignment(
     return c.json({ error: 'Assignment not found' }, 404);
   if (p.endsAt && p.endsAt < rows[0].starts_at)
     return c.json({ error: 'ends_at must not precede starts_at' }, 400);
+  // Attribute corrections are deliberately routed through audited database functions.  A close
+  // remains a lifecycle event and is the only operation that supplies an end date.
+  if (owner && p.ownershipPercentage !== undefined) {
+    const r = await rest(c, 'rpc/correct_unit_owner_percentage', {
+      method: 'POST',
+      body: JSON.stringify({
+        target: condominiumId,
+        target_assignment: assignmentId,
+        next_percentage: p.ownershipPercentage,
+      }),
+    });
+    const result: unknown = await r.json().catch(() => null);
+    const message =
+      typeof result === 'object' && result !== null && 'message' in result
+        ? String(result.message)
+        : '';
+    if (
+      message.includes('unit ownership percentage total cannot exceed 100') ||
+      message.includes('unit ownership percentage total above 100 must be strictly reduced')
+    ) {
+      return c.json(
+        {
+          error:
+            'Los porcentajes conocidos de propiedad de esta unidad superan 100%. Corrige una relación existente reduciendo su porcentaje antes de aumentar o agregar otra.',
+        },
+        409,
+      );
+    }
+    return c.json(result, r.ok ? 200 : 400);
+  }
+  if (!owner && p.occupancyType !== undefined) {
+    const r = await rest(c, 'rpc/correct_unit_occupancy_type', {
+      method: 'POST',
+      body: JSON.stringify({
+        target: condominiumId,
+        target_assignment: assignmentId,
+        next_type: p.occupancyType,
+      }),
+    });
+    return c.json(await r.json(), r.ok ? 200 : 400);
+  }
   const r = await rest(c, `${table}?id=eq.${assignmentId}`, {
     method: 'PATCH',
     body: JSON.stringify({

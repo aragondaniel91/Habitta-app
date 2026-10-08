@@ -22,7 +22,10 @@ describe('HAB-262 Units UX redesign', () => {
     expect(page).toContain('Con propietarios');
     expect(page).toContain('Ocupadas');
     expect(page).toContain('personSummary(unit.owners)');
-    expect(page).toContain('participationSummary(unit)');
+    expect(page).toContain('aliquotSummary(unit)');
+    expect(page).toContain("if (unit.ownershipPercentage == null) return 'No definida';");
+    expect(page).toContain('<span>Alícuota</span>');
+    expect(page).not.toContain('Participación inconsistente');
     expect(page).toContain('personSummary(unit.occupancies)');
     expect(page).toContain('unitReferenceLabel');
     expect(page).toContain('supportsBuildingStructure(topology)');

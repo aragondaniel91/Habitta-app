@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid, FormSection } from '../../components/FormLayout';
-import { Badge, Button, Field, Select } from '../../components/ui';
+import { Button, Field, Select } from '../../components/ui';
 import type { PersonUnitRelationshipSummary } from './person-unit-relationships';
 import {
   canCreateRelationshipState,
@@ -85,7 +85,7 @@ export function PersonUnitRelationshipDrawerV3({
     if (!unitId || !canCreateRelationshipState(selectedRelationship, 'ownership')) return;
     const numeric = percentage ? Number(percentage) : null;
     if (numeric != null && (!Number.isFinite(numeric) || numeric <= 0 || numeric > 100)) {
-      setPercentageError('La participación debe ser mayor que 0 y hasta 100.');
+      setPercentageError('El porcentaje de propiedad debe ser mayor que 0 y hasta 100.');
       percentageInputRef.current?.focus();
       return;
     }
@@ -130,6 +130,56 @@ export function PersonUnitRelationshipDrawerV3({
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo asociar la ocupación.',
+      );
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const correctOwnership = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const current = selectedRelationship?.currentOwnership;
+    const numeric = Number(percentage);
+    if (!current || !Number.isFinite(numeric) || numeric <= 0 || numeric > 100) {
+      setPercentageError('El porcentaje de propiedad debe ser mayor que 0 y hasta 100.');
+      return;
+    }
+    setBusy('ownership-correction');
+    setError('');
+    try {
+      await peopleApi(`/v1/condominiums/${condominiumId}/unit-owners/${current.id}`, session, {
+        method: 'PATCH',
+        body: JSON.stringify({ ownershipPercentage: numeric }),
+      });
+      await onChanged(
+        'Porcentaje de propiedad corregido. La corrección queda registrada en el historial auditable.',
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo corregir la propiedad.',
+      );
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const correctOccupancy = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const current = selectedRelationship?.currentOccupancy;
+    if (!current) return;
+    setBusy('occupancy-correction');
+    setError('');
+    try {
+      await peopleApi(`/v1/condominiums/${condominiumId}/unit-occupancies/${current.id}`, session, {
+        method: 'PATCH',
+        body: JSON.stringify({ occupancyType }),
+      });
+      await onChanged(
+        'Tipo de ocupación corregido. La corrección queda registrada en el historial auditable.',
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo corregir la ocupación.',
       );
     } finally {
       setBusy('');
@@ -226,24 +276,28 @@ export function PersonUnitRelationshipDrawerV3({
               variant="card"
             >
               {selectedRelationship?.currentOwnership ? (
-                <div className="people-v3-current-relation">
-                  <div>
-                    <span>Estado</span>
-                    <Badge tone="success">Actual</Badge>
-                  </div>
-                  <div>
-                    <span>Participación</span>
-                    <strong>
-                      {selectedRelationship.currentOwnership.ownership_percentage != null
-                        ? `${selectedRelationship.currentOwnership.ownership_percentage}%`
-                        : 'No indicada'}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Desde</span>
-                    <strong>{selectedRelationship.currentOwnership.starts_at}</strong>
-                  </div>
-                </div>
+                <form className="ux-form" onSubmit={(event) => void correctOwnership(event)}>
+                  <FormGrid>
+                    <Field
+                      error={percentageError}
+                      hint="Corregir no cierra la relación; queda auditado. Si el total conocido supera 100%, reduce un porcentaje para corregirlo."
+                      label="Porcentaje de propiedad (%)"
+                    >
+                      <input
+                        className="input"
+                        inputMode="decimal"
+                        onChange={(event) => setPercentage(event.target.value)}
+                        ref={percentageInputRef}
+                        value={percentage}
+                      />
+                    </Field>
+                    <div className="people-v3-inline-submit">
+                      <Button disabled={Boolean(busy)} type="submit">
+                        {busy === 'ownership-correction' ? 'Guardando…' : 'Editar propiedad'}
+                      </Button>
+                    </div>
+                  </FormGrid>
+                </form>
               ) : (
                 <form
                   className="ux-form"
@@ -254,7 +308,7 @@ export function PersonUnitRelationshipDrawerV3({
                     <Field
                       error={percentageError}
                       hint="Opcional. Mayor que 0 y hasta 100."
-                      label="Participación (%)"
+                      label="Porcentaje de propiedad (%)"
                     >
                       <input
                         className="input"
@@ -302,22 +356,34 @@ export function PersonUnitRelationshipDrawerV3({
               variant="card"
             >
               {selectedRelationship?.currentOccupancy ? (
-                <div className="people-v3-current-relation">
-                  <div>
-                    <span>Tipo</span>
-                    <strong>
-                      {occupancyLabels[selectedRelationship.currentOccupancy.occupancy_type]}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Estado</span>
-                    <Badge tone="success">Actual</Badge>
-                  </div>
-                  <div>
-                    <span>Desde</span>
-                    <strong>{selectedRelationship.currentOccupancy.starts_at}</strong>
-                  </div>
-                </div>
+                <form className="ux-form" onSubmit={(event) => void correctOccupancy(event)}>
+                  <FormGrid>
+                    <Field
+                      hint="Corregir no cierra la relación; queda auditado."
+                      label="Tipo de ocupación"
+                    >
+                      <Select
+                        onChange={(event) =>
+                          setOccupancyType(event.target.value as Occupancy['occupancy_type'])
+                        }
+                        value={occupancyType}
+                      >
+                        {(
+                          Object.entries(occupancyLabels) as [Occupancy['occupancy_type'], string][]
+                        ).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <div className="people-v3-inline-submit">
+                      <Button disabled={Boolean(busy)} type="submit">
+                        {busy === 'occupancy-correction' ? 'Guardando…' : 'Editar ocupación'}
+                      </Button>
+                    </div>
+                  </FormGrid>
+                </form>
               ) : (
                 <form className="ux-form" onSubmit={(event) => void createOccupancy(event)}>
                   <FormGrid>

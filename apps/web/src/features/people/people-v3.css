@@ -471,3 +471,25 @@
     overscroll-behavior-x: contain;
   }
 }
+.people-v3-access-form {
+  display: grid;
+  grid-template-columns: minmax(11rem, 1fr) minmax(11rem, 1fr) minmax(13rem, 1.2fr) auto;
+  align-items: end;
+  gap: 1rem;
+}
+
+.people-v3-access-form > * {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .people-v3-access-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .people-v3-access-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

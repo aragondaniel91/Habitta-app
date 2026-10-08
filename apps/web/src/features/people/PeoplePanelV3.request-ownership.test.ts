@@ -592,7 +592,7 @@ describe('PeoplePanelV3 request ownership', () => {
     listInvitations.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValue(reList.promise);
     click('A Resident');
     await flush();
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -625,7 +625,7 @@ describe('PeoplePanelV3 request ownership', () => {
     revokeInvitation.mockResolvedValue(invitation);
     click('A Resident');
     await flush();
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     click('Revocar');
     const revokeReList = deferred<(typeof invitation)[]>();
@@ -734,7 +734,7 @@ describe('PeoplePanelV3 request ownership', () => {
     createInvitation.mockReturnValue(pending.promise);
     click('A Resident');
     await flush();
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -756,7 +756,7 @@ describe('PeoplePanelV3 request ownership', () => {
     createInvitation.mockReturnValue(pending.promise);
     click('A Resident');
     await flush();
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -787,7 +787,7 @@ describe('PeoplePanelV3 request ownership', () => {
     createInvitation.mockReturnValue(pending.promise);
     click('A Resident');
     await flush();
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -864,7 +864,7 @@ describe('PeoplePanelV3 request ownership', () => {
 
     click('A Resident');
     await flush();
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -884,11 +884,11 @@ describe('PeoplePanelV3 request ownership', () => {
       await drawerCallbacks.onChanged!('Relationship saved');
     });
     await flush();
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     expect(host.textContent).toContain('Profile refresh failed');
     expect(host.textContent).toContain('Reintentar');
-    expect(host.textContent).toContain('Invitar a Habitta');
+    expect(host.textContent).toContain('Nueva invitación');
     expect(
       host.querySelector<HTMLInputElement>('[aria-label="Enlace seguro de invitación"]')?.value,
     ).toBe('https://invite');
@@ -898,7 +898,7 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(relationshipLoads).toBe(3);
     expect(host.textContent).not.toContain('Profile refresh failed');
     expect(host.textContent).not.toContain('Reintentar');
-    expect(host.textContent).toContain('Invitar a Habitta');
+    expect(host.textContent).toContain('Nueva invitación');
     expect(
       host.querySelector<HTMLInputElement>('[aria-label="Enlace seguro de invitación"]')?.value,
     ).toBe('https://invite');
@@ -961,8 +961,9 @@ describe('PeoplePanelV3 request ownership', () => {
     });
     click('A Resident');
     await flush();
-    click('Notas privadas');
+    click('Notas internas');
     await flush();
+    click('Editar nota');
     click('Guardar nota');
     await flush();
 
@@ -971,7 +972,7 @@ describe('PeoplePanelV3 request ownership', () => {
       body: JSON.stringify({ content: 'Follow up next week' }),
     });
     expect(host.textContent).toContain('Note profile refresh failed');
-    expect(host.textContent).toContain('Nota administrativa guardada.');
+    expect(host.textContent).toContain('Nota interna guardada.');
     expect(host.textContent).toContain('pero no se pudo recargar el perfil');
     expect(host.textContent).toContain('Reintentar');
   });
@@ -1068,8 +1069,9 @@ describe('PeoplePanelV3 request ownership', () => {
     // while that earlier load is still pending.
     click('A Resident');
     await flush();
-    click('Notas privadas');
+    click('Notas internas');
     await flush();
+    click('Editar nota');
     click('Guardar nota');
     await flush();
 
@@ -1080,7 +1082,7 @@ describe('PeoplePanelV3 request ownership', () => {
     });
     expect(host.querySelector('.people-v3-profile')?.getAttribute('aria-busy')).toBe('true');
     expect(host.textContent).toContain('A Resident');
-    expect(host.textContent).toContain('Nota administrativa');
+    expect(host.textContent).toContain('Nota actual');
 
     // The refresh wins and clears its loading state; the late initial completion
     // must not replace or unmount the profile.
@@ -1088,11 +1090,11 @@ describe('PeoplePanelV3 request ownership', () => {
     await flush();
     expect(host.querySelector('.people-v3-profile')?.hasAttribute('aria-busy')).toBe(false);
     expect(host.textContent).toContain('A Resident');
-    expect(host.textContent).toContain('Nota administrativa guardada');
+    expect(host.textContent).toContain('Nota interna guardada');
     await act(async () => initialLoad.resolve(relationship('a')));
     await flush();
     expect(host.textContent).toContain('A Resident');
-    expect(host.textContent).toContain('Nota administrativa');
+    expect(host.textContent).toContain('Nota actual');
   });
 
   it('does not let deferred edit or create directory reloads overwrite a newer selection', async () => {
@@ -1213,7 +1215,7 @@ describe('PeoplePanelV3 request ownership', () => {
     click('A Resident');
     await flush();
     listInvitations.mockRejectedValueOnce(new Error('Invitation list failed'));
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -1247,7 +1249,7 @@ describe('PeoplePanelV3 request ownership', () => {
     click('A Resident');
     await flush();
     listInvitations.mockRejectedValueOnce(new Error('Invitation list failed'));
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -1276,7 +1278,7 @@ describe('PeoplePanelV3 request ownership', () => {
     click('A Resident');
     await flush();
     listInvitations.mockRejectedValueOnce(new Error('Invitation list failed'));
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -1317,7 +1319,7 @@ describe('PeoplePanelV3 request ownership', () => {
     click('A Resident');
     await flush();
     listInvitations.mockRejectedValueOnce(new Error('Revoked list failed'));
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     click('Revocar');
     click('Revocar invitación');
@@ -1458,7 +1460,7 @@ describe('PeoplePanelV3 request ownership', () => {
     await act(async () => drawerCallbacks.onChanged!('Relationship saved'));
     await flush();
     expect(host.textContent).toContain('Reintentar');
-    click('Acceso digital');
+    click('Invitaciones');
     await flush();
     const select = host.querySelector('select')!;
     act(() => {
@@ -1471,5 +1473,116 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(host.textContent).toContain('Invitation mutation failed');
     expect(host.textContent).not.toContain('Profile refresh failed');
     expect(host.textContent).not.toContain('Reintentar');
+  });
+
+  it('keeps the internal-note editor open when creating a community role', async () => {
+    click('A Resident');
+    await flush();
+    click('Notas internas');
+    await flush();
+    click('Editar nota');
+    expect(host.textContent).toContain('Guardar nota');
+
+    click('Roles en la comunidad');
+    await flush();
+    click('Agregar relación');
+    await flush();
+
+    expect(api).toHaveBeenCalledWith(
+      '/v1/condominiums/c1/people/a/condominium-relationships',
+      {} as never,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    click('Notas internas');
+    await flush();
+    expect(host.textContent).toContain('Guardar nota');
+  });
+
+  it('edits a community role through its correction payload without requesting a close', async () => {
+    api.mockImplementation((path: string) => {
+      if (path.endsWith('/people')) return Promise.resolve(people);
+      if (path.endsWith('/units') || path.endsWith('/buildings')) return Promise.resolve([]);
+      if (path.includes('communication-responsibilities')) return Promise.resolve(communication);
+      if (path.includes('/relationships'))
+        return Promise.resolve({
+          ...relationship('a'),
+          condominiumRelationships: [{
+            id: 'role-a', condominium_id: 'c1', person_id: 'a', relationship_type: 'board_member',
+            title: 'Vocal', starts_at: '2026-01-01', ends_at: null,
+          }],
+        });
+      return Promise.resolve(notes);
+    });
+    click('A Resident');
+    await flush();
+    click('Roles en la comunidad');
+    await flush();
+    const editRole = Array.from(host.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Editar',
+    );
+    if (!editRole) throw new Error('Community role edit button not found');
+    act(() => editRole.click());
+    const title = host.querySelector('input[placeholder="Ej. Presidente de la junta"]') as HTMLInputElement;
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(title, 'Secretaria');
+      title.dispatchEvent(new Event('input', { bubbles: true }));
+      title.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    click('Guardar corrección');
+    await flush();
+
+    expect(api).toHaveBeenCalledWith(
+      '/v1/condominiums/c1/people/a/condominium-relationships/role-a',
+      {} as never,
+      { method: 'PATCH', body: JSON.stringify({ relationshipType: 'board_member', title: 'Secretaria' }) },
+    );
+    expect(api.mock.calls.flatMap(([, , request]) => [String(request?.body)]).join('')).not.toContain('endsAt');
+    expect(host.textContent).not.toContain('Cerrar relación activa');
+  });
+
+  it('clears a community-role editor when selecting another person', async () => {
+    api.mockImplementation((path: string) => {
+      if (path.endsWith('/people')) return Promise.resolve(people);
+      if (path.endsWith('/units') || path.endsWith('/buildings')) return Promise.resolve([]);
+      if (path.includes('communication-responsibilities')) return Promise.resolve(communication);
+      if (path.includes('/people/a/relationships')) {
+        return Promise.resolve({
+          ...relationship('a'),
+          condominiumRelationships: [
+            {
+              id: 'role-a',
+              condominium_id: 'c1',
+              person_id: 'a',
+              relationship_type: 'board_member',
+              title: 'Vocal',
+              starts_at: '2026-01-01',
+              ends_at: null,
+            },
+          ],
+        });
+      }
+      if (path.includes('/people/b/relationships')) return Promise.resolve(relationship('b'));
+      return Promise.resolve(notes);
+    });
+
+    click('A Resident');
+    await flush();
+    click('Roles en la comunidad');
+    await flush();
+    const editRole = Array.from(host.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Editar',
+    );
+    if (!editRole) throw new Error('Community role edit button not found');
+    act(() => editRole.click());
+    expect(host.textContent).toContain('Editar rol en la comunidad');
+
+    click('B Resident');
+    await flush();
+    click('Roles en la comunidad');
+    await flush();
+
+    expect(host.textContent).toContain('Agregar rol en la comunidad');
+    expect(host.textContent).not.toContain('Guardar corrección');
+    expect(host.textContent).not.toContain('Vocal');
   });
 });

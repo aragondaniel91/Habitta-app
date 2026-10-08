@@ -147,6 +147,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   const [adminNotesAuthorized, setAdminNotesAuthorized] = useState(false);
   const [adminNoteDraft, setAdminNoteDraft] = useState('');
   const [adminNoteError, setAdminNoteError] = useState('');
+  const [editingAdminNote, setEditingAdminNote] = useState(false);
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -176,6 +177,9 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     relationshipType: 'board_member' as CondominiumRelationshipType,
     title: '',
   });
+  const [editingCommunityRelationshipId, setEditingCommunityRelationshipId] = useState<
+    string | null
+  >(null);
   const [inviteRole, setInviteRole] = useState<ResidentRole>('owner');
   const [inviteUnitId, setInviteUnitId] = useState('');
   const [latestInvitation, setLatestInvitation] = useState<LatestInvitation | null>(null);
@@ -222,6 +226,9 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     setAdminNotesAuthorized(false);
     setAdminNoteDraft('');
     setAdminNoteError('');
+    setEditingAdminNote(false);
+    setEditingCommunityRelationshipId(null);
+    setRelationshipDraft({ relationshipType: 'board_member', title: '' });
     setDetailLoading(false);
     setHasLoadedSelectedProfile(false);
     setBusyAction('');
@@ -344,10 +351,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     [cancelPendingProfileReveal, ownsSelection],
   );
 
-  useEffect(
-    () => cancelPendingProfileReveal,
-    [cancelPendingProfileReveal],
-  );
+  useEffect(() => cancelPendingProfileReveal, [cancelPendingProfileReveal]);
   const ownsProfileLoad = useCallback(
     (personId: string, selectionVersion: number, loadVersion: number) =>
       ownsSelection(personId, selectionVersion) && profileLoadVersionRef.current === loadVersion,
@@ -793,6 +797,43 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     }
   };
 
+  const saveCommunityRelationshipCorrection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selected || !editingCommunityRelationshipId) return;
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
+    const operationId = beginOperation(`correct-community:${editingCommunityRelationshipId}`);
+    clearActionFeedback();
+    try {
+      await peopleApi(
+        `/v1/condominiums/${condominiumId}/people/${personId}/condominium-relationships/${editingCommunityRelationshipId}`,
+        session,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            relationshipType: relationshipDraft.relationshipType,
+            title: relationshipDraft.title.trim() || undefined,
+          }),
+        },
+      );
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
+      setEditingCommunityRelationshipId(null);
+      setRelationshipDraft({ relationshipType: 'board_member', title: '' });
+      await refreshAfterPersistedMutation(
+        personId,
+        selectionVersion,
+        'Rol corregido. El cambio queda en el historial auditable sin cerrar la relación.',
+      );
+    } catch (requestError) {
+      if (ownsOperation(personId, selectionVersion, operationId))
+        showActionError(
+          requestError instanceof Error ? requestError.message : 'No se pudo corregir el rol.',
+        );
+    } finally {
+      finishOperation(operationId);
+    }
+  };
+
   const confirmCloseRelationship = async () => {
     if (!selected || !pendingClose) return;
     const personId = selected.id;
@@ -976,14 +1017,14 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       await refreshAfterPersistedMutation(
         personId,
         selectionVersion,
-        'Nota administrativa guardada. La revisión anterior permanece en el historial.',
+        'Nota interna guardada. La revisión anterior permanece en el historial.',
       );
     } catch (requestError) {
       if (ownsOperation(personId, selectionVersion, operationId))
         showActionError(
           requestError instanceof Error
             ? requestError.message
-            : 'No se pudo guardar la nota administrativa.',
+            : 'No se pudo guardar la nota interna.',
         );
     } finally {
       finishOperation(operationId);
@@ -1007,14 +1048,14 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       await refreshAfterPersistedMutation(
         personId,
         selectionVersion,
-        'Nota administrativa limpiada. El historial anterior se conserva.',
+        'Nota interna limpiada. El historial anterior se conserva.',
       );
     } catch (requestError) {
       if (ownsOperation(personId, selectionVersion, operationId))
         showActionError(
           requestError instanceof Error
             ? requestError.message
-            : 'No se pudo limpiar la nota administrativa.',
+            : 'No se pudo limpiar la nota interna.',
         );
     } finally {
       finishOperation(operationId);
@@ -1157,12 +1198,20 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     <div className="people-v3-tab-stack">
       <WorkspaceSection
         description="Junta, administración, representación y contactos se administran aparte de la relación con unidades."
-        title="Agregar rol en la comunidad"
+        title={
+          editingCommunityRelationshipId
+            ? 'Editar rol en la comunidad'
+            : 'Agregar rol en la comunidad'
+        }
       >
         <form
           className="people-v3-inline-form ux-form"
           noValidate
-          onSubmit={(event) => void createCondominiumRelationship(event)}
+          onSubmit={(event) =>
+            void (editingCommunityRelationshipId
+              ? saveCommunityRelationshipCorrection(event)
+              : createCondominiumRelationship(event))
+          }
         >
           <Field label="Relación">
             <Select
@@ -1197,9 +1246,25 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
               value={relationshipDraft.title}
             />
           </Field>
-          <Button disabled={busyAction === 'condominium-relationship'} type="submit">
-            {busyAction === 'condominium-relationship' ? 'Agregando…' : 'Agregar relación'}
+          <Button disabled={Boolean(busyAction)} type="submit">
+            {editingCommunityRelationshipId
+              ? 'Guardar corrección'
+              : busyAction === 'condominium-relationship'
+                ? 'Agregando…'
+                : 'Agregar relación'}
           </Button>
+          {editingCommunityRelationshipId ? (
+            <Button
+              onClick={() => {
+                setEditingCommunityRelationshipId(null);
+                setRelationshipDraft({ relationshipType: 'board_member', title: '' });
+              }}
+              type="button"
+              variant="ghost"
+            >
+              Cancelar
+            </Button>
+          ) : null}
         </form>
       </WorkspaceSection>
 
@@ -1225,20 +1290,36 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
                     {current ? 'Actual' : 'Histórica'}
                   </Badge>
                   {current ? (
-                    <Button
-                      onClick={() =>
-                        setPendingClose({
-                          kind: 'condominium',
-                          id: relationship.id,
-                          label: condominiumRelationshipLabels[relationship.relationship_type],
-                        })
-                      }
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      Cerrar
-                    </Button>
+                    <div className="people-v3-action-row">
+                      <Button
+                        onClick={() => {
+                          setEditingCommunityRelationshipId(relationship.id);
+                          setRelationshipDraft({
+                            relationshipType: relationship.relationship_type,
+                            title: relationship.title ?? '',
+                          });
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          setPendingClose({
+                            kind: 'condominium',
+                            id: relationship.id,
+                            label: condominiumRelationshipLabels[relationship.relationship_type],
+                          })
+                        }
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Cerrar
+                      </Button>
+                    </div>
                   ) : null}
                 </article>
               );
@@ -1258,57 +1339,113 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       title="Notas internas"
     >
       {adminNotesAuthorized ? (
-        <form
-          className="people-v3-notes ux-form"
-          noValidate
-          onSubmit={(event) => void saveAdminNote(event)}
-        >
-          <Field
-            hint="Máximo 4.000 caracteres. Cada guardado crea una nueva revisión auditable."
-            error={adminNoteError}
-            label="Nota administrativa"
-          >
-            <textarea
-              className="input"
-              maxLength={4000}
-              onChange={(event) => {
-                setAdminNoteDraft(event.target.value);
-                if (adminNoteError) setAdminNoteError('');
-              }}
-              placeholder="Preferencia de contacto, seguimiento administrativo o contexto operativo…"
-              ref={adminNoteInputRef}
-              rows={6}
-              value={adminNoteDraft}
-            />
-          </Field>
+        <>
           <div className="people-v3-private-summary" role="note">
             <Badge tone="warning">Privado</Badge>
-            <strong>{adminNoteRevisions.length} revisiones</strong>
+            <strong>Nota actual</strong>
             <span>
-              {adminNoteRevisions[0]
-                ? `Último cambio ${formatDate(adminNoteRevisions[0].created_at)}`
-                : 'Sin notas administrativas registradas'}
+              {adminNoteRevisions[0]?.action === 'saved'
+                ? adminNoteRevisions[0].content
+                : 'Sin nota actual registrada.'}
             </span>
-          </div>
-          <div className="people-v3-action-row">
-            <Button disabled={busyAction === 'admin-note'} type="submit">
-              {busyAction === 'admin-note' ? 'Guardando…' : 'Guardar nota'}
-            </Button>
-            {adminNoteRevisions[0]?.action === 'saved' ? (
+            <small>
+              {adminNoteRevisions[0]
+                ? `Último cambio ${formatDate(adminNoteRevisions[0].created_at)} · ${adminNoteRevisions.length} revisiones`
+                : 'Aún no hay revisiones.'}
+            </small>
+            <div className="people-v3-action-row">
               <Button
-                disabled={busyAction === 'clear-admin-note'}
-                onClick={() => void clearAdminNote()}
+                onClick={() => setEditingAdminNote(true)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Editar nota
+              </Button>
+              <Button
+                onClick={() =>
+                  document
+                    .getElementById('people-note-history')
+                    ?.scrollIntoView({ behavior: 'smooth' })
+                }
+                size="sm"
                 type="button"
                 variant="ghost"
               >
-                {busyAction === 'clear-admin-note' ? 'Limpiando…' : 'Limpiar nota'}
+                Ver historial
               </Button>
-            ) : null}
+            </div>
           </div>
-        </form>
+          {editingAdminNote ? (
+            <form
+              className="people-v3-notes ux-form"
+              noValidate
+              onSubmit={(event) => void saveAdminNote(event)}
+            >
+              <Field
+                hint="Máximo 4.000 caracteres. Cada guardado crea una nueva revisión auditable."
+                error={adminNoteError}
+                label="Nota actual"
+              >
+                <textarea
+                  className="input"
+                  maxLength={4000}
+                  onChange={(event) => {
+                    setAdminNoteDraft(event.target.value);
+                    if (adminNoteError) setAdminNoteError('');
+                  }}
+                  placeholder="Preferencia de contacto, seguimiento administrativo o contexto operativo…"
+                  ref={adminNoteInputRef}
+                  rows={6}
+                  value={adminNoteDraft}
+                />
+              </Field>
+              <div className="people-v3-private-summary" role="note">
+                <Badge tone="warning">Privado</Badge>
+                <strong>{adminNoteRevisions.length} revisiones</strong>
+                <span>
+                  {adminNoteRevisions[0]
+                    ? `Último cambio ${formatDate(adminNoteRevisions[0].created_at)}`
+                    : 'Sin notas internas registradas'}
+                </span>
+              </div>
+              <div className="people-v3-action-row">
+                <Button disabled={busyAction === 'admin-note'} type="submit">
+                  {busyAction === 'admin-note' ? 'Guardando…' : 'Guardar nota'}
+                </Button>
+                {adminNoteRevisions[0]?.action === 'saved' ? (
+                  <Button
+                    disabled={busyAction === 'clear-admin-note'}
+                    onClick={() => void clearAdminNote()}
+                    type="button"
+                    variant="ghost"
+                  >
+                    {busyAction === 'clear-admin-note' ? 'Limpiando…' : 'Limpiar nota'}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="people-v3-action-row">
+                <Button onClick={() => setEditingAdminNote(false)} type="button" variant="ghost">
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          ) : null}
+          {adminNoteRevisions.length > 1 ? (
+            <div className="people-v3-history__list" id="people-note-history">
+              <strong>Historial de revisiones</strong>
+              {adminNoteRevisions.slice(1).map((revision) => (
+                <article key={revision.id}>
+                  <span>{revision.action === 'saved' ? revision.content : 'Nota limpiada'}</span>
+                  <small>{formatDate(revision.created_at)}</small>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </>
       ) : (
         <InlineNotice tone="info">
-          Tu rol actual no tiene acceso a las notas administrativas privadas de esta persona.
+          Tu rol actual no tiene acceso a las notas internas privadas de esta persona.
         </InlineNotice>
       )}
     </WorkspaceSection>
@@ -1318,7 +1455,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     <div className="people-v3-tab-stack">
       <WorkspaceSection
         description="El acceso se concede sólo desde una propiedad activa o una relación residencial activa y compatible con la unidad."
-        title="Invitar a Habitta"
+        title="Nueva invitación"
       >
         <form
           className="people-v3-access-form ux-form"

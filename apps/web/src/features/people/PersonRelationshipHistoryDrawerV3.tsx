@@ -40,8 +40,8 @@ export function PersonRelationshipHistoryDrawerV3({
                     <strong>Propietario</strong>
                     <span>
                       {item.ownership_percentage != null
-                        ? `Participación ${item.ownership_percentage}%`
-                        : 'Participación no indicada'}
+                        ? `Porcentaje de propiedad ${item.ownership_percentage}%`
+                        : 'Porcentaje de propiedad no indicado'}
                     </span>
                     <small>
                       Desde {formatDate(item.starts_at)} ·{' '}
@@ -123,7 +123,7 @@ export function PersonRelationshipHistoryDrawerV3({
         </WorkspaceSection>
 
         <WorkspaceSection
-          title="Acceso digital"
+          title="Invitaciones"
           description="Invitaciones emitidas para esta persona y unidad."
         >
           {relationship.invitations.length ? (

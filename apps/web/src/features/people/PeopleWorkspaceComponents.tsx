@@ -216,8 +216,8 @@ export function PersonProfileHeader({
           ['summary', 'Resumen'],
           ['units', 'Relaciones con unidades'],
           ['community-roles', 'Roles en la comunidad'],
-          ['private-notes', 'Notas privadas'],
-          ['digital-access', 'Acceso digital'],
+          ['private-notes', 'Notas internas'],
+          ['digital-access', 'Invitaciones'],
         ].map(([value, label]) => (
           <WorkspaceTab
             active={tab === value}
@@ -285,7 +285,7 @@ export function PersonUnitRelationshipCard({
         </div>
         {ownership?.ownership_percentage != null ? (
           <div className="people-v3-unit-card__participation">
-            <span>Participación</span>
+            <span>Porcentaje de propiedad</span>
             <strong>{Number(ownership.ownership_percentage).toLocaleString('es')}%</strong>
           </div>
         ) : null}
@@ -302,8 +302,8 @@ export function PersonUnitRelationshipCard({
             {ownership ? (
               <small>
                 {ownership.ownership_percentage != null
-                  ? `Participación ${ownership.ownership_percentage}%`
-                  : 'Participación no indicada'}
+                  ? `Porcentaje de propiedad ${ownership.ownership_percentage}%`
+                  : 'Porcentaje de propiedad no indicado'}
               </small>
             ) : null}
           </div>
@@ -346,7 +346,7 @@ export function PersonUnitRelationshipCard({
             <CheckCircleIcon size={17} />
           </span>
           <div>
-            <strong>Acceso digital</strong>
+            <strong>Invitaciones</strong>
             <span>{invitationStatus ?? (accessEligible ? 'Elegible' : 'No elegible')}</span>
             {relationship.latestInvitation ? (
               <small>{residentRoleLabel(relationship.latestInvitation.intended_role)}</small>
@@ -365,7 +365,7 @@ export function PersonUnitRelationshipCard({
         </div>
         <div>
           <Button onClick={onManage} size="sm" variant="secondary">
-            Editar relación
+            Editar
           </Button>
           {onInvite && accessEligible ? (
             <Button onClick={onInvite} size="sm" variant="secondary">
@@ -388,7 +388,7 @@ export function PeopleProfileEmpty({ onCreate }: { onCreate: () => void }) {
     <div className="people-v3-profile-empty">
       <EmptyState
         actionLabel="Crear persona"
-        description="Selecciona una persona para ver sus unidades, roles, notas y acceso digital."
+        description="Selecciona una persona para ver sus unidades, roles, notas e invitaciones."
         icon={<PeopleIcon size={30} />}
         onAction={onCreate}
         title="Selecciona un perfil"

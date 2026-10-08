@@ -45,14 +45,12 @@ const personSummary = (people: Array<{ firstName: string; lastName: string }>) =
     : names.join(', ');
 };
 
-const participationSummary = (unit: DirectoryUnit) => {
-  if (!unit.owners.length) return 'Sin propietarios';
-  const percentages = unit.owners
-    .map((owner) => Number(owner.ownershipPercentage))
-    .filter((value) => Number.isFinite(value));
-  if (!percentages.length) return 'Participación no indicada';
-  const total = percentages.reduce((sum, value) => sum + value, 0);
-  return `${total.toLocaleString('es-VE', { maximumFractionDigits: 4 })}% asignado`;
+const aliquotSummary = (unit: DirectoryUnit) => {
+  if (unit.ownershipPercentage == null) return 'No definida';
+  const value = Number(unit.ownershipPercentage);
+  return Number.isFinite(value)
+    ? `${value.toLocaleString('es-VE', { maximumFractionDigits: 4 })}%`
+    : 'No definida';
 };
 
 const topologyGuidance: Record<PropertyTopology, string | null> = {
@@ -449,7 +447,7 @@ export function UnitsPage({
             <div className="units-v3-list__head" aria-hidden="true">
               <span>Unidad</span>
               <span>Propiedad</span>
-              <span>Participación</span>
+              <span>Alícuota</span>
               <span>Ocupación</span>
               <span>Estado</span>
             </div>
@@ -481,9 +479,9 @@ export function UnitsPage({
                   <small>Propiedad</small>
                   <strong>{personSummary(unit.owners)}</strong>
                 </span>
-                <span className="units-v3-row__fact" data-label="Participación">
-                  <small>Participación</small>
-                  <strong>{participationSummary(unit)}</strong>
+                <span className="units-v3-row__fact" data-label="Alícuota">
+                  <small>Alícuota</small>
+                  <strong>{aliquotSummary(unit)}</strong>
                 </span>
                 <span className="units-v3-row__fact" data-label="Ocupación">
                   <small>Ocupación</small>

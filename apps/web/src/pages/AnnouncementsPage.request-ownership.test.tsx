@@ -31,9 +31,11 @@ function findButton(label: string) {
   return button;
 }
 function setFieldValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
-  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-  Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(el, value);
-  el.dispatchEvent(new Event('input', { bubbles: true }));
+  act(() => {
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(el, value);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 }
 
 describe('AnnouncementsPage request ownership', () => {

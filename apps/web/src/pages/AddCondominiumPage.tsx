@@ -15,13 +15,22 @@ import '../add-condominium.css';
 
 type Props = {
   organizations: Organization[];
+  ownedOrganizationIds: string[];
   onCancel: () => void;
   onCreated: (condominiumId: string) => Promise<void>;
 };
 
-export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props) {
+export function AddCondominiumPage({
+  organizations,
+  ownedOrganizationIds,
+  onCancel,
+  onCreated,
+}: Props) {
+  const ownedOrganizations = organizations.filter((organization) =>
+    ownedOrganizationIds.includes(organization.id),
+  );
   const [input, setInput] = useState<AdminOnboardingInput>(() =>
-    createEmptyAdminOnboardingInput(organizations[0]?.id ?? ''),
+    createEmptyAdminOnboardingInput(ownedOrganizations[0]?.id ?? ''),
   );
   const [errors, setErrors] = useState<AdminOnboardingErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -99,7 +108,7 @@ export function AddCondominiumPage({ organizations, onCancel, onCreated }: Props
             onChange={(event) => update('organizationId', event.target.value)}
             value={input.organizationId}
           >
-            {organizations.map((organization) => (
+            {ownedOrganizations.map((organization) => (
               <option key={organization.id} value={organization.id}>
                 {organization.name}
               </option>

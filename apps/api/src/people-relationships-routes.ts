@@ -25,6 +25,16 @@ const condominiumRelationshipInputSchema = z.object({
 });
 
 const closeRelationshipSchema = z.object({ endsAt: z.string().date() });
+const correctRelationshipSchema = z.object({
+  relationshipType: z.enum([
+    'board_member',
+    'administrator_contact',
+    'representative',
+    'emergency_contact',
+    'other',
+  ]),
+  title: z.string().trim().max(120).optional(),
+});
 
 const personOwnershipInputSchema = z.object({
   unitId: uuidSchema,
@@ -92,6 +102,27 @@ function rest(c: PeopleContext, path: string, init: RequestInit = {}) {
       ...(init.headers ?? {}),
     },
   });
+}
+
+async function ownershipWriteResponse(c: PeopleContext, response: Response, successStatus: 200 | 201) {
+  const result: unknown = await response.json().catch(() => null);
+  const message =
+    typeof result === 'object' && result !== null && 'message' in result
+      ? String(result.message)
+      : '';
+  if (
+    message.includes('unit ownership percentage total cannot exceed 100') ||
+    message.includes('unit ownership percentage total above 100 must be strictly reduced')
+  ) {
+    return c.json(
+      {
+        error:
+          'Los porcentajes conocidos de propiedad de esta unidad superan 100%. Corrige una relación existente reduciendo su porcentaje antes de aumentar o agregar otra.',
+      },
+      409,
+    );
+  }
+  return c.json(result, response.ok ? successStatus : 400);
 }
 
 async function parseBody<T extends z.ZodTypeAny>(c: PeopleContext, schema: T) {
@@ -314,7 +345,7 @@ peopleRelationshipRoutes.post('/:id/people/:personId/ownerships', async (c) => {
       created_by: c.get('userId'),
     }),
   });
-  return c.json(await response.json(), response.ok ? 201 : 400);
+  return ownershipWriteResponse(c, response, 201);
 });
 
 peopleRelationshipRoutes.post('/:id/people/:personId/occupancies', async (c) => {
@@ -375,8 +406,28 @@ peopleRelationshipRoutes.patch(
     const condominiumId = uuidSchema.parse(c.req.param('id'));
     const personId = uuidSchema.parse(c.req.param('personId'));
     const relationshipId = uuidSchema.parse(c.req.param('relationshipId'));
-    const parsed = await parseBody(c, closeRelationshipSchema);
-    if (parsed instanceof Response) return parsed;
+    const payload: unknown = await c.req.json();
+    const correction = correctRelationshipSchema.safeParse(payload);
+    if (correction.success) {
+      const current = await rest(
+        c,
+        `condominium_person_relationships?id=eq.${relationshipId}&condominium_id=eq.${condominiumId}&person_id=eq.${personId}&select=id`,
+      );
+      const rows = current.ok ? ((await current.json()) as { id: string }[]) : [];
+      if (!rows[0]) return c.json({ error: 'Relationship not found' }, 404);
+      const response = await rest(c, 'rpc/correct_community_person_relationship', {
+        method: 'POST',
+        body: JSON.stringify({
+          target: condominiumId,
+          target_relationship: relationshipId,
+          next_type: correction.data.relationshipType,
+          next_title: correction.data.title ?? null,
+        }),
+      });
+      return c.json(await response.json(), response.ok ? 200 : 400);
+    }
+    const parsed = closeRelationshipSchema.safeParse(payload);
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const current = await rest(
       c,
@@ -387,12 +438,12 @@ peopleRelationshipRoutes.patch(
       : [];
     if (!rows[0]) return c.json({ error: 'Relationship not found' }, 404);
     if (rows[0].ends_at) return c.json({ error: 'Relationship is already closed' }, 409);
-    if (parsed.endsAt < rows[0].starts_at)
+    if (parsed.data.endsAt < rows[0].starts_at)
       return c.json({ error: 'ends_at must not precede starts_at' }, 400);
 
     const response = await rest(c, `condominium_person_relationships?id=eq.${relationshipId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ ends_at: parsed.endsAt }),
+      body: JSON.stringify({ ends_at: parsed.data.endsAt }),
     });
     return c.json(await response.json(), response.ok ? 200 : 400);
   },

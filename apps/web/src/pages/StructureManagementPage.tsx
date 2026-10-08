@@ -750,7 +750,7 @@ export function StructureManagementPage({
                     </Field>
                   ) : null}
 
-                  <Field hint="Porcentaje de participación entre 0 y 100." label="Alícuota (%)">
+                <Field hint="Porcentaje de alícuota entre 0 y 100." label="Alícuota (%)">
                     <input
                       defaultValue={normalizePercentage(editor.unit?.ownership_percentage ?? null)}
                       max="100"

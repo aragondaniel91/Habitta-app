@@ -109,11 +109,11 @@ export const MODULE_HELP: ModuleHelpByRoute = {
     topicId: 'module-help.people',
     contentVersion: MODULE_HELP_CONTENT_VERSION,
     purpose:
-      'Mantiene una sola identidad por persona y organiza, por separado, sus relaciones con unidades, roles en la comunidad, acceso digital y notas administrativas.',
+      'Mantiene una sola identidad por persona y organiza, por separado, sus relaciones con unidades, roles en la comunidad, invitaciones y notas internas.',
     actions: [
       'Crear o editar personas y datos de contacto.',
       'Vincular una persona con una o varias unidades como propietario, ocupante o responsable de comunicaciones.',
-      'Gestionar roles comunitarios, acceso digital, invitaciones e historial sin duplicar la persona.',
+      'Gestionar roles comunitarios, invitaciones e historial sin duplicar la persona.',
     ],
     steps: [
       'Busca primero a la persona por nombre, correo o teléfono para evitar crear un duplicado.',
@@ -121,7 +121,7 @@ export const MODULE_HELP: ModuleHelpByRoute = {
       'Selecciona la persona y pulsa Vincular unidad para registrar la relación correcta con una unidad existente.',
       'Dentro de cada relación administra propiedad, ocupación y responsabilidades de comunicación como ciclos independientes; usa Historial para revisar relaciones anteriores.',
       'Si la persona tiene un rol institucional, abre Roles en la comunidad, completa Relación y Cargo o detalle, y pulsa Agregar relación.',
-      'Para acceso digital abre Acceso digital, elige Rol que recibirá y Unidad vinculada, y pulsa Crear invitación. Debe existir una relación activa compatible y un correo válido.',
+      'Para enviar una invitación abre Invitaciones, elige Rol que recibirá y Unidad vinculada, y pulsa Crear invitación. Debe existir una relación activa compatible y un correo válido.',
       'Usa Notas internas sólo para contexto administrativo autorizado; Guardar nota crea una nueva revisión y Limpiar nota no elimina el historial anterior.',
     ],
     beforeConfirm: [
@@ -140,10 +140,10 @@ export const MODULE_HELP: ModuleHelpByRoute = {
     ],
     tips: [
       'Una persona puede relacionarse con varias unidades sin duplicar su identidad.',
-      'Propiedad, ocupación, comunicaciones, rol comunitario y acceso digital representan cosas distintas aunque se vean juntas en el perfil.',
+      'Propiedad, ocupación, comunicaciones, rol comunitario e invitaciones representan cosas distintas aunque se vean juntas en el perfil.',
     ],
     permissions:
-      'Administradores y asistentes autorizados gestionan personas y relaciones; notas privadas y ciertas acciones de acceso se restringen adicionalmente por rol.',
+      'Administradores y asistentes autorizados gestionan personas y relaciones; notas internas y ciertas acciones de invitación se restringen adicionalmente por rol.',
     importKinds: ['people'],
   },
   maintenance: {
