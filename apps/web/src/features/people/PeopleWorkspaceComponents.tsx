@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode, type Ref } from 'react';
 import { Badge, Button, EmptyState, Field, Select, Surface } from '../../components/ui';
 import {
   BellIcon,
@@ -8,7 +8,7 @@ import {
   PeopleIcon,
   UnitsIcon,
 } from '../../components/icons';
-import { WorkspaceTab, WorkspaceTabs } from '../../components/WorkspaceUi';
+import { InlineNotice, WorkspaceTab, WorkspaceTabs } from '../../components/WorkspaceUi';
 import { residentRoleLabel } from '../../lib/residentAccess';
 import type { ResidentInvitation } from '../../lib/residentAccess';
 import type { PersonUnitRelationshipSummary } from './person-unit-relationships';
@@ -17,6 +17,8 @@ import type { Person } from './types';
 
 export type PeopleProfileTab =
   'summary' | 'units' | 'community-roles' | 'private-notes' | 'digital-access';
+
+export type DirectorySelectionInteraction = 'keyboard' | 'pointer';
 
 export function personDisplayName(person: Person) {
   return `${person.first_name} ${person.last_name}`.trim();
@@ -36,23 +38,36 @@ function personDocumentLabel(person: Person) {
 
 export function PeopleDirectoryView({
   people,
+  totalPeople,
+  countsUnavailable = false,
   selectedId,
   query,
   statusFilter,
+  emptyState,
   onQueryChange,
   onStatusFilterChange,
   onSelect,
   onClearFilters,
 }: {
   people: Person[];
+  totalPeople: number;
+  countsUnavailable?: boolean;
   selectedId?: string | null | undefined;
   query: string;
   statusFilter: string;
+  emptyState: {
+    title: string;
+    description: string;
+    actionLabel?: string;
+    tone?: 'error';
+  };
   onQueryChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
-  onSelect: (person: Person) => void;
+  onSelect: (person: Person, interaction: DirectorySelectionInteraction) => void;
   onClearFilters: () => void;
 }) {
+  const keyboardSelectionRef = useRef(false);
+
   return (
     <Surface className="people-v3-directory">
       <div className="people-v3-directory__heading">
@@ -60,7 +75,16 @@ export function PeopleDirectoryView({
           <span>Directorio</span>
           <h2>Personas registradas</h2>
         </div>
-        <Badge tone="info">{people.length}</Badge>
+        <Badge
+          aria-label={
+            countsUnavailable
+              ? 'Personas mostradas: Sin datos'
+              : `Personas mostradas: ${people.length} de ${totalPeople}`
+          }
+          tone="info"
+        >
+          {countsUnavailable ? '—' : people.length}
+        </Badge>
       </div>
 
       <div className="people-v3-directory__filters ux-form">
@@ -89,10 +113,20 @@ export function PeopleDirectoryView({
         <div className="people-v3-directory__list">
           {people.map((person) => (
             <button
+              aria-current={selectedId === person.id ? 'true' : undefined}
               className="people-v3-directory__item"
               data-selected={selectedId === person.id || undefined}
               key={person.id}
-              onClick={() => onSelect(person)}
+              onClick={() => {
+                const interaction = keyboardSelectionRef.current ? 'keyboard' : 'pointer';
+                keyboardSelectionRef.current = false;
+                onSelect(person, interaction);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  keyboardSelectionRef.current = true;
+                }
+              }}
               type="button"
             >
               <span className="people-v3-avatar">{personDisplayInitials(person)}</span>
@@ -106,18 +140,29 @@ export function PeopleDirectoryView({
             </button>
           ))}
         </div>
+      ) : emptyState.tone === 'error' ? (
+        <InlineNotice tone="error" title={emptyState.title}>
+          {emptyState.description}
+          {emptyState.actionLabel ? (
+            <Button onClick={onClearFilters} size="sm" type="button" variant="ghost">
+              {emptyState.actionLabel}
+            </Button>
+          ) : null}
+        </InlineNotice>
       ) : (
         <EmptyState
-          actionLabel="Limpiar filtros"
-          description="Prueba otra búsqueda o muestra todos los estados."
+          actionLabel={emptyState.actionLabel}
+          description={emptyState.description}
           icon={<PeopleIcon size={26} />}
-          onAction={onClearFilters}
-          title="No encontramos personas"
+          onAction={emptyState.actionLabel ? onClearFilters : undefined}
+          title={emptyState.title}
         />
       )}
 
       <footer className="people-v3-directory__footer">
-        {people.length} {people.length === 1 ? 'resultado' : 'resultados'}
+        {countsUnavailable
+          ? 'Conteo no disponible'
+          : `Mostrando ${people.length} de ${totalPeople} ${totalPeople === 1 ? 'persona registrada' : 'personas registradas'}`}
       </footer>
     </Surface>
   );
@@ -129,12 +174,14 @@ export function PersonProfileHeader({
   onEdit,
   onTabChange,
   actions,
+  headingRef,
 }: {
   person: Person;
   tab: PeopleProfileTab;
   onEdit: () => void;
   onTabChange: (tab: PeopleProfileTab) => void;
   actions?: ReactNode;
+  headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
     <header className="people-v3-profile-header">
@@ -144,7 +191,9 @@ export function PersonProfileHeader({
         </span>
         <div>
           <div className="people-v3-profile-header__name">
-            <h2>{personDisplayName(person)}</h2>
+            <h2 ref={headingRef} tabIndex={-1}>
+              {personDisplayName(person)}
+            </h2>
             <Badge tone={person.status === 'inactive' ? 'neutral' : 'success'}>
               {person.status === 'inactive' ? 'Inactiva' : 'Activa'}
             </Badge>
@@ -167,8 +216,8 @@ export function PersonProfileHeader({
           ['summary', 'Resumen'],
           ['units', 'Relaciones con unidades'],
           ['community-roles', 'Roles en la comunidad'],
-          ['private-notes', 'Notas privadas'],
-          ['digital-access', 'Acceso digital'],
+          ['private-notes', 'Notas internas'],
+          ['digital-access', 'Invitaciones'],
         ].map(([value, label]) => (
           <WorkspaceTab
             active={tab === value}
@@ -236,7 +285,7 @@ export function PersonUnitRelationshipCard({
         </div>
         {ownership?.ownership_percentage != null ? (
           <div className="people-v3-unit-card__participation">
-            <span>Participación</span>
+            <span>Porcentaje de propiedad</span>
             <strong>{Number(ownership.ownership_percentage).toLocaleString('es')}%</strong>
           </div>
         ) : null}
@@ -253,8 +302,8 @@ export function PersonUnitRelationshipCard({
             {ownership ? (
               <small>
                 {ownership.ownership_percentage != null
-                  ? `Participación ${ownership.ownership_percentage}%`
-                  : 'Participación no indicada'}
+                  ? `Porcentaje de propiedad ${ownership.ownership_percentage}%`
+                  : 'Porcentaje de propiedad no indicado'}
               </small>
             ) : null}
           </div>
@@ -297,7 +346,7 @@ export function PersonUnitRelationshipCard({
             <CheckCircleIcon size={17} />
           </span>
           <div>
-            <strong>Acceso digital</strong>
+            <strong>Invitaciones</strong>
             <span>{invitationStatus ?? (accessEligible ? 'Elegible' : 'No elegible')}</span>
             {relationship.latestInvitation ? (
               <small>{residentRoleLabel(relationship.latestInvitation.intended_role)}</small>
@@ -316,7 +365,7 @@ export function PersonUnitRelationshipCard({
         </div>
         <div>
           <Button onClick={onManage} size="sm" variant="secondary">
-            Editar relación
+            Editar
           </Button>
           {onInvite && accessEligible ? (
             <Button onClick={onInvite} size="sm" variant="secondary">
@@ -339,7 +388,7 @@ export function PeopleProfileEmpty({ onCreate }: { onCreate: () => void }) {
     <div className="people-v3-profile-empty">
       <EmptyState
         actionLabel="Crear persona"
-        description="Selecciona una persona para ver sus unidades, roles, notas y acceso digital."
+        description="Selecciona una persona para ver sus unidades, roles, notas e invitaciones."
         icon={<PeopleIcon size={30} />}
         onAction={onCreate}
         title="Selecciona un perfil"

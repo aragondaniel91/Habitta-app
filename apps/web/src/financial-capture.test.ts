@@ -4,11 +4,10 @@ import { describe, expect, it } from 'vitest';
 const source = (relative: string) => readFile(new URL(relative, import.meta.url), 'utf8');
 
 describe('financial capture orchestration', () => {
-  it('routes new payments through the guided capture drawer only', async () => {
+  it('routes new and action-required admin payments through the guided capture drawer', async () => {
     // HAB-417 split the payments route into a resident experience and the administrative one, so
-    // the drawer no longer lives in PaymentsPage -- that file is now a router. The contract is
-    // about where new payments are created, not about which file holds the JSX, so it follows the
-    // administrative surface that actually owns treasury capture.
+    // the drawer no longer lives in PaymentsPage -- that file is now a router. The administrative
+    // surface owns treasury capture and now reuses the same guided flow for drafts/corrections.
     const router = await source('./pages/PaymentsPage.tsx');
     const admin = await source('./pages/AdminPaymentsPage.tsx');
 
@@ -17,8 +16,10 @@ describe('financial capture orchestration', () => {
     expect(router).toContain('AdminPaymentsPage');
 
     expect(admin).toContain('import { PaymentCaptureDrawer }');
-    expect(admin).toContain("drawer?.type === 'create'");
-    expect(admin).toContain("drawer={drawer?.type === 'create' ? null : drawer}");
+    expect(admin).toContain("drawer?.type === 'create' || drawer?.type === 'edit'");
+    expect(admin).toContain(
+      "drawer={drawer?.type === 'create' || drawer?.type === 'edit' ? null : drawer}",
+    );
   });
 
   it('creates a payment once and uploads proof against the returned draft id', async () => {
@@ -53,6 +54,9 @@ describe('financial capture orchestration', () => {
     expect(capture).toContain(`paymentId={${saved}.id}`);
     expect(capture).toContain('requiresProof && !proofSaved');
     expect(capture).toContain('<FormActions className="financial-capture-footer" sticky>');
+    expect(capture).toContain("import { PaymentProofPreview } from './PaymentProofPreview'");
+    expect(capture).toContain('setProofRefreshKey((current) => current + 1)');
+    expect(capture).toContain('refreshKey={proofRefreshKey}');
   });
 
   it('keeps expense proof upload on the expense draft returned by creation', async () => {
@@ -60,7 +64,7 @@ describe('financial capture orchestration', () => {
     const capture = await source('./features/expenses/ExpenseCaptureDrawer.tsx');
 
     expect(page).toContain('ExpenseCaptureDrawer');
-    expect(capture).toContain('setCreatedExpense(expense)');
+    expect(capture).toContain('setCreatedExpense(savedExpense)');
     expect(capture).toContain('/expenses/${createdExpense.id}/attachments');
     expect(capture).toContain('setProofSaved(true)');
     expect(capture).toContain('JPEG, PNG, WebP o PDF');
@@ -100,17 +104,44 @@ describe('financial capture orchestration', () => {
     expect(expenseCapture).not.toContain('/submit');
   });
 
-  it('submits to review only in the explicit resident mode, and only after the required proof', async () => {
+  it('keeps draft correction in the capture drawer and treasury selection in the approved detail', async () => {
+    const page = await source('./pages/ExpensesPage.tsx');
+    const capture = await source('./features/expenses/ExpenseCaptureDrawer.tsx');
+
+    expect(page).toContain("drawer === 'edit' && selectedExpense?.status === 'draft'");
+    expect(page).toContain('Editar borrador');
+    expect(capture).toContain("method: expense ? 'PATCH' : 'POST'");
+    expect(capture).toContain('expectedVersion: expense?.version');
+    expect(capture).toContain('categoryId === expense.category_id ? undefined : categoryId');
+    expect(capture).toContain(
+      "vendorId === (expense.vendor_id ?? '') ? undefined : vendorId || undefined",
+    );
+    expect(capture).toContain(
+      'invoiceNumber: expense ? invoiceNumber : invoiceNumber || undefined',
+    );
+    expect(capture).toContain(
+      'paymentMethod: expense ? paymentMethod : paymentMethod || undefined',
+    );
+    expect(capture).toContain(
+      'paymentReference: expense ? paymentReference : paymentReference || undefined',
+    );
+    expect(capture).toContain('notes: expense ? notes : notes || undefined');
+    expect(capture).toContain('.filter((item) => item.is_active || item.id === categoryId)');
+    expect(capture).toContain('.filter((item) => item.is_active || item.id === vendorId)');
+    expect(page).toContain('/treasury/expenses/${selectedExpense.id}/account');
+    expect(page).toContain("selectedExpense.status === 'approved' && treasuryAccounts.length");
+    expect(page).toContain('Guardar cuenta');
+  });
+
+  it('submits completed resident and admin captures to review only after the required proof', async () => {
     const capture = await source('./features/payments/components/PaymentCaptureDrawer.tsx');
     const resident = await source('./pages/ResidentPaymentsPage.tsx');
     const admin = await source('./pages/AdminPaymentsPage.tsx');
 
-    // HAB-417 gave the resident flow a way to finish: draft, proof, then send to review. That is a
-    // new capability, so it gets an explicit contract rather than a loosened one. Submitting means
-    // handing the payment to review -- it is not approval, allocation or a ledger posting, and the
-    // assertions above still forbid all three.
+    // A completed capture ends by handing the payment to review. It is still not approval,
+    // allocation or a treasury posting, and the assertions above continue to forbid all three.
     expect(capture).toContain('submitOnComplete = false');
-    expect(capture).toContain('if (!submitOnComplete) {');
+    expect(capture).toContain('if (!sendForReview || !submitOnComplete) {');
     expect(capture).toMatch(/payments\/\$\{savedPayment\.id\}\/submit/);
 
     // The precondition lives in the handler, not only in the button's disabled state: a guard that
@@ -119,8 +150,34 @@ describe('financial capture orchestration', () => {
       /if \(requiresProof && !proofSaved && !editing\) \{[\s\S]{0,200}?return;/,
     );
 
-    // Off unless a surface opts in, and only the resident surface does.
+    // Both user-facing payment capture surfaces now opt in. This prevents the admin's
+    // "Registrar pago" flow from looking finished while leaving the record in draft.
     expect(resident).toContain('submitOnComplete');
-    expect(admin).not.toContain('submitOnComplete');
+    expect(admin).toContain('submitOnComplete');
+    expect(admin).toContain("drawer?.type === 'create' || drawer?.type === 'edit'");
+    expect(capture).toContain('Guardar pendiente de revisión');
+    expect(capture).toContain('Registrar y enviar a revisión');
+  });
+
+  it('explains action-required payment states and gives the admin a direct correction path', async () => {
+    const admin = await source('./pages/AdminPaymentsPage.tsx');
+
+    expect(admin).toContain('Pagos que necesitan tu atención');
+    expect(admin).toContain('Un borrador todavía no fue enviado a validación.');
+    expect(admin).toContain('Completa datos/comprobante y envía el pago a validación.');
+    expect(admin).toContain('Corrección solicitada:');
+    expect(admin).toContain("setDrawer({ type: 'edit', payment })");
+  });
+
+  it('keeps an active correction instruction visible after saving until resubmission', async () => {
+    const capture = await source('./features/payments/components/PaymentCaptureDrawer.tsx');
+
+    expect(capture).toContain(
+      "payment?.status === 'correction_requested' && payment.correction_reason",
+    );
+    expect(capture).toContain(
+      "savedPayment.status === 'correction_requested' && savedPayment.correction_reason",
+    );
+    expect(capture).toContain('payments/${savedPayment.id}/submit');
   });
 });

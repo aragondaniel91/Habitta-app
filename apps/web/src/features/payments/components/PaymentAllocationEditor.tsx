@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { ConfirmDialog } from '../../../components/Dialog';
 import { Button } from '../../../components/ui';
 import {
   allocationReceivableAmount,
@@ -6,14 +7,14 @@ import {
   isPositiveMoneyAmount,
   moneyExceeds,
 } from '../allocation-amounts';
-import { allocationPreviewFingerprint } from '../allocation-preview';
+import {
+  approvalAllocations,
+  previewIsCurrent,
+  snapshotForLatestPreview,
+  type AllocationPreviewSnapshot,
+} from '../allocation-preview-state';
 import type { AllocationInput, AllocationPreview, Receivable } from '../types';
 import './PaymentAllocationEditor.css';
-
-type PreviewSnapshot = {
-  fingerprint: string;
-  value: AllocationPreview;
-};
 
 export function PaymentAllocationEditor({
   receivables,
@@ -28,21 +29,20 @@ export function PaymentAllocationEditor({
 }) {
   const [allocations, setAllocations] = useState<AllocationInput[]>([]);
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
-  const [previewSnapshot, setPreviewSnapshot] = useState<PreviewSnapshot>();
+  const [previewSnapshot, setPreviewSnapshot] = useState<AllocationPreviewSnapshot>();
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const [approvalError, setApprovalError] = useState('');
+  const [confirmingApproval, setConfirmingApproval] = useState(false);
   const latestPreviewRequest = useRef(0);
   const receivableById = useMemo(
     () => new Map(receivables.map((receivable) => [receivable.id, receivable])),
     [receivables],
   );
-  const currentFingerprint = useMemo(
-    () => allocationPreviewFingerprint(allocations, paymentCurrency),
-    [allocations, paymentCurrency],
-  );
-  const previewIsCurrent = previewSnapshot?.fingerprint === currentFingerprint;
-  const preview = previewIsCurrent ? previewSnapshot?.value : undefined;
-  const previewIsStale = Boolean(previewSnapshot && !previewIsCurrent);
+  const currentPreviewIsCurrent = previewIsCurrent(previewSnapshot, allocations, paymentCurrency);
+  const preview = currentPreviewIsCurrent ? previewSnapshot?.value : undefined;
+  const previewIsStale = Boolean(previewSnapshot && !currentPreviewIsCurrent);
 
   const add = (receivable: Receivable) =>
     setAllocations((current) => [
@@ -56,7 +56,9 @@ export function PaymentAllocationEditor({
       },
     ]);
 
-  const updatePaymentAmount = (index: number, paymentAmount: string) =>
+  const updatePaymentAmount = (index: number, paymentAmount: string) => {
+    setPreviewError('');
+    setApprovalError('');
     setAllocations((current) =>
       current.map((item, position) =>
         position === index
@@ -73,8 +75,11 @@ export function PaymentAllocationEditor({
           : item,
       ),
     );
+  };
 
-  const updateRate = (index: number, receivablePerPaymentRate: string) =>
+  const updateRate = (index: number, receivablePerPaymentRate: string) => {
+    setPreviewError('');
+    setApprovalError('');
     setAllocations((current) =>
       current.map((item, position) =>
         position === index
@@ -91,6 +96,7 @@ export function PaymentAllocationEditor({
           : item,
       ),
     );
+  };
 
   const allocationProblem = (allocation: AllocationInput): string | null => {
     const receivable = receivableById.get(allocation.receivableItemId);
@@ -123,25 +129,46 @@ export function PaymentAllocationEditor({
     if (previewing || saving) return;
     const requestId = ++latestPreviewRequest.current;
     const requestedAllocations = allocations.map((allocation) => ({ ...allocation }));
-    const requestedFingerprint = allocationPreviewFingerprint(
-      requestedAllocations,
-      paymentCurrency,
-    );
     setPreviewing(true);
+    setPreviewError('');
+    setApprovalError('');
     try {
       const value = await onPreview(requestedAllocations);
+      const snapshot = snapshotForLatestPreview({
+        latestRequestId: latestPreviewRequest.current,
+        requestId,
+        allocations: requestedAllocations,
+        paymentCurrency,
+        value,
+      });
+      if (snapshot) setPreviewSnapshot(snapshot);
+    } catch (error) {
       if (requestId !== latestPreviewRequest.current) return;
-      setPreviewSnapshot({ fingerprint: requestedFingerprint, value });
+      setPreviewError(
+        error instanceof Error ? error.message : 'No se pudo previsualizar la aplicación.',
+      );
     } finally {
-      setPreviewing(false);
+      if (requestId === latestPreviewRequest.current) setPreviewing(false);
     }
   };
 
   const approve = async () => {
     if (saving || previewing) return;
+    const previewedAllocations = approvalAllocations(previewSnapshot, allocations, paymentCurrency);
+    if (!previewedAllocations) {
+      setConfirmingApproval(false);
+      setApprovalError(
+        'La previsualización ya no coincide con la aplicación actual. Vuelve a previsualizar.',
+      );
+      return;
+    }
     setSaving(true);
+    setApprovalError('');
     try {
-      await onApprove(allocations);
+      await onApprove(previewedAllocations);
+      setConfirmingApproval(false);
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : 'No se pudo aprobar el pago.');
     } finally {
       setSaving(false);
     }
@@ -157,6 +184,8 @@ export function PaymentAllocationEditor({
             setSelectedReceivableId(nextId);
             const value = receivableById.get(nextId);
             if (value && !allocations.some((item) => item.receivableItemId === value.id)) {
+              setPreviewError('');
+              setApprovalError('');
               add(value);
               setSelectedReceivableId('');
             }
@@ -232,9 +261,11 @@ export function PaymentAllocationEditor({
             <Button
               className="payments-allocation-editor__remove"
               disabled={previewing || saving}
-              onClick={() =>
-                setAllocations((current) => current.filter((_, position) => position !== index))
-              }
+              onClick={() => {
+                setPreviewError('');
+                setApprovalError('');
+                setAllocations((current) => current.filter((_, position) => position !== index));
+              }}
               size="sm"
               type="button"
               variant="ghost"
@@ -255,6 +286,16 @@ export function PaymentAllocationEditor({
       {previewIsStale ? (
         <p role="status">Los cambios requieren una nueva previsualización antes de aprobar.</p>
       ) : null}
+      {previewError ? (
+        <p className="payments-allocation-editor__problem" role="alert">
+          {previewError}
+        </p>
+      ) : null}
+      {approvalError ? (
+        <p className="payments-allocation-editor__problem" role="alert">
+          {approvalError}
+        </p>
+      ) : null}
       {preview && (
         <div>
           <p>Usado: {preview.total_used}</p>
@@ -263,17 +304,33 @@ export function PaymentAllocationEditor({
             <p key={warning}>{warning}</p>
           ))}
           {preview.errors.map((error) => (
-            <p key={error}>{error}</p>
+            <p key={error} role="alert">
+              {error}
+            </p>
           ))}
           <Button
             disabled={preview.errors.length > 0 || saving || previewing}
-            onClick={() => void approve()}
+            onClick={() => setConfirmingApproval(true)}
             type="button"
           >
             {saving ? 'Aprobando…' : 'Aprobar pago'}
           </Button>
         </div>
       )}
+      {confirmingApproval && preview ? (
+        <ConfirmDialog
+          busy={saving}
+          busyLabel="Aprobando…"
+          confirmLabel="Confirmar aprobación"
+          description="Se registrará la aplicación previsualizada y cualquier remanente como crédito no aplicado."
+          onCancel={() => setConfirmingApproval(false)}
+          onConfirm={() => void approve()}
+          title="Confirmar aprobación del pago"
+        >
+          <p>Usado: {preview.total_used}</p>
+          <p>Remanente: {preview.remaining}</p>
+        </ConfirmDialog>
+      ) : null}
     </div>
   );
 }

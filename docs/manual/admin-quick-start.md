@@ -4,6 +4,10 @@ Estado: **Disponible hoy** para la aplicación web administrativa.
 
 Esta guía cubre el recorrido recomendado desde el primer acceso hasta la operación diaria. Los nombres exactos de algunas acciones pueden evolucionar, pero los principios de seguridad, trazabilidad y separación de monedas deben mantenerse.
 
+## Ayuda canónica por módulo
+
+Esta guía es orientación de alto nivel, no una autoridad independiente para los flujos de pantalla. Para instrucciones vigentes, consulta la metadata de solo lectura `MODULE_HELP` en `apps/web/src/features/help/module-help.ts`, usando el topicId canónico `module-help.<route>` y su `MODULE_HELP_CONTENT_VERSION`. El recorrido administrativo remite, por ejemplo, a `module-help.dashboard`, `module-help.units`, `module-help.people`, `module-help.fees`, `module-help.payments` y `module-help.team`; no se debe copiar aquí el contenido de esos temas.
+
 ## 1. Primer acceso
 
 1. Inicia sesión con tu cuenta individual de Habitta.

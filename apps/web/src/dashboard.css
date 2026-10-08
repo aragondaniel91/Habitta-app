@@ -120,6 +120,18 @@
   color: var(--red);
 }
 
+.dashboard-delinquency-value {
+  display: grid;
+  justify-items: end;
+  gap: 0.1rem;
+}
+
+.dashboard-delinquency-value small {
+  color: var(--muted);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
 .dashboard-single-value {
   display: block;
   font-size: clamp(2rem, 3vw, 2.7rem);
@@ -135,6 +147,11 @@
   grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.75fr);
   gap: 1rem;
   align-items: stretch;
+}
+
+/* A year of labels needs the row's full width on desktop-size layouts. */
+.dashboard-chart-grid[data-trend-month-count='12'] {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .dashboard-card-grid {
@@ -175,6 +192,38 @@
   border-radius: 999px;
   padding: 0.25rem;
   background: var(--surface-subtle);
+}
+
+.dashboard-chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.dashboard-trend-range {
+  display: inline-flex;
+  gap: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem;
+  background: var(--surface-subtle);
+}
+
+.dashboard-trend-range button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 0.65rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.dashboard-trend-range button[data-active='true'] {
+  background: var(--navy);
+  color: var(--surface);
 }
 
 .dashboard-currency-tabs button {
@@ -251,6 +300,20 @@
   grid-template-columns: repeat(6, minmax(48px, 1fr));
   gap: clamp(0.5rem, 2vw, 1.5rem);
   align-items: end;
+}
+
+.dashboard-bar-chart[data-month-count='3'] .dashboard-bar-chart__groups {
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+}
+
+.dashboard-bar-chart[data-month-count='12'] .dashboard-bar-chart__groups {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(0.25rem, 0.75vw, 0.6rem);
+}
+
+.dashboard-bar-chart[data-month-count='12'] .dashboard-bar-group > strong {
+  font-size: clamp(0.53rem, 0.7vw, 0.67rem);
+  line-height: 1.15;
 }
 
 .dashboard-bar-group {
@@ -731,6 +794,10 @@
     width: max-content;
   }
 
+  .dashboard-chart-controls {
+    justify-content: flex-start;
+  }
+
   .dashboard-chart-legend {
     justify-content: flex-start;
   }
@@ -743,6 +810,10 @@
 
   .dashboard-bar-chart__groups {
     min-width: 520px;
+  }
+
+  .dashboard-bar-chart[data-month-count='12'] .dashboard-bar-chart__groups {
+    min-width: 720px;
   }
 
   .dashboard-donut-layout {

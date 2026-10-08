@@ -22,7 +22,10 @@ describe('HAB-262 Units UX redesign', () => {
     expect(page).toContain('Con propietarios');
     expect(page).toContain('Ocupadas');
     expect(page).toContain('personSummary(unit.owners)');
-    expect(page).toContain('participationSummary(unit)');
+    expect(page).toContain('aliquotSummary(unit)');
+    expect(page).toContain("if (unit.ownershipPercentage == null) return 'No definida';");
+    expect(page).toContain('<span>Alícuota</span>');
+    expect(page).not.toContain('Participación inconsistente');
     expect(page).toContain('personSummary(unit.occupancies)');
     expect(page).toContain('unitReferenceLabel');
     expect(page).toContain('supportsBuildingStructure(topology)');
@@ -40,7 +43,29 @@ describe('HAB-262 Units UX redesign', () => {
     expect(detail).toContain('/units/${unit.id}/occupancies');
     expect(detail).toContain('/people`');
     expect(detail).toContain("current ? 'Actual' : 'Histórica'");
+    expect(detail).toContain('alícuota como participación estructural');
     expect(detail).toContain('pagos, cuotas, propietarios, ocupaciones y movimientos');
+  });
+
+  it('uses the dedicated archive flow and explains preservation before archival', async () => {
+    const editor = await read('./features/units/UnitEditor.tsx');
+    const page = await read('./pages/UnitsPage.tsx');
+
+    expect(editor).not.toContain("update('status'");
+    expect(page).toContain('confirmLabel="Archivar unidad"');
+    expect(page).toContain('Archivar retira esta unidad de la operación diaria.');
+    expect(page).toContain('pagos, cuotas y movimientos financieros existentes');
+  });
+
+  it('lets an administrator retry an unavailable directory and distinguishes a saved mutation from a refresh failure', async () => {
+    const page = await read('./pages/UnitsPage.tsx');
+
+    expect(page).toContain('actionLabel="Reintentar"');
+    expect(page).toContain('setReloadNonce((current) => current + 1)');
+    expect(page).toContain('La unidad se guardó, pero no se pudo actualizar el directorio.');
+    expect(page).toContain(
+      'El estado de la unidad se actualizó, pero no se pudo actualizar el directorio.',
+    );
   });
 
   it('uses shared drawer/form primitives with custom validation and UUID-backed buildings', async () => {
@@ -67,7 +92,13 @@ describe('HAB-262 Units UX redesign', () => {
     expect(css).toContain('.units-v3-list__head');
     expect(css).toContain('.units-v3-row');
     expect(css).toContain('.units-v3-detail-facts');
-    expect(css).toContain('@media (max-width: 1180px)');
+    expect(css).toContain('@media (max-width: 1280px)');
+    expect(css).not.toContain('@media (max-width: 1180px)');
+    expect(css).toContain('.units-v3-page > .page-header');
+    expect(css).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+    expect(css).toContain('.units-v3-row__fact');
+    expect(css).toContain('.units-v3-row__status');
+    expect(css).toContain('white-space: normal');
     expect(css).toContain('@media (max-width: 860px)');
     expect(css).toContain('@media (max-width: 560px)');
     expect(css).toContain('grid-template-columns: 1fr');

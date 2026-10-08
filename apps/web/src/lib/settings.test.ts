@@ -3,6 +3,7 @@ import type { NotificationPreference } from '../features/notifications/types';
 import {
   getChangedNotificationPreferences,
   getNotificationChannelTotals,
+  hasNotificationSettingsChanges,
   normalizeNotificationPreferences,
 } from './settings';
 
@@ -57,5 +58,18 @@ describe('notification settings helpers', () => {
       emailEnabled: 2,
       total: 10,
     });
+  });
+
+  it('tracks only actual global notification-setting changes', () => {
+    const original = {
+      condominium_id: 'condo',
+      email_enabled: true,
+      due_soon_enabled: true,
+      due_soon_days: 5,
+      overdue_enabled: true,
+      timezone: 'America/Caracas',
+    };
+    expect(hasNotificationSettingsChanges(original, { ...original })).toBe(false);
+    expect(hasNotificationSettingsChanges(original, { ...original, due_soon_days: 7 })).toBe(true);
   });
 });

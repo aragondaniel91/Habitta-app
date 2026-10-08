@@ -73,12 +73,16 @@
 
 /*
  * Module actions share one visual rhythm. Text length can change the width, but never the height,
- * padding, or tap target. Primary actions keep their emphasis while secondary/help actions remain
- * visually quieter.
+ * padding, typography or tap target. This has to win over `.button[data-size]` too: the shell
+ * injects its own actions (import/help) at `size="sm"` while module actions use the `md` default,
+ * and both land in this same row.
  */
 .page-header__actions > .button {
   min-height: 44px;
-  padding-inline: 1rem;
+  padding: 0 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  line-height: 1;
   white-space: nowrap;
 }
 

@@ -1,5 +1,5 @@
 begin;
-select plan(6);
+select plan(12);
 
 -- HAB-455 regression: an accountant can both register and review payments, but
 -- must not approve their own submission when a different payment_reviewer is
@@ -88,11 +88,57 @@ insert into public.payments(
   now()
 );
 
+update public.profiles
+set full_name = case id
+  when '85500000-0000-0000-0000-000000000001' then 'HAB-455 Registrador'
+  when '85500000-0000-0000-0000-000000000002' then 'HAB-455 Revisor'
+end
+where id in (
+  '85500000-0000-0000-0000-000000000001',
+  '85500000-0000-0000-0000-000000000002'
+);
+
 set local role authenticated;
 select set_config(
   'request.jwt.claim.sub',
   '85500000-0000-0000-0000-000000000001',
   true
+);
+
+select ok(
+  not public.can_approve_payment(
+    '85520000-0000-0000-0000-000000000001',
+    '85550000-0000-0000-0000-000000000001'
+  ),
+  'submitter capability is blocked when a distinct reviewer exists'
+);
+
+select is(
+  (select payer_name || ' / ' || submitted_by_user_id::text from public.payments where id = '85550000-0000-0000-0000-000000000001'),
+  'HAB-455 Submitter / 85500000-0000-0000-0000-000000000001',
+  'payer text and authenticated registrar remain distinct payment facts'
+);
+
+select is(
+  (
+    select full_name
+    from public.list_payment_actor_names(
+      '85520000-0000-0000-0000-000000000001',
+      array['85550000-0000-0000-0000-000000000001']::uuid[]
+    )
+  ),
+  'HAB-455 Registrador',
+  'payment reader receives the registrar display name without changing the payer fact'
+);
+
+select throws_ok(
+  $$select * from public.list_payment_actor_names(
+      '85520000-0000-0000-0000-000000000001',
+      array['85550000-0000-0000-0000-000000000099']::uuid[]
+    )$$,
+  '42501',
+  'payment actor lookup denied',
+  'actor lookup cannot be used to enumerate users outside readable payments'
 );
 
 select throws_ok(
@@ -107,6 +153,52 @@ select throws_ok(
 );
 
 reset role;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '85500000-0000-0000-0000-000000000002',
+  true
+);
+
+select ok(
+  public.can_approve_payment(
+    '85520000-0000-0000-0000-000000000001',
+    '85550000-0000-0000-0000-000000000001'
+  ),
+  'distinct payment reviewer capability allows approval'
+);
+
+reset role;
+
+delete from public.condominium_memberships
+where condominium_id = '85520000-0000-0000-0000-000000000001'
+  and user_id = '85500000-0000-0000-0000-000000000002'
+  and role = 'payment_reviewer';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '85500000-0000-0000-0000-000000000001',
+  true
+);
+
+select ok(
+  public.can_approve_payment(
+    '85520000-0000-0000-0000-000000000001',
+    '85550000-0000-0000-0000-000000000001'
+  ),
+  'submitter capability allows the one-person approval flow without a distinct reviewer'
+);
+
+reset role;
+
+insert into public.condominium_memberships(condominium_id, user_id, role)
+values (
+  '85520000-0000-0000-0000-000000000001',
+  '85500000-0000-0000-0000-000000000002',
+  'payment_reviewer'
+);
 
 select throws_ok(
   $$update public.payments

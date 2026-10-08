@@ -13,11 +13,12 @@ import { Badge, Button, EmptyState, InfoHint, Select, Skeleton, Surface } from '
 import { PageHeader } from '../components/PageHeader';
 import { paymentApi } from '../features/payments/api';
 import { PaymentCaptureDrawer } from '../features/payments/components/PaymentCaptureDrawer';
-import type {
-  Payment,
-  PaymentMethod,
-  PaymentReceipt,
-  Receivable,
+import {
+  paymentActorLabel,
+  type Payment,
+  type PaymentMethod,
+  type PaymentReceipt,
+  type Receivable,
 } from '../features/payments/types';
 import { ApiRequestError, apiRequest } from '../lib/api';
 import { unitReferenceLabel } from '../lib/unit-domain';
@@ -280,6 +281,17 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     );
   }, [data, filters, selectedCurrency, unitCodes]);
 
+  const actionRequiredPayments = useMemo(() => {
+    if (!data) return [];
+    return sortPayments(
+      data.payments.filter(
+        (payment) =>
+          ['draft', 'correction_requested'].includes(payment.status) &&
+          (!selectedCurrency || payment.original_currency_code === selectedCurrency),
+      ),
+    ).slice(0, 4);
+  }, [data, selectedCurrency]);
+
   const loadMorePayments = useCallback(async () => {
     if (!data?.paymentsPage.hasNextPage || loadingMorePayments) return;
     setLoadingMorePayments(true);
@@ -326,7 +338,17 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       return;
     }
     if (['submitted', 'under_review'].includes(payment.status)) {
-      setDrawer({ type: 'review', payment });
+      try {
+        const currentPayment = await paymentApi<Payment>(
+          `/v1/condominiums/${condominiumId}/payments/${payment.id}`,
+          session,
+        );
+        setDrawer({ type: 'review', payment: currentPayment });
+      } catch (requestError) {
+        setMessage(
+          requestError instanceof Error ? requestError.message : 'No se pudo abrir el pago.',
+        );
+      }
       return;
     }
     if (['approved', 'reversed'].includes(payment.status)) {
@@ -441,7 +463,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           value={data.reviewQueueAvailable ? String(summary.pendingReview) : 'Restringido'}
         />
         <MetricCard
-          detail="Borradores y pagos devueltos para corrección."
+          detail="Completa los borradores o corrige los pagos devueltos en la sección de acciones pendientes."
           icon={<ReportsIcon size={20} />}
           label="Requieren acción"
           tone="navy"
@@ -455,6 +477,48 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           value={formatDashboardAmount(summary.reversedAmount, selectedCurrencyLabel)}
         />
       </section>
+
+      {actionRequiredPayments.length ? (
+        <Surface className="payments-panel payments-action-panel">
+          <div className="payments-section-heading">
+            <div>
+              <span className="payments-kicker">Acciones pendientes</span>
+              <h2>Pagos que necesitan tu atención</h2>
+              <p>
+                Un borrador todavía no fue enviado a validación. Un pago devuelto necesita la
+                corrección indicada por el revisor antes de reenviarlo.
+              </p>
+            </div>
+            <Badge tone="warning">{actionRequiredPayments.length} visibles</Badge>
+          </div>
+          <div className="payments-review-list">
+            {actionRequiredPayments.map((payment) => (
+              <button
+                key={payment.id}
+                onClick={() => setDrawer({ type: 'edit', payment })}
+                type="button"
+              >
+                <span>
+                  <ReportsIcon size={18} />
+                </span>
+                <div>
+                  <strong>
+                    {unitCodes.get(payment.unit_id) ?? 'Unidad'} · {payment.payer_name}
+                  </strong>
+                  <small>
+                    {payment.status === 'draft'
+                      ? 'Completa datos/comprobante y envía el pago a validación.'
+                      : payment.correction_reason
+                        ? `Corrección solicitada: ${payment.correction_reason}`
+                        : 'Aplica la corrección solicitada y vuelve a enviar el pago.'}
+                  </small>
+                </div>
+                <b>{payment.status === 'draft' ? 'Completar' : 'Corregir'}</b>
+              </button>
+            ))}
+          </div>
+        </Surface>
+      ) : null}
 
       <section className="payments-insights-grid">
         <Surface className="payments-panel payments-review-panel">
@@ -612,7 +676,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
               <table className="payments-table">
                 <thead>
                   <tr>
-                    <th>Unidad y pagador</th>
+                    <th>Unidad, pagador y registro</th>
                     <th>Método</th>
                     <th>Fecha</th>
                     <th>Monto</th>
@@ -626,8 +690,12 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                       <td>
                         <strong>{unitCodes.get(payment.unit_id) ?? 'Sin unidad'}</strong>
                         <span>
-                          {payment.payer_name}
+                          Pagador: {payment.payer_name}
                           {payment.reference ? ` · ${payment.reference}` : ''}
+                        </span>
+                        <span>
+                          Registrado por:{' '}
+                          {paymentActorLabel(payment.submitted_by_user_id, payment, session.user)}
                         </span>
                       </td>
                       <td>
@@ -666,7 +734,8 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                 <button key={payment.id} onClick={() => void openPayment(payment)} type="button">
                   <div>
                     <strong>
-                      {unitCodes.get(payment.unit_id) ?? 'Sin unidad'} · {payment.payer_name}
+                      {unitCodes.get(payment.unit_id) ?? 'Sin unidad'} · Pagador:{' '}
+                      {payment.payer_name}
                     </strong>
                     <Badge tone={paymentStatusTone(payment.status)}>
                       {paymentStatusLabels[payment.status] ?? payment.status}
@@ -675,6 +744,10 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                   <span>
                     {methodNames.get(payment.payment_method_id) ?? 'Método no disponible'} ·{' '}
                     {formatDashboardDate(payment.payment_date)}
+                  </span>
+                  <span>
+                    Registrado por:{' '}
+                    {paymentActorLabel(payment.submitted_by_user_id, payment, session.user)}
                   </span>
                   <b>
                     {formatDashboardAmount(payment.original_amount, payment.original_currency_code)}
@@ -706,21 +779,23 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
         />
       </Surface>
 
-      {drawer?.type === 'create' ? (
+      {drawer?.type === 'create' || drawer?.type === 'edit' ? (
         <PaymentCaptureDrawer
           condominiumId={condominiumId}
           methods={data.methods}
           onClose={() => setDrawer(null)}
           onComplete={onChanged}
           onDraftCreated={() => load(true)}
+          {...(drawer.type === 'edit' ? { payment: drawer.payment } : {})}
           session={session}
+          submitOnComplete
           units={captureUnitOptions}
         />
       ) : null}
 
       <PaymentsDrawerHost
         condominiumId={condominiumId}
-        drawer={drawer?.type === 'create' ? null : drawer}
+        drawer={drawer?.type === 'create' || drawer?.type === 'edit' ? null : drawer}
         methods={data.methods}
         onChanged={onChanged}
         onClose={() => setDrawer(null)}

@@ -90,6 +90,59 @@ describe('HAB-133 maintenance financial routes', () => {
     expect(databaseCalls).toBe(0);
   });
 
+  it('validates the nested work-order scope before deciding a quote', async () => {
+    let decisionCalls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/auth/v1/user')) return auth();
+        if (url.includes('/maintenance_quotes?')) return Response.json([]);
+        if (url.includes('/rpc/decide_maintenance_quote')) decisionCalls += 1;
+        return Response.json({ id: quote, work_order_id: workOrder });
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/maintenance/work-orders/${workOrder}/quotes/${quote}/decision`,
+      {
+        method: 'POST',
+        headers: { ...token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision: 'approve' }),
+      },
+      env(),
+    );
+
+    expect(response.status).toBe(404);
+    expect(decisionCalls).toBe(0);
+  });
+
+  it('returns a validation error for malformed JSON without reaching maintenance RPCs', async () => {
+    let databaseCalls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        if (String(input).includes('/auth/v1/user')) return auth();
+        databaseCalls += 1;
+        return Response.json({});
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/maintenance/work-orders/${workOrder}/quotes`,
+      {
+        method: 'POST',
+        headers: { ...token, 'Content-Type': 'application/json' },
+        body: '{',
+      },
+      env(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: 'Invalid JSON body' });
+    expect(databaseCalls).toBe(0);
+  });
+
   it('links an existing expense without sending any amount or treasury mutation', async () => {
     let rpcBody = '';
     vi.stubGlobal(

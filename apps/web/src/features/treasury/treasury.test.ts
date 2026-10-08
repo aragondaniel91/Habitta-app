@@ -3,6 +3,9 @@ import {
   balancesByCurrency,
   directionForKind,
   formatTreasuryAmount,
+  movementDescriptionPlaceholders,
+  movementKindHints,
+  projectTreasuryBalance,
   recordableKinds,
   type TreasuryAccount,
 } from './types';
@@ -73,5 +76,30 @@ describe('treasury workspace', () => {
     expect(formatTreasuryAmount('950.5', 'USD')).toBe('USD 950,50');
     expect(formatTreasuryAmount(0, 'VES')).toBe('VES 0,00');
     expect(formatTreasuryAmount('no es un monto', 'USD')).toBe('USD 0,00');
+  });
+
+  it('projects balances with the selected credit or debit direction', () => {
+    expect(projectTreasuryBalance('100.00', '25.50', 'credit')).toBe(125.5);
+    expect(projectTreasuryBalance('100.00', '25.50', 'debit')).toBe(74.5);
+    expect(projectTreasuryBalance('100.00', '25.50', directionForKind('adjustment', 'debit'))).toBe(
+      74.5,
+    );
+  });
+
+  it('uses neutral manual-movement examples rather than automatic payment flows', () => {
+    expect(movementDescriptionPlaceholders).toMatchObject({
+      deposit: 'Aporte extraordinario',
+      withdrawal: 'Retiro de caja',
+      fee: 'Comisión bancaria',
+      adjustment: 'Ajuste por conciliación',
+      opening_balance: 'Saldo inicial de la cuenta',
+    });
+  });
+
+  it('explains opening-balance and adjustment restrictions in the type guidance', () => {
+    expect(movementKindHints.opening_balance).toContain('sin movimientos');
+    expect(movementKindHints.opening_balance).toContain('auditado');
+    expect(movementKindHints.adjustment).toContain('causa');
+    expect(movementKindHints.adjustment).toContain('aumenta o disminuye');
   });
 });

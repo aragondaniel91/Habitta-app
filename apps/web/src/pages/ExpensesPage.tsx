@@ -58,7 +58,14 @@ type WorkspaceData = {
   summary: ExpenseSummary;
 };
 
-type Drawer = 'create' | 'detail' | 'catalogs' | null;
+type TreasuryAccount = {
+  id: string;
+  name: string;
+  currency_code: string;
+  is_active: boolean;
+};
+
+type Drawer = 'create' | 'edit' | 'detail' | 'catalogs' | null;
 
 const emptySummary: ExpenseSummary = {
   totals_by_currency: [],
@@ -269,6 +276,8 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
   const [selectedExpenseId, setSelectedExpenseId] = useState('');
   const [events, setEvents] = useState<ExpenseEvent[]>([]);
   const [attachments, setAttachments] = useState<ExpenseAttachment[]>([]);
+  const [treasuryAccounts, setTreasuryAccounts] = useState<TreasuryAccount[]>([]);
+  const [treasuryAccountId, setTreasuryAccountId] = useState('');
   const [transitioning, setTransitioning] = useState(false);
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [voidReason, setVoidReason] = useState('');
@@ -308,6 +317,8 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     setDrawer(null);
     setSelectedExpenseId('');
     setAttachments([]);
+    setTreasuryAccounts([]);
+    setTreasuryAccountId('');
     setVoidDialogOpen(false);
     setVoidReason('');
     setFilters({ query: '', status: '', currency: '' });
@@ -354,18 +365,55 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     // shows another expense's history while the new one is loading.
     setEvents([]);
     setAttachments([]);
-    const [eventsResult] = await Promise.allSettled([
+    setTreasuryAccounts([]);
+    setTreasuryAccountId(expense.treasury_account_id ?? '');
+    const [eventsResult, , treasuryAccountsResult] = await Promise.allSettled([
       apiRequest<ExpenseEvent[]>(
         `/v1/condominiums/${condominiumId}/expenses/${expense.id}/events`,
         session,
       ),
       loadExpenseDocuments(expense.id),
+      expense.status === 'approved'
+        ? apiRequest<TreasuryAccount[]>(
+            `/v1/condominiums/${condominiumId}/treasury/accounts`,
+            session,
+          )
+        : Promise.resolve([]),
     ]);
     // A newer openDetail call may have started (and even finished) while this one was pending --
     // e.g. the user clicked a second expense before the first request settled. Discard this
     // response so it cannot clobber the newer selection with stale events.
     if (requestId !== latestDetailRequest.current) return;
     setEvents(eventsResult.status === 'fulfilled' ? eventsResult.value : []);
+    setTreasuryAccounts(
+      treasuryAccountsResult.status === 'fulfilled'
+        ? treasuryAccountsResult.value.filter(
+            (account) => account.is_active && account.currency_code === expense.currency_code,
+          )
+        : [],
+    );
+  };
+
+  const selectTreasuryAccount = async () => {
+    if (!selectedExpense || !treasuryAccountId) return;
+    setTransitioning(true);
+    setError('');
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/treasury/expenses/${selectedExpense.id}/account`,
+        session,
+        { method: 'POST', body: JSON.stringify({ accountId: treasuryAccountId }) },
+      );
+      await load();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo seleccionar la cuenta de tesorería.',
+      );
+    } finally {
+      setTransitioning(false);
+    }
   };
 
   const transition = async (action: string, reason?: string) => {
@@ -601,6 +649,23 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
           />
         ) : null}
 
+        {drawer === 'edit' && selectedExpense?.status === 'draft' ? (
+          <ExpenseCaptureDrawer
+            categories={data.categories}
+            condominiumId={condominiumId}
+            expense={selectedExpense}
+            onClose={() => setDrawer(null)}
+            onComplete={async () => {
+              await load();
+              setDrawer(null);
+              setSelectedExpenseId('');
+            }}
+            onDraftCreated={load}
+            session={session}
+            vendors={data.vendors}
+          />
+        ) : null}
+
         {drawer === 'catalogs' ? (
           <DrawerShell
             eyebrow="Configuración operativa"
@@ -668,6 +733,41 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
               {selectedExpense.notes ? (
                 <p className="expenses-detail__notes">{selectedExpense.notes}</p>
               ) : null}
+              {selectedExpense.status === 'approved' && treasuryAccounts.length ? (
+                <section className="expenses-treasury-selection">
+                  <h3>Cuenta de tesorería</h3>
+                  <p>
+                    Selecciona la cuenta que registrará la salida al marcar este gasto como pagado.
+                  </p>
+                  <div>
+                    <Select
+                      aria-label="Cuenta de tesorería para el gasto"
+                      onChange={(event) => setTreasuryAccountId(event.target.value)}
+                      value={treasuryAccountId}
+                    >
+                      <option value="">Selecciona una cuenta</option>
+                      {treasuryAccounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.name} · {account.currency_code}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button
+                      disabled={
+                        transitioning ||
+                        !treasuryAccountId ||
+                        treasuryAccountId === selectedExpense.treasury_account_id
+                      }
+                      onClick={() => void selectTreasuryAccount()}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      Guardar cuenta
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
               <section className="expenses-documents">
                 <h3>Documentos privados</h3>
                 {attachments.length ? (
@@ -729,6 +829,11 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
                 />
               </section>
               <div className="expenses-detail__actions">
+                {selectedExpense.status === 'draft' ? (
+                  <Button onClick={() => setDrawer('edit')} size="sm" variant="secondary">
+                    Editar borrador
+                  </Button>
+                ) : null}
                 {nextExpenseActions(selectedExpense.status).map((action) => (
                   <Button
                     disabled={transitioning}

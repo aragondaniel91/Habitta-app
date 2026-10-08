@@ -6,7 +6,7 @@ import { FormActions, FormGrid } from '../../../components/FormLayout';
 import { Button, Field, Select } from '../../../components/ui';
 import '../../../financial-capture.css';
 import { paymentApi } from '../api';
-import type { Payment, PaymentMethod } from '../types';
+import { paymentActorLabel, type Payment, type PaymentMethod } from '../types';
 
 /**
  * A unit this drawer is allowed to offer as a payment destination, already named.
@@ -18,6 +18,7 @@ import type { Payment, PaymentMethod } from '../types';
  */
 export type PaymentUnitOption = { id: string; label: string };
 import { PaymentProofUploader } from './PaymentProofUploader';
+import { PaymentProofPreview } from './PaymentProofPreview';
 
 export function PaymentCaptureDrawer({
   condominiumId,
@@ -45,6 +46,7 @@ export function PaymentCaptureDrawer({
   const [message, setMessage] = useState('');
   const [savedPayment, setSavedPayment] = useState<Payment>();
   const [proofSaved, setProofSaved] = useState(false);
+  const [proofRefreshKey, setProofRefreshKey] = useState(0);
   const [selectedMethodId, setSelectedMethodId] = useState(
     payment?.payment_method_id ?? methods.find((item) => item.is_active)?.id ?? '',
   );
@@ -92,9 +94,9 @@ export function PaymentCaptureDrawer({
     }
   };
 
-  const finish = async () => {
+  const finish = async (sendForReview: boolean) => {
     if (!savedPayment || saving) return;
-    if (!submitOnComplete) {
+    if (!sendForReview || !submitOnComplete) {
       await onComplete(proofSaved ? 'Pago y comprobante guardados.' : 'Borrador de pago guardado.');
       return;
     }
@@ -115,7 +117,18 @@ export function PaymentCaptureDrawer({
         session,
         { method: 'POST' },
       );
-      await onComplete('Pago enviado a validación.');
+      const submittedPayment = await paymentApi<Payment>(
+        `/v1/condominiums/${condominiumId}/payments/${savedPayment.id}`,
+        session,
+      );
+      const registrar = paymentActorLabel(
+        submittedPayment.submitted_by_user_id,
+        submittedPayment,
+        session.user,
+      );
+      await onComplete(
+        `Pago de ${submittedPayment.payer_name} registrado por ${registrar ?? 'Nombre no disponible'}. Estado: enviado a revisión. ${submittedPayment.can_approve ? 'Próximo paso: abre la revisión para validar, aplicar y aprobar el pago.' : 'Próximo paso: otro revisor debe validar y aprobar el pago.'}`,
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -137,7 +150,7 @@ export function PaymentCaptureDrawer({
       {!savedPayment ? (
         <form className="payments-form ux-form" onSubmit={(event) => void saveDetails(event)}>
           {message ? <div className="payments-form__message">{message}</div> : null}
-          {payment?.correction_reason ? (
+          {payment?.status === 'correction_requested' && payment.correction_reason ? (
             <div className="payments-form__notice">
               <strong>La administración solicitó una corrección:</strong>{' '}
               {payment.correction_reason}
@@ -280,11 +293,21 @@ export function PaymentCaptureDrawer({
             <strong>2. Comprobante</strong>
           </div>
           {message ? <div className="payments-form__message">{message}</div> : null}
+          {savedPayment.status === 'correction_requested' && savedPayment.correction_reason ? (
+            <div className="payments-form__notice">
+              <strong>La administración solicitó una corrección:</strong>{' '}
+              {savedPayment.correction_reason}
+            </div>
+          ) : null}
           <div className="financial-capture-summary">
             <span>{editing ? 'Corrección guardada' : 'Datos del pago'}</span>
             <strong>{savedPayment.payer_name}</strong>
             <small>
               {savedPayment.original_amount} {savedPayment.original_currency_code}
+            </small>
+            <small>
+              Pagador: {savedPayment.payer_name} · Registrado por:{' '}
+              {paymentActorLabel(savedPayment.submitted_by_user_id, savedPayment, session.user)}
             </small>
           </div>
           <div className="payments-proof-section">
@@ -296,16 +319,37 @@ export function PaymentCaptureDrawer({
               condominiumId={condominiumId}
               onDone={(nextMessage) => {
                 setMessage(nextMessage);
-                if (nextMessage === 'Comprobante guardado.') setProofSaved(true);
+                if (nextMessage === 'Comprobante guardado.') {
+                  setProofSaved(true);
+                  setProofRefreshKey((current) => current + 1);
+                }
               }}
               paymentId={savedPayment.id}
               session={session}
             />
+            {proofSaved ? (
+              <PaymentProofPreview
+                condominiumId={condominiumId}
+                paymentId={savedPayment.id}
+                refreshKey={proofRefreshKey}
+                session={session}
+              />
+            ) : null}
           </div>
           <FormActions className="financial-capture-footer" sticky>
+            {submitOnComplete ? (
+              <Button
+                disabled={saving}
+                onClick={() => void finish(false)}
+                type="button"
+                variant="secondary"
+              >
+                Guardar pendiente de revisión
+              </Button>
+            ) : null}
             <Button
               disabled={saving || (requiresProof && !proofSaved && !editing)}
-              onClick={() => void finish()}
+              onClick={() => void finish(true)}
               type="button"
             >
               {saving
@@ -313,10 +357,16 @@ export function PaymentCaptureDrawer({
                   ? 'Enviando…'
                   : 'Guardando…'
                 : submitOnComplete
-                  ? 'Enviar a validación'
+                  ? 'Registrar y enviar a revisión'
                   : 'Finalizar registro'}
             </Button>
           </FormActions>
+          {submitOnComplete ? (
+            <small className="financial-capture-next-step">
+              La aprobación se realiza después de revisar el comprobante, la aplicación y la cuenta
+              de tesorería. Si hay otro revisor, esa persona debe aprobar el pago.
+            </small>
+          ) : null}
         </div>
       )}
     </Drawer>

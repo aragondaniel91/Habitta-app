@@ -46,6 +46,7 @@ import { recurringDuesRoutes } from './recurring-dues-routes';
 import { unitsDirectoryRoutes } from './units-directory-routes';
 import { tenancyRoutes } from './tenancy-routes';
 import { withinRateLimit } from './http-security';
+import { attachPaymentActorNames } from './payment-actor-names';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
@@ -176,15 +177,28 @@ app.get('/v1/condominiums/:id', async (c) =>
 // via `adminInvitationRoutes` earlier in this file) already registers the same paths and Hono
 // dispatches to the first matching handler. `structure-routes.ts` is the live implementation and
 // also handles unit-code conflicts (409) and not-found (404), which this dead copy never did.
-const list =
-  (table: string, filter: string) =>
+const unitExistsInCondominium = async (
+  c: Context<{ Bindings: Bindings; Variables: Variables }>,
+  condominiumId: string,
+  unitId: string,
+) => {
+  const response = await rest(
+    c,
+    `units?id=eq.${unitId}&condominium_id=eq.${condominiumId}&select=id`,
+  );
+  if (!response.ok) return false;
+  return Boolean(((await response.json()) as unknown[])[0]);
+};
+
+const listUnitRelationships =
+  (table: 'unit_owners' | 'unit_occupancies') =>
   async (c: Context<{ Bindings: Bindings; Variables: Variables }>) => {
-    const resolved = filter
-      .replace(':unitId', filter.includes(':unitId') ? uuidSchema.parse(c.req.param('unitId')) : '')
-      .replace(':id', filter.includes(':id') ? uuidSchema.parse(c.req.param('id')) : '');
-    const r = await rest(c, `${table}?${resolved}&select=*`);
-    const value = await r.json();
-    return c.json(value, r.ok ? 200 : 400);
+    const condominiumId = uuidSchema.parse(c.req.param('id'));
+    const unitId = uuidSchema.parse(c.req.param('unitId'));
+    if (!(await unitExistsInCondominium(c, condominiumId, unitId)))
+      return c.json({ error: 'Unit not found' }, 404);
+    const response = await rest(c, `${table}?unit_id=eq.${unitId}&select=*`);
+    return c.json(await response.json(), response.ok ? 200 : 400);
   };
 // NOTE (HAB-483 cleanup): the legacy `app.get('/v1/condominiums/:id/people', list(...))` that used
 // to live here was removed. It was dead code: `admin-invitations.ts` registers the same path earlier
@@ -236,14 +250,18 @@ app.patch('/v1/condominiums/:id/people/:personId', async (c) => {
   );
   return c.json(await r.json(), r.ok ? 200 : 400);
 });
-app.get('/v1/condominiums/:id/units/:unitId/owners', list('unit_owners', 'unit_id=eq.:unitId'));
+app.get('/v1/condominiums/:id/units/:unitId/owners', listUnitRelationships('unit_owners'));
 app.post('/v1/condominiums/:id/units/:unitId/owners', async (c) => {
   const p = await body(c, ownerInputSchema);
   if (p instanceof Response) return p;
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const unitId = uuidSchema.parse(c.req.param('unitId'));
+  if (!(await unitExistsInCondominium(c, condominiumId, unitId)))
+    return c.json({ error: 'Unit not found' }, 404);
   const r = await rest(c, 'unit_owners', {
     method: 'POST',
     body: JSON.stringify({
-      unit_id: uuidSchema.parse(c.req.param('unitId')),
+      unit_id: unitId,
       person_id: p.personId,
       ownership_percentage: p.ownershipPercentage ?? null,
       is_primary_contact: p.isPrimaryContact,
@@ -255,15 +273,19 @@ app.post('/v1/condominiums/:id/units/:unitId/owners', async (c) => {
 });
 app.get(
   '/v1/condominiums/:id/units/:unitId/occupancies',
-  list('unit_occupancies', 'unit_id=eq.:unitId'),
+  listUnitRelationships('unit_occupancies'),
 );
 app.post('/v1/condominiums/:id/units/:unitId/occupancies', async (c) => {
   const p = await body(c, occupancyInputSchema);
   if (p instanceof Response) return p;
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const unitId = uuidSchema.parse(c.req.param('unitId'));
+  if (!(await unitExistsInCondominium(c, condominiumId, unitId)))
+    return c.json({ error: 'Unit not found' }, 404);
   const r = await rest(c, 'unit_occupancies', {
     method: 'POST',
     body: JSON.stringify({
-      unit_id: uuidSchema.parse(c.req.param('unitId')),
+      unit_id: unitId,
       person_id: p.personId,
       occupancy_type: p.occupancyType,
       is_primary_contact: p.isPrimaryContact,
@@ -276,6 +298,9 @@ app.post('/v1/condominiums/:id/units/:unitId/occupancies', async (c) => {
 const assignmentPatchSchema = z.object({
   isPrimaryContact: z.boolean().optional(),
   ownershipPercentage: z.number().positive().max(100).optional(),
+  occupancyType: z
+    .enum(['owner_occupant', 'tenant', 'family_member', 'authorized_occupant'])
+    .optional(),
   endsAt: z.string().date().optional(),
 });
 async function patchAssignment(
@@ -300,6 +325,47 @@ async function patchAssignment(
     return c.json({ error: 'Assignment not found' }, 404);
   if (p.endsAt && p.endsAt < rows[0].starts_at)
     return c.json({ error: 'ends_at must not precede starts_at' }, 400);
+  // Attribute corrections are deliberately routed through audited database functions.  A close
+  // remains a lifecycle event and is the only operation that supplies an end date.
+  if (owner && p.ownershipPercentage !== undefined) {
+    const r = await rest(c, 'rpc/correct_unit_owner_percentage', {
+      method: 'POST',
+      body: JSON.stringify({
+        target: condominiumId,
+        target_assignment: assignmentId,
+        next_percentage: p.ownershipPercentage,
+      }),
+    });
+    const result: unknown = await r.json().catch(() => null);
+    const message =
+      typeof result === 'object' && result !== null && 'message' in result
+        ? String(result.message)
+        : '';
+    if (
+      message.includes('unit ownership percentage total cannot exceed 100') ||
+      message.includes('unit ownership percentage total above 100 must be strictly reduced')
+    ) {
+      return c.json(
+        {
+          error:
+            'Los porcentajes conocidos de propiedad de esta unidad superan 100%. Corrige una relación existente reduciendo su porcentaje antes de aumentar o agregar otra.',
+        },
+        409,
+      );
+    }
+    return c.json(result, r.ok ? 200 : 400);
+  }
+  if (!owner && p.occupancyType !== undefined) {
+    const r = await rest(c, 'rpc/correct_unit_occupancy_type', {
+      method: 'POST',
+      body: JSON.stringify({
+        target: condominiumId,
+        target_assignment: assignmentId,
+        next_type: p.occupancyType,
+      }),
+    });
+    return c.json(await r.json(), r.ok ? 200 : 400);
+  }
   const r = await rest(c, `${table}?id=eq.${assignmentId}`, {
     method: 'PATCH',
     body: JSON.stringify({
@@ -648,13 +714,36 @@ const rpcAllocations = (
     fx_rate_source: allocation.fxRateSource ?? null,
     fx_rate_at: allocation.fxRateAt ?? null,
   }));
+// Domain failures raised by the payment RPCs that the client can explain to the administrator.
+// Only these exact messages are forwarded as `reason`; anything else stays opaque.
+const readableFailureReasons = new Set([
+  'payment cannot be submitted',
+  'payment reference required',
+  'payment proof required',
+  'payment update denied',
+  'invalid payment draft',
+  'invalid payment method or unit',
+  'invalid payment method or currency',
+  'invalid represented person',
+  'invalid transition',
+  'invalid payment status',
+  'invalid payment allocations',
+  'payment not found',
+  'payment not reversible',
+  'reversal reason required',
+  'treasury account can only be selected while payment is under review',
+  'payment method not found',
+  'payment method in use',
+  'idempotency conflict',
+  'independent payment approval required',
+]);
 const responseJson = async (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   response: Response,
   successStatus: 200 | 201 = 200,
   failureStatus: 400 | 403 | 404 | 409 = 409,
 ) => {
-  const value = (await response.json()) as { code?: string };
+  const value = (await response.json()) as { code?: string; message?: string };
   if (response.ok) return c.json(value, successStatus);
   const status: 400 | 403 | 404 | 409 =
     response.status === 401 || response.status === 403 || value.code === '42501'
@@ -662,7 +751,12 @@ const responseJson = async (
       : value.code === '23505'
         ? 409
         : failureStatus;
-  return c.json({ error: status === 403 ? 'Forbidden' : 'Request conflict' }, status);
+  const reason =
+    typeof value.message === 'string' && readableFailureReasons.has(value.message)
+      ? value.message
+      : undefined;
+  if (status === 403) return c.json({ error: 'Forbidden', ...(reason ? { reason } : {}) }, status);
+  return c.json({ error: 'Request conflict', ...(reason ? { reason } : {}) }, status);
 };
 
 app.get('/v1/condominiums/:id/announcements', async (c) => {
@@ -993,7 +1087,14 @@ app.post('/v1/condominiums/:id/payment-methods', async (c) => {
   return c.json(await r.json(), r.ok ? 201 : 403);
 });
 app.patch('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
-  const p = await body(c, paymentMethodSchema.partial());
+  // Empty strings are clear operations only for editable optional details. Creation continues to
+  // require a valid email when one is supplied.
+  const p = await body(
+    c,
+    paymentMethodSchema.partial().extend({
+      emailMasked: z.union([z.string().email(), z.literal('')]).optional(),
+    }),
+  );
   if (p instanceof Response) return p;
   const r = await rest(
     c,
@@ -1004,25 +1105,59 @@ app.patch('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
         method_type: p.methodType,
         display_name: p.displayName,
         currency_code: p.currencyCode,
-        instructions: p.instructions,
+        account_holder: p.accountHolder === '' ? null : p.accountHolder,
+        bank_name: p.bankName === '' ? null : p.bankName,
+        account_identifier_masked:
+          p.accountIdentifierMasked === '' ? null : p.accountIdentifierMasked,
+        phone_masked: p.phoneMasked === '' ? null : p.phoneMasked,
+        email_masked: p.emailMasked === '' ? null : p.emailMasked,
+        instructions: p.instructions === '' ? null : p.instructions,
         requires_reference: p.requiresReference,
         requires_proof: p.requiresProof,
         is_active: p.isActive,
+        updated_at: new Date().toISOString(),
       }),
     },
   );
-  return c.json(await r.json(), r.ok ? 200 : 403);
+  if (!r.ok) return responseJson(c, r, 200, 409);
+  // RLS hides rows the caller may not update, so an empty result is either a missing method or a
+  // caller without payment-method management rights; neither leaks which one.
+  const rows = (await r.json()) as unknown[];
+  return rows.length ? c.json(rows[0]) : c.json({ error: 'Payment method not found' }, 404);
+});
+app.delete('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
+  const r = await rpc(c, 'delete_payment_method', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_method: uuidSchema.parse(c.req.param('methodId')),
+  });
+  return responseJson(c, r, 200, 409);
 });
 app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
   const allowed = await rpc(c, 'can_review_payments', {
-    target: uuidSchema.parse(c.req.param('id')),
+    target: condominiumId,
   });
   if (!allowed.ok || (await allowed.json()) !== true) return c.json({ error: 'Forbidden' }, 403);
   const r = await rest(
     c,
-    `payments?condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&status=in.(submitted,under_review)&select=*&order=submitted_at.asc`,
+    `payments?condominium_id=eq.${condominiumId}&status=in.(submitted,under_review)&select=*&order=submitted_at.asc`,
   );
-  return c.json(await r.json(), r.ok ? 200 : 403);
+  if (!r.ok) return c.json(await r.json(), 403);
+  const payments = (await r.json()) as Array<Record<string, unknown>>;
+  const withApprovalCapability = await Promise.all(
+    payments.map(async (payment) => {
+      const capability = await rpc(c, 'can_approve_payment', {
+        target: condominiumId,
+        target_payment: payment.id,
+      });
+      return { ...payment, can_approve: capability.ok && (await capability.json()) === true };
+    }),
+  );
+  return c.json(
+    await attachPaymentActorNames(condominiumId, withApprovalCapability, (name, payload) =>
+      rpc(c, name, payload),
+    ),
+  );
 });
 // NOTE (HAB-483 cleanup): the legacy `financeList`-backed payments GET was removed here too — see the
 // note above `charge-concepts`.
@@ -1045,13 +1180,28 @@ app.post('/v1/condominiums/:id/payments', async (c) => {
   return responseJson(c, r, 201, 409);
 });
 app.get('/v1/condominiums/:id/payments/:paymentId', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const paymentId = uuidSchema.parse(c.req.param('paymentId'));
   const r = await rest(
     c,
-    `payments?id=eq.${uuidSchema.parse(c.req.param('paymentId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}&select=*`,
+    `payments?id=eq.${paymentId}&condominium_id=eq.${condominiumId}&select=*`,
   );
   if (!r.ok) return c.json({ error: 'Request failed' }, r.status === 403 ? 403 : 404);
   const rows = (await r.json()) as unknown[];
-  return rows.length ? c.json(rows[0]) : c.json({ error: 'Payment not found' }, 404);
+  if (!rows.length) return c.json({ error: 'Payment not found' }, 404);
+  const capability = await rpc(c, 'can_approve_payment', {
+    target: condominiumId,
+    target_payment: paymentId,
+  });
+  const [withActorNames] = await attachPaymentActorNames(
+    condominiumId,
+    [rows[0] as Record<string, unknown>],
+    (name, payload) => rpc(c, name, payload),
+  );
+  return c.json({
+    ...withActorNames,
+    can_approve: capability.ok && (await capability.json()) === true,
+  });
 });
 app.patch('/v1/condominiums/:id/payments/:paymentId', async (c) => {
   const p = await body(c, paymentUpdateSchema);
@@ -1067,14 +1217,14 @@ app.patch('/v1/condominiums/:id/payments/:paymentId', async (c) => {
     reference_value: p.reference ?? null,
     notes_value: p.notes ?? null,
   });
-  return c.json(await r.json(), r.ok ? 200 : 409);
+  return responseJson(c, r, 200, 409);
 });
 app.post('/v1/condominiums/:id/payments/:paymentId/submit', async (c) => {
   const r = await rpc(c, 'submit_payment', {
     target: uuidSchema.parse(c.req.param('id')),
     target_payment: uuidSchema.parse(c.req.param('paymentId')),
   });
-  return c.json(await r.json(), r.ok ? 200 : 409);
+  return responseJson(c, r, 200, 409);
 });
 const paymentTransition =
   (state: 'under_review' | 'correction_requested' | 'rejected') =>
@@ -1087,7 +1237,7 @@ const paymentTransition =
       next_status: state,
       reason: 'reason' in p ? p.reason : null,
     });
-    return c.json(await r.json(), r.ok ? 200 : 409);
+    return responseJson(c, r, 200, 409);
   };
 app.post(
   '/v1/condominiums/:id/payments/:paymentId/start-review',
@@ -1106,7 +1256,7 @@ app.post('/v1/condominiums/:id/payments/:paymentId/approve', async (c) => {
     target_payment: uuidSchema.parse(c.req.param('paymentId')),
     allocations: rpcAllocations(p.allocations),
   });
-  return c.json(await r.json(), r.ok ? 200 : 409);
+  return responseJson(c, r, 200, 409);
 });
 app.post('/v1/condominiums/:id/payments/:paymentId/reverse', async (c) => {
   const p = await body(c, paymentReasonSchema);
@@ -1116,7 +1266,7 @@ app.post('/v1/condominiums/:id/payments/:paymentId/reverse', async (c) => {
     target_payment: uuidSchema.parse(c.req.param('paymentId')),
     reason: p.reason,
   });
-  return c.json(await r.json(), r.ok ? 200 : 409);
+  return responseJson(c, r, 200, 409);
 });
 app.post('/v1/condominiums/:id/payments/:paymentId/allocation-preview', async (c) => {
   const p = await body(c, approvePaymentSchema);

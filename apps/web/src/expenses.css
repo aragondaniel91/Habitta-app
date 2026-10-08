@@ -315,6 +315,30 @@
   background: var(--surface-subtle);
   line-height: 1.6;
 }
+.expenses-treasury-selection {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+.expenses-treasury-selection h3,
+.expenses-treasury-selection p {
+  margin: 0;
+}
+.expenses-treasury-selection p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.expenses-treasury-selection > div {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.expenses-treasury-selection .select {
+  min-width: 0;
+  flex: 1;
+}
 .expenses-support-link {
   display: flex;
   align-items: center;
@@ -430,6 +454,10 @@
   }
   .expenses-detail__amount {
     align-items: flex-start;
+    flex-direction: column;
+  }
+  .expenses-treasury-selection > div {
+    align-items: stretch;
     flex-direction: column;
   }
 }

@@ -17,6 +17,7 @@ import {
   getEventDetail,
   isOpenRequest,
   priorityLabels,
+  requestDetailLoadError,
   statusLabels,
 } from '../lib/service-requests';
 import type {
@@ -329,6 +330,7 @@ function ResidentRequestDetailDrawer({
 }) {
   const [detail, setDetail] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detailError, setDetailError] = useState('');
   const [comment, setComment] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -338,6 +340,7 @@ function ResidentRequestDetailDrawer({
   const loadDetail = useCallback(async () => {
     setLoading(true);
     setDetail(null);
+    setDetailError('');
     const base = `/v1/condominiums/${condominiumId}/requests/${request.id}`;
     const [comments, events, attachments] = await Promise.allSettled([
       apiRequest<ServiceRequestComment[]>(`${base}/comments`, session),
@@ -349,6 +352,7 @@ function ResidentRequestDetailDrawer({
       events: events.status === 'fulfilled' ? events.value : [],
       attachments: attachments.status === 'fulfilled' ? attachments.value : [],
     });
+    setDetailError(requestDetailLoadError({ comments, events, attachments }));
     setLoading(false);
   }, [condominiumId, request.id, session]);
 
@@ -477,6 +481,18 @@ function ResidentRequestDetailDrawer({
             <h3>Actividad de la solicitud</h3>
             <p>Solo se muestran actualizaciones compartidas con residentes.</p>
           </div>
+          {detailError ? (
+            <div
+              className="resident-requests__message resident-requests__message--retry"
+              data-tone="error"
+              role="alert"
+            >
+              <span>{detailError}</span>
+              <Button onClick={() => void loadDetail()} size="sm" type="button" variant="ghost">
+                Reintentar
+              </Button>
+            </div>
+          ) : null}
           {loading || !detail ? (
             <Skeleton className="skeleton--card" />
           ) : (

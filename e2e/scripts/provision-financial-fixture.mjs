@@ -38,6 +38,7 @@ const ids = {
   familyResidentPerson: '44444444-4444-4444-8444-444444444444',
   authorizedResidentPerson: '44444444-4444-4444-8444-444444444445',
   payerOwnership: '55555555-5555-4555-8555-555555555551',
+  additionalRecipientOwnership: '55555555-5555-4555-8555-555555555552',
   chargeConcept: '66666666-6666-4666-8666-666666666661',
   paymentMethod: '77777777-7777-4777-8777-777777777771',
   receivableItem: '88888888-8888-4888-8888-888888888881',
@@ -228,15 +229,29 @@ await insert('people', [
   },
 ]);
 
-await insert('unit_owners', {
-  id: ids.payerOwnership,
-  unit_id: ids.primaryUnitA101,
-  person_id: ids.payerPerson,
-  ownership_percentage: 100,
-  is_primary_contact: true,
-  starts_at: '2020-01-01',
-  created_by: adminId,
-});
+// The fixture declares both `payer` and `additionalRecipient` as owners of E2E-A101 (see
+// financial.fixture.json), so both get an explicit, valid unit_owners share here. Leaving either
+// one to default would let two active owners both land on 100 and sum past the unit's 100% cap.
+await insert('unit_owners', [
+  {
+    id: ids.payerOwnership,
+    unit_id: ids.primaryUnitA101,
+    person_id: ids.payerPerson,
+    ownership_percentage: 60,
+    is_primary_contact: true,
+    starts_at: '2020-01-01',
+    created_by: adminId,
+  },
+  {
+    id: ids.additionalRecipientOwnership,
+    unit_id: ids.primaryUnitA101,
+    person_id: ids.additionalRecipientPerson,
+    ownership_percentage: 40,
+    is_primary_contact: false,
+    starts_at: '2020-01-01',
+    created_by: adminId,
+  },
+]);
 
 await insert('unit_occupancies', [
   {

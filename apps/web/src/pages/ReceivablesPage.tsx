@@ -544,12 +544,16 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             </p>
           </div>
           <div className="receivables-tools-menu">
-            <Button onClick={() => openDrawer('concept')} size="sm" variant="ghost">
-              Nuevo concepto
-            </Button>
-            <Button onClick={() => openDrawer('opening')} size="sm" variant="ghost">
-              Importar saldos
-            </Button>
+            {manage ? (
+              <>
+                <Button onClick={() => openDrawer('concept')} size="sm" variant="ghost">
+                  Nuevo concepto
+                </Button>
+                <Button onClick={() => openDrawer('opening')} size="sm" variant="ghost">
+                  Importar saldos
+                </Button>
+              </>
+            ) : null}
             <Button disabled={loading} onClick={() => void load()} size="sm" variant="ghost">
               {loading ? 'Actualizando…' : 'Actualizar'}
             </Button>

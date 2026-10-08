@@ -46,6 +46,7 @@ export type TreasuryTransfer = {
   currency_code: string;
   occurred_on: string;
   description: string;
+  reference: string | null;
 };
 
 export type TreasuryReconciliation = {
@@ -60,6 +61,21 @@ export type TreasuryReconciliation = {
   difference: string | null;
   status: 'draft' | 'closed';
   closed_at: string | null;
+  notes?: string | null;
+};
+
+export type TreasuryReconciliationCandidate = TreasuryMovement & {
+  matched_in_reconciliation: boolean;
+  matched_reconciliation_id: string | null;
+};
+
+export type TreasuryReconciliationWorkspace = {
+  total_count: number;
+  matched_count: number;
+  matched_amount: string;
+  book_closing_balance: string;
+  difference: string;
+  items: TreasuryReconciliationCandidate[];
 };
 
 export const accountTypeLabels: Record<TreasuryAccountType, string> = {
@@ -78,6 +94,21 @@ export const movementKindLabels: Record<TreasuryMovementKind, string> = {
   reversal: 'Reverso',
 };
 
+export const accountTypeHints: Record<TreasuryAccountType, string> = {
+  bank: 'Cuenta en una institución financiera; concíliala contra el estado de cuenta del banco.',
+  cash: 'Efectivo custodiado por la administración (caja chica o caja de cobros).',
+};
+
+/** Plain-language guidance shown under the movement type, one line per recordable kind. */
+export const movementKindHints: Partial<Record<TreasuryMovementKind, string>> = {
+  opening_balance:
+    'Solo se admite en una cuenta sin movimientos y queda como movimiento auditado e inmutable.',
+  deposit: 'Entrada de dinero que no proviene de un pago aprobado (por ejemplo, un aporte).',
+  withdrawal: 'Salida de dinero: pagos a proveedores, gastos o retiros de caja.',
+  fee: 'Comisión o cargo bancario descontado por la institución.',
+  adjustment: 'Corrección para cuadrar el saldo; explica la causa e indica si aumenta o disminuye.',
+};
+
 /** Kinds an administrator may record directly; the rest are produced by their own operation. */
 export const recordableKinds: TreasuryMovementKind[] = [
   'opening_balance',
@@ -86,6 +117,18 @@ export const recordableKinds: TreasuryMovementKind[] = [
   'fee',
   'adjustment',
 ];
+
+/** Neutral examples for movements captured outside Habitta's automatic posting flows. */
+export const movementDescriptionPlaceholders: Record<TreasuryMovementKind, string> = {
+  opening_balance: 'Saldo inicial de la cuenta',
+  deposit: 'Aporte extraordinario',
+  withdrawal: 'Retiro de caja',
+  fee: 'Comisión bancaria',
+  adjustment: 'Ajuste por conciliación',
+  transfer_in: '',
+  transfer_out: '',
+  reversal: '',
+};
 
 /**
  * Deposits, withdrawals and fees always move funds the same way, so their direction is implied
@@ -119,6 +162,29 @@ export const formatTreasuryDate = (value: string | null) => {
     ? '—'
     : date.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
 };
+
+/** Mirrors the API money contract: decimal strings only, positive, and at most two decimals. */
+export const isPositiveTreasuryAmount = (value: string) =>
+  /^(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,2})?$/.test(value) &&
+  value !== '0' &&
+  value !== '0.0' &&
+  value !== '0.00';
+
+/** Applies the selected direction to a displayed balance without changing accounting rules. */
+export const projectTreasuryBalance = (
+  balance: string | number,
+  amount: string | number,
+  direction: 'credit' | 'debit',
+) => {
+  const current = Number(balance);
+  const movement = Number(amount);
+  if (!Number.isFinite(current) || !Number.isFinite(movement)) return 0;
+  return direction === 'debit' ? current - movement : current + movement;
+};
+
+/** Reconciliation statements are balances, so the API deliberately allows signed and zero values. */
+export const isTreasuryBalance = (value: string) =>
+  /^-?(?:0|[1-9][0-9]{0,15})(?:\.[0-9]{1,2})?$/.test(value);
 
 /** Accounts never mix currencies, so the workspace totals one figure per currency. */
 export const balancesByCurrency = (accounts: TreasuryAccount[]) => {

@@ -1,5 +1,5 @@
 begin;
-select plan(85);
+select plan(106);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('80000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@pay.test','x',now(),now()),
@@ -68,11 +68,30 @@ select public.create_receivable_item('81100000-0000-0000-0000-000000000001','811
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004',true);
 select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000001',null,current_date,100,'USD','Owner',null,null,'owner-proof')$$,'owner creates payment for active unit');
 select is((select count(*) from public.payments where idempotency_key='owner-proof'),1::bigint,'owner payment is stored once');
+select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,10,'USD','Owner staff path',null,null,'staff-path')$$,'owner creates staff-path payment draft');
+select is((select count(*) from public.payments where idempotency_key='staff-path'),1::bigint,'staff-path payment is stored once');
+create temporary table payment_test_fixture on commit drop as
+select id as staff_path_payment_id
+from public.payments
+where idempotency_key='staff-path';
 select throws_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000002','81130000-0000-0000-0000-000000000001',null,current_date,1,'USD','Owner',null,null,'wrong-unit')$$,null,null,'owner cannot create for another unit');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000010',true);
 select throws_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,1,'USD','Expired',null,null,'expired')$$,null,null,'expired relation cannot create payment');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000006',true);
+select throws_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,1,'USD','Board member',null,null,'board-member')$$,'42501','payment submission denied','board member cannot create a payment draft');
+select throws_ok($$select public.update_payment_draft('81100000-0000-0000-0000-000000000001',(select staff_path_payment_id from payment_test_fixture),'81130000-0000-0000-0000-000000000004',current_date,10,'USD','Board member',null,null)$$,'42501','payment update denied','board member cannot update another payer payment draft');
+select throws_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select staff_path_payment_id from payment_test_fixture))$$,'42501','payment submission denied','board member cannot submit another payer payment draft');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000007',true);
+select lives_ok($$select public.update_payment_draft('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='staff-path'),'81130000-0000-0000-0000-000000000004',current_date,10,'USD','Assistant staff path',null,null)$$,'assistant can update another payer payment draft');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000002',true);
+select lives_ok($$select public.update_payment_draft('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='staff-path'),'81130000-0000-0000-0000-000000000004',current_date,11,'USD','Accountant staff path',null,null)$$,'accountant can update another payer payment draft');
+select lives_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='staff-path'))$$,'accountant who can edit another payer draft can also submit it');
+select is((select status::text from public.payments where idempotency_key='staff-path'),'submitted','staff submission moves the draft to submitted');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000005',true);
 select throws_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,1,'USD','Tenant',null,null,'tenant')$$,null,null,'tenant-only user cannot create payment in pilot');
+select throws_ok($$select public.preview_payment_allocation('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'[]'::jsonb)$$,'42501','review denied','tenant cannot preview payment allocation');
+select throws_ok($$select public.approve_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'[]'::jsonb)$$,'42501','approval denied','tenant cannot approve payment');
+select throws_ok($$select public.reverse_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'unauthorized')$$,'42501','reversal denied','tenant cannot reverse payment');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000008',true);
 select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,1,'USD','Occupant',null,null,'occupant')$$,'authorized occupant creates payment');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000009',true);
@@ -87,9 +106,9 @@ select throws_ok($$select public.create_payment_draft('81100000-0000-0000-0000-0
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004',true);
 select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000001','81111000-0000-0000-0000-000000000004',current_date,100,'USD','Owner',null,null,'owner-proof')$$,'same idempotency payload returns payment');
 select is((select count(*) from public.payments where idempotency_key='owner-proof'),1::bigint,'idempotency key never duplicates payment');
-select throws_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'))$$,null,null,'submit requires reference');
+select throws_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'))$$,'P0001','payment reference required','submit requires reference');
 select lives_ok($$select public.update_payment_draft('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'81130000-0000-0000-0000-000000000001',current_date,100,'USD','Owner','REF-1',null)$$,'owner adds required reference');
-select throws_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'))$$,null,null,'submit requires proof');
+select throws_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'))$$,'P0001','payment proof required','submit requires proof');
 select lives_ok($$select public.record_payment_proof('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'81150000-0000-0000-0000-000000000001','payments/81150000-0000-0000-0000-000000000001','one.pdf','application/pdf',10,'abc')$$,'first proof is recorded');
 select lives_ok($$select public.record_payment_proof('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'81150000-0000-0000-0000-000000000002','payments/81150000-0000-0000-0000-000000000002','two.pdf','application/pdf',11,'def')$$,'proof can be replaced before submit');
 select is((select count(*) from public.payment_proofs where superseded_at is null),1::bigint,'proof replacement leaves one active version');
@@ -99,12 +118,17 @@ select is((select count(*) from public.receivable_ledger_entries where payment_i
 
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000007',true);
 select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'));
-select throws_ok($$select public.payment_transition('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'under_review',null)$$,null,null,'assistant cannot review');
+select throws_ok($$select public.payment_transition('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'under_review',null)$$,'42501','review denied','assistant cannot review');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
 select lives_ok($$select public.payment_transition('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'correction_requested','fix')$$,'reviewer requests correction');
 select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='assistant')),0::bigint,'correction request does not change ledger');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000007',true);
+select lives_ok($$select public.update_payment_draft('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'81130000-0000-0000-0000-000000000004',current_date,4,'USD','Assistant corrected',null,'Corrected details')$$,'submitter can save a returned payment');
+select is((select status::text from public.payments where idempotency_key='assistant'),'correction_requested','saving a returned payment preserves correction status');
+select is((select correction_reason from public.payments where idempotency_key='assistant'),'fix','saving a returned payment preserves the correction instruction');
 select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'));
+select is((select status::text from public.payments where idempotency_key='assistant'),'submitted','explicit resubmission moves the returned payment to submitted');
+select is((select correction_reason from public.payments where idempotency_key='assistant'),null,'resubmission clears the active correction instruction');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
 select lives_ok($$select public.payment_transition('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'rejected','duplicate')$$,'reviewer rejects payment');
 select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='assistant')),0::bigint,'rejection does not change ledger');
@@ -159,7 +183,7 @@ select is((select array_agg(coalesce(previous_status::text,'-') order by sequenc
 select is((select count(*) from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='approved'),1::bigint,'idempotent approval does not duplicate the approval event');
 select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='reversed'),'bank reversal','reversal event keeps its reason');
 select is((select actor_user_id from public.payment_events where payment_id=(select id from public.payments where idempotency_key='owner-proof') and event_type='approved'),'80000000-0000-0000-0000-000000000003'::uuid,'approval event records the reviewer who approved');
-select is((select array_agg(event_type order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant')),'{created,submitted,correction_requested,submitted,rejected}','correction and rejection are both recorded');
+select is((select array_agg(event_type order by sequence_number)::text from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant')),'{created,submitted,correction_requested,updated,submitted,rejected}','correction, edit, resubmission and rejection are all recorded');
 select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant') and event_type='correction_requested'),'fix','correction event keeps its reason');
 select is((select reason from public.payment_events where payment_id=(select id from public.payments where idempotency_key='assistant') and event_type='rejected'),'duplicate','rejection event keeps its reason');
 
@@ -182,6 +206,17 @@ select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004'
 select is((select count(*) from public.payment_events),0::bigint,'payer cannot read internal review reasons');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
 select ok((select count(*) from public.payment_events)>0,'payment reviewer can read the payment trail');
+
+reset role;
+insert into public.condominium_payment_methods(id,condominium_id,method_type,display_name,currency_code,created_by) values
+('81130000-0000-0000-0000-000000000009','81100000-0000-0000-0000-000000000001','other','Unused USD','USD','80000000-0000-0000-0000-000000000001');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
+select throws_ok($$select public.delete_payment_method('81100000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000009')$$,'42501','payment method management denied','payment reviewer cannot delete payment methods');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000001',true);
+select throws_ok($$select public.delete_payment_method('81100000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000001')$$,'P0001','payment method in use','a payment method referenced by payments cannot be deleted');
+select lives_ok($$select public.delete_payment_method('81100000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000009')$$,'an unused payment method can be deleted');
+select is((select count(*) from public.condominium_payment_methods where id in ('81130000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000009')),1::bigint,'only the unused payment method was deleted');
 
 select * from finish();
 rollback;

@@ -36,8 +36,8 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
       '`/v1/condominiums/${condominiumId}/payments/${savedPayment.id}/submit`',
     );
     expect(captureDrawer).toContain("{ method: 'POST' }");
-    expect(captureDrawer).toContain("await onComplete('Pago enviado a validación.')");
-    expect(captureDrawer).toContain('Enviar a validación');
+    expect(captureDrawer).toContain('Estado: enviado a revisión.');
+    expect(captureDrawer).toContain('Registrar y enviar a revisión');
   });
 
   it('keeps draft and correction states actionable but never exposes reviewer actions', () => {
@@ -98,7 +98,9 @@ describe('HAB-417 the resident dashboard says whose home this is', () => {
     // does not return -- so the rule is asserted where it now lives, and the fallback for an
     // unnamed unit is checked to be a description rather than an identifier.
     const residentUnits = readFileSync(new URL('./lib/resident-units.ts', import.meta.url), 'utf8');
-    expect(dashboard).toContain('residentUnitLabels(data?.units ?? [], data?.buildings ?? [])');
+    expect(dashboard).toContain(
+      'residentUnitLabels(currentData?.units ?? [], currentData?.buildings ?? [])',
+    );
     expect(residentUnits).toContain('unitReferenceLabel({');
     expect(residentUnits).toContain("labels.get(unitId) ?? 'Unidad sin identificar'");
     // An identifier may address a unit -- the selector's <option value> is a uuid on purpose --

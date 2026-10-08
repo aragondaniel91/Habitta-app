@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ExpensesIcon, ReportsIcon } from '../components/icons';
+import { ConfirmDialog } from '../components/Dialog';
 import { Drawer } from '../components/Drawer';
 import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
@@ -13,6 +14,8 @@ import {
   budgetTotalsByCurrency,
   formatBudgetDate,
   formatBudgetMoney,
+  hasDuplicateBudgetCategoryCurrency,
+  isValidBudgetAmount,
   latestBudgetVersion,
   linesForBudgetVersion,
 } from '../lib/budgets';
@@ -47,6 +50,7 @@ type EditorState = {
 const statusTone = (status: BudgetVersion['status']) => {
   if (status === 'approved') return 'success' as const;
   if (status === 'pending_approval') return 'warning' as const;
+  if (status === 'rejected') return 'neutral' as const;
   if (status === 'superseded') return 'neutral' as const;
   return 'info' as const;
 };
@@ -97,15 +101,24 @@ function BudgetEditor({
     });
   };
 
+  const duplicateLines = hasDuplicateBudgetCategoryCurrency(
+    editor.lines.map((line) => ({
+      category_id: line.categoryId,
+      currency_code: line.currencyCode,
+    })),
+  );
   const canSave =
     editor.name.trim().length > 0 &&
     editor.startsOn.length === 10 &&
     editor.endsOn.length === 10 &&
     editor.endsOn >= editor.startsOn &&
     editor.lines.length > 0 &&
+    !duplicateLines &&
     editor.lines.every(
       (line) =>
-        line.categoryId && /^[A-Za-z]{3}$/.test(line.currencyCode) && Number(line.amount) > 0,
+        line.categoryId &&
+        /^[A-Za-z]{3}$/.test(line.currencyCode) &&
+        isValidBudgetAmount(line.amount),
     );
 
   return (
@@ -259,6 +272,12 @@ function BudgetEditor({
           ))}
         </div>
 
+        {duplicateLines ? (
+          <div className="budgets-alert" role="alert">
+            Cada categoría solo puede aparecer una vez por moneda.
+          </div>
+        ) : null}
+
         <FormActions>
           <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
             Cancelar
@@ -291,6 +310,12 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
   const [reportPeriodId, setReportPeriodId] = useState('');
   const [reportRows, setReportRows] = useState<BudgetActualRow[]>([]);
   const [reportLoading, setReportLoading] = useState(false);
+  const [rejectionTarget, setRejectionTarget] = useState<{
+    period: BudgetPeriod;
+    version: BudgetVersion;
+  } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectionError, setRejectionError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -324,6 +349,9 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
     setEditor(null);
     setReportPeriodId('');
     setReportRows([]);
+    setRejectionTarget(null);
+    setRejectionReason('');
+    setRejectionError('');
   }, [condominiumId]);
 
   const currentVersions = useMemo(() => {
@@ -449,6 +477,34 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
         requestError instanceof Error
           ? requestError.message
           : 'No se pudo actualizar el estado del presupuesto.',
+      );
+    } finally {
+      setTransitioningId('');
+    }
+  };
+
+  const reject = async () => {
+    if (!rejectionTarget) return;
+    if (rejectionReason.trim().length < 3) {
+      setRejectionError('Explica el motivo del rechazo (mínimo 3 caracteres).');
+      return;
+    }
+    setTransitioningId(rejectionTarget.version.id);
+    setRejectionError('');
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/budgets/${rejectionTarget.period.id}/versions/${rejectionTarget.version.id}/reject`,
+        session,
+        { method: 'POST', body: JSON.stringify({ reason: rejectionReason.trim() }) },
+      );
+      setRejectionTarget(null);
+      setRejectionReason('');
+      await load();
+    } catch (requestError) {
+      setRejectionError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo rechazar el presupuesto.',
       );
     } finally {
       setTransitioningId('');
@@ -598,15 +654,29 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
                       </>
                     ) : null}
                     {version.status === 'pending_approval' && canApprove ? (
-                      <Button
-                        disabled={transitioningId === version.id}
-                        onClick={() => void transition(period, version, 'approve')}
-                        size="sm"
-                      >
-                        Aprobar
-                      </Button>
+                      <>
+                        <Button
+                          disabled={transitioningId === version.id}
+                          onClick={() => void transition(period, version, 'approve')}
+                          size="sm"
+                        >
+                          Aprobar
+                        </Button>
+                        <Button
+                          disabled={transitioningId === version.id}
+                          onClick={() => {
+                            setRejectionTarget({ period, version });
+                            setRejectionReason('');
+                            setRejectionError('');
+                          }}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Rechazar
+                        </Button>
+                      </>
                     ) : null}
-                    {version.status === 'approved' && canEdit ? (
+                    {(version.status === 'approved' || version.status === 'rejected') && canEdit ? (
                       <Button
                         onClick={() => openRevision(period, version)}
                         size="sm"
@@ -665,6 +735,7 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
                       <span key={item.id}>
                         v{item.version_number} · {budgetStatusLabels[item.status]}
                         {item.revision_note ? ` · ${item.revision_note}` : ''}
+                        {item.rejection_reason ? ` · ${item.rejection_reason}` : ''}
                       </span>
                     ))}
                   </div>
@@ -745,6 +816,45 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
           onSave={() => void saveBudget()}
           saving={saving}
         />
+      ) : null}
+      {rejectionTarget ? (
+        <ConfirmDialog
+          busy={transitioningId === rejectionTarget.version.id}
+          busyLabel="Rechazando…"
+          confirmLabel="Rechazar versión"
+          description="La versión se conservará en el historial. Podrás crear una nueva revisión con los ajustes necesarios."
+          destructive
+          onCancel={() => {
+            if (!transitioningId) {
+              setRejectionTarget(null);
+              setRejectionReason('');
+              setRejectionError('');
+            }
+          }}
+          onConfirm={() => void reject()}
+          title="¿Rechazar esta versión?"
+        >
+          <label className="budgets-rejection-reason">
+            <span>Motivo del rechazo</span>
+            <textarea
+              className="input"
+              maxLength={500}
+              minLength={3}
+              onChange={(event) => {
+                setRejectionReason(event.target.value);
+                if (rejectionError) setRejectionError('');
+              }}
+              placeholder="Explica qué debe corregirse antes de una nueva revisión"
+              required
+              value={rejectionReason}
+            />
+          </label>
+          {rejectionError ? (
+            <p className="budgets-alert" role="alert">
+              {rejectionError}
+            </p>
+          ) : null}
+        </ConfirmDialog>
       ) : null}
     </div>
   );

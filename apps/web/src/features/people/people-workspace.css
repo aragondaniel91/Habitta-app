@@ -499,19 +499,26 @@
   z-index: 1;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  width: min(620px, 100%);
-  height: 100%;
+  width: min(620px, 100vw);
+  min-height: 0;
+  height: 100dvh;
+  max-height: 100dvh;
   background: var(--surface);
   box-shadow: -16px 0 45px rgb(15 23 42 / 0.14);
 }
 
 .people-drawer__header {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   border-bottom: 1px solid var(--border);
   padding: 1rem 1.15rem;
+}
+
+.people-drawer__header > div:first-child {
+  min-width: 0;
 }
 
 .people-drawer__header > div:first-child span {
@@ -531,7 +538,10 @@
 }
 
 .people-drawer__body {
-  overflow: auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.15rem;
 }
 
@@ -583,6 +593,28 @@
   .people-inline-form > .button {
     justify-self: start;
   }
+
+  .people-inline-form,
+  .people-invitation-form,
+  .people-import__controls {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .people-inline-form > .button,
+  .people-invitation-form > .button,
+  .people-import__controls > .button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .people-drawer__header {
+    padding: 0.9rem 1rem;
+  }
+
+  .people-drawer__body {
+    padding: 1rem;
+  }
 }
 
 @media (max-width: 620px) {
@@ -621,5 +653,39 @@
 
   .people-invitation-history__actions {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 420px) {
+  .people-workspace {
+    gap: 1rem;
+  }
+
+  .people-profile-header__actions,
+  .people-invitation-link-card > div:last-child,
+  .people-invitation-history__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .people-profile-header__actions .button,
+  .people-invitation-link-card > div:last-child .button,
+  .people-invitation-history__actions .button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .people-drawer__header {
+    gap: 0.75rem;
+    padding: 0.8rem 0.9rem;
+  }
+
+  .people-drawer__header h2 {
+    font-size: 1.05rem;
+    overflow-wrap: anywhere;
+  }
+
+  .people-drawer__body {
+    padding: 0.9rem;
   }
 }

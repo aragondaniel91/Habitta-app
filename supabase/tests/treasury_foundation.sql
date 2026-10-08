@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(22);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -265,6 +265,34 @@ select lives_ok(
   'movement is linked to an open reconciliation'
 );
 select is(
+  (public.get_treasury_reconciliation_workspace(
+    (select (payload #>> '{condominium,id}')::uuid from treasury_workspace),
+    (select (reconciliation).id from treasury_reconciliation),
+    1,
+    0
+  ) ->> 'total_count')::integer,
+  4,
+  'reconciliation workspace scopes candidates to its account and period'
+);
+select is(
+  jsonb_array_length(public.get_treasury_reconciliation_workspace(
+    (select (payload #>> '{condominium,id}')::uuid from treasury_workspace),
+    (select (reconciliation).id from treasury_reconciliation),
+    1,
+    0
+  ) -> 'items'),
+  1,
+  'reconciliation workspace pages candidates without silently truncating the total'
+);
+select is(
+  (public.get_treasury_reconciliation_workspace(
+    (select (payload #>> '{condominium,id}')::uuid from treasury_workspace),
+    (select (reconciliation).id from treasury_reconciliation)
+  ) ->> 'matched_count')::integer,
+  1,
+  'reconciliation workspace reports the append-only matched state'
+);
+select is(
   (
     select (public.close_treasury_reconciliation(
       (select (payload #>> '{condominium,id}')::uuid from treasury_workspace),
@@ -293,6 +321,15 @@ select throws_like(
   ),
   '%treasury access denied%',
   'outsider cannot call treasury account summary'
+);
+select throws_like(
+  format(
+    'select public.get_treasury_reconciliation_workspace(%L::uuid,%L::uuid)',
+    (select payload #>> '{condominium,id}' from treasury_workspace),
+    (select (reconciliation).id::text from treasury_reconciliation)
+  ),
+  '%treasury access denied%',
+  'outsider cannot read a reconciliation workspace'
 );
 
 select * from finish();

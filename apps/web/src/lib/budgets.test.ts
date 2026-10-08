@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { budgetTotalsByCurrency, latestBudgetVersion, linesForBudgetVersion } from './budgets';
+import {
+  budgetTotalsByCurrency,
+  hasDuplicateBudgetCategoryCurrency,
+  isValidBudgetAmount,
+  latestBudgetVersion,
+  linesForBudgetVersion,
+} from './budgets';
 import type { BudgetLine, BudgetPeriod, BudgetVersion } from './budgets';
 
 const period: BudgetPeriod = {
@@ -24,6 +30,8 @@ const version = (versionNumber: number): BudgetVersion => ({
   revision_note: null,
   submitted_at: '2026-01-15T00:00:00Z',
   approved_at: '2026-01-16T00:00:00Z',
+  rejected_at: null,
+  rejection_reason: null,
   superseded_at: versionNumber === 1 ? '2026-02-01T00:00:00Z' : null,
   created_at: '2026-01-10T00:00:00Z',
 });
@@ -64,5 +72,27 @@ describe('budget workspace helpers', () => {
 
     expect(totals).toEqual({ USD: 150, VES: 2000 });
     expect(Object.values(totals)).not.toContain(2150);
+  });
+
+  it('matches the API amount precision contract before a line can be saved', () => {
+    expect(isValidBudgetAmount('0.01')).toBe(true);
+    expect(isValidBudgetAmount('1000000000000000.00')).toBe(true);
+    expect(isValidBudgetAmount('10.999')).toBe(false);
+    expect(isValidBudgetAmount('0')).toBe(false);
+  });
+
+  it('detects category/currency duplicates without merging different currencies', () => {
+    expect(
+      hasDuplicateBudgetCategoryCurrency([
+        line('1', version(2).id, 'usd', '100.00'),
+        line('2', version(2).id, 'USD', '50.00'),
+      ]),
+    ).toBe(true);
+    expect(
+      hasDuplicateBudgetCategoryCurrency([
+        line('1', version(2).id, 'USD', '100.00'),
+        line('2', version(2).id, 'VES', '50.00'),
+      ]),
+    ).toBe(false);
   });
 });

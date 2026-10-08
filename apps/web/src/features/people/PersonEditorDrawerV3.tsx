@@ -422,7 +422,7 @@ export function PersonEditorDrawerV3({
                     <Field
                       error={errors.ownershipPercentage}
                       hint="Opcional. Mayor que 0 y hasta 100."
-                      label="Participación"
+                      label="Porcentaje de propiedad"
                     >
                       <input
                         aria-invalid={Boolean(errors.ownershipPercentage)}

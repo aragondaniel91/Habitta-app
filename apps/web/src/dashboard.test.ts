@@ -130,6 +130,42 @@ describe('administrative dashboard data helpers', () => {
     expect(series[1]?.collections).toBe(0);
   });
 
+  it('honors each supported 3, 6, and 12 month trend range without inventing a currency', () => {
+    for (const monthCount of [3, 6, 12]) {
+      const series = buildMonthlyFinancialSeries(
+        [],
+        [],
+        'EUR',
+        new Date('2026-01-15T12:00:00Z'),
+        monthCount,
+      );
+      expect(series).toHaveLength(monthCount);
+      expect(series.every((point) => point.label.includes('202'))).toBe(true);
+    }
+
+    expect(getDashboardCurrencies([], [], [], [])).toEqual([]);
+  });
+
+  it('keeps all twelve year-aware labels in the 12 month range', () => {
+    const series = buildMonthlyFinancialSeries([], [], 'EUR', new Date('2026-01-15T12:00:00Z'), 12);
+
+    expect(series.map((point) => point.key)).toEqual([
+      '2025-02',
+      '2025-03',
+      '2025-04',
+      '2025-05',
+      '2025-06',
+      '2025-07',
+      '2025-08',
+      '2025-09',
+      '2025-10',
+      '2025-11',
+      '2025-12',
+      '2026-01',
+    ]);
+    expect(series.every((point) => /202[56]/.test(point.label))).toBe(true);
+  });
+
   it('counts only approved payments in the current month collection total', () => {
     const payments = [
       {

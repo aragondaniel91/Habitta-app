@@ -68,6 +68,12 @@ describe('HAB-431 resident Requests stays residential without widening capabilit
     expect(resident).not.toContain('download-events');
   });
 
+  it('does not present failed resident detail feeds as an empty shared history', () => {
+    expect(resident).toContain('requestDetailLoadError({ comments, events, attachments })');
+    expect(resident).toContain('resident-requests__message--retry');
+    expect(resident).toContain('Reintentar');
+  });
+
   it('uses human request and unit labels instead of rendering ids as resident copy', () => {
     expect(resident).toContain('{request.request_number}');
     expect(resident).toContain('`Unidad ${unit.code}`');

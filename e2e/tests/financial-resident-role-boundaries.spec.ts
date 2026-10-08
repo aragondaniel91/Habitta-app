@@ -130,7 +130,7 @@ test.describe('HAB-418 restricted resident browser boundaries', () => {
     // The workspace tab is a <button role="tab">, and an explicit role replaces the implicit one,
     // so it is not reachable as a button. Playwright waited the full timeout for something that was
     // never going to match.
-    await page.getByRole('tab', { name: 'Acceso digital' }).click();
+    await page.getByRole('tab', { name: 'Invitaciones' }).click();
     const roleSelect = page.getByLabel('Rol que recibirá');
     await expect(roleSelect.locator('option[value="family_member"]')).toHaveText('Familiar');
     await expect(roleSelect.locator('option[value="authorized_occupant"]')).toHaveText(
@@ -141,7 +141,7 @@ test.describe('HAB-418 restricted resident browser boundaries', () => {
     await expect(page.getByText(/E2E-A102 · Familiar/)).toBeVisible();
 
     await page.getByRole('button', { name: /Habitta E2E Authorized/ }).click();
-    await page.getByRole('tab', { name: 'Acceso digital' }).click();
+    await page.getByRole('tab', { name: 'Invitaciones' }).click();
     await page.getByLabel('Rol que recibirá').selectOption('authorized_occupant');
     await expect(page.getByLabel('Unidad vinculada')).toHaveValue(ids.primaryUnitA102);
     await expect(page.getByText(/E2E-A102 · Ocupante autorizado/)).toBeVisible();

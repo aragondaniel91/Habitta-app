@@ -20,6 +20,7 @@ import {
   RolesProvider,
   type Membership,
   type MembershipResponse,
+  type OrganizationMembership,
 } from './lib/roles';
 import { scopeWorkspaceToMemberships } from './lib/workspace-scope';
 import { APP_ROUTES, DEFAULT_ROUTE, getRouteFromPath, type AppRoute } from './navigation';
@@ -136,6 +137,9 @@ export default function App() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [organizationMemberships, setOrganizationMemberships] = useState<OrganizationMembership[]>(
+    [],
+  );
   const [platformOnly, setPlatformOnly] = useState(false);
   const [selectedCondominiumId, setSelectedCondominiumId] = useState('');
   const [addingCondominium, setAddingCondominium] = useState(false);
@@ -167,6 +171,7 @@ export default function App() {
         setOrganizations([]);
         setCondominiums([]);
         setMemberships([]);
+        setOrganizationMemberships([]);
         setPlatformOnly(false);
         setSelectedCondominiumId('');
         setAddingCondominium(false);
@@ -194,6 +199,7 @@ export default function App() {
       setOrganizations(scopedWorkspace.organizations);
       setCondominiums(scopedWorkspace.condominiums);
       setMemberships(membershipResponse.condominiums);
+      setOrganizationMemberships(membershipResponse.organizations);
       setPlatformOnly(scopedWorkspace.platformOnly);
       setSelectedCondominiumId((current) => {
         if (
@@ -360,6 +366,9 @@ export default function App() {
           window.history.replaceState({}, '', DEFAULT_ROUTE.path);
           setCurrentRoute(DEFAULT_ROUTE);
         }}
+        ownedOrganizationIds={organizationMemberships
+          .filter((membership) => membership.role === 'organization_owner')
+          .map((membership) => membership.organization_id)}
         organizations={organizations}
       />
     );
@@ -563,6 +572,9 @@ export default function App() {
         contextMessage={contextMessage}
         currentRoute={activeRoute}
         notificationOpen={notificationOpen}
+        ownedOrganizationIds={organizationMemberships
+          .filter((membership) => membership.role === 'organization_owner')
+          .map((membership) => membership.organization_id)}
         onAddCondominium={() => setAddingCondominium(true)}
         onCloseNotifications={() => setNotificationOpen(false)}
         onCondominiumChange={(condominiumId) => {

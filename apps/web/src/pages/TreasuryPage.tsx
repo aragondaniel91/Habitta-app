@@ -5,7 +5,6 @@ import { PageHeader } from '../components/PageHeader';
 import { ConfirmDialog } from '../components/Dialog';
 import { Badge, Button, EmptyState, InfoHint, Skeleton, Surface } from '../components/ui';
 import {
-  closeTreasuryReconciliation,
   createTreasuryAccount,
   updateTreasuryAccount,
   createTreasuryReconciliation,
@@ -14,6 +13,7 @@ import {
   loadTreasuryWorkspace,
   recordTreasuryMovement,
 } from '../features/treasury/api';
+import { ReconciliationWorkspace } from '../features/treasury/ReconciliationWorkspace';
 import {
   AccountDrawer,
   MovementDrawer,
@@ -77,11 +77,13 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [drawer, setDrawer] = useState<TreasuryDrawer>(null);
+  const [openingBalanceAccountId, setOpeningBalanceAccountId] = useState('');
   const [editingAccountId, setEditingAccountId] = useState('');
   const [transferToReverse, setTransferToReverse] = useState<string>('');
   const [reversalReason, setReversalReason] = useState('');
   const [reversalError, setReversalError] = useState('');
   const [reversing, setReversing] = useState(false);
+  const [selectedReconciliationId, setSelectedReconciliationId] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -106,15 +108,23 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
     () => new Map(data.accounts.map((account) => [account.id, account])),
     [data.accounts],
   );
+  const activeAccounts = useMemo(
+    () => data.accounts.filter((account) => account.is_active),
+    [data.accounts],
+  );
   const openReconciliations = data.reconciliations.filter((item) => item.status === 'draft');
 
-  const afterWrite = async (text: string) => {
+  const afterWrite = async (text: string, nextOpeningBalanceAccountId = '') => {
     setDrawer(null);
+    setOpeningBalanceAccountId(nextOpeningBalanceAccountId);
     setMessage(text);
     await load();
   };
 
   const editingAccount = data.accounts.find((account) => account.id === editingAccountId);
+  const selectedReconciliation = data.reconciliations.find(
+    (item) => item.id === selectedReconciliationId,
+  );
 
   if (loading && !data.accounts.length && !error) return <TreasuryLoading />;
 
@@ -124,20 +134,33 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
         actions={
           manage ? (
             <>
-              <Button onClick={() => setDrawer('account')} size="sm" variant="secondary">
+              <Button
+                onClick={() => {
+                  setOpeningBalanceAccountId('');
+                  setDrawer('account');
+                }}
+                size="sm"
+                variant="secondary"
+              >
                 Nueva cuenta
               </Button>
               <Button
-                disabled={data.accounts.length < 2}
-                onClick={() => setDrawer('transfer')}
+                disabled={activeAccounts.length < 2}
+                onClick={() => {
+                  setOpeningBalanceAccountId('');
+                  setDrawer('transfer');
+                }}
                 size="sm"
                 variant="secondary"
               >
                 Transferencia
               </Button>
               <Button
-                disabled={!data.accounts.length}
-                onClick={() => setDrawer('movement')}
+                disabled={!activeAccounts.length}
+                onClick={() => {
+                  setOpeningBalanceAccountId('');
+                  setDrawer('movement');
+                }}
                 size="sm"
               >
                 Registrar movimiento
@@ -158,6 +181,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
       {message ? (
         <div className="treasury-success-alert" role="status">
           <CheckCircleIcon size={17} /> {message}
+          {openingBalanceAccountId ? (
+            <Button onClick={() => setDrawer('movement')} size="sm" variant="secondary">
+              Registrar saldo inicial
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -236,13 +264,18 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                         {formatTreasuryAmount(account.balance, account.currency_code)}
                       </td>
                       <td>
-                        <Button
-                          onClick={() => setEditingAccountId(account.id)}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          Editar
-                        </Button>
+                        {manage ? (
+                          <Button
+                            onClick={() => {
+                              setOpeningBalanceAccountId('');
+                              setEditingAccountId(account.id);
+                            }}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            Editar
+                          </Button>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -255,7 +288,13 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
               icon={<PaymentsIcon size={28} />}
               title="Todavía no hay cuentas"
               {...(manage
-                ? { actionLabel: 'Nueva cuenta', onAction: () => setDrawer('account') }
+                ? {
+                    actionLabel: 'Nueva cuenta',
+                    onAction: () => {
+                      setOpeningBalanceAccountId('');
+                      setDrawer('account');
+                    },
+                  }
                 : {})}
             />
           )}
@@ -336,8 +375,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
             </div>
             {manage ? (
               <Button
-                disabled={!data.accounts.length}
-                onClick={() => setDrawer('reconciliation')}
+                disabled={!activeAccounts.length}
+                onClick={() => {
+                  setOpeningBalanceAccountId('');
+                  setDrawer('reconciliation');
+                }}
                 size="sm"
                 variant="secondary"
               >
@@ -360,31 +402,22 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
                             accountsById.get(item.account_id)?.currency_code ?? '',
                           )}`
                         : ''}
+                      {item.status === 'closed' && item.book_closing_balance !== null
+                        ? ` · libro ${formatTreasuryAmount(item.book_closing_balance, accountsById.get(item.account_id)?.currency_code ?? '')}`
+                        : ''}
                     </small>
                   </div>
                   <div className="treasury-reconciliation-list__actions">
                     <Badge tone={item.status === 'closed' ? 'success' : 'warning'}>
                       {item.status === 'closed' ? 'Cerrada' : 'Borrador'}
                     </Badge>
-                    {manage && item.status === 'draft' ? (
-                      <Button
-                        onClick={() =>
-                          void closeTreasuryReconciliation(condominiumId, session, item.id)
-                            .then(() => afterWrite('Conciliación cerrada.'))
-                            .catch((closeError: unknown) =>
-                              setError(
-                                closeError instanceof Error
-                                  ? closeError.message
-                                  : 'No se pudo cerrar la conciliación.',
-                              ),
-                            )
-                        }
-                        size="sm"
-                        variant="ghost"
-                      >
-                        Cerrar
-                      </Button>
-                    ) : null}
+                    <Button
+                      onClick={() => setSelectedReconciliationId(item.id)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      {item.status === 'draft' ? 'Conciliar' : 'Ver resultado'}
+                    </Button>
                   </div>
                 </li>
               ))}
@@ -398,6 +431,21 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
           )}
         </Surface>
       </section>
+
+      {selectedReconciliation ? (
+        <ReconciliationWorkspace
+          account={accountsById.get(selectedReconciliation.account_id)}
+          canManage={manage}
+          condominiumId={condominiumId}
+          onClosed={async (closed) => {
+            await afterWrite(
+              `Conciliación cerrada: ${accountsById.get(closed.account_id)?.name ?? 'cuenta'} · ${formatTreasuryDate(closed.period_start)} — ${formatTreasuryDate(closed.period_end)} · libro ${formatTreasuryAmount(closed.book_closing_balance ?? '0', accountsById.get(closed.account_id)?.currency_code ?? '')} · diferencia ${formatTreasuryAmount(closed.difference ?? '0', accountsById.get(closed.account_id)?.currency_code ?? '')}.`,
+            );
+          }}
+          reconciliation={selectedReconciliation}
+          session={session}
+        />
+      ) : null}
 
       <Surface className="treasury-panel">
         <div className="treasury-section-heading">
@@ -516,8 +564,11 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
         <AccountDrawer
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
-            await createTreasuryAccount(condominiumId, session, input);
-            await afterWrite('Cuenta creada.');
+            const account = await createTreasuryAccount(condominiumId, session, input);
+            await afterWrite(
+              'Cuenta creada. Si corresponde, registra el saldo inicial como un movimiento auditado.',
+              account.id,
+            );
           }}
         />
       ) : null}
@@ -534,31 +585,55 @@ export function TreasuryPage({ condominiumId, condominiumName, session }: Props)
       ) : null}
       {drawer === 'movement' ? (
         <MovementDrawer
-          accounts={data.accounts}
-          onClose={() => setDrawer(null)}
+          accounts={activeAccounts}
+          {...(openingBalanceAccountId
+            ? {
+                initialAccountId: openingBalanceAccountId,
+                initialMovementKind: 'opening_balance' as const,
+              }
+            : {})}
+          onClose={() => {
+            setOpeningBalanceAccountId('');
+            setDrawer(null);
+          }}
           onSubmit={async (input) => {
             await recordTreasuryMovement(condominiumId, session, input);
-            await afterWrite('Movimiento registrado.');
+            const account = activeAccounts.find((item) => item.id === input.accountId);
+            await afterWrite(
+              `${movementKindLabels[input.movementKind]} registrado en ${account?.name ?? 'la cuenta seleccionada'}: ${formatTreasuryAmount(input.amount, account?.currency_code ?? '')} · ${formatTreasuryDate(input.occurredOn)}.`,
+            );
           }}
         />
       ) : null}
       {drawer === 'transfer' ? (
         <TransferDrawer
-          accounts={data.accounts}
+          accounts={activeAccounts}
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
             await createTreasuryTransfer(condominiumId, session, input);
-            await afterWrite('Transferencia registrada.');
+            const origin = activeAccounts.find((account) => account.id === input.fromAccountId);
+            const destination = activeAccounts.find((account) => account.id === input.toAccountId);
+            await afterWrite(
+              `Transferencia registrada: ${formatTreasuryAmount(input.amount, origin?.currency_code ?? '')} de ${origin?.name ?? 'la cuenta origen'} a ${destination?.name ?? 'la cuenta destino'} · ${formatTreasuryDate(input.occurredOn)}.`,
+            );
           }}
         />
       ) : null}
       {drawer === 'reconciliation' ? (
         <ReconciliationDrawer
-          accounts={data.accounts}
+          accounts={activeAccounts}
           onClose={() => setDrawer(null)}
           onSubmit={async (input) => {
-            await createTreasuryReconciliation(condominiumId, session, input);
-            await afterWrite('Conciliación creada.');
+            const reconciliation = await createTreasuryReconciliation(
+              condominiumId,
+              session,
+              input,
+            );
+            setSelectedReconciliationId(reconciliation.id);
+            const account = activeAccounts.find((item) => item.id === input.accountId);
+            await afterWrite(
+              `Conciliación creada para ${account?.name ?? 'la cuenta'} · ${formatTreasuryDate(input.startsOn)} — ${formatTreasuryDate(input.endsOn)} · estado final ${formatTreasuryAmount(input.statementClosingBalance, account?.currency_code ?? '')}.`,
+            );
           }}
         />
       ) : null}

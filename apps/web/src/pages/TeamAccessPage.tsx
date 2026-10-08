@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../components/Dialog';
@@ -109,6 +109,7 @@ export function invitationDeliveryFailureMessage(delivery: AdminInvitationDelive
 
 export function TeamAccessPage({ condominiumId, condominiumName, session }: Props) {
   const [data, setData] = useState<TeamData | null>(null);
+  const [dataScope, setDataScope] = useState<string | null>(condominiumId);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<AdministrativeRole>('assistant');
@@ -124,11 +125,28 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
   const [createdLink, setCreatedLink] = useState('');
   const [createdEmail, setCreatedEmail] = useState('');
 
+  // A response belongs to the condominium that started it. A session refresh can retain this
+  // page's data, but a condominium switch must invalidate every in-flight load so members and
+  // invitations from the previous condominium never render under the new header.
+  const scopeKeyRef = useRef(condominiumId);
+  scopeKeyRef.current = condominiumId;
+  const latestRequest = useRef(0);
+  const ownsScope = useCallback((requestScope: string) => scopeKeyRef.current === requestScope, []);
+
   const load = useCallback(async () => {
+    const requestScope = condominiumId;
+    // Lifecycle handlers retain the scope that started them. Once the user changes
+    // condominiums, their post-mutation refresh must be a no-op: advancing the shared
+    // generation here would otherwise invalidate the current scope's pending request.
+    if (!ownsScope(requestScope)) return;
+    const requestId = ++latestRequest.current;
+    const ownsRequest = () => ownsScope(requestScope) && requestId === latestRequest.current;
     setLoading(true);
     setError('');
     try {
       const nextData = await loadTeamAccess(condominiumId);
+      if (!ownsRequest()) return;
+      setDataScope(requestScope);
       setData(nextData);
       setMemberRoles(
         Object.fromEntries(
@@ -136,52 +154,71 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
         ) as Record<string, AdministrativeRole>,
       );
     } catch (requestError) {
+      if (!ownsRequest()) return;
+      setDataScope(requestScope);
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'No se pudo cargar el equipo del condominio.',
       );
     } finally {
-      setLoading(false);
+      if (ownsRequest()) setLoading(false);
     }
+  }, [condominiumId, ownsScope]);
+
+  useEffect(() => {
+    // This deliberately runs only for a real condominium change. It clears the previous
+    // scope before starting the replacement request, while same-scope reloads keep data visible.
+    latestRequest.current += 1;
+    setDataScope(null);
+    setData(null);
+    setMemberRoles({});
+    setError('');
+    setLoading(true);
+    setCreatedLink('');
+    setCreatedEmail('');
+    setMessage('');
+    setDeliveryWarning('');
+    setCreating(false);
+    setRevokingId('');
+    setMemberBusyId('');
+    setPendingMemberAction(null);
   }, [condominiumId]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    setCreatedLink('');
-    setCreatedEmail('');
-    setMessage('');
-    setDeliveryWarning('');
-    setPendingMemberAction(null);
-  }, [condominiumId]);
+  // The effect above clears stale data after a scope change. This render-time binding closes the
+  // gap before effects run, so a new header can never paint with a previous condominium's data.
+  const scopedData = dataScope === condominiumId ? data : null;
 
   const pendingInvitations = useMemo(
-    () => data?.invitations.filter((invitation) => invitation.status === 'pending').length ?? 0,
-    [data?.invitations],
+    () =>
+      scopedData?.invitations.filter((invitation) => invitation.status === 'pending').length ?? 0,
+    [scopedData?.invitations],
   );
   const activeMembers = useMemo(
-    () => data?.members.filter((member) => member.status === 'active').length ?? 0,
-    [data?.members],
+    () => scopedData?.members.filter((member) => member.status === 'active').length ?? 0,
+    [scopedData?.members],
   );
   const suspendedMembers = useMemo(
-    () => data?.members.filter((member) => member.status === 'suspended').length ?? 0,
-    [data?.members],
+    () => scopedData?.members.filter((member) => member.status === 'suspended').length ?? 0,
+    [scopedData?.members],
   );
   // The RPC refuses to leave a condominium without an administrator. Knowing that here lets the
   // page explain the rule up front instead of letting the administrator discover it as an error.
   const activeAdministrators = useMemo(
     () =>
-      data?.members.filter(
+      scopedData?.members.filter(
         (member) => member.status === 'active' && member.role === 'condominium_admin',
       ).length ?? 0,
-    [data?.members],
+    [scopedData?.members],
   );
 
   const createInvitation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const actionScope = condominiumId;
     if (!email.trim()) {
       setError('Introduce el correo del administrador que deseas invitar.');
       return;
@@ -201,6 +238,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
         role,
         expiresAt: expiration.toISOString(),
       });
+      if (!ownsScope(actionScope)) return;
       setCreatedLink(result.invitationUrl);
       setCreatedEmail(result.invitation.email);
       if (result.emailDelivery.status === 'sent') {
@@ -219,20 +257,24 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
       setEmail('');
       await load();
     } catch (requestError) {
+      if (!ownsScope(actionScope)) return;
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo crear la invitación.',
       );
     } finally {
-      setCreating(false);
+      if (ownsScope(actionScope)) setCreating(false);
     }
   };
 
   const copyLink = async () => {
     if (!createdLink) return;
+    const actionScope = condominiumId;
     try {
       await navigator.clipboard.writeText(createdLink);
+      if (!ownsScope(actionScope)) return;
       setMessage('Enlace copiado al portapapeles.');
     } catch {
+      if (!ownsScope(actionScope)) return;
       setError('No se pudo copiar automáticamente. Selecciona el enlace y cópialo manualmente.');
     }
   };
@@ -247,20 +289,23 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
   };
 
   const revoke = async (invitationId: string) => {
+    const actionScope = condominiumId;
     setRevokingId(invitationId);
     setError('');
     setMessage('');
     setDeliveryWarning('');
     try {
       await revokeAdminInvitation(invitationId);
+      if (!ownsScope(actionScope)) return;
       setMessage('Invitación revocada correctamente.');
       await load();
     } catch (requestError) {
+      if (!ownsScope(actionScope)) return;
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo revocar la invitación.',
       );
     } finally {
-      setRevokingId('');
+      if (ownsScope(actionScope)) setRevokingId('');
     }
   };
 
@@ -268,6 +313,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
     member: TeamMember,
     action: 'change_role' | 'suspend' | 'reactivate' | 'remove',
   ) => {
+    const actionScope = condominiumId;
     setMemberBusyId(member.user_id);
     setError('');
     setMessage('');
@@ -280,6 +326,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
         action,
         role: action === 'change_role' || action === 'reactivate' ? selectedRole : undefined,
       });
+      if (!ownsScope(actionScope)) return;
 
       const successMessages = {
         change_role: 'Rol actualizado correctamente.',
@@ -291,17 +338,18 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
       setPendingMemberAction(null);
       await load();
     } catch (requestError) {
+      if (!ownsScope(actionScope)) return;
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'No se pudo actualizar el acceso de este miembro.',
       );
     } finally {
-      setMemberBusyId('');
+      if (ownsScope(actionScope)) setMemberBusyId('');
     }
   };
 
-  if (loading && !data) {
+  if (!scopedData && (loading || dataScope !== condominiumId)) {
     return (
       <div className="team-access-page" aria-label="Cargando equipo y accesos">
         <Skeleton className="skeleton--title" />
@@ -310,7 +358,7 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
     );
   }
 
-  if (!data) {
+  if (!scopedData) {
     return (
       <Surface className="team-access-load-error">
         <EmptyState
@@ -484,9 +532,9 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
               <Badge tone="success">{activeMembers} activos</Badge>
             </div>
 
-            {data.members.length ? (
+            {scopedData.members.length ? (
               <div className="team-member-list">
-                {data.members.map((member) => {
+                {scopedData.members.map((member) => {
                   const selectedRole = memberRoles[member.user_id] ?? member.role;
                   const busy = memberBusyId === member.user_id;
                   const isLastAdministrator =
@@ -616,9 +664,9 @@ export function TeamAccessPage({ condominiumId, condominiumName, session }: Prop
             </div>
           </div>
 
-          {data.invitations.length ? (
+          {scopedData.invitations.length ? (
             <div className="team-invitation-list">
-              {data.invitations.map((invitation) => (
+              {scopedData.invitations.map((invitation) => (
                 <article key={invitation.id}>
                   <div>
                     <strong>{invitation.email}</strong>

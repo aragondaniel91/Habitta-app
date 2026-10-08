@@ -30,7 +30,7 @@ if (supabaseUrl) {
 }
 
 type AuthSession = { access_token: string };
-type Payment = { id: string; status: string };
+type Payment = { id: string; status: string; correction_reason?: string | null };
 type Receipt = { receipt_number: string; payment_id: string };
 type LedgerEntry = {
   id: string;
@@ -166,12 +166,15 @@ test.describe('Ciclo financiero autenticado', () => {
       reference_value: 'E2E-TRANSFER-CORRECTED',
       notes_value: 'Reference corrected by payer',
     });
-    expect(corrected.status).toBe('draft');
+    expect(corrected.status).toBe('correction_requested');
+    expect(corrected.correction_reason).toBe('Confirmar referencia bancaria E2E');
 
-    await rpc<Payment>(request, payer.access_token, 'submit_payment', {
+    const resubmitted = await rpc<Payment>(request, payer.access_token, 'submit_payment', {
       target: ids.primaryCondominium,
       target_payment: payment.id,
     });
+    expect(resubmitted.status).toBe('submitted');
+    expect(resubmitted.correction_reason).toBe(null);
 
     const approval = await rpc<{ payment_id: string; receipt_number: string }>(
       request,

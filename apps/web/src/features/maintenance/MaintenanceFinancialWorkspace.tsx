@@ -107,6 +107,26 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
   const [attachmentQuoteId, setAttachmentQuoteId] = useState('');
   const [downloadingId, setDownloadingId] = useState('');
 
+  const downloadAttachment = async (attachment: MaintenanceAttachment) => {
+    setDownloadingId(attachment.id);
+    setError('');
+    try {
+      await downloadPrivateDocument(
+        `/v1/condominiums/${condominiumId}/maintenance/work-orders/${selectedWorkOrderId}/attachments/${attachment.id}/file`,
+        session,
+        attachment.original_filename,
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo descargar el archivo de la orden.',
+      );
+    } finally {
+      setDownloadingId('');
+    }
+  };
+
   const selectedWorkOrder = useMemo(
     () => workOrders.find((item) => item.id === selectedWorkOrderId),
     [selectedWorkOrderId, workOrders],
@@ -571,14 +591,7 @@ export function MaintenanceFinancialWorkspace({ condominiumId, condominiumName, 
                   </div>
                   <Button
                     disabled={downloadingId === attachment.id}
-                    onClick={() => {
-                      setDownloadingId(attachment.id);
-                      void downloadPrivateDocument(
-                        `/v1/condominiums/${condominiumId}/maintenance/work-orders/${selectedWorkOrderId}/attachments/${attachment.id}/file`,
-                        session,
-                        attachment.original_filename,
-                      ).finally(() => setDownloadingId(''));
-                    }}
+                    onClick={() => void downloadAttachment(attachment)}
                     size="sm"
                     type="button"
                   >

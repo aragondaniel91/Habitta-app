@@ -6,6 +6,7 @@ import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Button, Field, Select } from '../../components/ui';
 import { PrivateDocumentUploader } from '../documents/PrivateDocumentUploader';
 import { apiRequest } from '../../lib/api';
+import { isValidExpenseAmount } from '../../lib/expenses';
 import type { ExpenseCategory, ExpenseRecord, ExpenseVendor } from '../../lib/expenses';
 import '../../financial-capture.css';
 
@@ -14,6 +15,7 @@ export function ExpenseCaptureDrawer({
   session,
   categories,
   vendors,
+  expense,
   onClose,
   onDraftCreated,
   onComplete,
@@ -22,21 +24,26 @@ export function ExpenseCaptureDrawer({
   session: Session;
   categories: ExpenseCategory[];
   vendors: ExpenseVendor[];
+  expense?: ExpenseRecord;
   onClose: () => void;
   onDraftCreated: () => Promise<void>;
   onComplete: (message: string) => Promise<void>;
 }) {
-  const [categoryId, setCategoryId] = useState(categories.find((item) => item.is_active)?.id ?? '');
-  const [vendorId, setVendorId] = useState('');
-  const [description, setDescription] = useState('');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
-  const [dueDate, setDueDate] = useState('');
-  const [amount, setAmount] = useState('');
-  const [currencyCode, setCurrencyCode] = useState('USD');
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [paymentReference, setPaymentReference] = useState('');
-  const [notes, setNotes] = useState('');
+  const [categoryId, setCategoryId] = useState(
+    expense?.category_id ?? categories.find((item) => item.is_active)?.id ?? '',
+  );
+  const [vendorId, setVendorId] = useState(expense?.vendor_id ?? '');
+  const [description, setDescription] = useState(expense?.description ?? '');
+  const [invoiceNumber, setInvoiceNumber] = useState(expense?.invoice_number ?? '');
+  const [expenseDate, setExpenseDate] = useState(
+    expense?.expense_date ?? new Date().toISOString().slice(0, 10),
+  );
+  const [dueDate, setDueDate] = useState(expense?.due_date ?? '');
+  const [amount, setAmount] = useState(expense?.amount ?? '');
+  const [currencyCode, setCurrencyCode] = useState(expense?.currency_code ?? 'USD');
+  const [paymentMethod, setPaymentMethod] = useState(expense?.payment_method ?? '');
+  const [paymentReference, setPaymentReference] = useState(expense?.payment_reference ?? '');
+  const [notes, setNotes] = useState(expense?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [createdExpense, setCreatedExpense] = useState<ExpenseRecord>();
@@ -45,30 +52,42 @@ export function ExpenseCaptureDrawer({
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (createdExpense) return;
+    if (!isValidExpenseAmount(amount)) {
+      setMessage('Ingresa un monto mayor a cero con un máximo de dos decimales.');
+      return;
+    }
     setSaving(true);
     setMessage('');
     try {
-      const expense = await apiRequest<ExpenseRecord>(
-        `/v1/condominiums/${condominiumId}/expenses`,
+      const savedExpense = await apiRequest<ExpenseRecord>(
+        `/v1/condominiums/${condominiumId}/expenses${expense ? `/${expense.id}` : ''}`,
         session,
         {
-          method: 'POST',
+          method: expense ? 'PATCH' : 'POST',
           body: JSON.stringify({
-            categoryId,
-            vendorId: vendorId || undefined,
+            categoryId: expense && categoryId === expense.category_id ? undefined : categoryId,
+            vendorId:
+              expense && vendorId === (expense.vendor_id ?? '') ? undefined : vendorId || undefined,
+            clearVendor: Boolean(expense?.vendor_id) && !vendorId,
             description,
-            invoiceNumber: invoiceNumber || undefined,
+            invoiceNumber: expense ? invoiceNumber : invoiceNumber || undefined,
             expenseDate,
             dueDate: dueDate || undefined,
+            clearDue: Boolean(expense?.due_date) && !dueDate,
             amount,
             currencyCode,
-            paymentMethod: paymentMethod || undefined,
-            paymentReference: paymentReference || undefined,
-            notes: notes || undefined,
+            paymentMethod: expense ? paymentMethod : paymentMethod || undefined,
+            paymentReference: expense ? paymentReference : paymentReference || undefined,
+            notes: expense ? notes : notes || undefined,
+            expectedVersion: expense?.version,
           }),
         },
       );
-      setCreatedExpense(expense);
+      if (expense) {
+        await onComplete('Borrador actualizado.');
+        return;
+      }
+      setCreatedExpense(savedExpense);
       setMessage('Borrador creado. Ahora puedes adjuntar su comprobante.');
       await onDraftCreated();
     } catch (error) {
@@ -83,7 +102,7 @@ export function ExpenseCaptureDrawer({
       eyebrow="Captura guiada"
       onClose={onClose}
       prefix="expenses"
-      title="Registrar gasto"
+      title={expense ? 'Editar borrador' : 'Registrar gasto'}
       wide
     >
       {!createdExpense ? (
@@ -111,10 +130,11 @@ export function ExpenseCaptureDrawer({
               >
                 <option value="">Selecciona una categoría</option>
                 {categories
-                  .filter((item) => item.is_active)
+                  .filter((item) => item.is_active || item.id === categoryId)
                   .map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
+                      {!item.is_active ? ' (inactiva)' : ''}
                     </option>
                   ))}
               </Select>
@@ -123,10 +143,11 @@ export function ExpenseCaptureDrawer({
               <Select onChange={(event) => setVendorId(event.target.value)} value={vendorId}>
                 <option value="">Sin proveedor</option>
                 {vendors
-                  .filter((item) => item.is_active)
+                  .filter((item) => item.is_active || item.id === vendorId)
                   .map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
+                      {!item.is_active ? ' (inactivo)' : ''}
                     </option>
                   ))}
               </Select>
@@ -212,8 +233,11 @@ export function ExpenseCaptureDrawer({
             <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
               Cancelar
             </Button>
-            <Button disabled={saving || !categoryId || !description || !amount} type="submit">
-              {saving ? 'Guardando…' : 'Continuar al comprobante'}
+            <Button
+              disabled={saving || !categoryId || !description || !isValidExpenseAmount(amount)}
+              type="submit"
+            >
+              {saving ? 'Guardando…' : expense ? 'Guardar cambios' : 'Continuar al comprobante'}
             </Button>
           </FormActions>
         </form>

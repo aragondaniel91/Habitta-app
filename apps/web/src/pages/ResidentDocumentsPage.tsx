@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, CommunityIcon, ReportsIcon } from '../components/icons';
 import { PageHeader } from '../components/PageHeader';
@@ -66,8 +66,21 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  // Keyed to the condominium that started a request, not to the access token in effect at that
+  // time, so a response from a condominium the resident has since left can reject itself instead
+  // of painting another tenant's documents or versions on screen -- while a same-tenant Supabase
+  // session token refresh is not treated as a scope change.
+  const scopeKey = condominiumId;
+  const scopeKeyRef = useRef(scopeKey);
+  scopeKeyRef.current = scopeKey;
+  const latestLibraryRequest = useRef(0);
+  const latestVersionsRequest = useRef(0);
+  const ownsScope = useCallback((requestScope: string) => scopeKeyRef.current === requestScope, []);
 
   const loadLibrary = useCallback(async () => {
+    const requestScope = scopeKey;
+    const requestId = ++latestLibraryRequest.current;
+    const ownsRequest = () => ownsScope(requestScope) && requestId === latestLibraryRequest.current;
     setLoading(true);
     setError('');
     try {
@@ -76,6 +89,7 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
         listCommunityDocumentFolders(condominiumId, session),
         listCommunityDocuments(condominiumId, session),
       ]);
+      if (!ownsRequest()) return;
       setCategories(categoryRows);
       setFolders(folderRows);
       setDocuments(documentRows);
@@ -85,47 +99,76 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
           : (documentRows[0]?.id ?? ''),
       );
     } catch (requestError) {
+      if (!ownsRequest()) return;
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'No se pudieron cargar los documentos compartidos contigo.',
       );
     } finally {
-      setLoading(false);
+      if (ownsRequest()) setLoading(false);
     }
-  }, [condominiumId, session]);
+  }, [condominiumId, ownsScope, scopeKey, session]);
 
   const loadVersions = useCallback(
     async (documentId: string) => {
+      const requestScope = scopeKey;
+      const requestId = ++latestVersionsRequest.current;
+      const ownsRequest = () =>
+        ownsScope(requestScope) && requestId === latestVersionsRequest.current;
       if (!documentId) {
         setVersions([]);
         return;
       }
+      // Do not leave a previous document's versions on screen while a new selection resolves.
+      setVersions([]);
       setDetailLoading(true);
       setError('');
       try {
-        setVersions(await listCommunityDocumentVersions(condominiumId, documentId, session));
+        const versionRows = await listCommunityDocumentVersions(condominiumId, documentId, session);
+        if (!ownsRequest()) return;
+        setVersions(versionRows);
       } catch (requestError) {
+        if (!ownsRequest()) return;
         setError(
           requestError instanceof Error
             ? requestError.message
             : 'No se pudieron cargar las versiones del documento.',
         );
       } finally {
-        setDetailLoading(false);
+        if (ownsRequest()) setDetailLoading(false);
       }
     },
-    [condominiumId, session],
+    [condominiumId, ownsScope, scopeKey, session],
   );
 
   useEffect(() => {
+    // Invalidate in-flight responses and clear tenant-scoped state before the replacement
+    // library request begins, so a condominium switch cannot briefly show the previous
+    // condominium's documents. This must only run when the condominium itself changes -- a
+    // same-tenant session token refresh must not reset filters, selection or the page.
+    latestLibraryRequest.current += 1;
+    latestVersionsRequest.current += 1;
+    setCategories([]);
+    setFolders([]);
+    setDocuments([]);
+    setVersions([]);
+    setDetailLoading(false);
+    setLoading(true);
+    setError('');
     setSearch('');
     setSelectedCategoryId('');
     setSelectedFolderId('');
     setSelectedDocumentId('');
     setNotice('');
+  }, [condominiumId]);
+
+  useEffect(() => {
+    // Runs on every condominium change and also on a background session token refresh, but the
+    // latter never clears the arrays above first, so it refetches silently without a skeleton
+    // flash or state reset.
     void loadLibrary();
-  }, [condominiumId, loadLibrary]);
+  }, [loadLibrary]);
 
   useEffect(() => {
     void loadVersions(selectedDocumentId);
@@ -171,12 +214,15 @@ export function ResidentDocumentsPage({ condominiumId, condominiumName, session 
 
   const downloadVersion = async (version: CommunityDocumentVersion) => {
     if (!selectedDocument) return;
+    const requestScope = scopeKey;
     setError('');
     setNotice('');
     try {
       await downloadCommunityDocumentVersion(condominiumId, selectedDocument.id, version, session);
+      if (!ownsScope(requestScope)) return;
       setNotice('Descarga iniciada.');
     } catch (requestError) {
+      if (!ownsScope(requestScope)) return;
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo descargar el documento.',
       );

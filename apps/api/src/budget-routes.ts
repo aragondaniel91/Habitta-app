@@ -59,6 +59,10 @@ const budgetRevisionSchema = z.object({
   lines: z.array(lineSchema).min(1).max(500),
 });
 
+const budgetRejectionSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+});
+
 const documentLinkSchema = z.object({ documentId: uuid });
 
 const body = async <T>(c: AppContext, schema: z.ZodType<T>) => {
@@ -188,6 +192,18 @@ budgetRoutes.post('/:id/budgets/:periodId/versions/:versionId/approve', async (c
     target_condominium: uuid.parse(c.req.param('id')),
     target_budget_period: uuid.parse(c.req.param('periodId')),
     target_budget_version: uuid.parse(c.req.param('versionId')),
+  });
+  return responseJson(c, response);
+});
+
+budgetRoutes.post('/:id/budgets/:periodId/versions/:versionId/reject', async (c) => {
+  const parsed = await body(c, budgetRejectionSchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'reject_budget_version', {
+    target_condominium: uuid.parse(c.req.param('id')),
+    target_budget_period: uuid.parse(c.req.param('periodId')),
+    target_budget_version: uuid.parse(c.req.param('versionId')),
+    rejection_reason_value: parsed.reason,
   });
   return responseJson(c, response);
 });

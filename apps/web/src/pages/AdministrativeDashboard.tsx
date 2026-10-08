@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -30,6 +30,8 @@ import {
   getRecentPayments,
   sortReceivableSummaries,
 } from '../lib/dashboard';
+import type { ServiceRequestRecord } from '../lib/service-requests';
+import { isOpenRequest, statusLabels as requestStatusLabels } from '../lib/service-requests';
 import type {
   DashboardPayment,
   DashboardPerson,
@@ -64,7 +66,10 @@ type DashboardData = {
   payments: DashboardPayment[];
   reviewQueue: DashboardPayment[];
   reviewQueueAvailable: boolean;
+  requests: ServiceRequestRecord[];
 };
+
+type ScopedDashboardData = DashboardData & { scope: string };
 
 type Props = {
   condominiumId: string;
@@ -191,6 +196,30 @@ function CurrencyTabs({
   );
 }
 
+function TrendRangeSelector({
+  selected,
+  onChange,
+}: {
+  selected: number;
+  onChange: (monthCount: number) => void;
+}) {
+  return (
+    <div className="dashboard-trend-range" aria-label="Periodo de tendencia">
+      {[3, 6, 12].map((monthCount) => (
+        <button
+          aria-pressed={selected === monthCount}
+          data-active={selected === monthCount || undefined}
+          key={monthCount}
+          onClick={() => onChange(monthCount)}
+          type="button"
+        >
+          {monthCount} meses
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function FinancialBarChart({
   points,
   currencyCode,
@@ -214,6 +243,7 @@ function FinancialBarChart({
   return (
     <div
       className="dashboard-bar-chart"
+      data-month-count={points.length}
       role="img"
       aria-label={`Cobros y cargos en ${currencyCode}`}
     >
@@ -319,14 +349,20 @@ export function AdministrativeDashboard({
   session,
   onNavigate,
 }: Props) {
-  const [data, setData] = useState<DashboardData | null>(null);
+  // The scope deliberately excludes the access token. A token refresh for the same person may
+  // retain the last useful view; a condominium or user change may never render it.
+  const scope = `${condominiumId}:${session.user.id}`;
+  const requestVersion = useRef(0);
+  const [data, setData] = useState<ScopedDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<{ scope: string; message: string } | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState('');
+  const [trendMonthCount, setTrendMonthCount] = useState(6);
 
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
-    setError('');
+    setError(null);
     try {
       const reviewQueueRequest = apiRequest<DashboardPayment[]>(
         `/v1/condominiums/${condominiumId}/payments/review-queue`,
@@ -347,6 +383,7 @@ export function AdministrativeDashboard({
         receivablesResult,
         paymentsResult,
         reviewQueueResult,
+        requestsResult,
       ] = await Promise.all([
         settleDashboardSource(
           'unidades',
@@ -391,9 +428,16 @@ export function AdministrativeDashboard({
           items: [],
           available: false,
         }),
+        settleDashboardSource(
+          'requests',
+          apiRequest<ServiceRequestRecord[]>(`/v1/condominiums/${condominiumId}/requests`, session),
+          [],
+        ),
       ]);
 
+      if (version !== requestVersion.current) return;
       setData({
+        scope,
         units: unitsResult.value,
         people: peopleResult.value,
         summaries: summariesResult.value,
@@ -402,39 +446,59 @@ export function AdministrativeDashboard({
         payments: paymentsResult.value,
         reviewQueue: reviewQueueResult.value.items,
         reviewQueueAvailable: reviewQueueResult.value.available,
+        requests: requestsResult.value,
       });
-      setError(
-        buildDashboardSourceWarning([
-          unitsResult,
-          peopleResult,
-          summariesResult,
-          agingResult,
-          receivablesResult,
-          paymentsResult,
-          reviewQueueResult,
-        ]),
-      );
+      const warning = buildDashboardSourceWarning([
+        unitsResult,
+        peopleResult,
+        summariesResult,
+        agingResult,
+        receivablesResult,
+        paymentsResult,
+        reviewQueueResult,
+        requestsResult,
+      ]);
+      setError(warning ? { scope, message: warning } : null);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudo cargar el dashboard administrativo.',
-      );
+      if (version !== requestVersion.current) return;
+      setError({
+        scope,
+        message:
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo cargar el dashboard administrativo.',
+      });
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
-  }, [condominiumId, session]);
+  }, [condominiumId, scope, session]);
 
   useEffect(() => {
     void load();
+    return () => {
+      // A new scope or a same-scope refresh owns all subsequent state writes.
+      requestVersion.current += 1;
+    };
   }, [load]);
+
+  useEffect(() => {
+    setSelectedCurrency('');
+  }, [scope]);
+
+  const currentData = data?.scope === scope ? data : null;
+  const currentError = error?.scope === scope ? error.message : '';
 
   const currencies = useMemo(
     () =>
-      data
-        ? getDashboardCurrencies(data.summaries, data.aging, data.receivables, data.payments)
+      currentData
+        ? getDashboardCurrencies(
+            currentData.summaries,
+            currentData.aging,
+            currentData.receivables,
+            currentData.payments,
+          )
         : [],
-    [data],
+    [currentData],
   );
 
   useEffect(() => {
@@ -444,29 +508,38 @@ export function AdministrativeDashboard({
   }, [currencies, selectedCurrency]);
 
   const activity = useMemo(
-    () => (data ? buildRecentActivity(data.receivables, data.payments, data.units, 6) : []),
-    [data],
+    () =>
+      currentData
+        ? buildRecentActivity(currentData.receivables, currentData.payments, currentData.units, 6)
+        : [],
+    [currentData],
   );
   const recentPayments = useMemo(
-    () => (data ? getRecentPayments(data.payments, data.units) : []),
-    [data],
+    () => (currentData ? getRecentPayments(currentData.payments, currentData.units) : []),
+    [currentData],
   );
   const monthlySeries = useMemo(
     () =>
-      data && selectedCurrency
-        ? buildMonthlyFinancialSeries(data.receivables, data.payments, selectedCurrency)
+      currentData && selectedCurrency
+        ? buildMonthlyFinancialSeries(
+            currentData.receivables,
+            currentData.payments,
+            selectedCurrency,
+            undefined,
+            trendMonthCount,
+          )
         : [],
-    [data, selectedCurrency],
+    [currentData, selectedCurrency, trendMonthCount],
   );
 
-  if (loading && !data) return <DashboardLoading />;
+  if (loading && !currentData) return <DashboardLoading />;
 
-  if (error && !data) {
+  if (currentError && !currentData) {
     return (
       <Surface className="dashboard-error">
         <EmptyState
           actionLabel="Intentar nuevamente"
-          description={error}
+          description={currentError}
           icon={<CommunityIcon size={26} />}
           onAction={() => void load()}
           title="No pudimos cargar el resumen"
@@ -475,12 +548,14 @@ export function AdministrativeDashboard({
     );
   }
 
-  if (!data) return null;
+  if (!currentData) return <DashboardLoading />;
 
-  const activeUnits = data.units.filter((unit) => unit.status === 'active').length;
-  const activePeople = data.people.filter((person) => person.status !== 'inactive').length;
-  const summaries = sortReceivableSummaries(data.summaries);
-  const selectedAging = data.aging.find((row) => row.currency_code === selectedCurrency);
+  const dashboardData = currentData;
+
+  const activeUnits = dashboardData.units.filter((unit) => unit.status === 'active').length;
+  const activePeople = dashboardData.people.filter((person) => person.status !== 'inactive').length;
+  const summaries = sortReceivableSummaries(dashboardData.summaries);
+  const selectedAging = dashboardData.aging.find((row) => row.currency_code === selectedCurrency);
   const feesRoute = routeByKey('fees');
   const paymentsRoute = routeByKey('payments');
   const unitsRoute = routeByKey('units');
@@ -495,12 +570,20 @@ export function AdministrativeDashboard({
   }));
   const collectionRows = currencies.map((currencyCode) => ({
     currencyCode,
-    value: getCollectionsThisMonth(data.payments, currencyCode),
+    value: getCollectionsThisMonth(dashboardData.payments, currencyCode),
   }));
-  const delinquencyRows = data.aging.map((row) => ({
+  const delinquencyRows = dashboardData.aging.map((row) => ({
     currencyCode: row.currency_code,
-    value: getDelinquencyRate(row),
+    rate: getDelinquencyRate(row),
+    overdueAmount: getAgingBuckets(row)
+      .filter((bucket) => bucket.key !== 'current')
+      .reduce((total, bucket) => total + bucket.numericAmount, 0),
   }));
+  const openRequests = dashboardData.requests
+    .filter((request) => isOpenRequest(request.status))
+    .sort((left, right) => right.updated_at.localeCompare(left.updated_at))
+    .slice(0, 3);
+  const latestOpenRequest = openRequests[0];
 
   return (
     <div className="dashboard-page">
@@ -521,9 +604,9 @@ export function AdministrativeDashboard({
         title={condominiumName}
       />
 
-      {error ? (
+      {currentError ? (
         <div className="dashboard-inline-alert" role="status">
-          {error} Se mantienen los últimos datos cargados.
+          {currentError} Se mantienen los últimos datos cargados.
         </div>
       ) : null}
 
@@ -545,7 +628,7 @@ export function AdministrativeDashboard({
           <CurrencyValues emptyLabel="Sin cobros" rows={collectionRows} />
         </MetricCard>
         <MetricCard
-          footer={`${data.units.length} ${data.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total.`}
+          footer={`${dashboardData.units.length} ${dashboardData.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total.`}
           icon={(props) => <UnitsIcon {...props} />}
           label="Unidades activas"
           tone="navy"
@@ -563,7 +646,12 @@ export function AdministrativeDashboard({
               {delinquencyRows.map((row) => (
                 <div key={row.currencyCode}>
                   <Badge tone="neutral">{row.currencyCode}</Badge>
-                  <strong>{row.value.toFixed(1)}%</strong>
+                  <div className="dashboard-delinquency-value">
+                    <strong>{row.rate.toFixed(1)}%</strong>
+                    <small>
+                      Vencido: {formatDashboardAmount(row.overdueAmount, row.currencyCode)}
+                    </small>
+                  </div>
                 </div>
               ))}
             </div>
@@ -573,7 +661,7 @@ export function AdministrativeDashboard({
         </MetricCard>
       </section>
 
-      <section className="dashboard-chart-grid">
+      <section className="dashboard-chart-grid" data-trend-month-count={trendMonthCount}>
         <Surface className="dashboard-panel dashboard-financial-chart-panel">
           <div className="dashboard-section-heading">
             <div>
@@ -581,23 +669,37 @@ export function AdministrativeDashboard({
               <h2>
                 Cobros vs cargos
                 <InfoHint label="Más información sobre cobros vs cargos">
-                  Compara cobros aprobados con cargos registrados durante los últimos seis meses.
+                  Compara cobros aprobados con cargos registrados en el periodo seleccionado.
                 </InfoHint>
               </h2>
             </div>
-            {currencies.length ? (
-              <CurrencyTabs
-                currencies={currencies}
-                onChange={setSelectedCurrency}
-                selected={selectedCurrency}
-              />
-            ) : null}
+            <div className="dashboard-chart-controls">
+              <TrendRangeSelector onChange={setTrendMonthCount} selected={trendMonthCount} />
+              {currencies.length ? (
+                <CurrencyTabs
+                  currencies={currencies}
+                  onChange={setSelectedCurrency}
+                  selected={selectedCurrency}
+                />
+              ) : null}
+            </div>
           </div>
           <div className="dashboard-chart-legend">
             <span data-kind="income">Cobros aprobados</span>
             <span data-kind="charges">Cargos registrados</span>
           </div>
-          <FinancialBarChart currencyCode={selectedCurrency || 'USD'} points={monthlySeries} />
+          {selectedCurrency ? (
+            <FinancialBarChart currencyCode={selectedCurrency} points={monthlySeries} />
+          ) : (
+            <div className="dashboard-chart-empty">
+              <ReportsIcon size={28} />
+              <strong>Sin moneda financiera disponible</strong>
+              <span>
+                La tendencia aparecerá cuando el condominio tenga cargos o cobros en una moneda
+                registrada.
+              </span>
+            </div>
+          )}
           <p className="dashboard-data-note">
             Los egresos se integrarán aquí cuando el módulo de gastos exponga una fuente financiera
             consolidada. No se muestran valores simulados.
@@ -684,13 +786,13 @@ export function AdministrativeDashboard({
               onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
               type="button"
             >
-              <span data-tone={data.reviewQueue.length ? 'warning' : 'success'}>
+              <span data-tone={dashboardData.reviewQueue.length ? 'warning' : 'success'}>
                 <PaymentsIcon size={19} />
               </span>
               <div>
                 <strong>
-                  {data.reviewQueueAvailable
-                    ? `${data.reviewQueue.length} pagos por revisar`
+                  {dashboardData.reviewQueueAvailable
+                    ? `${dashboardData.reviewQueue.length} pagos por revisar`
                     : 'Bandeja de pagos restringida'}
                 </strong>
                 <small>Validación manual de referencias y comprobantes.</small>
@@ -702,14 +804,12 @@ export function AdministrativeDashboard({
               onClick={() => feesRoute && onNavigate(feesRoute)}
               type="button"
             >
-              <span
-                data-tone={delinquencyRows.some((row) => row.value > 0) ? 'warning' : 'success'}
-              >
+              <span data-tone={delinquencyRows.some((row) => row.rate > 0) ? 'warning' : 'success'}>
                 <FeesIcon size={19} />
               </span>
               <div>
                 <strong>
-                  {delinquencyRows.some((row) => row.value > 0)
+                  {delinquencyRows.some((row) => row.rate > 0)
                     ? 'Cobranza con saldos vencidos'
                     : 'Cobranza al día'}
                 </strong>
@@ -726,8 +826,16 @@ export function AdministrativeDashboard({
                 <RequestsIcon size={19} />
               </span>
               <div>
-                <strong>Solicitudes de la comunidad</strong>
-                <small>El módulo se conectará sin inventar tickets activos.</small>
+                <strong>
+                  {openRequests.length
+                    ? `${openRequests.length} solicitudes abiertas`
+                    : 'Sin solicitudes abiertas'}
+                </strong>
+                <small>
+                  {latestOpenRequest
+                    ? `${latestOpenRequest.request_number}: ${latestOpenRequest.title} · ${requestStatusLabels[latestOpenRequest.status]}`
+                    : 'Las nuevas solicitudes de la comunidad aparecerán aquí.'}
+                </small>
               </div>
               <ArrowRightIcon size={17} />
             </button>
@@ -745,7 +853,7 @@ export function AdministrativeDashboard({
             <button onClick={() => unitsRoute && onNavigate(unitsRoute)} type="button">
               <UnitsIcon size={21} />
               <span>Unidades</span>
-              <strong>{data.units.length}</strong>
+              <strong>{dashboardData.units.length}</strong>
             </button>
             <button onClick={() => peopleRoute && onNavigate(peopleRoute)} type="button">
               <PeopleIcon size={21} />

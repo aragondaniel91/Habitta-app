@@ -171,7 +171,7 @@ reset role;
 
 -- A membership with no relationship behind it. This is the stale-membership case, and it is also
 -- what an old JWT amounts to: the session is still valid, the relationship is not.
-delete from public.unit_occupancies
+update public.unit_occupancies set ends_at = current_date - 1
 where person_id = '41540000-0000-4000-8000-000000000001'
   and occupancy_type = 'family_member';
 
@@ -184,22 +184,24 @@ select ok(not public.can_read_unit('41530000-0000-4000-8000-00000000000a'),
 
 -- Future, expired, inactive person and inactive unit, each one on its own.
 reset role;
+insert into public.people(id, condominium_id, first_name, last_name, status, created_by)
+values ('41540000-0000-4000-8000-00000000000a', '41520000-0000-4000-8000-00000000000a', 'Future', 'Relationship', 'active', '41500000-0000-4000-8000-000000000001');
 insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, created_by)
-values ('41530000-0000-4000-8000-00000000000a', '41540000-0000-4000-8000-000000000001', 'family_member', current_date + 5, '41500000-0000-4000-8000-000000000001');
+values ('41530000-0000-4000-8000-00000000000a', '41540000-0000-4000-8000-00000000000a', 'family_member', current_date + 5, '41500000-0000-4000-8000-000000000001');
 set local role authenticated;
 select pg_temp.as_user('41500000-0000-4000-8000-000000000001');
 select ok(not public.can_read_condominium('41520000-0000-4000-8000-00000000000a'), 'a relationship starting in the future is not active today');
 
 reset role;
-update public.unit_occupancies set starts_at = current_date - 30, ends_at = current_date - 1
-where person_id = '41540000-0000-4000-8000-000000000001' and occupancy_type = 'family_member';
+insert into public.people(id, condominium_id, first_name, last_name, status, created_by)
+values ('41540000-0000-4000-8000-00000000000b', '41520000-0000-4000-8000-00000000000a', 'Expired', 'Relationship', 'active', '41500000-0000-4000-8000-000000000001');
+insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, ends_at, created_by)
+values ('41530000-0000-4000-8000-00000000000a', '41540000-0000-4000-8000-00000000000b', 'family_member', current_date - 30, current_date - 1, '41500000-0000-4000-8000-000000000001');
 set local role authenticated;
 select pg_temp.as_user('41500000-0000-4000-8000-000000000001');
 select ok(not public.can_read_condominium('41520000-0000-4000-8000-00000000000a'), 'an expired relationship grants nothing');
 
 reset role;
-update public.unit_occupancies set ends_at = null
-where person_id = '41540000-0000-4000-8000-000000000001' and occupancy_type = 'family_member';
 update public.people set status = 'inactive' where id = '41540000-0000-4000-8000-000000000001';
 set local role authenticated;
 select pg_temp.as_user('41500000-0000-4000-8000-000000000001');

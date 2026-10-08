@@ -14,29 +14,33 @@ describe('HAB-260 approved People information architecture', () => {
     expect(source).toContain("'digital-access'");
     expect(source).toContain('Relaciones con unidades');
     expect(source).toContain('Roles en la comunidad');
-    expect(source).toContain('Notas privadas');
-    expect(source).toContain('Acceso digital');
+    expect(source).toContain('Notas internas');
+    expect(source).toContain('Invitaciones');
   });
 
   it('renders a single per-unit card that summarizes the approved relationship dimensions', async () => {
     const source = await read('./features/people/PeopleWorkspaceComponents.tsx');
+    const historyDrawer = await read('./features/people/PersonRelationshipHistoryDrawerV3.tsx');
 
     expect(source).toContain('export function PersonUnitRelationshipCard');
     expect(source).toContain('Propiedad');
     expect(source).toContain('Comunicaciones financieras');
     expect(source).toContain('Comunicaciones generales');
     expect(source).toContain('Ocupación');
-    expect(source).toContain('Acceso digital');
+    expect(source).toContain('Invitaciones');
     expect(source).toContain('relationship.currentOwnership');
     expect(source).toContain('relationship.currentOccupancy');
     expect(source).toContain('relationship.currentCommunication');
     expect(source).toContain('relationship.latestInvitationStatus');
+    expect(source).not.toContain('Acceso digital');
+    expect(historyDrawer).toContain('title="Invitaciones"');
+    expect(historyDrawer).not.toContain('Acceso digital');
   });
 
   it('keeps relationship actions explicit and history discoverable', async () => {
     const source = await read('./features/people/PeopleWorkspaceComponents.tsx');
 
-    expect(source).toContain('Editar relación');
+    expect(source).toContain('Editar');
     expect(source).toContain('Ver historial');
     expect(source).toContain('Cerrar relación');
     expect(source).toContain('Invitar');

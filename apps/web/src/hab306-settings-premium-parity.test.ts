@@ -24,8 +24,10 @@ describe('HAB-306 premium Settings parity', () => {
   });
 
   it('keeps notification persistence and switch semantics intact', () => {
-    expect(page).toContain('saveNotificationSettings(session, condominiumId, data.settings)');
+    expect(page).toContain('saveNotificationSettings(session, condominiumId, settingsToSave)');
     expect(page).toContain('savePreference(session, condominiumId, preference)');
+    expect(page).toContain('hasNotificationSettingsChanges');
+    expect(page).toContain('saveVersion !== latestRequest.current');
     expect(page).toContain('role="switch"');
     expect(page).toContain('aria-checked={checked}');
     expect(page).toContain('aria-checked={preference.in_app_enabled}');
@@ -42,6 +44,14 @@ describe('HAB-306 premium Settings parity', () => {
     expect(styles).toContain('@media (max-width: 720px)');
     expect(styles).toContain('@media (max-width: 470px)');
     expect(styles).toContain('grid-template-columns: 1fr');
+  });
+
+  it('keeps the reminder controls and timezone metric legible at narrow widths', () => {
+    expect(page).toContain('settings-metric--timezone');
+    expect(styles).toContain('.settings-rule-grid .field');
+    expect(styles).toContain('grid-template-rows: auto 48px minmax(1.17rem, auto)');
+    expect(styles).toContain('.settings-metric--timezone > strong');
+    expect(styles).toContain('white-space: nowrap');
   });
 
   it('preserves the guarded irreversible condominium deletion workflow', () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../../components/Dialog';
@@ -29,12 +29,14 @@ import type { PersonUnitRelationshipSummary } from './person-unit-relationships'
 import { PersonEditorDrawerV3 } from './PersonEditorDrawerV3';
 import { PeopleImportDrawerV3 } from './PeopleImportDrawerV3';
 import { PersonRelationshipHistoryDrawerV3 } from './PersonRelationshipHistoryDrawerV3';
+import { PersonRequestOwnership, shouldShowInitialProfileSkeleton } from './request-ownership';
 import { PersonUnitRelationshipDrawerV3 } from './PersonUnitRelationshipDrawerV3';
 import {
   PeopleDirectoryView,
   PeopleProfileEmpty,
   PersonProfileHeader,
   PersonUnitRelationshipCard,
+  type DirectorySelectionInteraction,
   type PeopleProfileTab,
 } from './PeopleWorkspaceComponents';
 import {
@@ -80,6 +82,35 @@ type LatestInvitation = {
   delivery: ResidentInvitationDelivery;
 };
 
+type InvitationListReloadRetry = {
+  personId: string;
+  selectionVersion: number;
+  successMessage: string;
+  error: string;
+};
+
+type PendingProfileReveal = {
+  personId: string;
+  selectionVersion: number;
+  interaction: DirectorySelectionInteraction;
+};
+
+const profileRevealTolerance = 24;
+
+function profileRevealHasSettled(profile: HTMLElement) {
+  const scrollMarginTop = Number.parseFloat(window.getComputedStyle(profile).scrollMarginTop);
+  if (!Number.isFinite(scrollMarginTop)) return false;
+
+  return Math.abs(profile.getBoundingClientRect().top - scrollMarginTop) <= profileRevealTolerance;
+}
+
+function profileRevealScrollTarget(profile: HTMLElement) {
+  const scrollMarginTop = Number.parseFloat(window.getComputedStyle(profile).scrollMarginTop);
+  if (!Number.isFinite(scrollMarginTop)) return null;
+
+  return window.scrollY + profile.getBoundingClientRect().top - scrollMarginTop;
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(value));
 }
@@ -115,13 +146,22 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   const [adminNoteRevisions, setAdminNoteRevisions] = useState<PersonAdminNoteRevision[]>([]);
   const [adminNotesAuthorized, setAdminNotesAuthorized] = useState(false);
   const [adminNoteDraft, setAdminNoteDraft] = useState('');
+  const [adminNoteError, setAdminNoteError] = useState('');
+  const [editingAdminNote, setEditingAdminNote] = useState(false);
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [tab, setTab] = useState<PeopleProfileTab>('summary');
   const [loading, setLoading] = useState(true);
+  const [directoryLoadError, setDirectoryLoadError] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
+  // Detail refreshes are deliberately non-destructive.  Once a profile has loaded,
+  // retain its controls and form fields while a later request is in flight.
+  const [hasLoadedSelectedProfile, setHasLoadedSelectedProfile] = useState(false);
   const [error, setError] = useState('');
+  // Only a failed profile request is retryable. Mutation and validation errors must
+  // remain visible without invalidating the operation that produced them.
+  const [profileLoadError, setProfileLoadError] = useState(false);
   const [message, setMessage] = useState('');
   const [busyAction, setBusyAction] = useState('');
 
@@ -137,36 +177,279 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     relationshipType: 'board_member' as CondominiumRelationshipType,
     title: '',
   });
+  const [editingCommunityRelationshipId, setEditingCommunityRelationshipId] = useState<
+    string | null
+  >(null);
   const [inviteRole, setInviteRole] = useState<ResidentRole>('owner');
   const [inviteUnitId, setInviteUnitId] = useState('');
   const [latestInvitation, setLatestInvitation] = useState<LatestInvitation | null>(null);
+  const [invitationListReloadRetry, setInvitationListReloadRetry] =
+    useState<InvitationListReloadRetry | null>(null);
+  const [auditPersistenceWarning, setAuditPersistenceWarning] = useState('');
+  // A profile operation belongs to the selection that started it.  Refs are used here
+  // rather than state so that completions can be rejected before they enqueue updates.
+  const selectionVersionRef = useRef(0);
+  const requestOwnershipRef = useRef(new PersonRequestOwnership());
+  // Directory requests are independent from profile requests. Keep their scope
+  // explicit so a late response from a previously selected condominium can never
+  // repopulate this workspace with another tenant's directory.
+  const directoryRequestVersionRef = useRef(0);
+  const directoryCondominiumIdRef = useRef(condominiumId);
+  directoryCondominiumIdRef.current = condominiumId;
+  const selectedPersonIdRef = useRef<string | null>(null);
+  const profileLoadVersionRef = useRef(0);
+  // Keep the error's load token separate from non-profile errors so that a
+  // succeeding profile load clears only retryable profile feedback.
+  const profileErrorLoadVersionRef = useRef<number | null>(null);
+  // Mutations are independently owned.  A single global "latest operation" makes
+  // two legitimate same-person mutations cancel one another and can strand a busy
+  // indicator, so retain each in-flight operation until it finishes or selection changes.
+  const operationNonceRef = useRef(0);
+  const activeOperationsRef = useRef(new Map<number, string>());
+  const adminNoteInputRef = useRef<HTMLTextAreaElement>(null);
+  const profileRevealRef = useRef<HTMLDivElement>(null);
+  const profileHeadingRef = useRef<HTMLHeadingElement>(null);
+  const profileRevealFrameRef = useRef<number | null>(null);
+  const profileFocusCleanupRef = useRef<(() => void) | null>(null);
 
-  const loadDirectory = useCallback(async () => {
-    setLoading(true);
+  const clearPersonState = useCallback(() => {
+    requestOwnershipRef.current.clear();
+    activeOperationsRef.current.clear();
+    profileErrorLoadVersionRef.current = null;
+    setOwnerships([]);
+    setOccupancies([]);
+    setCommunicationAssignments([]);
+    setCondominiumRelationships([]);
+    setInvitations([]);
+    setDeliveryEvents([]);
+    setAdminNoteRevisions([]);
+    setAdminNotesAuthorized(false);
+    setAdminNoteDraft('');
+    setAdminNoteError('');
+    setEditingAdminNote(false);
+    setEditingCommunityRelationshipId(null);
+    setRelationshipDraft({ relationshipType: 'board_member', title: '' });
+    setDetailLoading(false);
+    setHasLoadedSelectedProfile(false);
+    setBusyAction('');
     setError('');
-    try {
-      const [peopleItems, unitItems, buildingItems] = await Promise.all([
-        peopleApi<Person[]>(`/v1/condominiums/${condominiumId}/people`, session),
-        peopleApi<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-        peopleApi<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-      ]);
-      setPeople(peopleItems);
-      setUnits(unitItems);
-      setBuildings(buildingItems);
-      setSelected((current) =>
-        current ? (peopleItems.find((person) => person.id === current.id) ?? current) : current,
-      );
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo cargar Personas.',
-      );
-    } finally {
-      setLoading(false);
+    setProfileLoadError(false);
+    setMessage('');
+    setLatestInvitation(null);
+    setInvitationListReloadRetry(null);
+    setAuditPersistenceWarning('');
+    setRelationTarget(null);
+    setHistoryRelationship(null);
+    setPendingClose(null);
+    setPendingRevoke(null);
+  }, []);
+
+  const ownsSelection = useCallback(
+    (personId: string, selectionVersion: number) =>
+      selectedPersonIdRef.current === personId &&
+      selectionVersionRef.current === selectionVersion &&
+      requestOwnershipRef.current.ownsSelection(personId, selectionVersion),
+    [],
+  );
+
+  const cancelPendingProfileReveal = useCallback(() => {
+    if (profileRevealFrameRef.current !== null) {
+      const cancelFrame = window.cancelAnimationFrame ?? window.clearTimeout;
+      cancelFrame(profileRevealFrameRef.current);
+      profileRevealFrameRef.current = null;
     }
-  }, [condominiumId, session]);
+    profileFocusCleanupRef.current?.();
+    profileFocusCleanupRef.current = null;
+  }, []);
+
+  const scheduleProfileReveal = useCallback(
+    ({ personId, selectionVersion, interaction }: PendingProfileReveal) => {
+      cancelPendingProfileReveal();
+      if (typeof window === 'undefined' || !window.matchMedia?.('(max-width: 860px)').matches) {
+        return;
+      }
+
+      const requestFrame =
+        window.requestAnimationFrame ??
+        ((callback: FrameRequestCallback) => window.setTimeout(callback, 0));
+      profileRevealFrameRef.current = requestFrame(() => {
+        profileRevealFrameRef.current = null;
+        if (!ownsSelection(personId, selectionVersion)) return;
+
+        const profile = profileRevealRef.current;
+        if (!profile) return;
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const revealProfile = (behavior: ScrollBehavior) => {
+          const target = profileRevealScrollTarget(profile);
+          if (target === null) {
+            profile.scrollIntoView({ behavior, block: 'start' });
+            return;
+          }
+
+          // Native scrollIntoView can settle short of the profile's scroll margin after
+          // either pointer or keyboard selection. Use the measured document offset so
+          // both interactions land below the fixed top bar.
+          window.scrollTo({ behavior, top: target });
+        };
+        revealProfile(reducedMotion ? 'auto' : 'smooth');
+
+        if (interaction !== 'keyboard' && !reducedMotion) {
+          const cleanupPointerFallback = () => window.clearTimeout(fallbackTimer);
+          const fallbackTimer = window.setTimeout(() => {
+            // A pointer click retains focus in the directory, so it has no focus
+            // completion event. Correct an interrupted smooth scroll after it has
+            // had a chance to settle.
+            if (ownsSelection(personId, selectionVersion) && !profileRevealHasSettled(profile)) {
+              revealProfile('auto');
+            }
+            if (profileFocusCleanupRef.current === cleanupPointerFallback) {
+              profileFocusCleanupRef.current = null;
+            }
+          }, 1000);
+          profileFocusCleanupRef.current = cleanupPointerFallback;
+        } else if (interaction === 'keyboard') {
+          const focusProfileHeading = () => {
+            if (!ownsSelection(personId, selectionVersion)) return;
+            profileHeadingRef.current?.focus({ preventScroll: true });
+          };
+
+          if (reducedMotion) {
+            focusProfileHeading();
+            return;
+          }
+
+          const completeProfileReveal = (forceFocus = false) => {
+            // Focus can cause its own scroll. Ignore an earlier scrollend until the
+            // profile anchor has reached the same margin used by scrollIntoView.
+            if (!forceFocus && !profileRevealHasSettled(profile)) {
+              revealProfile('smooth');
+              return false;
+            }
+
+            profileFocusCleanupRef.current?.();
+            focusProfileHeading();
+            return true;
+          };
+          const onScrollEnd = () => {
+            completeProfileReveal();
+          };
+          const fallbackTimer = window.setTimeout(() => {
+            // Do not let the focus fallback mask an incomplete reveal. A final
+            // instant correction gives keyboard users the same anchored result if a
+            // browser does not deliver a usable scrollend event.
+            revealProfile('auto');
+            completeProfileReveal(true);
+          }, 1000);
+          window.addEventListener('scrollend', onScrollEnd);
+          profileFocusCleanupRef.current = () => {
+            window.removeEventListener('scrollend', onScrollEnd);
+            window.clearTimeout(fallbackTimer);
+          };
+        }
+      });
+    },
+    [cancelPendingProfileReveal, ownsSelection],
+  );
+
+  useEffect(() => cancelPendingProfileReveal, [cancelPendingProfileReveal]);
+  const ownsProfileLoad = useCallback(
+    (personId: string, selectionVersion: number, loadVersion: number) =>
+      ownsSelection(personId, selectionVersion) && profileLoadVersionRef.current === loadVersion,
+    [ownsSelection],
+  );
+  const showProfileLoadError = useCallback(
+    (personId: string, selectionVersion: number, loadVersion: number, requestError: unknown) => {
+      if (!ownsProfileLoad(personId, selectionVersion, loadVersion)) return;
+      profileErrorLoadVersionRef.current = loadVersion;
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo cargar el perfil de la persona.',
+      );
+      setProfileLoadError(true);
+    },
+    [ownsProfileLoad],
+  );
+  const clearProfileLoadFeedback = useCallback(() => {
+    profileErrorLoadVersionRef.current = null;
+    setProfileLoadError(false);
+  }, []);
+  const showActionError = useCallback(
+    (actionError: string) => {
+      clearProfileLoadFeedback();
+      setInvitationListReloadRetry(null);
+      setAuditPersistenceWarning('');
+      setError(actionError);
+    },
+    [clearProfileLoadFeedback],
+  );
+  const clearActionFeedback = useCallback(() => {
+    clearProfileLoadFeedback();
+    setInvitationListReloadRetry(null);
+    setAuditPersistenceWarning('');
+    setError('');
+  }, [clearProfileLoadFeedback]);
+  const beginOperation = useCallback((label: string) => {
+    const operationId = ++operationNonceRef.current;
+    activeOperationsRef.current.set(operationId, label);
+    setBusyAction(label);
+    return operationId;
+  }, []);
+  const ownsOperation = useCallback(
+    (personId: string, selectionVersion: number, operationId: number) =>
+      ownsSelection(personId, selectionVersion) && activeOperationsRef.current.has(operationId),
+    [ownsSelection],
+  );
+  const finishOperation = useCallback((operationId: number) => {
+    activeOperationsRef.current.delete(operationId);
+    setBusyAction(Array.from(activeOperationsRef.current.values()).at(-1) ?? '');
+  }, []);
+
+  const loadDirectory = useCallback(
+    async (clearFeedback = true) => {
+      const requestVersion = ++directoryRequestVersionRef.current;
+      const requestCondominiumId = condominiumId;
+      const ownsDirectoryRequest = () =>
+        directoryRequestVersionRef.current === requestVersion &&
+        directoryCondominiumIdRef.current === requestCondominiumId;
+      setLoading(true);
+      if (clearFeedback) {
+        setError('');
+        clearProfileLoadFeedback();
+        setDirectoryLoadError('');
+      }
+      try {
+        const [peopleItems, unitItems, buildingItems] = await Promise.all([
+          peopleApi<Person[]>(`/v1/condominiums/${condominiumId}/people`, session),
+          peopleApi<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
+          peopleApi<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+        ]);
+        if (!ownsDirectoryRequest()) return null;
+        setPeople(peopleItems);
+        setUnits(unitItems);
+        setBuildings(buildingItems);
+        setDirectoryLoadError('');
+        setSelected((current) =>
+          current ? (peopleItems.find((person) => person.id === current.id) ?? current) : current,
+        );
+        return null;
+      } catch (requestError) {
+        if (!ownsDirectoryRequest()) return null;
+        const directoryError =
+          requestError instanceof Error ? requestError.message : 'No se pudo cargar Personas.';
+        clearProfileLoadFeedback();
+        setDirectoryLoadError(directoryError);
+        setError('');
+        return directoryError;
+      } finally {
+        if (ownsDirectoryRequest()) setLoading(false);
+      }
+    },
+    [clearProfileLoadFeedback, condominiumId, session],
+  );
 
   const loadPersonContext = useCallback(
-    async (personId: string) => {
+    async (personId: string, selectionVersion: number, loadVersion: number) => {
       const [view, communicationsView, invitationItems, deliveryItems, notesView] =
         await Promise.all([
           peopleApi<PersonRelationshipView>(
@@ -185,6 +468,12 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           ),
         ]);
 
+      if (!ownsProfileLoad(personId, selectionVersion, loadVersion)) return false;
+      if (profileErrorLoadVersionRef.current !== null) {
+        profileErrorLoadVersionRef.current = null;
+        setError('');
+      }
+      setProfileLoadError(false);
       setSelected(view.person);
       setOwnerships(view.ownerships);
       setOccupancies(view.occupancies);
@@ -198,8 +487,10 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       setAdminNoteDraft(
         currentNote?.action === 'saved' && currentNote.content ? currentNote.content : '',
       );
+      setHasLoadedSelectedProfile(true);
+      return true;
     },
-    [condominiumId, session],
+    [condominiumId, ownsProfileLoad, session],
   );
 
   useEffect(() => {
@@ -207,23 +498,13 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   }, [loadDirectory]);
 
   useEffect(() => {
+    selectionVersionRef.current += 1;
+    selectedPersonIdRef.current = null;
+    profileLoadVersionRef.current += 1;
     setSelected(null);
-    setOwnerships([]);
-    setOccupancies([]);
-    setCommunicationAssignments([]);
-    setCondominiumRelationships([]);
-    setInvitations([]);
-    setDeliveryEvents([]);
-    setAdminNoteRevisions([]);
-    setAdminNotesAuthorized(false);
-    setAdminNoteDraft('');
+    clearPersonState();
     setTab('summary');
-    setLatestInvitation(null);
-    setRelationTarget(null);
-    setHistoryRelationship(null);
-    setPendingClose(null);
-    setPendingRevoke(null);
-  }, [condominiumId]);
+  }, [clearPersonState, condominiumId]);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -233,6 +514,41 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       return matchesQuery && (!statusFilter || status === statusFilter);
     });
   }, [people, query, statusFilter]);
+
+  const directoryEmptyState = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const queryMatches = normalizedQuery
+      ? people.filter((person) => personSearchText(person).includes(normalizedQuery))
+      : people;
+    const filtersCauseNoResults =
+      filtered.length === 0 && Boolean(statusFilter) && queryMatches.length > 0;
+
+    if (directoryLoadError && people.length === 0) {
+      return {
+        title: 'No se pudo cargar el directorio',
+        description: directoryLoadError,
+        actionLabel: 'Reintentar',
+        tone: 'error' as const,
+      };
+    }
+    if (people.length === 0) {
+      return {
+        title: 'Aún no hay personas registradas',
+        description: 'Cuando agregues Personas, aparecerán aquí.',
+      };
+    }
+    if (filtersCauseNoResults) {
+      return {
+        title: 'Ninguna persona coincide con el filtro',
+        description: 'Restablece el filtro de estado para ver más personas.',
+        actionLabel: 'Restablecer filtro',
+      };
+    }
+    return {
+      title: 'No encontramos resultados para tu búsqueda',
+      description: 'Prueba con otro nombre, documento, correo o teléfono.',
+    };
+  }, [directoryLoadError, filtered.length, people, query, statusFilter]);
 
   const accessOptions = useMemo(
     () => residentAccessOptions(ownerships, occupancies),
@@ -252,9 +568,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     [units, buildings, ownerships, occupancies, communicationAssignments, invitations],
   );
 
-  const relationshipForDrawer = relationTarget?.unitId
-    ? (relationships.find((item) => item.unitId === relationTarget.unitId) ?? null)
-    : null;
+  const renderedSelectionVersion = selectionVersionRef.current;
 
   const deliveryByInvitationId = useMemo(() => {
     const latest = new Map<string, ResidentInvitationDeliveryEvent>();
@@ -281,47 +595,178 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     (invitation) => residentInvitationDisplayStatus(invitation) === 'pending',
   );
 
-  const selectPerson = async (person: Person) => {
+  const selectPerson = async (
+    person: Person,
+    interaction: DirectorySelectionInteraction = 'pointer',
+  ) => {
+    const personChanged = selected?.id !== person.id;
+    if (personChanged) clearPersonState();
+    const ownership = requestOwnershipRef.current.select(person.id);
+    const selectionVersion = (selectionVersionRef.current = ownership.selectionVersion);
+    const loadVersion = (profileLoadVersionRef.current = ownership.loadVersion);
+    selectedPersonIdRef.current = person.id;
     setSelected(person);
+    scheduleProfileReveal({ personId: person.id, selectionVersion, interaction });
     setDetailLoading(true);
     setError('');
+    setProfileLoadError(false);
+    profileErrorLoadVersionRef.current = null;
     setMessage('');
     setLatestInvitation(null);
     setTab('summary');
     try {
-      await loadPersonContext(person.id);
+      await loadPersonContext(person.id, selectionVersion, loadVersion);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudo cargar el perfil de la persona.',
-      );
+      if (ownsProfileLoad(person.id, selectionVersion, loadVersion)) {
+        showProfileLoadError(person.id, selectionVersion, loadVersion, requestError);
+      }
     } finally {
-      setDetailLoading(false);
+      if (ownsProfileLoad(person.id, selectionVersion, loadVersion)) {
+        setDetailLoading(false);
+      }
     }
   };
 
-  const refreshSelected = async (successMessage?: string) => {
-    if (!selected) return;
-    await loadPersonContext(selected.id);
-    if (successMessage) setMessage(successMessage);
+  const refreshSelected = async (
+    personId: string,
+    selectionVersion: number,
+    successMessage?: string,
+    onLoadStarted?: (loadVersion: number) => void,
+  ) => {
+    if (!ownsSelection(personId, selectionVersion)) return false;
+    const ownership = requestOwnershipRef.current.refresh(personId);
+    if (!ownership || ownership.selectionVersion !== selectionVersion) return false;
+    const loadVersion = (profileLoadVersionRef.current = ownership.loadVersion);
+    onLoadStarted?.(loadVersion);
+    setDetailLoading(true);
+    try {
+      const committed = await loadPersonContext(personId, selectionVersion, loadVersion);
+      if (committed && successMessage) setMessage(successMessage);
+      return committed;
+    } finally {
+      if (ownsProfileLoad(personId, selectionVersion, loadVersion)) {
+        setDetailLoading(false);
+      }
+    }
+  };
+
+  const retrySelectedProfile = async (personId: string, selectionVersion: number) => {
+    let loadVersion: number | null = null;
+    try {
+      await refreshSelected(personId, selectionVersion, undefined, (version) => {
+        loadVersion = version;
+      });
+    } catch (requestError) {
+      if (loadVersion === null || !ownsProfileLoad(personId, selectionVersion, loadVersion)) return;
+      showProfileLoadError(personId, selectionVersion, loadVersion, requestError);
+    }
+  };
+
+  const refreshAfterPersistedMutation = async (
+    personId: string,
+    selectionVersion: number,
+    successMessage: string,
+  ) => {
+    let loadVersion: number | null = null;
+    try {
+      await refreshSelected(personId, selectionVersion, successMessage, (version) => {
+        loadVersion = version;
+      });
+    } catch (requestError) {
+      if (loadVersion === null || !ownsProfileLoad(personId, selectionVersion, loadVersion)) return;
+      showProfileLoadError(personId, selectionVersion, loadVersion, requestError);
+      setMessage(
+        `${successMessage} El cambio se guardó correctamente, pero no se pudo recargar el perfil.`,
+      );
+    }
+  };
+
+  const reloadInvitationListsAfterPersistedMutation = async (
+    personId: string,
+    selectionVersion: number,
+    successMessage: string,
+  ) => {
+    try {
+      const [nextInvitations, nextDeliveryEvents] = await Promise.all([
+        listResidentInvitations(condominiumId, personId),
+        listResidentInvitationDeliveryEvents(condominiumId, personId),
+      ]);
+      if (!ownsSelection(personId, selectionVersion)) return false;
+      setInvitations(nextInvitations);
+      setDeliveryEvents(nextDeliveryEvents);
+      setInvitationListReloadRetry(null);
+      setMessage(successMessage);
+      return true;
+    } catch (requestError) {
+      if (!ownsSelection(personId, selectionVersion)) return false;
+      const reloadError =
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo recargar la lista de invitaciones.';
+      setInvitationListReloadRetry({
+        personId,
+        selectionVersion,
+        successMessage,
+        error: `La invitación ya se guardó, pero no se pudo recargar la lista: ${reloadError}`,
+      });
+      setMessage(successMessage);
+      return false;
+    }
+  };
+
+  const retryInvitationListReload = async () => {
+    if (!invitationListReloadRetry) return;
+    await reloadInvitationListsAfterPersistedMutation(
+      invitationListReloadRetry.personId,
+      invitationListReloadRetry.selectionVersion,
+      invitationListReloadRetry.successMessage,
+    );
   };
 
   const handlePersonSaved = async (person: Person, successMessage: string) => {
+    const selectionVersion = selectionVersionRef.current;
+    const savedMode = personEditor;
     setPersonEditor(null);
-    setError('');
-    await loadDirectory();
-    await loadPersonContext(person.id);
+    await loadDirectory(false);
+    // A create selects its new person even if another profile was initially open.  In
+    // either mode, a selection made while the directory was refreshing wins.
+    if (selectionVersionRef.current !== selectionVersion) return;
+    if (savedMode === 'edit' && selectedPersonIdRef.current !== person.id) return;
+    const isSamePersonEdit = savedMode === 'edit' && selectedPersonIdRef.current === person.id;
+    let nextSelectionVersion = selectionVersion;
+    if (!isSamePersonEdit) {
+      // Changing selection invalidates old request ownership before the saved person
+      // becomes active. Same-person edits retain their profile and in-flight work.
+      clearPersonState();
+      const ownership = requestOwnershipRef.current.select(person.id);
+      nextSelectionVersion = selectionVersionRef.current = ownership.selectionVersion;
+      profileLoadVersionRef.current = ownership.loadVersion;
+      selectedPersonIdRef.current = person.id;
+    }
     setSelected(person);
     setTab('summary');
-    setMessage(successMessage);
+    let loadVersion: number | null = null;
+    try {
+      await refreshSelected(person.id, nextSelectionVersion, successMessage, (version) => {
+        loadVersion = version;
+      });
+    } catch (requestError) {
+      if (loadVersion !== null && ownsProfileLoad(person.id, nextSelectionVersion, loadVersion)) {
+        showProfileLoadError(person.id, nextSelectionVersion, loadVersion, requestError);
+        setMessage(
+          `${successMessage} Se guardó correctamente, pero no se pudo recargar el perfil.`,
+        );
+      }
+    }
   };
 
   const createCondominiumRelationship = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selected) return;
-    setBusyAction('condominium-relationship');
-    setError('');
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
+    const operationId = beginOperation('condominium-relationship');
+    clearActionFeedback();
     setMessage('');
     try {
       await peopleApi(
@@ -335,21 +780,66 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           }),
         },
       );
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
       setRelationshipDraft({ relationshipType: 'board_member', title: '' });
-      await refreshSelected('Relación con la comunidad agregada.');
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo agregar la relación.',
+      await refreshAfterPersistedMutation(
+        personId,
+        selectionVersion,
+        'Relación con la comunidad agregada.',
       );
+    } catch (requestError) {
+      if (ownsOperation(personId, selectionVersion, operationId))
+        showActionError(
+          requestError instanceof Error ? requestError.message : 'No se pudo agregar la relación.',
+        );
     } finally {
-      setBusyAction('');
+      finishOperation(operationId);
+    }
+  };
+
+  const saveCommunityRelationshipCorrection = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selected || !editingCommunityRelationshipId) return;
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
+    const operationId = beginOperation(`correct-community:${editingCommunityRelationshipId}`);
+    clearActionFeedback();
+    try {
+      await peopleApi(
+        `/v1/condominiums/${condominiumId}/people/${personId}/condominium-relationships/${editingCommunityRelationshipId}`,
+        session,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            relationshipType: relationshipDraft.relationshipType,
+            title: relationshipDraft.title.trim() || undefined,
+          }),
+        },
+      );
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
+      setEditingCommunityRelationshipId(null);
+      setRelationshipDraft({ relationshipType: 'board_member', title: '' });
+      await refreshAfterPersistedMutation(
+        personId,
+        selectionVersion,
+        'Rol corregido. El cambio queda en el historial auditable sin cerrar la relación.',
+      );
+    } catch (requestError) {
+      if (ownsOperation(personId, selectionVersion, operationId))
+        showActionError(
+          requestError instanceof Error ? requestError.message : 'No se pudo corregir el rol.',
+        );
+    } finally {
+      finishOperation(operationId);
     }
   };
 
   const confirmCloseRelationship = async () => {
     if (!selected || !pendingClose) return;
-    setBusyAction(`close:${pendingClose.id}`);
-    setError('');
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
+    const operationId = beginOperation(`close:${pendingClose.id}`);
+    clearActionFeedback();
     try {
       if (pendingClose.kind === 'condominium') {
         await peopleApi(
@@ -370,32 +860,40 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           },
         );
       }
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
       setPendingClose(null);
-      await refreshSelected('Relación cerrada. El historial se conserva y sigue siendo auditable.');
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo cerrar la relación.',
+      await refreshAfterPersistedMutation(
+        personId,
+        selectionVersion,
+        'Relación cerrada. El historial se conserva y sigue siendo auditable.',
       );
+    } catch (requestError) {
+      if (ownsOperation(personId, selectionVersion, operationId))
+        showActionError(
+          requestError instanceof Error ? requestError.message : 'No se pudo cerrar la relación.',
+        );
     } finally {
-      setBusyAction('');
+      finishOperation(operationId);
     }
   };
 
   const issueInvitation = async (role: ResidentRole, unitId: string) => {
     if (!selected || !unitId) return;
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
     if (!selected.email) {
-      setError('Agrega un correo válido a la persona antes de invitarla.');
+      showActionError('Agrega un correo válido a la persona antes de invitarla.');
       return;
     }
     const option = accessOptions.find((item) => item.role === role && item.unitId === unitId);
     if (!option) {
-      setError(
+      showActionError(
         'La relación activa ya no es compatible con ese acceso. Actualiza el perfil e intenta nuevamente.',
       );
       return;
     }
-    setBusyAction('invitation');
-    setError('');
+    const operationId = beginOperation('invitation');
+    clearActionFeedback();
     setMessage('');
     setLatestInvitation(null);
     try {
@@ -406,44 +904,35 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         role,
         session,
       });
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
       setLatestInvitation({
         url: result.invitationUrl,
         role,
         unitLabel: option.unitLabel,
         delivery: result.emailDelivery,
       });
-      const [nextInvitations, nextDeliveryEvents] = await Promise.all([
-        listResidentInvitations(condominiumId, selected.id),
-        listResidentInvitationDeliveryEvents(condominiumId, selected.id),
-      ]);
-      setInvitations(nextInvitations);
-      setDeliveryEvents(nextDeliveryEvents);
-      if (result.emailDelivery.status === 'sent') {
-        setMessage(
-          result.emailDelivery.mode === 'sandbox'
+      const successMessage =
+        result.emailDelivery.status === 'sent'
+          ? result.emailDelivery.mode === 'sandbox'
             ? 'Invitación creada y correo transaccional enviado al buzón de pruebas de este ambiente.'
-            : 'Invitación creada y correo transaccional enviado al residente.',
-        );
-      } else if (result.emailDelivery.status === 'failed') {
-        setMessage(
-          'Invitación creada, pero el correo no pudo enviarse. Usa el enlace seguro de respaldo.',
-        );
-      } else {
-        setMessage(
-          'Invitación creada. El envío automático está desactivado; usa el enlace seguro de respaldo.',
-        );
-      }
+            : 'Invitación creada y correo transaccional enviado al residente.'
+          : result.emailDelivery.status === 'failed'
+            ? 'Invitación creada, pero el correo no pudo enviarse. Usa el enlace seguro de respaldo.'
+            : 'Invitación creada. El envío automático está desactivado; usa el enlace seguro de respaldo.';
+      await reloadInvitationListsAfterPersistedMutation(personId, selectionVersion, successMessage);
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
       if (!result.auditPersisted) {
-        setError(
+        setAuditPersistenceWarning(
           'El resultado del correo no pudo guardarse en la auditoría. Conserva el enlace y revisa la integración antes de reenviar.',
         );
       }
     } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo crear la invitación.',
-      );
+      if (ownsOperation(personId, selectionVersion, operationId))
+        showActionError(
+          requestError instanceof Error ? requestError.message : 'No se pudo crear la invitación.',
+        );
     } finally {
-      setBusyAction('');
+      finishOperation(operationId);
     }
   };
 
@@ -454,35 +943,47 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
 
   const confirmRevokeInvitation = async () => {
     if (!selected || !pendingRevoke) return;
-    setBusyAction(`revoke:${pendingRevoke.id}`);
-    setError('');
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
+    const operationId = beginOperation(`revoke:${pendingRevoke.id}`);
+    clearActionFeedback();
     try {
       await revokeResidentInvitation(pendingRevoke.id);
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
       setPendingRevoke(null);
       setLatestInvitation(null);
-      const [nextInvitations, nextDeliveryEvents] = await Promise.all([
-        listResidentInvitations(condominiumId, selected.id),
-        listResidentInvitationDeliveryEvents(condominiumId, selected.id),
-      ]);
-      setInvitations(nextInvitations);
-      setDeliveryEvents(nextDeliveryEvents);
-      setMessage('Invitación revocada. Ese enlace ya no podrá utilizarse.');
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : 'No se pudo revocar la invitación.',
+      await reloadInvitationListsAfterPersistedMutation(
+        personId,
+        selectionVersion,
+        'Invitación revocada. Ese enlace ya no podrá utilizarse.',
       );
+    } catch (requestError) {
+      if (ownsOperation(personId, selectionVersion, operationId))
+        showActionError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo revocar la invitación.',
+        );
     } finally {
-      setBusyAction('');
+      finishOperation(operationId);
     }
   };
 
   const copyLatestInvitation = async () => {
-    if (!latestInvitation) return;
+    if (!latestInvitation || !selected) return;
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
     try {
       await navigator.clipboard.writeText(latestInvitation.url);
-      setMessage('Enlace seguro copiado al portapapeles.');
+      if (ownsSelection(personId, selectionVersion)) {
+        setMessage('Enlace seguro copiado al portapapeles.');
+      }
     } catch {
-      setError('No se pudo copiar automáticamente. Selecciona el enlace y cópialo manualmente.');
+      if (ownsSelection(personId, selectionVersion)) {
+        showActionError(
+          'No se pudo copiar automáticamente. Selecciona el enlace y cópialo manualmente.',
+        );
+      }
     }
   };
 
@@ -491,11 +992,17 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     if (!selected || !adminNotesAuthorized) return;
     const content = adminNoteDraft.trim();
     if (!content) {
-      setError('Escribe una nota o usa “Limpiar nota” para conservar el cambio en el historial.');
+      setAdminNoteError(
+        'Escribe una nota o usa “Limpiar nota” para conservar el cambio en el historial.',
+      );
+      adminNoteInputRef.current?.focus();
       return;
     }
-    setBusyAction('admin-note');
-    setError('');
+    setAdminNoteError('');
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
+    const operationId = beginOperation('admin-note');
+    clearActionFeedback();
     setMessage('');
     try {
       await peopleApi(
@@ -506,24 +1013,30 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           body: JSON.stringify({ content }),
         },
       );
-      await refreshSelected(
-        'Nota administrativa guardada. La revisión anterior permanece en el historial.',
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
+      await refreshAfterPersistedMutation(
+        personId,
+        selectionVersion,
+        'Nota interna guardada. La revisión anterior permanece en el historial.',
       );
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudo guardar la nota administrativa.',
-      );
+      if (ownsOperation(personId, selectionVersion, operationId))
+        showActionError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo guardar la nota interna.',
+        );
     } finally {
-      setBusyAction('');
+      finishOperation(operationId);
     }
   };
 
   const clearAdminNote = async () => {
     if (!selected || !adminNotesAuthorized) return;
-    setBusyAction('clear-admin-note');
-    setError('');
+    const personId = selected.id;
+    const selectionVersion = selectionVersionRef.current;
+    const operationId = beginOperation('clear-admin-note');
+    clearActionFeedback();
     setMessage('');
     try {
       await peopleApi(
@@ -531,15 +1044,21 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         session,
         { method: 'POST' },
       );
-      await refreshSelected('Nota administrativa limpiada. El historial anterior se conserva.');
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudo limpiar la nota administrativa.',
+      if (!ownsOperation(personId, selectionVersion, operationId)) return;
+      await refreshAfterPersistedMutation(
+        personId,
+        selectionVersion,
+        'Nota interna limpiada. El historial anterior se conserva.',
       );
+    } catch (requestError) {
+      if (ownsOperation(personId, selectionVersion, operationId))
+        showActionError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo limpiar la nota interna.',
+        );
     } finally {
-      setBusyAction('');
+      finishOperation(operationId);
     }
   };
 
@@ -556,7 +1075,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     setTab('digital-access');
   };
 
-  if (loading && !people.length) {
+  if (loading && !people.length && !directoryLoadError) {
     return (
       <div className="people-v3-workspace" aria-label="Cargando personas">
         <Skeleton className="skeleton--title" />
@@ -679,12 +1198,20 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     <div className="people-v3-tab-stack">
       <WorkspaceSection
         description="Junta, administración, representación y contactos se administran aparte de la relación con unidades."
-        title="Agregar rol en la comunidad"
+        title={
+          editingCommunityRelationshipId
+            ? 'Editar rol en la comunidad'
+            : 'Agregar rol en la comunidad'
+        }
       >
         <form
           className="people-v3-inline-form ux-form"
           noValidate
-          onSubmit={(event) => void createCondominiumRelationship(event)}
+          onSubmit={(event) =>
+            void (editingCommunityRelationshipId
+              ? saveCommunityRelationshipCorrection(event)
+              : createCondominiumRelationship(event))
+          }
         >
           <Field label="Relación">
             <Select
@@ -719,9 +1246,25 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
               value={relationshipDraft.title}
             />
           </Field>
-          <Button disabled={busyAction === 'condominium-relationship'} type="submit">
-            {busyAction === 'condominium-relationship' ? 'Agregando…' : 'Agregar relación'}
+          <Button disabled={Boolean(busyAction)} type="submit">
+            {editingCommunityRelationshipId
+              ? 'Guardar corrección'
+              : busyAction === 'condominium-relationship'
+                ? 'Agregando…'
+                : 'Agregar relación'}
           </Button>
+          {editingCommunityRelationshipId ? (
+            <Button
+              onClick={() => {
+                setEditingCommunityRelationshipId(null);
+                setRelationshipDraft({ relationshipType: 'board_member', title: '' });
+              }}
+              type="button"
+              variant="ghost"
+            >
+              Cancelar
+            </Button>
+          ) : null}
         </form>
       </WorkspaceSection>
 
@@ -747,20 +1290,36 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
                     {current ? 'Actual' : 'Histórica'}
                   </Badge>
                   {current ? (
-                    <Button
-                      onClick={() =>
-                        setPendingClose({
-                          kind: 'condominium',
-                          id: relationship.id,
-                          label: condominiumRelationshipLabels[relationship.relationship_type],
-                        })
-                      }
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      Cerrar
-                    </Button>
+                    <div className="people-v3-action-row">
+                      <Button
+                        onClick={() => {
+                          setEditingCommunityRelationshipId(relationship.id);
+                          setRelationshipDraft({
+                            relationshipType: relationship.relationship_type,
+                            title: relationship.title ?? '',
+                          });
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          setPendingClose({
+                            kind: 'condominium',
+                            id: relationship.id,
+                            label: condominiumRelationshipLabels[relationship.relationship_type],
+                          })
+                        }
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Cerrar
+                      </Button>
+                    </div>
                   ) : null}
                 </article>
               );
@@ -780,52 +1339,113 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       title="Notas internas"
     >
       {adminNotesAuthorized ? (
-        <form
-          className="people-v3-notes ux-form"
-          noValidate
-          onSubmit={(event) => void saveAdminNote(event)}
-        >
-          <Field
-            hint="Máximo 4.000 caracteres. Cada guardado crea una nueva revisión auditable."
-            label="Nota administrativa"
-          >
-            <textarea
-              className="input"
-              maxLength={4000}
-              onChange={(event) => setAdminNoteDraft(event.target.value)}
-              placeholder="Preferencia de contacto, seguimiento administrativo o contexto operativo…"
-              rows={6}
-              value={adminNoteDraft}
-            />
-          </Field>
+        <>
           <div className="people-v3-private-summary" role="note">
             <Badge tone="warning">Privado</Badge>
-            <strong>{adminNoteRevisions.length} revisiones</strong>
+            <strong>Nota actual</strong>
             <span>
-              {adminNoteRevisions[0]
-                ? `Último cambio ${formatDate(adminNoteRevisions[0].created_at)}`
-                : 'Sin notas administrativas registradas'}
+              {adminNoteRevisions[0]?.action === 'saved'
+                ? adminNoteRevisions[0].content
+                : 'Sin nota actual registrada.'}
             </span>
-          </div>
-          <div className="people-v3-action-row">
-            <Button disabled={busyAction === 'admin-note'} type="submit">
-              {busyAction === 'admin-note' ? 'Guardando…' : 'Guardar nota'}
-            </Button>
-            {adminNoteRevisions[0]?.action === 'saved' ? (
+            <small>
+              {adminNoteRevisions[0]
+                ? `Último cambio ${formatDate(adminNoteRevisions[0].created_at)} · ${adminNoteRevisions.length} revisiones`
+                : 'Aún no hay revisiones.'}
+            </small>
+            <div className="people-v3-action-row">
               <Button
-                disabled={busyAction === 'clear-admin-note'}
-                onClick={() => void clearAdminNote()}
+                onClick={() => setEditingAdminNote(true)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Editar nota
+              </Button>
+              <Button
+                onClick={() =>
+                  document
+                    .getElementById('people-note-history')
+                    ?.scrollIntoView({ behavior: 'smooth' })
+                }
+                size="sm"
                 type="button"
                 variant="ghost"
               >
-                {busyAction === 'clear-admin-note' ? 'Limpiando…' : 'Limpiar nota'}
+                Ver historial
               </Button>
-            ) : null}
+            </div>
           </div>
-        </form>
+          {editingAdminNote ? (
+            <form
+              className="people-v3-notes ux-form"
+              noValidate
+              onSubmit={(event) => void saveAdminNote(event)}
+            >
+              <Field
+                hint="Máximo 4.000 caracteres. Cada guardado crea una nueva revisión auditable."
+                error={adminNoteError}
+                label="Nota actual"
+              >
+                <textarea
+                  className="input"
+                  maxLength={4000}
+                  onChange={(event) => {
+                    setAdminNoteDraft(event.target.value);
+                    if (adminNoteError) setAdminNoteError('');
+                  }}
+                  placeholder="Preferencia de contacto, seguimiento administrativo o contexto operativo…"
+                  ref={adminNoteInputRef}
+                  rows={6}
+                  value={adminNoteDraft}
+                />
+              </Field>
+              <div className="people-v3-private-summary" role="note">
+                <Badge tone="warning">Privado</Badge>
+                <strong>{adminNoteRevisions.length} revisiones</strong>
+                <span>
+                  {adminNoteRevisions[0]
+                    ? `Último cambio ${formatDate(adminNoteRevisions[0].created_at)}`
+                    : 'Sin notas internas registradas'}
+                </span>
+              </div>
+              <div className="people-v3-action-row">
+                <Button disabled={busyAction === 'admin-note'} type="submit">
+                  {busyAction === 'admin-note' ? 'Guardando…' : 'Guardar nota'}
+                </Button>
+                {adminNoteRevisions[0]?.action === 'saved' ? (
+                  <Button
+                    disabled={busyAction === 'clear-admin-note'}
+                    onClick={() => void clearAdminNote()}
+                    type="button"
+                    variant="ghost"
+                  >
+                    {busyAction === 'clear-admin-note' ? 'Limpiando…' : 'Limpiar nota'}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="people-v3-action-row">
+                <Button onClick={() => setEditingAdminNote(false)} type="button" variant="ghost">
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          ) : null}
+          {adminNoteRevisions.length > 1 ? (
+            <div className="people-v3-history__list" id="people-note-history">
+              <strong>Historial de revisiones</strong>
+              {adminNoteRevisions.slice(1).map((revision) => (
+                <article key={revision.id}>
+                  <span>{revision.action === 'saved' ? revision.content : 'Nota limpiada'}</span>
+                  <small>{formatDate(revision.created_at)}</small>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </>
       ) : (
         <InlineNotice tone="info">
-          Tu rol actual no tiene acceso a las notas administrativas privadas de esta persona.
+          Tu rol actual no tiene acceso a las notas internas privadas de esta persona.
         </InlineNotice>
       )}
     </WorkspaceSection>
@@ -835,7 +1455,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     <div className="people-v3-tab-stack">
       <WorkspaceSection
         description="El acceso se concede sólo desde una propiedad activa o una relación residencial activa y compatible con la unidad."
-        title="Invitar a Habitta"
+        title="Nueva invitación"
       >
         <form
           className="people-v3-access-form ux-form"
@@ -1022,6 +1642,8 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
     return renderSummary();
   };
 
+  const profileUnavailableAfterLoadError = profileLoadError && !hasLoadedSelectedProfile;
+
   return (
     <>
       <div className="people-v3-workspace">
@@ -1041,9 +1663,49 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           title="Personas"
         />
 
-        {error ? <InlineNotice tone="error">{error}</InlineNotice> : null}
+        {error ? (
+          <InlineNotice tone="error">
+            {error}
+            {selected && profileLoadError ? (
+              <Button
+                onClick={() => void retrySelectedProfile(selected.id, renderedSelectionVersion)}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                Reintentar
+              </Button>
+            ) : null}
+          </InlineNotice>
+        ) : null}
+        {directoryLoadError && people.length > 0 ? (
+          <InlineNotice tone="error" title="No se pudo actualizar el directorio">
+            {directoryLoadError}
+            <Button onClick={() => void loadDirectory()} size="sm" type="button" variant="ghost">
+              Reintentar
+            </Button>
+          </InlineNotice>
+        ) : null}
+        {invitationListReloadRetry ? (
+          <InlineNotice tone="error">
+            {invitationListReloadRetry.error}
+            <Button
+              onClick={() => void retryInvitationListReload()}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              Reintentar lista
+            </Button>
+          </InlineNotice>
+        ) : null}
+        {auditPersistenceWarning ? (
+          <InlineNotice tone="error" title="Advertencia de auditoría">
+            {auditPersistenceWarning}
+          </InlineNotice>
+        ) : null}
         {message ? (
-          <InlineNotice tone="success" title="Listo">
+          <InlineNotice announce tone="success" title="Listo">
             {message}
           </InlineNotice>
         ) : null}
@@ -1052,20 +1714,20 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           <WorkspaceMetricCard
             icon={<PeopleIcon size={18} />}
             label="Personas"
-            value={people.length}
+            value={directoryLoadError && people.length === 0 ? '—' : people.length}
             detail="Registros únicos"
           />
           <WorkspaceMetricCard
             icon={<CheckCircleIcon size={18} />}
             label="Activas"
-            value={activePeople}
+            value={directoryLoadError && people.length === 0 ? '—' : activePeople}
             detail="Vigentes en la comunidad"
             tone="green"
           />
           <WorkspaceMetricCard
             icon={<BellIcon size={18} />}
             label="Con contacto"
-            value={connectedPeople}
+            value={directoryLoadError && people.length === 0 ? '—' : connectedPeople}
             detail="Correo o teléfono disponible"
             tone="neutral"
           />
@@ -1073,46 +1735,75 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
 
         <div className="people-v3-layout">
           <PeopleDirectoryView
+            countsUnavailable={Boolean(directoryLoadError && people.length === 0)}
             onClearFilters={() => {
-              setQuery('');
+              if (directoryLoadError && people.length === 0) {
+                void loadDirectory(false);
+                return;
+              }
               setStatusFilter('');
             }}
             onQueryChange={setQuery}
-            onSelect={(person) => void selectPerson(person)}
+            onSelect={(person, interaction) => void selectPerson(person, interaction)}
             onStatusFilterChange={setStatusFilter}
             people={filtered}
+            totalPeople={people.length}
+            emptyState={directoryEmptyState}
             query={query}
             selectedId={selected?.id}
             statusFilter={statusFilter}
           />
 
-          <Surface className="people-v3-profile">
-            {detailLoading ? (
-              <div className="people-v3-profile-loading">
-                <Skeleton className="skeleton--title" />
-                <Skeleton className="skeleton--card" />
-              </div>
-            ) : selected ? (
-              <>
-                <PersonProfileHeader
-                  actions={
-                    <Button onClick={() => setRelationTarget({})} size="sm">
-                      Vincular unidad
-                    </Button>
-                  }
-                  onEdit={() => setPersonEditor('edit')}
-                  onTabChange={setTab}
-                  person={selected}
-                  tab={tab}
-                />
-                <div className="people-v3-tab-content" role="tabpanel">
-                  {renderTab()}
+          <div className="people-v3-profile-anchor" ref={profileRevealRef}>
+            <Surface aria-busy={detailLoading || undefined} className="people-v3-profile">
+              {!selected && detailLoading ? (
+                <div className="people-v3-profile-loading">
+                  <Skeleton className="skeleton--title" />
+                  <Skeleton className="skeleton--card" />
                 </div>
-              </>
-            ) : (
-              <PeopleProfileEmpty onCreate={() => setPersonEditor('create')} />
-            )}
-          </Surface>
+              ) : selected && profileUnavailableAfterLoadError ? (
+                <div className="people-v3-profile-loading" role="status">
+                  <p>No se pudieron cargar los detalles del perfil.</p>
+                  <Button
+                    onClick={() => void retrySelectedProfile(selected.id, renderedSelectionVersion)}
+                    size="sm"
+                    type="button"
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              ) : selected ? (
+                <>
+                  <PersonProfileHeader
+                    actions={
+                      shouldShowInitialProfileSkeleton(
+                        detailLoading,
+                        hasLoadedSelectedProfile,
+                      ) ? undefined : (
+                        <Button onClick={() => setRelationTarget({})} size="sm">
+                          Vincular unidad
+                        </Button>
+                      )
+                    }
+                    onEdit={() => setPersonEditor('edit')}
+                    onTabChange={setTab}
+                    person={selected}
+                    headingRef={profileHeadingRef}
+                    tab={tab}
+                  />
+                  <div className="people-v3-tab-content" role="tabpanel">
+                    {shouldShowInitialProfileSkeleton(detailLoading, hasLoadedSelectedProfile) ? (
+                      <Skeleton className="skeleton--card" />
+                    ) : (
+                      renderTab()
+                    )}
+                  </div>
+                </>
+              ) : (
+                <PeopleProfileEmpty onCreate={() => setPersonEditor('create')} />
+              )}
+            </Surface>
+          </div>
         </div>
       </div>
 
@@ -1134,12 +1825,22 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
           condominiumId={condominiumId}
           initialUnitId={relationTarget.unitId}
           onChanged={async (successMessage) => {
-            await refreshSelected(successMessage);
+            if (ownsSelection(selected.id, renderedSelectionVersion)) {
+              await refreshAfterPersistedMutation(
+                selected.id,
+                renderedSelectionVersion,
+                successMessage,
+              );
+            }
           }}
-          onClose={() => setRelationTarget(null)}
-          onRequestClose={(target) => setPendingClose(target)}
+          onClose={() => {
+            if (ownsSelection(selected.id, renderedSelectionVersion)) setRelationTarget(null);
+          }}
+          onRequestClose={(target) => {
+            if (ownsSelection(selected.id, renderedSelectionVersion)) setPendingClose(target);
+          }}
           person={selected}
-          relationship={relationshipForDrawer}
+          relationships={relationships}
           session={session}
           units={units}
         />

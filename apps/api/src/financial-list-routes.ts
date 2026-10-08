@@ -2,6 +2,7 @@ import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import { uuidSchema } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
+import { attachPaymentActorNames } from './payment-actor-names';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
@@ -92,7 +93,18 @@ const paginatedFinancialList =
         }
 
         items.push(...pageItems);
-        if (items.length >= total) return c.json(items);
+        if (items.length >= total) {
+          return c.json(
+            table === 'payments'
+              ? await attachPaymentActorNames(
+                  id,
+                  items as Record<string, unknown>[],
+                  (name, payload) =>
+                    rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) }),
+                )
+              : items,
+          );
+        }
         if (pageItems.length === 0) {
           return c.json({ error: 'Financial history ended before exact count' }, 502);
         }
@@ -120,8 +132,14 @@ const paginatedFinancialList =
     if (total === null) return c.json({ error: 'Pagination metadata unavailable' }, 502);
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+    const enrichedItems =
+      table === 'payments'
+        ? await attachPaymentActorNames(id, items as Record<string, unknown>[], (name, payload) =>
+            rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) }),
+          )
+        : items;
     return c.json({
-      items,
+      items: enrichedItems,
       page,
       pageSize,
       total,

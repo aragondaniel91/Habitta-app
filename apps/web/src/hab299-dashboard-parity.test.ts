@@ -55,4 +55,13 @@ describe('HAB-299 Administrative Dashboard premium parity', () => {
     expect(cssSource).toContain('@media (max-width: 640px)');
     expect(mobileCssSource).toContain('@media (max-width: 760px)');
   });
+
+  it('gives the 12-month chart its own responsive row without hiding labels', () => {
+    expect(pageSource).toContain('data-trend-month-count={trendMonthCount}');
+    expect(cssSource).toContain(".dashboard-chart-grid[data-trend-month-count='12'] {");
+    expect(cssSource).toContain('grid-template-columns: minmax(0, 1fr);');
+    expect(cssSource).toContain('grid-template-columns: repeat(12, minmax(0, 1fr));');
+    expect(cssSource).not.toContain('repeat(12, minmax(54px, 1fr))');
+    expect(cssSource).not.toContain("[data-month-count='12'] .dashboard-bar-group:nth");
+  });
 });

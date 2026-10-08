@@ -130,15 +130,7 @@ export function formatDashboardDate(value: string) {
 }
 
 export function sortReceivableSummaries(rows: ReceivableSummary[]) {
-  const priority = new Map([
-    ['USD', 0],
-    ['VES', 1],
-  ]);
-  return [...rows].sort((left, right) => {
-    const leftPriority = priority.get(left.currency_code) ?? 99;
-    const rightPriority = priority.get(right.currency_code) ?? 99;
-    return leftPriority - rightPriority || left.currency_code.localeCompare(right.currency_code);
-  });
+  return [...rows].sort((left, right) => left.currency_code.localeCompare(right.currency_code));
 }
 
 export function getDashboardCurrencies(
@@ -246,7 +238,7 @@ export function buildMonthlyFinancialSeries(
   const points = new Map(
     keys.map((key) => {
       const date = new Date(`${key}-01T12:00:00Z`);
-      const label = new Intl.DateTimeFormat('es-VE', { month: 'short' })
+      const label = new Intl.DateTimeFormat('es-VE', { month: 'short', year: 'numeric' })
         .format(date)
         .replace('.', '');
       return [key, { key, label, collections: 0, charges: 0 } satisfies MonthlyFinancialPoint];

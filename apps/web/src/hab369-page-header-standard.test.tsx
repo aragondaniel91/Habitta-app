@@ -80,6 +80,22 @@ describe('HAB-369 one header shape for every module', () => {
     expect(css).toContain('.page-header__tabs');
   });
 
+  it('normalizes module (md) and shell-injected (sm) actions to one shared control contract', () => {
+    const rule = css.slice(
+      css.indexOf('.page-header__actions > .button {'),
+      css.indexOf('}', css.indexOf('.page-header__actions > .button {')),
+    );
+    expect(rule).toContain('min-height: 44px');
+    expect(rule).toContain('border-radius: var(--radius-md)');
+    expect(rule).toContain('font-size: 0.9375rem');
+    expect(rule).toContain('padding: 0 1rem');
+  });
+
+  it('imports page-header.css after styles.css so the normalization wins the cascade', () => {
+    const main = readFileSync(join(srcDir, 'main.tsx'), 'utf8');
+    expect(main.indexOf("'./page-header.css'")).toBeGreaterThan(main.indexOf("'./styles.css'"));
+  });
+
   it('lets no module render its own switcher outside the header', () => {
     const offenders: string[] = [];
     for (const file of walk(srcDir)) {

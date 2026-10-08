@@ -290,3 +290,19 @@ export function getEventDetail(event: ServiceRequestEvent) {
   }
   return '';
 }
+
+export function requestDetailLoadError(
+  sections: Readonly<Record<'comments' | 'events' | 'attachments', PromiseSettledResult<unknown>>>,
+) {
+  const labels: Record<keyof typeof sections, string> = {
+    comments: 'comentarios',
+    events: 'historial',
+    attachments: 'archivos',
+  };
+  const failed = (Object.keys(labels) as Array<keyof typeof sections>).filter(
+    (section) => sections[section].status === 'rejected',
+  );
+  return failed.length
+    ? `No se pudieron cargar: ${failed.map((section) => labels[section]).join(', ')}.`
+    : '';
+}

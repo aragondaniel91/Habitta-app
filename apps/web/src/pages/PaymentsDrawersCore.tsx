@@ -4,16 +4,18 @@ import type { Session } from '@supabase/supabase-js';
 import { useDialogBehavior } from '../components/Drawer';
 import { PaymentsIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
-import { paymentApi, paymentProof } from '../features/payments/api';
+import { paymentApi } from '../features/payments/api';
 import { PaymentAllocationEditor } from '../features/payments/components/PaymentAllocationEditor';
+import { PaymentProofPreview } from '../features/payments/components/PaymentProofPreview';
 import { PaymentProofUploader } from '../features/payments/components/PaymentProofUploader';
-import type {
-  AllocationInput,
-  AllocationPreview,
-  Payment,
-  PaymentMethod,
-  PaymentReceipt,
-  Receivable,
+import {
+  paymentActorLabel,
+  type AllocationInput,
+  type AllocationPreview,
+  type Payment,
+  type PaymentMethod,
+  type PaymentReceipt,
+  type Receivable,
 } from '../features/payments/types';
 import type { TreasuryAccount } from '../features/treasury/types';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
@@ -281,7 +283,7 @@ function PaymentForm({
   );
 }
 
-function ReviewPayment({
+export function ReviewPayment({
   condominiumId,
   session,
   payment,
@@ -303,6 +305,8 @@ function ReviewPayment({
     payment.treasury_account_id ?? '',
   );
   const endpoint = `/v1/condominiums/${condominiumId}/payments/${payment.id}`;
+  const canApprove = payment.can_approve === true;
+  const independentApprovalTitle = 'Requiere aprobaci\u00f3n de otro revisor';
 
   useEffect(() => {
     let active = true;
@@ -386,6 +390,16 @@ function ReviewPayment({
           <strong>{payment.payer_name}</strong>
         </div>
         <div>
+          <span>Registrado por</span>
+          <strong>{paymentActorLabel(payment.submitted_by_user_id, payment, session.user)}</strong>
+        </div>
+        {payment.reviewed_by ? (
+          <div>
+            <span>Revisado por</span>
+            <strong>{paymentActorLabel(payment.reviewed_by, payment, session.user)}</strong>
+          </div>
+        ) : null}
+        <div>
           <span>Monto</span>
           <strong>
             {formatDashboardAmount(payment.original_amount, payment.original_currency_code)}
@@ -409,6 +423,12 @@ function ReviewPayment({
         </div>
       ) : null}
       {message ? <div className="payments-form__message">{message}</div> : null}
+      {!canApprove ? (
+        <div className="payments-form__notice" role="status">
+          Próximo paso: otro revisor debe validar y aprobar este pago. El registrador no puede
+          aprobarlo cuando existe un revisor independiente.
+        </div>
+      ) : null}
       <div className="payments-review__actions">
         {payment.status === 'submitted' ? (
           <Button
@@ -419,20 +439,18 @@ function ReviewPayment({
             {processingAction === 'start-review' ? 'Procesando…' : 'Iniciar revisión'}
           </Button>
         ) : null}
-        <Button
-          disabled={processingAction !== null}
-          onClick={() =>
-            void paymentProof(`${endpoint}/proof`, session)
-              .then((value) => {
-                if (value instanceof Blob)
-                  window.open(URL.createObjectURL(value), '_blank', 'noopener,noreferrer');
-              })
-              .catch((error: Error) => setMessage(error.message))
-          }
-          variant="secondary"
-        >
-          Ver comprobante
-        </Button>
+      </div>
+      <div className="payments-proof-section">
+        <div className="payments-form__section-heading">
+          <strong>Comprobante</strong>
+          <span>Verifica que monto, fecha y referencia coincidan con el comprobante.</span>
+        </div>
+        <PaymentProofPreview
+          condominiumId={condominiumId}
+          missingHint="Si el método exige comprobante, usa «Solicitar corrección» e indica que falta adjuntarlo."
+          paymentId={payment.id}
+          session={session}
+        />
       </div>
       <div className="payments-review__decision">
         <Field label="Motivo para corrección, rechazo o reverso">
@@ -460,71 +478,83 @@ function ReviewPayment({
           </Button>
         </div>
       </div>
-      <div className="payments-review__allocation">
-        <div className="payments-form__section-heading">
-          <strong>Aplicación del pago</strong>
-          <span>
-            Previsualiza la distribución antes de aprobar. Las monedas nunca se mezclan sin tasa
-            explícita.
-          </span>
+      {!canApprove ? (
+        <div className="payments-form__message" role="status">
+          <strong>{independentApprovalTitle}</strong>
+          <br />
+          Este pago debe aprobarlo otro revisor.
         </div>
-        <Field
-          label="Cuenta de tesorería"
-          hint={
-            treasuryAccounts.length === 0 && !treasuryLoading
-              ? `No hay cuentas activas en ${payment.original_currency_code}; Habitta creará una cuenta transitoria claramente identificada.`
-              : 'El pago aprobado ingresará a esta cuenta.'
-          }
-        >
-          <Select
-            disabled={treasuryLoading || treasuryAccounts.length === 0 || processingAction !== null}
-            onChange={(event) => setSelectedTreasuryAccountId(event.target.value)}
-            required={treasuryAccounts.length > 1}
-            value={selectedTreasuryAccountId}
+      ) : null}
+      {canApprove ? (
+        <div className="payments-review__allocation">
+          <div className="payments-form__section-heading">
+            <strong>Aplicación del pago</strong>
+            <span>
+              Previsualiza la distribución antes de aprobar. Las monedas nunca se mezclan sin tasa
+              explícita.
+            </span>
+          </div>
+          <Field
+            label="Cuenta de tesorería"
+            hint={
+              treasuryAccounts.length === 0 && !treasuryLoading
+                ? `No hay cuentas activas en ${payment.original_currency_code}; Habitta creará una cuenta transitoria claramente identificada.`
+                : 'El pago aprobado ingresará a esta cuenta.'
+            }
           >
-            <option value="">
-              {treasuryLoading
-                ? 'Cargando cuentas…'
-                : treasuryAccounts.length === 0
-                  ? 'Cuenta transitoria automática'
-                  : 'Seleccionar cuenta'}
-            </option>
-            {treasuryAccounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name} · {account.currency_code}
+            <Select
+              disabled={
+                treasuryLoading || treasuryAccounts.length === 0 || processingAction !== null
+              }
+              onChange={(event) => setSelectedTreasuryAccountId(event.target.value)}
+              required={treasuryAccounts.length > 1}
+              value={selectedTreasuryAccountId}
+            >
+              <option value="">
+                {treasuryLoading
+                  ? 'Cargando cuentas…'
+                  : treasuryAccounts.length === 0
+                    ? 'Cuenta transitoria automática'
+                    : 'Seleccionar cuenta'}
               </option>
-            ))}
-          </Select>
-        </Field>
-        <PaymentAllocationEditor
-          onApprove={async (allocations: AllocationInput[]) => {
-            setMessage('');
-            try {
-              await selectTreasuryAccountBeforeApproval();
-              await paymentApi(`${endpoint}/approve`, session, {
+              {treasuryAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} · {account.currency_code}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <PaymentAllocationEditor
+            onApprove={async (allocations: AllocationInput[]) => {
+              setMessage('');
+              try {
+                await selectTreasuryAccountBeforeApproval();
+                await paymentApi(`${endpoint}/approve`, session, {
+                  method: 'POST',
+                  body: JSON.stringify({ allocations }),
+                });
+                await onChanged('Pago aprobado, aplicado y registrado en tesorería.');
+              } catch (error) {
+                const nextMessage =
+                  error instanceof Error ? error.message : 'No se pudo aprobar el pago.';
+                setMessage(nextMessage);
+                throw error;
+              }
+            }}
+            onPreview={(allocations) =>
+              paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
                 method: 'POST',
                 body: JSON.stringify({ allocations }),
-              });
-              await onChanged('Pago aprobado, aplicado y registrado en tesorería.');
-            } catch (error) {
-              const nextMessage =
-                error instanceof Error ? error.message : 'No se pudo aprobar el pago.';
-              setMessage(nextMessage);
-              throw error;
+              })
             }
-          }}
-          onPreview={(allocations) =>
-            paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
-              method: 'POST',
-              body: JSON.stringify({ allocations }),
-            })
-          }
-          paymentCurrency={payment.original_currency_code}
-          receivables={receivables.filter(
-            (item) => item.unit_id === payment.unit_id && Number(item.outstanding_amount ?? 0) > 0,
-          )}
-        />
-      </div>
+            paymentCurrency={payment.original_currency_code}
+            receivables={receivables.filter(
+              (item) =>
+                item.unit_id === payment.unit_id && Number(item.outstanding_amount ?? 0) > 0,
+            )}
+          />
+        </div>
+      ) : null}
       {payment.status === 'approved' ? (
         <Button
           disabled={!reason.trim() || processingAction !== null}

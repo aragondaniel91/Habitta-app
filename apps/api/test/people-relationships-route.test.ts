@@ -5,6 +5,7 @@ import type { NotificationBindings } from '../src/notifications/types';
 const condominiumId = '0a5e90f2-1ff3-433c-abe1-55fab3e206c3';
 const personId = '8dcc9bf7-30d1-4131-a94c-374e61e9312d';
 const unitId = '22d68987-bf35-4fd6-a900-07fd4eca0b35';
+const assignmentId = 'e19b2393-b229-40f6-b620-5f27df17b0aa';
 
 const environment = {
   SUPABASE_URL: 'https://example.supabase.co',
@@ -113,5 +114,173 @@ describe('person-centric relationships', () => {
           (init as RequestInit | undefined)?.method === 'POST',
       ),
     ).toBe(false);
+  });
+
+  it('routes unit attribute edits through audited correction RPCs instead of a lifecycle close', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/v1/user')) return authenticatedUser();
+      if (url.includes('/rest/v1/unit_owners?'))
+        return Response.json([
+          { unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } },
+        ]);
+      if (url.includes('/rest/v1/unit_occupancies?'))
+        return Response.json([
+          { unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } },
+        ]);
+      if (url.endsWith('/rest/v1/rpc/correct_unit_owner_percentage'))
+        return Response.json({ id: assignmentId, ownership_percentage: 60 });
+      if (url.endsWith('/rest/v1/rpc/correct_unit_occupancy_type'))
+        return Response.json({ id: assignmentId, occupancy_type: 'tenant' });
+      throw new Error(`Unexpected request: ${url} (${init?.method})`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await app.request(
+      `/v1/condominiums/${condominiumId}/unit-owners/${assignmentId}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownershipPercentage: 60 }),
+      },
+      environment,
+    );
+
+    expect(response.status).toBe(200);
+    const correction = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith('/rest/v1/rpc/correct_unit_owner_percentage'),
+    );
+    expect(correction?.[1]).toMatchObject({ method: 'POST' });
+    expect(JSON.parse(String((correction?.[1] as RequestInit).body))).toEqual({
+      target: condominiumId,
+      target_assignment: assignmentId,
+      next_percentage: 60,
+    });
+
+    const occupancyResponse = await app.request(
+      `/v1/condominiums/${condominiumId}/unit-occupancies/${assignmentId}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ occupancyType: 'tenant' }),
+      },
+      environment,
+    );
+
+    expect(occupancyResponse.status).toBe(200);
+    const occupancyCorrection = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith('/rest/v1/rpc/correct_unit_occupancy_type'),
+    );
+    expect(JSON.parse(String((occupancyCorrection?.[1] as RequestInit).body))).toEqual({
+      target: condominiumId,
+      target_assignment: assignmentId,
+      next_type: 'tenant',
+    });
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('ends_at'))).toBe(false);
+  });
+
+  it('routes a community role edit through its audited correction RPC', async () => {
+    const relationshipId = '91b86fc0-e27b-4eb4-92ea-03a8a9a490c0';
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/v1/user')) return authenticatedUser();
+      if (url.includes('/rest/v1/condominium_person_relationships?'))
+        return Response.json([{ id: relationshipId }]);
+      if (url.endsWith('/rest/v1/rpc/correct_community_person_relationship'))
+        return Response.json({
+          id: relationshipId,
+          relationship_type: 'representative',
+          title: 'Vocal',
+        });
+      throw new Error(`Unexpected request: ${url} (${init?.method})`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await app.request(
+      `/v1/condominiums/${condominiumId}/people/${personId}/condominium-relationships/${relationshipId}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ relationshipType: 'representative', title: 'Vocal' }),
+      },
+      environment,
+    );
+
+    expect(response.status).toBe(200);
+    const correction = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith('/rest/v1/rpc/correct_community_person_relationship'),
+    );
+    expect(correction?.[1]).toMatchObject({ method: 'POST' });
+    expect(JSON.parse(String((correction?.[1] as RequestInit).body))).toEqual({
+      target: condominiumId,
+      target_relationship: relationshipId,
+      next_type: 'representative',
+      next_title: 'Vocal',
+    });
+  });
+
+  it('returns actionable relationship-management copy when a share would preserve an invalid owner total', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/v1/user')) return authenticatedUser();
+      if (url.includes('/rest/v1/unit_owners?'))
+        return Response.json([
+          { unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } },
+        ]);
+      if (url.endsWith('/rest/v1/rpc/correct_unit_owner_percentage'))
+        return Response.json(
+          {
+            message:
+              'unit ownership percentage total above 100 must be strictly reduced for unit x',
+          },
+          { status: 400 },
+        );
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await app.request(
+      `/v1/condominiums/${condominiumId}/unit-owners/${assignmentId}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownershipPercentage: 60 }),
+      },
+      environment,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        'Los porcentajes conocidos de propiedad de esta unidad superan 100%. Corrige una relación existente reduciendo su porcentaje antes de aumentar o agregar otra.',
+    });
+  });
+
+  it('does not correct a community role through a mismatched person URL', async () => {
+    const relationshipId = '91b86fc0-e27b-4eb4-92ea-03a8a9a490c0';
+    const otherPersonId = '85a506c1-6d41-4a5b-bb7b-92f3a43f72a1';
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/auth/v1/user')) return authenticatedUser();
+      if (url.includes('/rest/v1/condominium_person_relationships?')) return Response.json([]);
+      if (url.endsWith('/rest/v1/rpc/correct_community_person_relationship'))
+        throw new Error('correction RPC must not be invoked for another person');
+      throw new Error(`Unexpected request: ${url} (${init?.method})`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await app.request(
+      `/v1/condominiums/${condominiumId}/people/${otherPersonId}/condominium-relationships/${relationshipId}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ relationshipType: 'representative', title: 'Vocal' }),
+      },
+      environment,
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({ error: 'Relationship not found' });
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/rpc/'))).toBe(false);
   });
 });

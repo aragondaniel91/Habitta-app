@@ -113,6 +113,11 @@ export function formatExpenseDate(value: string | null) {
   return new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(normalized));
 }
 
+/** Mirrors the API's money contract so invalid values receive immediate form feedback. */
+export function isValidExpenseAmount(value: string) {
+  return /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(value.trim()) && Number(value) > 0;
+}
+
 export function filterExpenses(
   expenses: ExpenseRecord[],
   filters: { query: string; status: string; currency: string },

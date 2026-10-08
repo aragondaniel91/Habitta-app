@@ -45,14 +45,12 @@ const personSummary = (people: Array<{ firstName: string; lastName: string }>) =
     : names.join(', ');
 };
 
-const participationSummary = (unit: DirectoryUnit) => {
-  if (!unit.owners.length) return 'Sin propietarios';
-  const percentages = unit.owners
-    .map((owner) => Number(owner.ownershipPercentage))
-    .filter((value) => Number.isFinite(value));
-  if (!percentages.length) return 'Participación no indicada';
-  const total = percentages.reduce((sum, value) => sum + value, 0);
-  return `${total.toLocaleString('es-VE', { maximumFractionDigits: 4 })}% asignado`;
+const aliquotSummary = (unit: DirectoryUnit) => {
+  if (unit.ownershipPercentage == null) return 'No definida';
+  const value = Number(unit.ownershipPercentage);
+  return Number.isFinite(value)
+    ? `${value.toLocaleString('es-VE', { maximumFractionDigits: 4 })}%`
+    : 'No definida';
 };
 
 const topologyGuidance: Record<PropertyTopology, string | null> = {
@@ -88,6 +86,7 @@ export function UnitsPage({
   } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<DirectoryUnit | null>(null);
   const [saving, setSaving] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -117,7 +116,7 @@ export function UnitsPage({
     return () => {
       active = false;
     };
-  }, [condominiumId, session]);
+  }, [condominiumId, reloadNonce, session]);
 
   useEffect(() => {
     setSelectedUnit(null);
@@ -190,12 +189,14 @@ export function UnitsPage({
     if (!editor) return;
     setSaving(true);
     setNotice(null);
+    let saved = false;
     try {
       await apiRequest(
         `/v1/condominiums/${condominiumId}/units${editor.mode === 'edit' ? `/${editor.unit?.id}` : ''}`,
         session,
         { method: editor.mode === 'edit' ? 'PATCH' : 'POST', body: JSON.stringify(input) },
       );
+      saved = true;
       await refreshDirectory();
       setEditor(null);
       setSelectedUnit(null);
@@ -206,8 +207,16 @@ export function UnitsPage({
     } catch (reason) {
       setNotice({
         tone: 'error',
-        text: reason instanceof Error ? reason.message : 'No se pudo guardar la unidad.',
+        text: saved
+          ? 'La unidad se guardó, pero no se pudo actualizar el directorio. Intenta recargarlo.'
+          : reason instanceof Error
+            ? reason.message
+            : 'No se pudo guardar la unidad.',
       });
+      if (saved) {
+        setEditor(null);
+        setSelectedUnit(null);
+      }
     } finally {
       setSaving(false);
     }
@@ -216,11 +225,13 @@ export function UnitsPage({
   const setUnitStatus = async (unit: DirectoryUnit, nextStatus: 'active' | 'inactive') => {
     setSaving(true);
     setNotice(null);
+    let saved = false;
     try {
       await apiRequest(`/v1/condominiums/${condominiumId}/units/${unit.id}`, session, {
         method: 'PATCH',
         body: JSON.stringify({ status: nextStatus }),
       });
+      saved = true;
       await refreshDirectory();
       setArchiveTarget(null);
       setSelectedUnit(null);
@@ -234,8 +245,16 @@ export function UnitsPage({
     } catch (reason) {
       setNotice({
         tone: 'error',
-        text: reason instanceof Error ? reason.message : 'No se pudo actualizar el estado.',
+        text: saved
+          ? 'El estado de la unidad se actualizó, pero no se pudo actualizar el directorio. Intenta recargarlo.'
+          : reason instanceof Error
+            ? reason.message
+            : 'No se pudo actualizar el estado.',
       });
+      if (saved) {
+        setArchiveTarget(null);
+        setSelectedUnit(null);
+      }
     } finally {
       setSaving(false);
     }
@@ -390,8 +409,10 @@ export function UnitsPage({
 
         {loadError ? (
           <EmptyState
+            actionLabel="Reintentar"
             description={loadError}
             icon={<UnitsIcon size={26} />}
+            onAction={() => setReloadNonce((current) => current + 1)}
             title="No pudimos cargar las unidades"
           />
         ) : null}
@@ -426,7 +447,7 @@ export function UnitsPage({
             <div className="units-v3-list__head" aria-hidden="true">
               <span>Unidad</span>
               <span>Propiedad</span>
-              <span>Participación</span>
+              <span>Alícuota</span>
               <span>Ocupación</span>
               <span>Estado</span>
             </div>
@@ -458,9 +479,9 @@ export function UnitsPage({
                   <small>Propiedad</small>
                   <strong>{personSummary(unit.owners)}</strong>
                 </span>
-                <span className="units-v3-row__fact" data-label="Participación">
-                  <small>Participación</small>
-                  <strong>{participationSummary(unit)}</strong>
+                <span className="units-v3-row__fact" data-label="Alícuota">
+                  <small>Alícuota</small>
+                  <strong>{aliquotSummary(unit)}</strong>
                 </span>
                 <span className="units-v3-row__fact" data-label="Ocupación">
                   <small>Ocupación</small>
@@ -509,7 +530,7 @@ export function UnitsPage({
           busy={saving}
           busyLabel="Archivando…"
           confirmLabel="Archivar unidad"
-          description="Archivar esta unidad no elimina su historial. Habitta conservará pagos, cuotas, propietarios, ocupaciones y movimientos asociados."
+          description="Archivar retira esta unidad de la operación diaria. Conserva la alícuota como participación estructural y los pagos, cuotas y movimientos financieros existentes, además de propietarios y ocupaciones históricas."
           onCancel={() => setArchiveTarget(null)}
           onConfirm={() => void setUnitStatus(archiveTarget, 'inactive')}
           title="¿Archivar esta unidad?"

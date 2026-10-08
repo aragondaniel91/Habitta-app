@@ -101,18 +101,24 @@ export function InlineNotice({
   title,
   children,
   className,
+  announce = false,
+  role,
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   tone?: 'info' | 'success' | 'error';
   title?: ReactNode;
   children: ReactNode;
+  /** Opt in when a non-error notice confirms a completed user action. */
+  announce?: boolean;
 }) {
   return (
     <div
       {...props}
       className={['ux-inline-notice', className].filter(Boolean).join(' ')}
       data-tone={tone}
-      role={tone === 'error' ? 'alert' : undefined}
+      aria-atomic={announce ? true : props['aria-atomic']}
+      aria-live={announce ? 'polite' : props['aria-live']}
+      role={role ?? (tone === 'error' ? 'alert' : announce ? 'status' : undefined)}
     >
       <div>
         {title ? <strong>{title}</strong> : null}

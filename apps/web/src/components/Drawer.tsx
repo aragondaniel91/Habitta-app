@@ -6,6 +6,44 @@ const FOCUSABLE =
   'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 const BUSY_DESCENDANT = '[data-busy="true"],[aria-busy="true"]';
 
+/**
+ * Tracks mount order separately from the DOM, because every overlay listens on `document`.
+ * The last mounted overlay is the only one allowed to consume Escape; this prevents a close
+ * request from reaching an overlay underneath it.
+ */
+export function createOverlayStack() {
+  const overlays: symbol[] = [];
+  const isTopmost = (overlay: symbol) => overlays.at(-1) === overlay;
+
+  return {
+    mount() {
+      const overlay = Symbol('overlay');
+      overlays.push(overlay);
+      return overlay;
+    },
+    unmount(overlay: symbol) {
+      const index = overlays.lastIndexOf(overlay);
+      if (index !== -1) overlays.splice(index, 1);
+    },
+    isTopmost(overlay: symbol) {
+      return isTopmost(overlay);
+    },
+    handleEscape(
+      overlay: symbol,
+      event: Pick<KeyboardEvent, 'stopPropagation'>,
+      onClose: () => void,
+      closeDisabled: boolean,
+    ) {
+      if (!isTopmost(overlay)) return false;
+      event.stopPropagation();
+      if (!closeDisabled) onClose();
+      return true;
+    },
+  };
+}
+
+const overlayStack = createOverlayStack();
+
 type Props = {
   /**
    * CSS prefix of the owning module, so each drawer keeps the styles it already had:
@@ -66,10 +104,10 @@ export function useDialogBehavior(
       panel.current?.focus();
     }
 
+    const overlay = overlayStack.mount();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        event.stopPropagation();
-        if (!closeDisabledRef.current) onCloseRef.current();
+        overlayStack.handleEscape(overlay, event, onCloseRef.current, closeDisabledRef.current);
         return;
       }
       if (event.key !== 'Tab' || !panel.current) return;
@@ -98,6 +136,7 @@ export function useDialogBehavior(
     document.addEventListener('keydown', onKeyDown, true);
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
+      overlayStack.unmount(overlay);
       focusRestoreTimerRef.current = setTimeout(() => {
         previouslyFocusedRef.current?.focus?.();
         focusRestoreTimerRef.current = null;

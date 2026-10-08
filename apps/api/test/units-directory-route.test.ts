@@ -42,6 +42,12 @@ const owner = {
   ends_at: null,
   people: { id: personA, first_name: 'Ana', last_name: 'Pérez' },
 };
+const coOwner = {
+  ...owner,
+  id: '99999999-9999-4999-8999-999999999998',
+  ownership_percentage: 60,
+  people: { id: personB, first_name: 'Luis', last_name: 'García' },
+};
 const occupancy = {
   id: '88888888-8888-4888-8888-888888888888',
   unit_id: unitA,
@@ -118,6 +124,35 @@ describe('units directory aggregate', () => {
       expect(restRequests.join('\n')).not.toContain(condominiumB);
       expect(restRequests.join('\n')).not.toContain(unitB);
       expect(restRequests.join('\n')).not.toContain(personB);
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('keeps the directory alícuota on the unit record, not the sum of co-owner shares', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/auth/v1/user')) return json({ id: personA });
+      if (url.includes('/rest/v1/units?')) return json([unit(unitA, condominiumA, 'Torre A')]);
+      if (url.includes('/rest/v1/unit_owners?'))
+        return json([{ ...owner, ownership_percentage: 70 }, coOwner]);
+      return json([occupancy]);
+    });
+    try {
+      const response = await app.request(
+        `/v1/condominiums/${condominiumA}/units-directory`,
+        { headers: { Authorization: 'Bearer caller-token' } },
+        environment,
+      );
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        units: [
+          {
+            ownershipPercentage: 100,
+            owners: [{ ownershipPercentage: 70 }, { ownershipPercentage: 60 }],
+          },
+        ],
+      });
     } finally {
       fetchMock.mockRestore();
     }

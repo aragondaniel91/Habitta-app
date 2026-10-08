@@ -1,5 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import { cloneElement, isValidElement, useEffect, useId, useRef, useState } from 'react';
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  ReactElement,
+  ReactNode,
+  SelectHTMLAttributes,
+} from 'react';
 import { ArrowRightIcon } from './icons';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -141,28 +147,88 @@ export function Field({
   className?: string;
   children: ReactNode;
 }) {
+  const controlId = useId();
+  const hintId = useId();
+  const errorId = useId();
+  const describedBy = [!error && hint ? hintId : null, error ? errorId : null]
+    .filter(Boolean)
+    .join(' ');
+  const fieldChild = isValidElement(children)
+    ? (children as ReactElement<Record<string, unknown>>)
+    : null;
+  const isDirectControl =
+    fieldChild &&
+    (fieldChild.type === 'input' ||
+      fieldChild.type === 'select' ||
+      fieldChild.type === 'textarea' ||
+      fieldChild.type === Select);
+  const explicitControlId =
+    typeof fieldChild?.props.id === 'string' ? fieldChild.props.id : undefined;
+  const control =
+    isDirectControl && fieldChild
+      ? cloneElement(fieldChild, {
+          id: explicitControlId ?? controlId,
+          required: required || fieldChild.props.required || undefined,
+          'aria-describedby':
+            [fieldChild.props['aria-describedby'], describedBy].filter(Boolean).join(' ') ||
+            undefined,
+          'aria-invalid': error ? true : fieldChild.props['aria-invalid'],
+        })
+      : children;
+  const labelContent = (
+    <>
+      {label}
+      {required ? (
+        <span aria-hidden="true" className="field__required">
+          {' '}
+          *
+        </span>
+      ) : null}
+    </>
+  );
+
+  if (!isDirectControl) {
+    return (
+      <label
+        className={['field', className].filter(Boolean).join(' ')}
+        data-invalid={Boolean(error) || undefined}
+      >
+        <span className="field__label">{labelContent}</span>
+        {children}
+        {error ? (
+          <span className="field__error" id={errorId} role="alert">
+            {error}
+          </span>
+        ) : null}
+        {!error && hint ? (
+          <span className="field__hint" id={hintId}>
+            {hint}
+          </span>
+        ) : null}
+      </label>
+    );
+  }
+
   return (
-    <label
+    <div
       className={['field', className].filter(Boolean).join(' ')}
       data-invalid={Boolean(error) || undefined}
     >
-      <span className="field__label">
-        {label}
-        {required ? (
-          <span aria-hidden="true" className="field__required">
-            {' '}
-            *
-          </span>
-        ) : null}
-      </span>
-      {children}
+      <label className="field__label" htmlFor={explicitControlId ?? controlId}>
+        {labelContent}
+      </label>
+      {control}
       {error ? (
-        <span className="field__error" role="alert">
+        <span className="field__error" id={errorId} role="alert">
           {error}
         </span>
       ) : null}
-      {!error && hint ? <span className="field__hint">{hint}</span> : null}
-    </label>
+      {!error && hint ? (
+        <span className="field__hint" id={hintId}>
+          {hint}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import { ChargeConceptManagerDrawer } from '../features/receivables/ChargeConceptManagerDrawer';
 import { FinancialAdministrationDrawer } from '../features/receivables/FinancialAdministrationDrawer';
+import { canManage, useCondominiumRoles } from '../lib/roles';
 import { ReceivablesDrawerHost as ReceivablesDrawerHostImpl } from './ReceivablesDrawersImpl';
 
 export type { ReceivablesDrawerMode } from './ReceivablesDrawersImpl';
@@ -18,6 +19,8 @@ export function ReceivablesDrawerHost({
   onClose,
   ...props
 }: Props) {
+  const manage = canManage(useCondominiumRoles());
+
   if (mode === 'statement') {
     return (
       <FinancialAdministrationDrawer
@@ -31,6 +34,7 @@ export function ReceivablesDrawerHost({
   }
 
   if (mode === 'concept') {
+    if (!manage) return null;
     return (
       <ChargeConceptManagerDrawer
         concepts={props.concepts}

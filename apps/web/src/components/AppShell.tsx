@@ -20,6 +20,7 @@ type HelpState = { open: boolean; initialView: 'guide' | 'import' };
 type Props = {
   session: Session;
   organizations: Organization[];
+  ownedOrganizationIds: string[];
   condominiums: Condominium[];
   selectedCondominiumId: string;
   currentRoute: AppRoute;
@@ -59,6 +60,7 @@ const initialsFor = (value: string) => {
 export function AppShell({
   session,
   organizations,
+  ownedOrganizationIds,
   condominiums,
   selectedCondominiumId,
   currentRoute,
@@ -117,6 +119,7 @@ export function AppShell({
         .filter((group) => group.condominiums.length > 0),
     [organizations, condominiums],
   );
+  const mayAddCondominium = !residentOnly && ownedOrganizationIds.length > 0;
 
   useEffect(() => {
     try {
@@ -290,7 +293,7 @@ export function AppShell({
                   ))}
                 </Select>
               </div>
-              {!residentOnly ? (
+              {mayAddCondominium ? (
                 <Button
                   className="condo-switcher__add"
                   onClick={onAddCondominium}

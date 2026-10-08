@@ -54,7 +54,13 @@ const expenseLinkSchema = z.object({
 });
 
 const body = async <T>(c: AppContext, schema: z.ZodType<T>) => {
-  const parsed = schema.safeParse(await c.req.json());
+  let payload: unknown;
+  try {
+    payload = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  const parsed = schema.safeParse(payload);
   return parsed.success ? parsed.data : c.json({ error: parsed.error.flatten() }, 400);
 };
 
@@ -130,26 +136,28 @@ maintenanceFinancialRoutes.post('/:id/maintenance/work-orders/:workOrderId/quote
 maintenanceFinancialRoutes.post(
   '/:id/maintenance/work-orders/:workOrderId/quotes/:quoteId/decision',
   async (c) => {
+    const condominiumId = uuid.parse(c.req.param('id'));
     const workOrderId = uuid.parse(c.req.param('workOrderId'));
+    const quoteId = uuid.parse(c.req.param('quoteId'));
     const parsed = await body(c, quoteDecisionSchema);
     if (parsed instanceof Response) return parsed;
+
+    // The decision RPC is keyed only by quote ID. Verify the nested resource before
+    // invoking it so an incorrect work-order URL cannot mutate a quote elsewhere.
+    const quoteResponse = await rest(
+      c,
+      `maintenance_quotes?condominium_id=eq.${condominiumId}&work_order_id=eq.${workOrderId}&id=eq.${quoteId}&select=id`,
+    );
+    if (!quoteResponse.ok) return responseJson(c, quoteResponse);
+    const quoteRows = (await quoteResponse.json()) as unknown[];
+    if (!quoteRows[0]) return c.json({ error: 'Not found' }, 404);
+
     const response = await rpc(c, 'decide_maintenance_quote', {
-      target_condominium: uuid.parse(c.req.param('id')),
-      target_quote: uuid.parse(c.req.param('quoteId')),
+      target_condominium: condominiumId,
+      target_quote: quoteId,
       decision: parsed.decision,
       decision_note_value: parsed.note ?? null,
     });
-    // decide_maintenance_quote only takes target_quote -- it derives the work order from the
-    // quote row itself, so workOrderId in the path was parsed for its UUID shape and then never
-    // checked against anything. Confirm the decided quote actually belongs to that work order so
-    // a stale or mistaken URL (e.g. built from a different work order's page) cannot silently
-    // decide a quote that isn't the one the caller believes they are looking at.
-    if (response.ok) {
-      const decided = (await response.clone().json()) as { work_order_id?: string };
-      if (decided.work_order_id !== workOrderId) {
-        return c.json({ error: 'Not found' }, 404);
-      }
-    }
     return responseJson(c, response);
   },
 );

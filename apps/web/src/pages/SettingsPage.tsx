@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -34,6 +34,7 @@ import type { NotificationPreference, NotificationSettings } from '../features/n
 import {
   getChangedNotificationPreferences,
   getNotificationChannelTotals,
+  hasNotificationSettingsChanges,
   normalizeNotificationPreferences,
   notificationGroupLabels,
   notificationTypeMetadata,
@@ -49,6 +50,7 @@ type Props = {
 };
 
 type SettingsData = {
+  scopeKey: string;
   settings: NotificationSettings | null;
   settingsAvailable: boolean;
   preferences: NotificationPreferenceDraft[];
@@ -100,12 +102,14 @@ function Toggle({
 }
 
 function MetricCard({
+  className,
   icon,
   label,
   value,
   detail,
   tone,
 }: {
+  className?: string;
   icon: ReactNode;
   label: string;
   value: string;
@@ -113,7 +117,7 @@ function MetricCard({
   tone: 'blue' | 'green' | 'navy' | 'red';
 }) {
   return (
-    <Surface className="settings-metric" data-tone={tone}>
+    <Surface className={['settings-metric', className].filter(Boolean).join(' ')} data-tone={tone}>
       <div className="settings-metric__heading">
         <span>{icon}</span>
         <small>{label}</small>
@@ -148,6 +152,7 @@ function channelIcon(notificationType: NotificationType) {
 export function SettingsPage({ condominiumId, condominiumName, session }: Props) {
   const [data, setData] = useState<SettingsData | null>(null);
   const [originalPreferences, setOriginalPreferences] = useState<NotificationPreferenceDraft[]>([]);
+  const [originalSettings, setOriginalSettings] = useState<NotificationSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -164,7 +169,19 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
   const canManageNotificationSettings =
     roles.includes('condominium_admin') || roles.includes('accountant');
 
+  // Settings belong to the selected condominium. This mirrors the workspace request-ownership
+  // pattern so a response from an old scope cannot replace the current page.
+  const viewScopeKey = `${condominiumId}:${session.user.id}:${roles.join(',')}`;
+  const requestScopeKey = `${viewScopeKey}:${session.access_token}`;
+  const scopeKeyRef = useRef(requestScopeKey);
+  scopeKeyRef.current = requestScopeKey;
+  const latestRequest = useRef(0);
+  const ownsScope = useCallback((requestScope: string) => scopeKeyRef.current === requestScope, []);
+
   const load = useCallback(async () => {
+    const requestScope = requestScopeKey;
+    const requestId = ++latestRequest.current;
+    const ownsRequest = () => ownsScope(requestScope) && requestId === latestRequest.current;
     setLoading(true);
     setError('');
     try {
@@ -182,13 +199,17 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
           ? (preferenceResult.value as NotificationPreference[])
           : [];
       const normalized = normalizeNotificationPreferences(preferenceRows);
+      if (!ownsRequest()) return;
       setOriginalPreferences(normalized);
+      const settings =
+        settingsResult.status === 'fulfilled'
+          ? (settingsResult.value as NotificationSettings)
+          : null;
+      setOriginalSettings(settings);
       setData({
+        scopeKey: viewScopeKey,
         preferences: normalized,
-        settings:
-          settingsResult.status === 'fulfilled'
-            ? (settingsResult.value as NotificationSettings)
-            : null,
+        settings,
         settingsAvailable: settingsResult.status === 'fulfilled',
       });
       if (settingsResult.status === 'rejected') {
@@ -197,23 +218,40 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
         );
       }
     } catch (requestError) {
+      if (!ownsRequest()) return;
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'No se pudo cargar la configuración.',
       );
     } finally {
-      setLoading(false);
+      if (ownsRequest()) setLoading(false);
     }
-  }, [condominiumId, session, canManageNotificationSettings]);
+  }, [
+    condominiumId,
+    session,
+    canManageNotificationSettings,
+    ownsScope,
+    requestScopeKey,
+    viewScopeKey,
+  ]);
+
+  useEffect(() => {
+    // Do not render one condominium's settings under another condominium's heading while a new
+    // request is in flight. A token refresh within the same condominium keeps loaded data.
+    latestRequest.current += 1;
+    setData(null);
+    setOriginalPreferences([]);
+    setOriginalSettings(null);
+    setError('');
+    setMessage('');
+    setLoading(true);
+    setSaving(false);
+  }, [viewScopeKey]);
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    setMessage('');
-  }, [condominiumId]);
 
   const totals = useMemo(
     () => getNotificationChannelTotals(data?.preferences ?? []),
@@ -223,6 +261,11 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
   const changedPreferences = useMemo(
     () => (data ? getChangedNotificationPreferences(originalPreferences, data.preferences) : []),
     [data, originalPreferences],
+  );
+
+  const settingsChanged = useMemo(
+    () => hasNotificationSettingsChanges(originalSettings, data?.settings ?? null),
+    [data?.settings, originalSettings],
   );
 
   const updatePreference = (
@@ -251,31 +294,62 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
   };
 
   const save = async () => {
-    if (!data) return;
+    if (!data || (!settingsChanged && !changedPreferences.length)) return;
+    const saveScope = requestScopeKey;
+    const saveVersion = latestRequest.current;
+    const settingsToSave = settingsChanged && data.settings ? { ...data.settings } : null;
+    const preferencesToSave = changedPreferences.map((preference) => ({ ...preference }));
+    const savedPreferenceTypes = new Set<NotificationType>();
+    const failures: string[] = [];
+    let settingsSaved = false;
     setSaving(true);
     setError('');
     setMessage('');
-    try {
-      if (data.settings) {
-        await saveNotificationSettings(session, condominiumId, data.settings);
+    if (settingsToSave) {
+      try {
+        await saveNotificationSettings(session, condominiumId, settingsToSave);
+        settingsSaved = true;
+      } catch {
+        failures.push('settings');
       }
-      for (const preference of changedPreferences) {
-        await savePreference(session, condominiumId, preference);
-      }
-      setOriginalPreferences(data.preferences.map((preference) => ({ ...preference })));
-      setMessage('Configuración guardada correctamente.');
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudieron guardar todos los cambios.',
-      );
-    } finally {
-      setSaving(false);
     }
+    for (const preference of preferencesToSave) {
+      try {
+        await savePreference(session, condominiumId, preference);
+        savedPreferenceTypes.add(preference.notification_type);
+      } catch {
+        failures.push('preference');
+      }
+    }
+    if (!ownsScope(saveScope) || saveVersion !== latestRequest.current) return;
+    if (settingsSaved && settingsToSave) setOriginalSettings(settingsToSave);
+    if (savedPreferenceTypes.size) {
+      setOriginalPreferences((current) =>
+        current.map((preference) => {
+          const saved = preferencesToSave.find(
+            (candidate) => candidate.notification_type === preference.notification_type,
+          );
+          return saved && savedPreferenceTypes.has(preference.notification_type)
+            ? saved
+            : preference;
+        }),
+      );
+    }
+    if (!failures.length) {
+      setMessage('Configuración guardada correctamente.');
+    } else if (settingsSaved || savedPreferenceTypes.size) {
+      setError(
+        'Se guardaron algunos cambios. Revisa los cambios pendientes e inténtalo nuevamente.',
+      );
+    } else {
+      setError('No se pudieron guardar los cambios. Inténtalo nuevamente.');
+    }
+    setSaving(false);
   };
 
-  if (loading && !data) return <SettingsLoading />;
+  const hasCurrentScopeData = data?.scopeKey === viewScopeKey;
+
+  if ((loading && !data) || (data && !hasCurrentScopeData)) return <SettingsLoading />;
 
   if (!data) {
     return (
@@ -291,7 +365,7 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
     );
   }
 
-  const hasChanges = changedPreferences.length > 0 || Boolean(data.settings);
+  const hasChanges = settingsChanged || changedPreferences.length > 0;
   const userLabel =
     typeof session.user.user_metadata.full_name === 'string'
       ? session.user.user_metadata.full_name
@@ -303,9 +377,9 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
         actions={
           <>
             <span className="settings-save-state">
-              {changedPreferences.length
-                ? `${changedPreferences.length} preferencias modificadas`
-                : 'Preferencias sincronizadas'}
+              {hasChanges
+                ? `${(settingsChanged ? 1 : 0) + changedPreferences.length} cambios sin guardar`
+                : 'Cambios guardados'}
             </span>
             <Button disabled={saving || !hasChanges} onClick={() => void save()} size="sm">
               {saving ? 'Guardando…' : 'Guardar cambios'}
@@ -354,6 +428,7 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
           value={data.settings ? `${data.settings.due_soon_days} días` : 'Restringido'}
         />
         <MetricCard
+          className="settings-metric--timezone"
           detail="Zona usada para programar vencimientos y recordatorios."
           icon={<SettingsIcon size={20} />}
           label="Zona horaria"
@@ -544,14 +619,6 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
                 <dt>Condominio</dt>
                 <dd>{condominiumName}</dd>
               </div>
-              <div>
-                <dt>Usuario</dt>
-                <dd>{session.user.id.slice(0, 8)}…</dd>
-              </div>
-              <div>
-                <dt>Autenticación</dt>
-                <dd>Supabase Auth</dd>
-              </div>
             </dl>
           </Surface>
 
@@ -585,11 +652,6 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
                 </div>
               </article>
             </div>
-            <p className="settings-delivery-note">
-              En development el correo puede permanecer deshabilitado por seguridad aunque la
-              preferencia esté seleccionada. La aplicación conserva la configuración para el entorno
-              que permita entregas.
-            </p>
           </Surface>
 
           <div className="settings-anchor-section" id="perfil-condominio">

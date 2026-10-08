@@ -356,6 +356,11 @@
 }
 
 @media (max-width: 860px) {
+  .people-v3-profile-anchor {
+    min-width: 0;
+    scroll-margin-top: calc(var(--topbar-height) + 1rem);
+  }
+
   .people-v3-directory {
     position: static;
     max-height: none;
@@ -370,6 +375,7 @@
   }
 
   .people-v3-profile-header__actions {
+    flex-wrap: wrap;
     padding: 0 1.1rem;
   }
 
@@ -439,5 +445,51 @@
 
   .people-v3-unit-card__actions .button {
     width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .people-v3-directory,
+  .people-v3-profile,
+  .people-v3-profile-header,
+  .people-v3-unit-card {
+    min-width: 0;
+  }
+
+  .people-v3-directory,
+  .people-v3-tab-content {
+    padding-inline: 0.7rem;
+  }
+
+  .people-v3-profile-header__identity {
+    gap: 0.7rem;
+    padding-inline: 0.8rem;
+  }
+
+  .people-v3-profile-tabs {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}
+.people-v3-access-form {
+  display: grid;
+  grid-template-columns: minmax(11rem, 1fr) minmax(11rem, 1fr) minmax(13rem, 1.2fr) auto;
+  align-items: end;
+  gap: 1rem;
+}
+
+.people-v3-access-form > * {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .people-v3-access-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .people-v3-access-form {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

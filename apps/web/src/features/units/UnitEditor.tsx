@@ -13,7 +13,6 @@ export type UnitEditorInput = {
   type: UnitType;
   floor?: string | null | undefined;
   ownershipPercentage?: number | null | undefined;
-  status: 'active' | 'inactive';
 };
 
 export type UnitBuilding = { id: string; name: string };
@@ -34,13 +33,12 @@ type Draft = {
   type: UnitType;
   floor: string;
   ownershipPercentage: string;
-  status: 'active' | 'inactive';
 };
 
 type Errors = Partial<Record<'code' | 'buildingId' | 'type' | 'ownershipPercentage', string>>;
 
 export function buildUnitMutationPayload(
-  { code, buildingId, type, floor, ownershipPercentage, status }: UnitEditorInput,
+  { code, buildingId, type, floor, ownershipPercentage }: UnitEditorInput,
   mode: 'create' | 'edit',
 ): UnitEditorInput {
   const trimmedFloor = floor?.trim();
@@ -64,7 +62,6 @@ export function buildUnitMutationPayload(
         ? { ownershipPercentage: null }
         : {}
       : { ownershipPercentage }),
-    status,
   };
 }
 
@@ -83,7 +80,6 @@ function initialDraft(
       unit?.ownershipPercentage === null || unit?.ownershipPercentage === undefined
         ? ''
         : String(unit.ownershipPercentage),
-    status: unit?.status ?? 'active',
   };
 }
 
@@ -146,7 +142,6 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
           type: draft.type,
           ...(!houseCommunity ? { floor: draft.floor } : {}),
           ownershipPercentage,
-          status: draft.status,
         },
         mode,
       ),
@@ -260,7 +255,7 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
 
         <FormSection
           description="La alícuota se usa como dato estructural de participación; los saldos y movimientos existentes no se eliminan al archivar."
-          title="Participación y estado"
+          title="Participación"
           variant="card"
         >
           <FormGrid>
@@ -277,18 +272,6 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
                 placeholder="Ej. 1.2500"
                 value={draft.ownershipPercentage}
               />
-            </Field>
-            <Field
-              hint="Archivar conserva pagos, cuotas, propietarios y ocupaciones históricas."
-              label="Estado"
-            >
-              <Select
-                onChange={(event) => update('status', event.target.value as Draft['status'])}
-                value={draft.status}
-              >
-                <option value="active">Activa</option>
-                <option value="inactive">Inactiva / archivada</option>
-              </Select>
             </Field>
           </FormGrid>
         </FormSection>

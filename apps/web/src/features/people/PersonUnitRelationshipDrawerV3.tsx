@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid, FormSection } from '../../components/FormLayout';
-import { Badge, Button, Field, Select } from '../../components/ui';
+import { Button, Field, Select } from '../../components/ui';
 import type { PersonUnitRelationshipSummary } from './person-unit-relationships';
+import {
+  canCreateRelationshipState,
+  relationshipDraftForUnit,
+  relationshipForUnit,
+} from './person-unit-relationship-draft';
 import { directoryUnitLabel, occupancyLabels } from './relationship-model';
 import { peopleApi } from './api';
 import type { Building, FinancialRecipientRole, Occupancy, Person, Unit } from './types';
@@ -27,7 +32,7 @@ export function PersonUnitRelationshipDrawerV3({
   person,
   units,
   buildings,
-  relationship,
+  relationships,
   initialUnitId,
   onClose,
   onChanged,
@@ -38,47 +43,53 @@ export function PersonUnitRelationshipDrawerV3({
   person: Person;
   units: Unit[];
   buildings: Building[];
-  relationship?: PersonUnitRelationshipSummary | null;
+  relationships: PersonUnitRelationshipSummary[];
   initialUnitId?: string | undefined;
   onClose: () => void;
   onChanged: (message: string) => Promise<void> | void;
   onRequestClose: (target: CloseTarget) => void;
 }) {
-  const [unitId, setUnitId] = useState(initialUnitId ?? relationship?.unitId ?? '');
+  const [unitId, setUnitId] = useState(initialUnitId ?? '');
   const [percentage, setPercentage] = useState('');
   const [occupancyType, setOccupancyType] = useState<Occupancy['occupancy_type']>('tenant');
   const [financialRole, setFinancialRole] = useState<FinancialRecipientRole>('none');
   const [generalRecipient, setGeneralRecipient] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [percentageError, setPercentageError] = useState('');
+  const percentageInputRef = useRef<HTMLInputElement>(null);
 
   const availableUnits = useMemo(() => units.filter((unit) => unit.status !== 'inactive'), [units]);
-  const selectedRelationship = relationship?.unitId === unitId ? relationship : null;
+  const selectedRelationship = relationshipForUnit(relationships, unitId);
   const unit = units.find((item) => item.id === unitId);
   const unitLabel =
     selectedRelationship?.unitLabel ??
     (unit ? directoryUnitLabel(unit, buildings) : 'Selecciona una unidad');
 
   useEffect(() => {
-    setUnitId(initialUnitId ?? relationship?.unitId ?? '');
-  }, [initialUnitId, relationship?.unitId]);
+    setUnitId(initialUnitId ?? '');
+  }, [initialUnitId]);
 
   useEffect(() => {
-    const communication = selectedRelationship?.currentCommunication;
-    setFinancialRole(communication?.financial_role ?? 'none');
-    setGeneralRecipient(communication?.general_recipient ?? false);
-    setPercentage('');
+    const draft = relationshipDraftForUnit(selectedRelationship);
+    setFinancialRole(draft.financialRole);
+    setGeneralRecipient(draft.generalRecipient);
+    setPercentage(draft.ownershipPercentage);
+    setOccupancyType(draft.occupancyType);
     setError('');
-  }, [unitId, selectedRelationship?.currentCommunication?.id]);
+    setPercentageError('');
+  }, [unitId, selectedRelationship]);
 
   const createOwnership = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!unitId) return;
+    if (!unitId || !canCreateRelationshipState(selectedRelationship, 'ownership')) return;
     const numeric = percentage ? Number(percentage) : null;
     if (numeric != null && (!Number.isFinite(numeric) || numeric <= 0 || numeric > 100)) {
-      setError('La participación debe ser mayor que 0 y hasta 100.');
+      setPercentageError('El porcentaje de propiedad debe ser mayor que 0 y hasta 100.');
+      percentageInputRef.current?.focus();
       return;
     }
+    setPercentageError('');
     setBusy('ownership');
     setError('');
     try {
@@ -103,7 +114,7 @@ export function PersonUnitRelationshipDrawerV3({
 
   const createOccupancy = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!unitId) return;
+    if (!unitId || !canCreateRelationshipState(selectedRelationship, 'occupancy')) return;
     setBusy('occupancy');
     setError('');
     try {
@@ -119,6 +130,56 @@ export function PersonUnitRelationshipDrawerV3({
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : 'No se pudo asociar la ocupación.',
+      );
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const correctOwnership = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const current = selectedRelationship?.currentOwnership;
+    const numeric = Number(percentage);
+    if (!current || !Number.isFinite(numeric) || numeric <= 0 || numeric > 100) {
+      setPercentageError('El porcentaje de propiedad debe ser mayor que 0 y hasta 100.');
+      return;
+    }
+    setBusy('ownership-correction');
+    setError('');
+    try {
+      await peopleApi(`/v1/condominiums/${condominiumId}/unit-owners/${current.id}`, session, {
+        method: 'PATCH',
+        body: JSON.stringify({ ownershipPercentage: numeric }),
+      });
+      await onChanged(
+        'Porcentaje de propiedad corregido. La corrección queda registrada en el historial auditable.',
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo corregir la propiedad.',
+      );
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const correctOccupancy = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const current = selectedRelationship?.currentOccupancy;
+    if (!current) return;
+    setBusy('occupancy-correction');
+    setError('');
+    try {
+      await peopleApi(`/v1/condominiums/${condominiumId}/unit-occupancies/${current.id}`, session, {
+        method: 'PATCH',
+        body: JSON.stringify({ occupancyType }),
+      });
+      await onChanged(
+        'Tipo de ocupación corregido. La corrección queda registrada en el historial auditable.',
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo corregir la ocupación.',
       );
     } finally {
       setBusy('');
@@ -173,9 +234,9 @@ export function PersonUnitRelationshipDrawerV3({
           title="Unidad"
           variant="card"
         >
-          <Field label="Unidad">
+          <Field label="Unidad" required>
             <Select
-              disabled={Boolean(initialUnitId || relationship?.unitId)}
+              disabled={Boolean(initialUnitId)}
               onChange={(event) => setUnitId(event.target.value)}
               value={unitId}
             >
@@ -215,24 +276,28 @@ export function PersonUnitRelationshipDrawerV3({
               variant="card"
             >
               {selectedRelationship?.currentOwnership ? (
-                <div className="people-v3-current-relation">
-                  <div>
-                    <span>Estado</span>
-                    <Badge tone="success">Actual</Badge>
-                  </div>
-                  <div>
-                    <span>Participación</span>
-                    <strong>
-                      {selectedRelationship.currentOwnership.ownership_percentage != null
-                        ? `${selectedRelationship.currentOwnership.ownership_percentage}%`
-                        : 'No indicada'}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Desde</span>
-                    <strong>{selectedRelationship.currentOwnership.starts_at}</strong>
-                  </div>
-                </div>
+                <form className="ux-form" onSubmit={(event) => void correctOwnership(event)}>
+                  <FormGrid>
+                    <Field
+                      error={percentageError}
+                      hint="Corregir no cierra la relación; queda auditado. Si el total conocido supera 100%, reduce un porcentaje para corregirlo."
+                      label="Porcentaje de propiedad (%)"
+                    >
+                      <input
+                        className="input"
+                        inputMode="decimal"
+                        onChange={(event) => setPercentage(event.target.value)}
+                        ref={percentageInputRef}
+                        value={percentage}
+                      />
+                    </Field>
+                    <div className="people-v3-inline-submit">
+                      <Button disabled={Boolean(busy)} type="submit">
+                        {busy === 'ownership-correction' ? 'Guardando…' : 'Editar propiedad'}
+                      </Button>
+                    </div>
+                  </FormGrid>
+                </form>
               ) : (
                 <form
                   className="ux-form"
@@ -240,12 +305,20 @@ export function PersonUnitRelationshipDrawerV3({
                   onSubmit={(event) => void createOwnership(event)}
                 >
                   <FormGrid>
-                    <Field hint="Opcional. Mayor que 0 y hasta 100." label="Participación (%)">
+                    <Field
+                      error={percentageError}
+                      hint="Opcional. Mayor que 0 y hasta 100."
+                      label="Porcentaje de propiedad (%)"
+                    >
                       <input
                         className="input"
                         inputMode="decimal"
-                        onChange={(event) => setPercentage(event.target.value)}
+                        onChange={(event) => {
+                          setPercentage(event.target.value);
+                          if (percentageError) setPercentageError('');
+                        }}
                         placeholder="Ej. 100"
+                        ref={percentageInputRef}
                         value={percentage}
                       />
                     </Field>
@@ -283,22 +356,34 @@ export function PersonUnitRelationshipDrawerV3({
               variant="card"
             >
               {selectedRelationship?.currentOccupancy ? (
-                <div className="people-v3-current-relation">
-                  <div>
-                    <span>Tipo</span>
-                    <strong>
-                      {occupancyLabels[selectedRelationship.currentOccupancy.occupancy_type]}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Estado</span>
-                    <Badge tone="success">Actual</Badge>
-                  </div>
-                  <div>
-                    <span>Desde</span>
-                    <strong>{selectedRelationship.currentOccupancy.starts_at}</strong>
-                  </div>
-                </div>
+                <form className="ux-form" onSubmit={(event) => void correctOccupancy(event)}>
+                  <FormGrid>
+                    <Field
+                      hint="Corregir no cierra la relación; queda auditado."
+                      label="Tipo de ocupación"
+                    >
+                      <Select
+                        onChange={(event) =>
+                          setOccupancyType(event.target.value as Occupancy['occupancy_type'])
+                        }
+                        value={occupancyType}
+                      >
+                        {(
+                          Object.entries(occupancyLabels) as [Occupancy['occupancy_type'], string][]
+                        ).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <div className="people-v3-inline-submit">
+                      <Button disabled={Boolean(busy)} type="submit">
+                        {busy === 'occupancy-correction' ? 'Guardando…' : 'Editar ocupación'}
+                      </Button>
+                    </div>
+                  </FormGrid>
+                </form>
               ) : (
                 <form className="ux-form" onSubmit={(event) => void createOccupancy(event)}>
                   <FormGrid>

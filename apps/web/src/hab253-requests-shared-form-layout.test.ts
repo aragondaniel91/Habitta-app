@@ -47,6 +47,12 @@ describe('HAB-253 Requests shared form layout', () => {
     expect(requestsSource).toContain('${attachment.id}/file');
   });
 
+  it('does not render failed operational detail feeds as an empty history', () => {
+    expect(requestsSource).toContain('requestDetailLoadError({ comments, events, attachments })');
+    expect(requestsSource).toContain('requests-inline-message--retry');
+    expect(requestsSource).toContain('Reintentar');
+  });
+
   it('keeps local presentation hooks only where they add Requests-specific styling', () => {
     expect(requestsStyles).toContain('.requests-form__actions');
     expect(requestsStyles).toContain('border-top: 1px solid var(--border-subtle)');
