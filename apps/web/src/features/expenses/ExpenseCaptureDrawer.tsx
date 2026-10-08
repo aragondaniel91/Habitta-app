@@ -65,8 +65,7 @@ export function ExpenseCaptureDrawer({
         {
           method: expense ? 'PATCH' : 'POST',
           body: JSON.stringify({
-            categoryId:
-              expense && categoryId === expense.category_id ? undefined : categoryId,
+            categoryId: expense && categoryId === expense.category_id ? undefined : categoryId,
             vendorId:
               expense && vendorId === (expense.vendor_id ?? '') ? undefined : vendorId || undefined,
             clearVendor: Boolean(expense?.vendor_id) && !vendorId,

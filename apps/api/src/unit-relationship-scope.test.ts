@@ -38,10 +38,7 @@ describe('unit relationship condominium scope', () => {
       return new Response(JSON.stringify([{ id: 'relationship-from-another-condominium' }]));
     });
 
-    const response = await request(
-      'GET',
-      `/v1/condominiums/${CONDOMINIUM}/units/${UNIT}/owners`,
-    );
+    const response = await request('GET', `/v1/condominiums/${CONDOMINIUM}/units/${UNIT}/owners`);
 
     expect(response.status).toBe(404);
     expect(upstreamUrls.some((url) => url.includes('/rest/v1/unit_owners?'))).toBe(false);

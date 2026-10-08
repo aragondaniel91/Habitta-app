@@ -17,7 +17,10 @@ const selectedReceivable = {
   due_date: '2026-10-10',
 };
 
-const renderDrawer = (roles: Parameters<typeof RolesProvider>[0]['value'], mode: 'receivable' | 'manual' | 'concept') =>
+const renderDrawer = (
+  roles: Parameters<typeof RolesProvider>[0]['value'],
+  mode: 'receivable' | 'manual' | 'concept',
+) =>
   renderToStaticMarkup(
     <RolesProvider value={roles}>
       <ReceivablesDrawerHost

@@ -102,7 +102,10 @@ function BudgetEditor({
   };
 
   const duplicateLines = hasDuplicateBudgetCategoryCurrency(
-    editor.lines.map((line) => ({ category_id: line.categoryId, currency_code: line.currencyCode })),
+    editor.lines.map((line) => ({
+      category_id: line.categoryId,
+      currency_code: line.currencyCode,
+    })),
   );
   const canSave =
     editor.name.trim().length > 0 &&
@@ -499,7 +502,9 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
       await load();
     } catch (requestError) {
       setRejectionError(
-        requestError instanceof Error ? requestError.message : 'No se pudo rechazar el presupuesto.',
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo rechazar el presupuesto.',
       );
     } finally {
       setTransitioningId('');
@@ -844,7 +849,11 @@ export function BudgetsPage({ condominiumId, condominiumName, session }: Props) 
               value={rejectionReason}
             />
           </label>
-          {rejectionError ? <p className="budgets-alert" role="alert">{rejectionError}</p> : null}
+          {rejectionError ? (
+            <p className="budgets-alert" role="alert">
+              {rejectionError}
+            </p>
+          ) : null}
         </ConfirmDialog>
       ) : null}
     </div>

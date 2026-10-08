@@ -107,12 +107,7 @@ export function useDialogBehavior(
     const overlay = overlayStack.mount();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        overlayStack.handleEscape(
-          overlay,
-          event,
-          onCloseRef.current,
-          closeDisabledRef.current,
-        );
+        overlayStack.handleEscape(overlay, event, onCloseRef.current, closeDisabledRef.current);
         return;
       }
       if (event.key !== 'Tab' || !panel.current) return;

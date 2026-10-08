@@ -12,9 +12,12 @@ declare global {
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const setControlValue = (control: HTMLInputElement | HTMLSelectElement, value: string) => {
-  const prototype = control instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+  const prototype =
+    control instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(prototype, 'value')?.set?.call(control, value);
-  control.dispatchEvent(new Event(control instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }));
+  control.dispatchEvent(
+    new Event(control instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }),
+  );
 };
 
 afterEach(() => {
@@ -37,8 +40,12 @@ describe('AccountDrawer Banco/Caja interaction', () => {
     expect(element.querySelector('input[placeholder="•••• 4821"]')).not.toBeNull();
     expect(element.querySelector('input[placeholder="Cuenta bancaria principal"]')).not.toBeNull();
 
-    const name = element.querySelector<HTMLInputElement>('input[placeholder="Cuenta bancaria principal"]')!;
-    const bankName = element.querySelector<HTMLInputElement>('input[placeholder="Banco de Venezuela"]')!;
+    const name = element.querySelector<HTMLInputElement>(
+      'input[placeholder="Cuenta bancaria principal"]',
+    )!;
+    const bankName = element.querySelector<HTMLInputElement>(
+      'input[placeholder="Banco de Venezuela"]',
+    )!;
     const reference = element.querySelector<HTMLInputElement>('input[placeholder="•••• 4821"]')!;
     const accountType = element.querySelector<HTMLSelectElement>('select')!;
     await act(async () => {
@@ -53,12 +60,18 @@ describe('AccountDrawer Banco/Caja interaction', () => {
     expect(element.querySelector('input[placeholder="Caja principal"]')).not.toBeNull();
 
     await act(async () => setControlValue(accountType, 'bank'));
-    expect(element.querySelector<HTMLInputElement>('input[placeholder="Banco de Venezuela"]')?.value).toBe('');
-    expect(element.querySelector<HTMLInputElement>('input[placeholder="•••• 4821"]')?.value).toBe('');
+    expect(
+      element.querySelector<HTMLInputElement>('input[placeholder="Banco de Venezuela"]')?.value,
+    ).toBe('');
+    expect(element.querySelector<HTMLInputElement>('input[placeholder="•••• 4821"]')?.value).toBe(
+      '',
+    );
     await act(async () => setControlValue(accountType, 'cash'));
 
     await act(async () => {
-      element.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      element
+        .querySelector('form')
+        ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     });
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ accountType: 'cash', name: 'Caja de cobros' }),

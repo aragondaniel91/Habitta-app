@@ -158,7 +158,8 @@ describe('DocumentsPage request ownership', () => {
     const c1Library = deferred<CommunityDocument[]>();
     listDocuments.mockImplementation((condominiumId: string) => {
       if (condominiumId === 'c1') return c1Library.promise;
-      if (condominiumId === 'c2') return Promise.resolve([doc('c2-doc', { condominium_id: 'c2', title: 'C2 Document' })]);
+      if (condominiumId === 'c2')
+        return Promise.resolve([doc('c2-doc', { condominium_id: 'c2', title: 'C2 Document' })]);
       return Promise.resolve([]);
     });
 
@@ -175,7 +176,10 @@ describe('DocumentsPage request ownership', () => {
   });
 
   it('drops a stale detail response after selecting another document', async () => {
-    const documents = [doc('doc-a', { title: 'Document A' }), doc('doc-b', { title: 'Document B' })];
+    const documents = [
+      doc('doc-a', { title: 'Document A' }),
+      doc('doc-b', { title: 'Document B' }),
+    ];
     listDocuments.mockResolvedValue(documents);
     const aVersions = deferred<CommunityDocumentVersion[]>();
     listVersions.mockImplementation((_condo: string, documentId: string) =>
@@ -193,7 +197,9 @@ describe('DocumentsPage request ownership', () => {
     expect(host.textContent).toContain('Document B');
     expect(host.textContent).toContain('B.pdf');
 
-    await act(async () => aVersions.resolve([version('v-a', 'doc-a', { original_filename: 'A.pdf' })]));
+    await act(async () =>
+      aVersions.resolve([version('v-a', 'doc-a', { original_filename: 'A.pdf' })]),
+    );
     await flush();
 
     expect(host.textContent).toContain('Document B');
@@ -202,7 +208,10 @@ describe('DocumentsPage request ownership', () => {
   });
 
   it('does not let a stale download refresh clobber a newly selected document', async () => {
-    const documents = [doc('doc-a', { title: 'Document A' }), doc('doc-b', { title: 'Document B' })];
+    const documents = [
+      doc('doc-a', { title: 'Document A' }),
+      doc('doc-b', { title: 'Document B' }),
+    ];
     listDocuments.mockResolvedValue(documents);
     listVersions.mockImplementation((_condo: string, documentId: string) =>
       Promise.resolve([
@@ -259,7 +268,9 @@ describe('DocumentsPage request ownership', () => {
     await flush();
     expect(host.textContent).toContain('C2 Document');
 
-    await act(async () => archive.resolve(doc('doc-a', { title: 'Document A', status: 'archived' })));
+    await act(async () =>
+      archive.resolve(doc('doc-a', { title: 'Document A', status: 'archived' })),
+    );
     await flush();
 
     expect(host.textContent).toContain('C2 Document');

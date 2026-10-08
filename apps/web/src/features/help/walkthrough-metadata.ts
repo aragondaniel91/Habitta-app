@@ -45,7 +45,9 @@ export function createCapturedProductionEvidence({
   }
 
   if (!/^[a-fA-F0-9]{40}$/.test(releaseSha)) {
-    throw new Error('Captured production evidence requires a 40-character hexadecimal release SHA.');
+    throw new Error(
+      'Captured production evidence requires a 40-character hexadecimal release SHA.',
+    );
   }
 
   return {

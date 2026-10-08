@@ -104,7 +104,11 @@ function rest(c: PeopleContext, path: string, init: RequestInit = {}) {
   });
 }
 
-async function ownershipWriteResponse(c: PeopleContext, response: Response, successStatus: 200 | 201) {
+async function ownershipWriteResponse(
+  c: PeopleContext,
+  response: Response,
+  successStatus: 200 | 201,
+) {
   const result: unknown = await response.json().catch(() => null);
   const message =
     typeof result === 'object' && result !== null && 'message' in result

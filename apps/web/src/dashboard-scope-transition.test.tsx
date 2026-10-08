@@ -180,9 +180,9 @@ describe('dashboard request ownership across condominium changes', () => {
     expect(twelveMonths).toBeTruthy();
     await act(async () => twelveMonths?.click());
     expect(twelveMonths?.getAttribute('aria-pressed')).toBe('true');
-    expect(element.querySelector('.dashboard-chart-grid')?.getAttribute('data-trend-month-count')).toBe(
-      '12',
-    );
+    expect(
+      element.querySelector('.dashboard-chart-grid')?.getAttribute('data-trend-month-count'),
+    ).toBe('12');
     const monthLabels = Array.from(
       element.querySelectorAll<HTMLDivElement>('.dashboard-bar-group > strong'),
     ).map((label) => label.textContent);

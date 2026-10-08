@@ -29,7 +29,9 @@ function findButton(node: ReactNode, label: string): { onClick?: () => void } | 
 
 describe('HelpCenterPage', () => {
   it('keeps APP_ROUTES and MODULE_HELP in a one-to-one topic mapping', () => {
-    const topicIds = APP_ROUTES.map((route) => resolveModuleHelpTopic(MODULE_HELP[route.key].topicId));
+    const topicIds = APP_ROUTES.map((route) =>
+      resolveModuleHelpTopic(MODULE_HELP[route.key].topicId),
+    );
 
     expect(topicIds.map(({ route }) => route.key).sort()).toEqual(
       APP_ROUTES.map((route) => route.key).sort(),

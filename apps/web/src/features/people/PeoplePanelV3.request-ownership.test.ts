@@ -1506,10 +1506,17 @@ describe('PeoplePanelV3 request ownership', () => {
       if (path.includes('/relationships'))
         return Promise.resolve({
           ...relationship('a'),
-          condominiumRelationships: [{
-            id: 'role-a', condominium_id: 'c1', person_id: 'a', relationship_type: 'board_member',
-            title: 'Vocal', starts_at: '2026-01-01', ends_at: null,
-          }],
+          condominiumRelationships: [
+            {
+              id: 'role-a',
+              condominium_id: 'c1',
+              person_id: 'a',
+              relationship_type: 'board_member',
+              title: 'Vocal',
+              starts_at: '2026-01-01',
+              ends_at: null,
+            },
+          ],
         });
       return Promise.resolve(notes);
     });
@@ -1522,9 +1529,14 @@ describe('PeoplePanelV3 request ownership', () => {
     );
     if (!editRole) throw new Error('Community role edit button not found');
     act(() => editRole.click());
-    const title = host.querySelector('input[placeholder="Ej. Presidente de la junta"]') as HTMLInputElement;
+    const title = host.querySelector(
+      'input[placeholder="Ej. Presidente de la junta"]',
+    ) as HTMLInputElement;
     act(() => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(title, 'Secretaria');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+        title,
+        'Secretaria',
+      );
       title.dispatchEvent(new Event('input', { bubbles: true }));
       title.dispatchEvent(new Event('change', { bubbles: true }));
     });
@@ -1534,9 +1546,14 @@ describe('PeoplePanelV3 request ownership', () => {
     expect(api).toHaveBeenCalledWith(
       '/v1/condominiums/c1/people/a/condominium-relationships/role-a',
       {} as never,
-      { method: 'PATCH', body: JSON.stringify({ relationshipType: 'board_member', title: 'Secretaria' }) },
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ relationshipType: 'board_member', title: 'Secretaria' }),
+      },
     );
-    expect(api.mock.calls.flatMap(([, , request]) => [String(request?.body)]).join('')).not.toContain('endsAt');
+    expect(
+      api.mock.calls.flatMap(([, , request]) => [String(request?.body)]).join(''),
+    ).not.toContain('endsAt');
     expect(host.textContent).not.toContain('Cerrar relación activa');
   });
 

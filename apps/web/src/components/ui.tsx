@@ -164,16 +164,17 @@ export function Field({
       fieldChild.type === Select);
   const explicitControlId =
     typeof fieldChild?.props.id === 'string' ? fieldChild.props.id : undefined;
-  const control = isDirectControl && fieldChild
-    ? cloneElement(fieldChild, {
-        id: explicitControlId ?? controlId,
-        required: required || fieldChild.props.required || undefined,
-        'aria-describedby': [fieldChild.props['aria-describedby'], describedBy]
-          .filter(Boolean)
-          .join(' ') || undefined,
-        'aria-invalid': error ? true : fieldChild.props['aria-invalid'],
-      })
-    : children;
+  const control =
+    isDirectControl && fieldChild
+      ? cloneElement(fieldChild, {
+          id: explicitControlId ?? controlId,
+          required: required || fieldChild.props.required || undefined,
+          'aria-describedby':
+            [fieldChild.props['aria-describedby'], describedBy].filter(Boolean).join(' ') ||
+            undefined,
+          'aria-invalid': error ? true : fieldChild.props['aria-invalid'],
+        })
+      : children;
   const labelContent = (
     <>
       {label}

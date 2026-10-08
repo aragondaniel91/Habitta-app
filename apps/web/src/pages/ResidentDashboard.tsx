@@ -226,8 +226,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
       proposals: proposals.status === 'fulfilled' ? proposals.value : [],
     });
     if (failed.length) {
-      setWarning({ scope, message:
-        `No se pudieron actualizar: ${failed.join(', ')}. Los demás datos siguen disponibles.`,
+      setWarning({
+        scope,
+        message: `No se pudieron actualizar: ${failed.join(', ')}. Los demás datos siguen disponibles.`,
       });
     }
     if (version === requestVersion.current) setLoading(false);

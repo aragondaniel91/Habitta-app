@@ -146,7 +146,12 @@ describe('units directory aggregate', () => {
       );
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toMatchObject({
-        units: [{ ownershipPercentage: 100, owners: [{ ownershipPercentage: 70 }, { ownershipPercentage: 60 }] }],
+        units: [
+          {
+            ownershipPercentage: 100,
+            owners: [{ ownershipPercentage: 70 }, { ownershipPercentage: 60 }],
+          },
+        ],
       });
     } finally {
       fetchMock.mockRestore();

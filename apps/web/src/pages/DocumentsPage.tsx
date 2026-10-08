@@ -213,8 +213,7 @@ export function DocumentsPage({ condominiumId, condominiumName, session }: Props
   const loadLibrary = useCallback(async () => {
     const requestScope = scopeKey;
     const requestId = ++latestLibraryRequest.current;
-    const ownsRequest = () =>
-      ownsScope(requestScope) && requestId === latestLibraryRequest.current;
+    const ownsRequest = () => ownsScope(requestScope) && requestId === latestLibraryRequest.current;
     setLoading(true);
     setError('');
     try {

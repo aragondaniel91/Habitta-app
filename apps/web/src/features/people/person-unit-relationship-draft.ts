@@ -21,8 +21,7 @@ export function relationshipDraftForUnit(
   const communication = relationship?.currentCommunication;
 
   return {
-    ownershipPercentage:
-      relationship?.currentOwnership?.ownership_percentage?.toString() ?? '',
+    ownershipPercentage: relationship?.currentOwnership?.ownership_percentage?.toString() ?? '',
     occupancyType: relationship?.currentOccupancy?.occupancy_type ?? 'tenant',
     financialRole: communication?.financial_role ?? 'none',
     generalRecipient: communication?.general_recipient ?? false,
@@ -33,7 +32,5 @@ export function canCreateRelationshipState(
   relationship: PersonUnitRelationshipSummary | null,
   kind: 'ownership' | 'occupancy',
 ) {
-  return kind === 'ownership'
-    ? !relationship?.currentOwnership
-    : !relationship?.currentOccupancy;
+  return kind === 'ownership' ? !relationship?.currentOwnership : !relationship?.currentOccupancy;
 }

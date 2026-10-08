@@ -82,11 +82,7 @@ export function PaymentProofPreview({
           <span>Tu navegador no muestra PDF aquí. Ábrelo en una pestaña nueva.</span>
         </object>
       ) : (
-        <img
-          alt="Comprobante del pago"
-          className="payments-proof-preview__image"
-          src={state.url}
-        />
+        <img alt="Comprobante del pago" className="payments-proof-preview__image" src={state.url} />
       )}
       <div className="payments-proof-uploader__actions">
         <Button

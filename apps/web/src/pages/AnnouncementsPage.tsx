@@ -819,24 +819,31 @@ function AnnouncementDetailDrawer({
       {error ? (
         <div className="announcements-inline-message" data-tone="error">
           {error}
-          <Button disabled={loading || saving} onClick={() => void loadDetail()} size="sm" variant="ghost">
+          <Button
+            disabled={loading || saving}
+            onClick={() => void loadDetail()}
+            size="sm"
+            variant="ghost"
+          >
             Reintentar carga
           </Button>
         </div>
       ) : null}
 
       <div className="announcement-detail-grid">
-        {canReviewAnnouncements ? <section>
-          <div className="announcements-section-heading">
-            <span>Actividad</span>
-            <p>Historial inmutable del comunicado.</p>
-          </div>
-          {loading || !detail ? (
-            <Skeleton className="announcements-detail-skeleton" />
-          ) : (
-            <EventTimeline events={detail.events} />
-          )}
-        </section> : null}
+        {canReviewAnnouncements ? (
+          <section>
+            <div className="announcements-section-heading">
+              <span>Actividad</span>
+              <p>Historial inmutable del comunicado.</p>
+            </div>
+            {loading || !detail ? (
+              <Skeleton className="announcements-detail-skeleton" />
+            ) : (
+              <EventTimeline events={detail.events} />
+            )}
+          </section>
+        ) : null}
         <aside>
           <Surface className="announcement-reach-panel">
             <div className="announcements-section-heading">

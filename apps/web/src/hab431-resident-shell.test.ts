@@ -26,7 +26,9 @@ describe('HAB-431 pure resident sessions use a resident-facing shell', () => {
   });
 
   it('shows condominium creation only when the user owns an eligible organization', () => {
-    expect(shell).toContain('const mayAddCondominium = !residentOnly && ownedOrganizationIds.length > 0;');
+    expect(shell).toContain(
+      'const mayAddCondominium = !residentOnly && ownedOrganizationIds.length > 0;',
+    );
     expect(shell).toContain('{mayAddCondominium ? (');
     expect(shell).toContain('className="condo-switcher__add"');
     expect(shell).toContain('+ Agregar condominio');

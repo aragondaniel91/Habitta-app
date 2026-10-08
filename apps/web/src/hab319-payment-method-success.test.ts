@@ -21,7 +21,9 @@ describe('HAB-319 payment-method creation success lifecycle', () => {
     const drawers = await source();
 
     expect(drawers).toContain('paymentApi(methodPath(editing?.id), session');
-    expect(drawers).toContain("wasEditing ? 'Método de pago actualizado.' : 'Método de pago creado.'");
+    expect(drawers).toContain(
+      "wasEditing ? 'Método de pago actualizado.' : 'Método de pago creado.'",
+    );
     expect(drawers).toContain("drawer.type === 'methods'");
     expect(drawers).toContain('<PaymentMethodsView');
   });

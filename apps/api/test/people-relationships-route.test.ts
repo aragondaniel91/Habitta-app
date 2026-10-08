@@ -121,9 +121,13 @@ describe('person-centric relationships', () => {
       const url = String(input);
       if (url.endsWith('/auth/v1/user')) return authenticatedUser();
       if (url.includes('/rest/v1/unit_owners?'))
-        return Response.json([{ unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } }]);
+        return Response.json([
+          { unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } },
+        ]);
       if (url.includes('/rest/v1/unit_occupancies?'))
-        return Response.json([{ unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } }]);
+        return Response.json([
+          { unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } },
+        ]);
       if (url.endsWith('/rest/v1/rpc/correct_unit_owner_percentage'))
         return Response.json({ id: assignmentId, ownership_percentage: 60 });
       if (url.endsWith('/rest/v1/rpc/correct_unit_occupancy_type'))
@@ -183,7 +187,11 @@ describe('person-centric relationships', () => {
       if (url.includes('/rest/v1/condominium_person_relationships?'))
         return Response.json([{ id: relationshipId }]);
       if (url.endsWith('/rest/v1/rpc/correct_community_person_relationship'))
-        return Response.json({ id: relationshipId, relationship_type: 'representative', title: 'Vocal' });
+        return Response.json({
+          id: relationshipId,
+          relationship_type: 'representative',
+          title: 'Vocal',
+        });
       throw new Error(`Unexpected request: ${url} (${init?.method})`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -216,10 +224,15 @@ describe('person-centric relationships', () => {
       const url = String(input);
       if (url.endsWith('/auth/v1/user')) return authenticatedUser();
       if (url.includes('/rest/v1/unit_owners?'))
-        return Response.json([{ unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } }]);
+        return Response.json([
+          { unit_id: unitId, starts_at: '2026-01-01', units: { condominium_id: condominiumId } },
+        ]);
       if (url.endsWith('/rest/v1/rpc/correct_unit_owner_percentage'))
         return Response.json(
-          { message: 'unit ownership percentage total above 100 must be strictly reduced for unit x' },
+          {
+            message:
+              'unit ownership percentage total above 100 must be strictly reduced for unit x',
+          },
           { status: 400 },
         );
       throw new Error(`Unexpected request: ${url}`);

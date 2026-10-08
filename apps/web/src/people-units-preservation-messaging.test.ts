@@ -12,7 +12,9 @@ describe('Personas and Unidades preservation messaging', () => {
 
     expect(people).toContain('Cerrar relación activa');
     expect(people).toMatch(/La persona y su relaci.n con la unidad no se eliminan\./);
-    expect(unitDetail).toContain('Los cambios de propietario u ocupante se realizan desde Personas');
+    expect(unitDetail).toContain(
+      'Los cambios de propietario u ocupante se realizan desde Personas',
+    );
     expect(unitDetail).toMatch(/una sola\s+identidad por persona/);
     expect(unitDetail).toMatch(/historial consistente entre m.dulos/);
   });

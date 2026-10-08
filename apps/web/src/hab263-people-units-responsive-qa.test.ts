@@ -81,18 +81,28 @@ describe('HAB-263 Personas + Unidades responsive and visual QA', () => {
     expect(workspaceCss).toContain('overflow-y: auto;');
     expect(workspaceCss).toContain('overscroll-behavior: contain;');
     expect(workspaceCss).toContain('@media (max-width: 860px)');
-    expect(workspaceCss).toContain('.people-inline-form,\n  .people-invitation-form,\n  .people-import__controls {\n    grid-template-columns: 1fr;');
+    expect(workspaceCss).toContain(
+      '.people-inline-form,\n  .people-invitation-form,\n  .people-import__controls {\n    grid-template-columns: 1fr;',
+    );
     expect(workspaceCss).toContain('min-height: 44px;');
     expect(workspaceCss).toContain('@media (max-width: 420px)');
     expect(workspaceCss).toContain('overflow-wrap: anywhere;');
 
-    expect(controllerCss).toContain('.people-v3-drawer.ux-drawer-panel {\n    min-height: 0;\n    max-height: 100dvh;');
-    expect(controllerCss).toContain('.people-v3-inline-form,\n  .people-v3-access-form {\n    grid-template-columns: 1fr;');
-    expect(controllerCss).toContain('.people-v3-inline-form > *,\n  .people-v3-access-form > * {\n    min-width: 0;');
+    expect(controllerCss).toContain(
+      '.people-v3-drawer.ux-drawer-panel {\n    min-height: 0;\n    max-height: 100dvh;',
+    );
+    expect(controllerCss).toContain(
+      '.people-v3-inline-form,\n  .people-v3-access-form {\n    grid-template-columns: 1fr;',
+    );
+    expect(controllerCss).toContain(
+      '.people-v3-inline-form > *,\n  .people-v3-access-form > * {\n    min-width: 0;',
+    );
     expect(controllerCss).toContain('.people-v3-check-row {\n    min-height: 44px;');
 
     expect(peopleCss).toContain('.people-v3-profile-header__actions {\n    flex-wrap: wrap;');
-    expect(peopleCss).toContain('.people-v3-profile-tabs {\n    overflow-x: auto;\n    overscroll-behavior-x: contain;');
+    expect(peopleCss).toContain(
+      '.people-v3-profile-tabs {\n    overflow-x: auto;\n    overscroll-behavior-x: contain;',
+    );
   });
 
   it('preserves keyboard-only dialog behavior and explicit focus indicators', async () => {

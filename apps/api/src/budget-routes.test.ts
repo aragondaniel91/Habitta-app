@@ -33,6 +33,6 @@ describe('budget API contract', () => {
     const source = await readFile(routeUrl, 'utf8');
     expect(source).toContain('const budgetRejectionSchema');
     expect(source).toContain('reason: z.string().trim().min(3).max(500)');
-    expect(source).toContain("versions/:versionId/reject");
+    expect(source).toContain('versions/:versionId/reject');
   });
 });

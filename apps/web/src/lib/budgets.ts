@@ -1,9 +1,5 @@
 export type BudgetVersionStatus =
-  | 'draft'
-  | 'pending_approval'
-  | 'approved'
-  | 'rejected'
-  | 'superseded';
+  'draft' | 'pending_approval' | 'approved' | 'rejected' | 'superseded';
 
 export type BudgetPeriod = {
   id: string;
@@ -92,7 +88,9 @@ export function isValidBudgetAmount(value: string) {
   return /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(value.trim()) && Number(value) > 0;
 }
 
-export function hasDuplicateBudgetCategoryCurrency(lines: Array<Pick<BudgetLine, 'category_id' | 'currency_code'>>) {
+export function hasDuplicateBudgetCategoryCurrency(
+  lines: Array<Pick<BudgetLine, 'category_id' | 'currency_code'>>,
+) {
   const keys = lines
     .filter((line) => line.category_id && line.currency_code.trim())
     .map((line) => `${line.category_id}:${line.currency_code.trim().toUpperCase()}`);

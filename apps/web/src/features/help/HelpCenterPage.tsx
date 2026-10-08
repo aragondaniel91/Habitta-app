@@ -11,9 +11,7 @@ export type ResolvedModuleHelpTopic = {
 
 /** Resolves a canonical topic id to its single current application route and adapted guide. */
 export function resolveModuleHelpTopic(topicId: ModuleHelpTopicId): ResolvedModuleHelpTopic {
-  const matchingRoutes = APP_ROUTES.filter(
-    (route) => MODULE_HELP[route.key].topicId === topicId,
-  );
+  const matchingRoutes = APP_ROUTES.filter((route) => MODULE_HELP[route.key].topicId === topicId);
 
   if (matchingRoutes.length !== 1) {
     throw new Error(`Expected exactly one help route for topic: ${topicId}`);

@@ -63,7 +63,10 @@ const accounts: TreasuryAccount[] = [
   },
 ];
 
-const setValue = (control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, value: string) => {
+const setValue = (
+  control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+  value: string,
+) => {
   const prototype =
     control instanceof HTMLSelectElement
       ? HTMLSelectElement.prototype
@@ -71,7 +74,9 @@ const setValue = (control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaEl
         ? HTMLTextAreaElement.prototype
         : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(prototype, 'value')?.set?.call(control, value);
-  control.dispatchEvent(new Event(control instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }));
+  control.dispatchEvent(
+    new Event(control instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }),
+  );
 };
 
 afterEach(() => {
@@ -93,7 +98,10 @@ describe('TransferDrawer', () => {
     const [origin, destination] = element.querySelectorAll<HTMLSelectElement>('select');
     expect(origin?.value).toBe('bank-usd');
     expect(destination?.disabled).toBe(false);
-    expect(Array.from(destination?.options ?? []).map((option) => option.value)).toEqual(['', 'cash-usd']);
+    expect(Array.from(destination?.options ?? []).map((option) => option.value)).toEqual([
+      '',
+      'cash-usd',
+    ]);
     expect(element.textContent).toContain('Saldo actual: USD 100,00.');
     expect(element.textContent).not.toContain('Cuenta archivada');
 
@@ -101,19 +109,28 @@ describe('TransferDrawer', () => {
       setValue(destination!, 'cash-usd');
       setValue(element.querySelector<HTMLInputElement>('input[placeholder="0.00"]')!, '25.00');
       setValue(
-        element.querySelector<HTMLInputElement>('input[placeholder="Transferencia a caja operativa"]')!,
+        element.querySelector<HTMLInputElement>(
+          'input[placeholder="Transferencia a caja operativa"]',
+        )!,
         'Reposición de caja',
       );
-      setValue(element.querySelector<HTMLInputElement>('input[placeholder="Ej. comprobante 00421"]')!, 'doc-42');
+      setValue(
+        element.querySelector<HTMLInputElement>('input[placeholder="Ej. comprobante 00421"]')!,
+        'doc-42',
+      );
     });
 
     expect(element.textContent).toContain('Monto (USD)');
     expect(element.textContent).toContain('Origen: USD 100,00 → USD 75,00');
     expect(element.textContent).toContain('Destino: USD 20,00 → USD 45,00');
-    expect(element.querySelector('.treasury-transfer-amount-date-grid')?.querySelectorAll('.field')).toHaveLength(2);
+    expect(
+      element.querySelector('.treasury-transfer-amount-date-grid')?.querySelectorAll('.field'),
+    ).toHaveLength(2);
 
     await act(async () => {
-      element.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      element
+        .querySelector('form')
+        ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     });
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -130,7 +147,9 @@ describe('TransferDrawer', () => {
     const root = createRoot(element);
     document.body.append(element);
     await act(async () => {
-      root.render(<TransferDrawer accounts={accounts} onClose={() => {}} onSubmit={async () => undefined} />);
+      root.render(
+        <TransferDrawer accounts={accounts} onClose={() => {}} onSubmit={async () => undefined} />,
+      );
     });
 
     const [origin, destination] = element.querySelectorAll<HTMLSelectElement>('select');
@@ -150,7 +169,9 @@ describe('TransferDrawer', () => {
     const root = createRoot(element);
     document.body.append(element);
     await act(async () => {
-      root.render(<TransferDrawer accounts={accounts} onClose={() => {}} onSubmit={async () => undefined} />);
+      root.render(
+        <TransferDrawer accounts={accounts} onClose={() => {}} onSubmit={async () => undefined} />,
+      );
     });
 
     const [, destination] = element.querySelectorAll<HTMLSelectElement>('select');
@@ -158,7 +179,9 @@ describe('TransferDrawer', () => {
       setValue(destination!, 'cash-usd');
       setValue(element.querySelector<HTMLInputElement>('input[placeholder="0.00"]')!, '125.00');
       setValue(
-        element.querySelector<HTMLInputElement>('input[placeholder="Transferencia a caja operativa"]')!,
+        element.querySelector<HTMLInputElement>(
+          'input[placeholder="Transferencia a caja operativa"]',
+        )!,
         'Reposición de caja',
       );
     });

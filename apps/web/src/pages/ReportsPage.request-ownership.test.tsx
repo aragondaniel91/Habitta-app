@@ -43,7 +43,12 @@ function dataset(unitCode: string, currencyCode: string, amount: string): Datase
     ],
     payments: [],
     summaries: [
-      { currency_code: currencyCode, net_outstanding: amount, total_debits: amount, total_credits: '0' },
+      {
+        currency_code: currencyCode,
+        net_outstanding: amount,
+        total_debits: amount,
+        total_credits: '0',
+      },
     ],
     aging: [
       {
@@ -215,12 +220,10 @@ describe('ReportsPage request ownership', () => {
     await render('c1', 'token-2');
     await flush();
 
-    expect(
-      host.querySelector<HTMLSelectElement>('[aria-label="Período del reporte"]')?.value,
-    ).toBe('3');
-    expect(
-      findButton('VES').getAttribute('aria-pressed'),
-    ).toBe('true');
+    expect(host.querySelector<HTMLSelectElement>('[aria-label="Período del reporte"]')?.value).toBe(
+      '3',
+    );
+    expect(findButton('VES').getAttribute('aria-pressed')).toBe('true');
     expect(host.textContent).toContain('C1-VES');
   });
 });

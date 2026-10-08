@@ -16,7 +16,14 @@ function unit(code: string) {
 }
 
 function person(id: string, firstName: string, lastName: string) {
-  return { id, first_name: firstName, last_name: lastName, email: `${id}@example.com`, phone: '', status: 'active' };
+  return {
+    id,
+    first_name: firstName,
+    last_name: lastName,
+    email: `${id}@example.com`,
+    phone: '',
+    status: 'active',
+  };
 }
 
 function responseFor(unitCode: string, personName: string, path: string) {
@@ -131,7 +138,9 @@ describe('CommunityPage request ownership', () => {
   });
 
   it('keeps the previously loaded directory visible through a same-condominium token refresh', async () => {
-    apiRequest.mockImplementation((path: string) => Promise.resolve(responseFor('C1-101', 'Ana', path)));
+    apiRequest.mockImplementation((path: string) =>
+      Promise.resolve(responseFor('C1-101', 'Ana', path)),
+    );
 
     await render('c1', 'token-1');
     await flush();

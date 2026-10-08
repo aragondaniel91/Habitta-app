@@ -2,7 +2,10 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CommunityDocument, CommunityDocumentVersion } from '../features/documents/community-api';
+import type {
+  CommunityDocument,
+  CommunityDocumentVersion,
+} from '../features/documents/community-api';
 
 const { listCategories, listFolders, listDocuments, listVersions } = vi.hoisted(() => ({
   listCategories: vi.fn(),
@@ -142,7 +145,10 @@ describe('ResidentDocumentsPage request ownership', () => {
   });
 
   it('drops a stale versions response after selecting another document', async () => {
-    const documents = [doc('doc-a', { title: 'Document A' }), doc('doc-b', { title: 'Document B' })];
+    const documents = [
+      doc('doc-a', { title: 'Document A' }),
+      doc('doc-b', { title: 'Document B' }),
+    ];
     listDocuments.mockResolvedValue(documents);
     const aVersions = deferred<CommunityDocumentVersion[]>();
     listVersions.mockImplementation((_condo: string, documentId: string) =>
