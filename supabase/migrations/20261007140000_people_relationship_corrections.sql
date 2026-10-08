@@ -62,6 +62,7 @@ end $$;
 
 create or replace function public.guard_unit_occupancy_history() returns trigger language plpgsql security definer set search_path = public set row_security = off as $$
 begin
+  if tg_op = 'DELETE' and public.is_unit_condominium_purge_authorized(old.unit_id) then return old; end if;
   if tg_op = 'DELETE' then raise exception 'occupancy history cannot be deleted'; end if;
   if (new.unit_id, new.person_id, new.starts_at, new.created_by, new.created_at) is distinct from (old.unit_id, old.person_id, old.starts_at, old.created_by, old.created_at) then raise exception 'occupancy history cannot be rewritten'; end if;
   if new.occupancy_type is distinct from old.occupancy_type and current_setting('habitta.audited_occupancy_correction', true) is distinct from 'on' then raise exception 'occupancy type requires an audited correction'; end if;
@@ -106,4 +107,3 @@ revoke all on function public.correct_community_person_relationship(uuid, uuid, 
 grant execute on function public.correct_unit_owner_percentage(uuid, uuid, numeric) to authenticated;
 grant execute on function public.correct_unit_occupancy_type(uuid, uuid, public.occupancy_type) to authenticated;
 grant execute on function public.correct_community_person_relationship(uuid, uuid, public.condominium_person_relationship_type, text) to authenticated;
-

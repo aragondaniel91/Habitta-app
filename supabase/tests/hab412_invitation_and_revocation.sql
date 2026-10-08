@@ -12,7 +12,8 @@ insert into auth.users(id, instance_id, aud, role, email, encrypted_password, cr
   ('41600000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@hab412i.test', 'x', now(), now()),
   ('41600000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'fam@hab412i.test', 'x', now(), now()),
   ('41600000-0000-4000-8000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'aut@hab412i.test', 'x', now(), now()),
-  ('41600000-0000-4000-8000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'otro@hab412i.test', 'x', now(), now());
+  ('41600000-0000-4000-8000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'otro@hab412i.test', 'x', now(), now()),
+  ('41600000-0000-4000-8000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'independent@hab412i.test', 'x', now(), now());
 
 insert into public.organizations(id, name, created_by)
 values ('41610000-0000-4000-8000-000000000001', 'Org I', '41600000-0000-4000-8000-000000000001');
@@ -20,18 +21,26 @@ insert into public.condominiums(id, organization_id, name, created_by)
 values ('41620000-0000-4000-8000-000000000001', '41610000-0000-4000-8000-000000000001', 'Condo I', '41600000-0000-4000-8000-000000000001');
 insert into public.units(id, condominium_id, code, type, status, created_by) values
   ('41630000-0000-4000-8000-000000000001', '41620000-0000-4000-8000-000000000001', '1A', 'apartment', 'active', '41600000-0000-4000-8000-000000000001'),
-  ('41630000-0000-4000-8000-000000000002', '41620000-0000-4000-8000-000000000001', '1B', 'apartment', 'active', '41600000-0000-4000-8000-000000000001');
+  ('41630000-0000-4000-8000-000000000002', '41620000-0000-4000-8000-000000000001', '1B', 'apartment', 'active', '41600000-0000-4000-8000-000000000001'),
+  ('41630000-0000-4000-8000-000000000003', '41620000-0000-4000-8000-000000000001', '1C', 'apartment', 'active', '41600000-0000-4000-8000-000000000001');
 
 insert into public.condominium_memberships(condominium_id, user_id, role)
 values ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000001', 'condominium_admin');
 
-insert into public.people(id, condominium_id, first_name, last_name, status, email, created_by) values
-  ('41640000-0000-4000-8000-000000000002', '41620000-0000-4000-8000-000000000001', 'Fam', 'Uno', 'active', 'fam@hab412i.test', '41600000-0000-4000-8000-000000000001'),
-  ('41640000-0000-4000-8000-000000000003', '41620000-0000-4000-8000-000000000001', 'Aut', 'Uno', 'active', 'aut@hab412i.test', '41600000-0000-4000-8000-000000000001');
+insert into public.people(id, condominium_id, auth_user_id, first_name, last_name, status, email, created_by) values
+  ('41640000-0000-4000-8000-000000000002', '41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000002', 'Fam', 'Uno', 'active', 'fam@hab412i.test', '41600000-0000-4000-8000-000000000001'),
+  ('41640000-0000-4000-8000-000000000003', '41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000003', 'Aut', 'Uno', 'active', 'aut@hab412i.test', '41600000-0000-4000-8000-000000000001'),
+  ('41640000-0000-4000-8000-000000000004', '41620000-0000-4000-8000-000000000001', null, 'Fam', 'Future', 'active', 'future@hab412i.test', '41600000-0000-4000-8000-000000000001'),
+  ('41640000-0000-4000-8000-000000000005', '41620000-0000-4000-8000-000000000001', null, 'Fam', 'Expired', 'active', 'expired@hab412i.test', '41600000-0000-4000-8000-000000000001'),
+  ('41640000-0000-4000-8000-000000000006', '41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000005', 'Fam', 'Independent', 'active', 'independent@hab412i.test', '41600000-0000-4000-8000-000000000001');
 
 insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, created_by) values
   ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000002', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001'),
-  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000003', 'authorized_occupant', current_date - 5, '41600000-0000-4000-8000-000000000001');
+  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000003', 'authorized_occupant', current_date - 5, '41600000-0000-4000-8000-000000000001'),
+  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000004', 'family_member', current_date + 3, '41600000-0000-4000-8000-000000000001'),
+  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000005', 'family_member', current_date - 30, '41600000-0000-4000-8000-000000000001');
+update public.unit_occupancies set ends_at = current_date - 1
+where person_id = '41640000-0000-4000-8000-000000000005';
 
 create or replace function pg_temp.as_user(who text) returns void language plpgsql as $$
 begin
@@ -80,20 +89,13 @@ select throws_ok(
   null, null, 'a family invitation for the wrong unit is refused');
 
 -- Future and expired relationships are not relationships you can be invited into.
-update public.unit_occupancies set starts_at = current_date + 3
-where person_id = '41640000-0000-4000-8000-000000000002';
 select throws_ok(
-  $$select pg_temp.invite('41640000-0000-4000-8000-000000000002', '41630000-0000-4000-8000-000000000001', 'family_member')$$,
+  $$select pg_temp.invite('41640000-0000-4000-8000-000000000004', '41630000-0000-4000-8000-000000000001', 'family_member')$$,
   null, null, 'a relationship starting in the future cannot be invited');
 
-update public.unit_occupancies set starts_at = current_date - 30, ends_at = current_date - 1
-where person_id = '41640000-0000-4000-8000-000000000002';
 select throws_ok(
-  $$select pg_temp.invite('41640000-0000-4000-8000-000000000002', '41630000-0000-4000-8000-000000000001', 'family_member')$$,
+  $$select pg_temp.invite('41640000-0000-4000-8000-000000000005', '41630000-0000-4000-8000-000000000001', 'family_member')$$,
   null, null, 'an expired relationship cannot be invited');
-
-update public.unit_occupancies set starts_at = current_date - 5, ends_at = null
-where person_id = '41640000-0000-4000-8000-000000000002';
 
 -- ------------------------------------------------------------------ acceptance
 
@@ -141,8 +143,10 @@ select set_config('hab412.aut_token',
 -- Type changed after the token was minted. The token still exists, the person still lives there,
 -- and it must still fail, because the invitation was for a different standing.
 reset role;
-update public.unit_occupancies set occupancy_type = 'family_member'
-where person_id = '41640000-0000-4000-8000-000000000003';
+set local role authenticated;
+select pg_temp.as_user('41600000-0000-4000-8000-000000000001');
+select public.correct_unit_occupancy_type('41620000-0000-4000-8000-000000000001',
+  (select id from public.unit_occupancies where person_id = '41640000-0000-4000-8000-000000000003'), 'family_member');
 set local role authenticated;
 select pg_temp.as_user('41600000-0000-4000-8000-000000000003');
 select throws_ok(
@@ -150,28 +154,11 @@ select throws_ok(
   null, null, 'a token cannot be accepted after the relationship changed type');
 
 reset role;
-update public.unit_occupancies set occupancy_type = 'authorized_occupant'
-where person_id = '41640000-0000-4000-8000-000000000003';
-update public.unit_occupancies set ends_at = current_date - 1
-where person_id = '41640000-0000-4000-8000-000000000003';
 set local role authenticated;
-select pg_temp.as_user('41600000-0000-4000-8000-000000000003');
-select throws_ok(
-  format($$select public.accept_invitation(%L)$$, current_setting('hab412.aut_token')),
-  null, null, 'a token cannot be accepted after the relationship ended');
-
+select pg_temp.as_user('41600000-0000-4000-8000-000000000001');
+select public.correct_unit_occupancy_type('41620000-0000-4000-8000-000000000001',
+  (select id from public.unit_occupancies where person_id = '41640000-0000-4000-8000-000000000003'), 'authorized_occupant');
 reset role;
-update public.unit_occupancies set ends_at = null where person_id = '41640000-0000-4000-8000-000000000003';
-delete from public.unit_occupancies where person_id = '41640000-0000-4000-8000-000000000003';
-set local role authenticated;
-select pg_temp.as_user('41600000-0000-4000-8000-000000000003');
-select throws_ok(
-  format($$select public.accept_invitation(%L)$$, current_setting('hab412.aut_token')),
-  null, null, 'a token cannot be accepted after the relationship was deleted');
-
-reset role;
-insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, created_by)
-values ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000003', 'authorized_occupant', current_date - 5, '41600000-0000-4000-8000-000000000001');
 update public.people set status = 'inactive' where id = '41640000-0000-4000-8000-000000000003';
 set local role authenticated;
 select pg_temp.as_user('41600000-0000-4000-8000-000000000003');
@@ -213,59 +200,77 @@ select throws_ok(
   format($$select public.accept_invitation(%L)$$, current_setting('hab412.exp_token')),
   null, null, 'an expired token cannot be accepted');
 
+select pg_temp.as_user('41600000-0000-4000-8000-000000000001');
+select set_config('hab412.end_token',
+  pg_temp.invite('41640000-0000-4000-8000-000000000003', '41630000-0000-4000-8000-000000000001', 'authorized_occupant'), true);
+reset role;
+update public.unit_occupancies set ends_at = current_date - 1
+where person_id = '41640000-0000-4000-8000-000000000003';
+set local role authenticated;
+select pg_temp.as_user('41600000-0000-4000-8000-000000000003');
+select throws_ok(
+  format($$select public.accept_invitation(%L)$$, current_setting('hab412.end_token')),
+  null, null, 'a token cannot be accepted after the relationship ended');
+
+reset role;
+select throws_ok(
+  $$delete from public.unit_occupancies where person_id = '41640000-0000-4000-8000-000000000003'$$,
+  'P0001', 'occupancy history cannot be deleted', 'immutable relationship history cannot be deleted');
+
 -- ------------------------------------------------------------------ revocation
 
 reset role;
 
 -- A second family relationship for the same person, so closing one does not end the standing.
 insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, created_by)
-values ('41630000-0000-4000-8000-000000000002', '41640000-0000-4000-8000-000000000002', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001');
+values
+  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000006', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001'),
+  ('41630000-0000-4000-8000-000000000002', '41640000-0000-4000-8000-000000000006', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001');
+insert into public.condominium_memberships(condominium_id, user_id, role)
+values ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000005', 'family_member');
 
 update public.unit_occupancies set ends_at = current_date - 1
-where person_id = '41640000-0000-4000-8000-000000000002'
+where person_id = '41640000-0000-4000-8000-000000000006'
   and unit_id = '41630000-0000-4000-8000-000000000001';
 
 select is(
   (select count(*)::integer from public.condominium_memberships
-   where user_id = '41600000-0000-4000-8000-000000000002' and role = 'family_member'),
+   where user_id = '41600000-0000-4000-8000-000000000005' and role = 'family_member'),
   1, 'closing one of two family relationships keeps the membership');
 
 update public.unit_occupancies set ends_at = current_date - 1
-where person_id = '41640000-0000-4000-8000-000000000002'
+where person_id = '41640000-0000-4000-8000-000000000006'
   and unit_id = '41630000-0000-4000-8000-000000000002';
 
 select is(
   (select count(*)::integer from public.condominium_memberships
-   where user_id = '41600000-0000-4000-8000-000000000002' and role = 'family_member'),
+   where user_id = '41600000-0000-4000-8000-000000000005' and role = 'family_member'),
   0, 'closing the last family relationship removes the family membership');
 
--- Independence: the two residential roles, and everything else, are separate memberships. The
--- closed rows above still occupy their unique key, so they are cleared before fresh ones land.
-delete from public.unit_occupancies where person_id = '41640000-0000-4000-8000-000000000002';
-
+-- Independence: the two residential roles, and everything else, are separate memberships.
 insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, created_by) values
-  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000002', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001'),
-  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000002', 'authorized_occupant', current_date - 5, '41600000-0000-4000-8000-000000000001');
+  ('41630000-0000-4000-8000-000000000003', '41640000-0000-4000-8000-000000000006', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001'),
+  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000006', 'authorized_occupant', current_date - 5, '41600000-0000-4000-8000-000000000001');
 insert into public.condominium_memberships(condominium_id, user_id, role) values
-  ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000002', 'family_member'),
-  ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000002', 'authorized_occupant'),
-  ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000002', 'owner')
+  ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000005', 'family_member'),
+  ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000005', 'authorized_occupant'),
+  ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000005', 'owner')
 on conflict do nothing;
 
-delete from public.unit_occupancies
-where person_id = '41640000-0000-4000-8000-000000000002' and occupancy_type = 'family_member';
+update public.unit_occupancies set ends_at = current_date - 1
+where person_id = '41640000-0000-4000-8000-000000000006' and occupancy_type = 'family_member';
 
 select is(
   (select count(*)::integer from public.condominium_memberships
-   where user_id = '41600000-0000-4000-8000-000000000002' and role = 'family_member'),
+   where user_id = '41600000-0000-4000-8000-000000000005' and role = 'family_member'),
   0, 'ending the family relationship removes the family membership');
 select is(
   (select count(*)::integer from public.condominium_memberships
-   where user_id = '41600000-0000-4000-8000-000000000002' and role = 'authorized_occupant'),
+   where user_id = '41600000-0000-4000-8000-000000000005' and role = 'authorized_occupant'),
   1, 'and leaves the authorized-occupant membership alone');
 select is(
   (select count(*)::integer from public.condominium_memberships
-   where user_id = '41600000-0000-4000-8000-000000000002' and role = 'owner'),
+   where user_id = '41600000-0000-4000-8000-000000000005' and role = 'owner'),
   1, 'and never touches an owner membership');
 
 -- ------------------------------------------------------------------ read-only guards
@@ -345,18 +350,9 @@ select throws_ok(
 -- every active relationship is the wrong lifecycle and would read as access that still exists.
 
 reset role;
--- Clear both people's relationships so the fresh pair below owns its unique key outright.
-delete from public.unit_occupancies
-where person_id in ('41640000-0000-4000-8000-00000000000e', '41640000-0000-4000-8000-000000000009');
-delete from public.condominium_memberships
-where user_id = '41600000-0000-4000-8000-000000000004' and role = 'family_member';
-
+-- Seed an independent future relationship alongside the existing active relationship.
 insert into public.unit_occupancies(unit_id, person_id, occupancy_type, starts_at, created_by) values
-  ('41630000-0000-4000-8000-000000000001', '41640000-0000-4000-8000-000000000009', 'family_member', current_date - 5, '41600000-0000-4000-8000-000000000001'),
   ('41630000-0000-4000-8000-000000000002', '41640000-0000-4000-8000-000000000009', 'family_member', current_date + 20, '41600000-0000-4000-8000-000000000001');
-insert into public.condominium_memberships(condominium_id, user_id, role)
-values ('41620000-0000-4000-8000-000000000001', '41600000-0000-4000-8000-000000000004', 'family_member')
-on conflict do nothing;
 
 update public.unit_occupancies set ends_at = current_date - 1
 where person_id = '41640000-0000-4000-8000-000000000009'

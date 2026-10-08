@@ -33,7 +33,7 @@ select throws_ok($$select public.create_person_with_initial_context(
   '23520000-0000-0000-0000-000000000001', 'Inactivo', 'Tenant', 'Cédula V', '23504', 'inactivo-tenant@235.test', null, 'inactive', 'tenant', '23530000-0000-0000-0000-000000000001'
 )$$, 'P0001', 'inactive_person_initial_relationship_forbidden', 'inactive tenant fails closed');
 select lives_ok($$select public.create_person_with_initial_context(
-  '23520000-0000-0000-0000-000000000001', 'Olga', 'Owner', 'Cédula V', '23505', 'owner@235.test', null, 'active', 'owner', '23530000-0000-0000-0000-000000000001', 75
+  '23520000-0000-0000-0000-000000000001', 'Olga', 'Owner', 'Cédula V', '23505', 'owner@235.test', null, 'active', 'owner', '23530000-0000-0000-0000-000000000001', 65
 )$$, 'owner is created atomically');
 select lives_ok($$select public.create_person_with_initial_context(
   '23520000-0000-0000-0000-000000000001', 'Omar', 'Owner Occupant', 'Cédula V', '23506', 'owner-occupant@235.test', null, 'active', 'owner_occupant', '23530000-0000-0000-0000-000000000001', 25

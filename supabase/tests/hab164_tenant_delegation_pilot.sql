@@ -5,7 +5,8 @@ insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, created_at, updated_at
 ) values
   ('a4000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'hab164-admin@test.local', 'x', now(), now()),
-  ('a4000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'hab164-tenant@test.local', 'x', now(), now());
+  ('a4000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'hab164-tenant@test.local', 'x', now(), now()),
+  ('a4000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'hab164-revoked-tenant@test.local', 'x', now(), now());
 
 insert into public.organizations (id, name, created_by) values
   ('a4100000-0000-0000-0000-000000000001', 'HAB-164 Org A', 'a4000000-0000-0000-0000-000000000001'),
@@ -22,12 +23,14 @@ insert into public.condominiums (id, organization_id, name, created_by) values
 insert into public.condominium_memberships (condominium_id, user_id, role) values
   ('a4110000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000001', 'condominium_admin'),
   ('a4220000-0000-0000-0000-000000000002', 'a4000000-0000-0000-0000-000000000001', 'condominium_admin'),
-  ('a4110000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000002', 'tenant');
+  ('a4110000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000002', 'tenant'),
+  ('a4110000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000003', 'tenant');
 
 insert into public.units (id, condominium_id, code, type, status, created_by) values
   ('a4111000-0000-0000-0000-000000000001', 'a4110000-0000-0000-0000-000000000001', 'A-01', 'apartment', 'active', 'a4000000-0000-0000-0000-000000000001'),
   ('a4111000-0000-0000-0000-000000000002', 'a4110000-0000-0000-0000-000000000001', 'A-02', 'apartment', 'active', 'a4000000-0000-0000-0000-000000000001'),
   ('a4111000-0000-0000-0000-000000000003', 'a4110000-0000-0000-0000-000000000001', 'A-03', 'apartment', 'active', 'a4000000-0000-0000-0000-000000000001'),
+  ('a4111000-0000-0000-0000-000000000004', 'a4110000-0000-0000-0000-000000000001', 'A-04', 'apartment', 'active', 'a4000000-0000-0000-0000-000000000001'),
   ('a4221000-0000-0000-0000-000000000001', 'a4220000-0000-0000-0000-000000000002', 'B-01', 'apartment', 'active', 'a4000000-0000-0000-0000-000000000001');
 
 insert into public.people (
@@ -38,13 +41,21 @@ insert into public.people (
   'a4000000-0000-0000-0000-000000000002',
   'Tenant', 'Pilot', 'hab164-tenant@test.local', 'active',
   'a4000000-0000-0000-0000-000000000001'
+), (
+  'a4112000-0000-0000-0000-000000000002',
+  'a4110000-0000-0000-0000-000000000001',
+  'a4000000-0000-0000-0000-000000000003',
+  'Tenant', 'Revoked', 'hab164-revoked-tenant@test.local', 'active',
+  'a4000000-0000-0000-0000-000000000001'
 );
 
 insert into public.unit_occupancies (
-  id, unit_id, person_id, occupancy_type, is_primary_contact, starts_at, created_by
+  id, unit_id, person_id, occupancy_type, is_primary_contact, starts_at, ends_at, created_by
 ) values
-  ('a4113000-0000-0000-0000-000000000001', 'a4111000-0000-0000-0000-000000000001', 'a4112000-0000-0000-0000-000000000001', 'tenant', true, current_date - 90, 'a4000000-0000-0000-0000-000000000001'),
-  ('a4113000-0000-0000-0000-000000000002', 'a4111000-0000-0000-0000-000000000002', 'a4112000-0000-0000-0000-000000000001', 'tenant', false, current_date - 90, 'a4000000-0000-0000-0000-000000000001');
+  ('a4113000-0000-0000-0000-000000000001', 'a4111000-0000-0000-0000-000000000001', 'a4112000-0000-0000-0000-000000000001', 'tenant', true, current_date - 90, current_date + 30, 'a4000000-0000-0000-0000-000000000001'),
+  ('a4113000-0000-0000-0000-000000000002', 'a4111000-0000-0000-0000-000000000002', 'a4112000-0000-0000-0000-000000000001', 'tenant', false, current_date - 90, current_date, 'a4000000-0000-0000-0000-000000000001'),
+  ('a4113000-0000-0000-0000-000000000003', 'a4111000-0000-0000-0000-000000000003', 'a4112000-0000-0000-0000-000000000001', 'tenant', false, current_date - 90, null, 'a4000000-0000-0000-0000-000000000001'),
+  ('a4113000-0000-0000-0000-000000000004', 'a4111000-0000-0000-0000-000000000004', 'a4112000-0000-0000-0000-000000000002', 'tenant', true, current_date - 90, null, 'a4000000-0000-0000-0000-000000000001');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
@@ -65,13 +76,13 @@ select is(
   'tenant is active for second delegated unit'
 );
 select is(
-  public.can_read_unit('a4111000-0000-0000-0000-000000000003'),
+  public.can_read_unit('a4111000-0000-0000-0000-000000000004'),
   false,
   'tenant cannot read another unit in the same condominium'
 );
 select is(
   (select count(*) from public.units where condominium_id = 'a4110000-0000-0000-0000-000000000001'),
-  2::bigint,
+  3::bigint,
   'unit RLS exposes only actively delegated units to tenant'
 );
 select is(
@@ -81,10 +92,6 @@ select is(
 );
 
 reset role;
-
-update public.unit_occupancies
-set ends_at = current_date + 30
-where id = 'a4113000-0000-0000-0000-000000000001';
 
 select is(
   (select count(*) from public.condominium_memberships
@@ -104,22 +111,17 @@ select is(
 );
 reset role;
 
-update public.unit_occupancies
-set ends_at = current_date
-where id = 'a4113000-0000-0000-0000-000000000001';
-
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
 select is(
-  public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
+  public.can_read_unit('a4111000-0000-0000-0000-000000000002'),
   true,
   'end date is inclusive through today'
 );
 reset role;
 
-update public.unit_occupancies
-set ends_at = current_date - 1
-where id = 'a4113000-0000-0000-0000-000000000001';
+update public.unit_occupancies set ends_at = current_date - 1
+where id = 'a4113000-0000-0000-0000-000000000003';
 
 select is(
   (select count(*) from public.condominium_memberships
@@ -133,32 +135,31 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
 select is(
-  public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
+  public.can_read_unit('a4111000-0000-0000-0000-000000000003'),
   false,
   'past end date removes access to the expired unit'
 );
 select is(
-  public.can_read_unit('a4111000-0000-0000-0000-000000000002'),
+  public.can_read_unit('a4111000-0000-0000-0000-000000000001'),
   true,
   'remaining active occupancy keeps its unit accessible'
 );
 reset role;
 
-update public.unit_occupancies
-set ends_at = current_date - 1
-where id = 'a4113000-0000-0000-0000-000000000002';
+update public.unit_occupancies set ends_at = current_date - 1
+where id = 'a4113000-0000-0000-0000-000000000004';
 
 select is(
   (select count(*) from public.condominium_memberships
-   where condominium_id = 'a4110000-0000-0000-0000-000000000001'
-     and user_id = 'a4000000-0000-0000-0000-000000000002'
+     where condominium_id = 'a4110000-0000-0000-0000-000000000001'
+     and user_id = 'a4000000-0000-0000-0000-000000000003'
      and role = 'tenant'),
   0::bigint,
   'final expired occupancy revokes stale tenant membership'
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000002', true);
+select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000003', true);
 select is(
   public.can_read_condominium('a4110000-0000-0000-0000-000000000001'),
   false,

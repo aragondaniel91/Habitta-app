@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(24);
 
 select has_type('public', 'condominium_person_relationship_type', 'condominium relationship type exists');
 select has_table('public', 'condominium_person_relationships', 'condominium relationships table exists');
@@ -32,9 +32,6 @@ insert into public.condominium_memberships (condominium_id, user_id, role) value
 insert into public.units (id, condominium_id, code, type, created_by) values
   ('18420000-0000-0000-0000-000000000001', '18410000-0000-0000-0000-000000000001', 'A-1', 'apartment', '00000000-0000-0000-0000-000000018401'),
   ('18420000-0000-0000-0000-000000000002', '18410000-0000-0000-0000-000000000001', 'A-2', 'apartment', '00000000-0000-0000-0000-000000018401');
-
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000018401', true);
 
 select lives_ok(
   $$insert into public.people (id, condominium_id, first_name, last_name, document_type, document_number, email, created_by)
@@ -86,11 +83,8 @@ select lives_ok(
   'a new relationship can start after the historical one closes'
 );
 
-reset role;
 insert into public.people (id, condominium_id, first_name, last_name, created_by)
 values ('18430000-0000-0000-0000-000000000003', '18410000-0000-0000-0000-000000000002', 'Persona', 'Otro Condo', '00000000-0000-0000-0000-000000018401');
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000018401', true);
 
 select throws_ok(
   $$insert into public.condominium_person_relationships
@@ -105,9 +99,16 @@ select throws_ok(
     set relationship_type = 'representative'
     where id = '18440000-0000-0000-0000-000000000002'$$,
   'P0001',
-  'relationship identity and authorship are immutable',
-  'relationship identity cannot be rewritten in place'
+  'relationship attributes require an audited correction',
+  'relationship attributes cannot be rewritten in place without an audit'
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000018401', true);
+select lives_ok(
+  $$select public.correct_community_person_relationship('18410000-0000-0000-0000-000000000001', '18440000-0000-0000-0000-000000000002', 'representative', 'Tesorera')$$,
+  'administrator corrects a relationship attribute through the audited flow'
+);
+reset role;
 select ok(
   not has_table_privilege('authenticated', 'public.condominium_person_relationships', 'DELETE'),
   'authenticated users cannot delete relationship history'
@@ -134,24 +135,28 @@ select lives_ok(
   'same person can also be an owner-occupant'
 );
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000018402', true);
 select is(
   (select count(*) from public.condominium_person_relationships where condominium_id = '18410000-0000-0000-0000-000000000001'),
   2::bigint,
-  'accountant can read current and historical condominium relationships'
+  'accountant can read current and historical condominium relationships through the table RLS policy'
 );
 update public.condominium_person_relationships
 set title = 'Blocked'
 where id = '18440000-0000-0000-0000-000000000002';
+reset role;
 select is(
   (select title from public.condominium_person_relationships where id = '18440000-0000-0000-0000-000000000002'),
   'Tesorera',
   'read-only accountant cannot modify condominium relationships'
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000018402', true);
 select is(
   (select count(*) from public.people where condominium_id = '18410000-0000-0000-0000-000000000002'),
   0::bigint,
-  'accountant remains isolated from people in another condominium'
+  'accountant remains isolated from people in another condominium through the table RLS policy'
 );
 
 select * from finish();

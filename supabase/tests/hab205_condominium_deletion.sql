@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(30);
+select plan(31);
 
 insert into auth.users(id, email)
 values
@@ -71,6 +71,13 @@ values ('20540000-0000-4000-8000-000000000001', '20550000-0000-4000-8000-0000000
 
 insert into public.unit_occupancies(unit_id, person_id, occupancy_type, created_by)
 values ('20540000-0000-4000-8000-000000000002', '20550000-0000-4000-8000-000000000002', 'tenant', '20500000-0000-4000-8000-000000000001');
+
+select throws_ok(
+  $$delete from public.unit_occupancies where unit_id = '20540000-0000-4000-8000-000000000002'$$,
+  'P0001',
+  'occupancy history cannot be deleted',
+  'ordinary occupancy-history deletion remains forbidden'
+);
 
 insert into public.treasury_accounts(id, condominium_id, name, account_type, currency_code, created_by)
 values ('20560000-0000-4000-8000-000000000001', '20520000-0000-4000-8000-000000000001', 'Cuenta operativa', 'bank', 'USD', '20500000-0000-4000-8000-000000000001');
