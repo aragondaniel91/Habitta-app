@@ -13,7 +13,7 @@ describe('HAB-253 Requests shared form layout', () => {
       "import { FormActions, FormGrid } from '../components/FormLayout'",
     );
     expect(requestsSource.match(/<FormGrid>/g)?.length).toBe(3);
-    expect(requestsSource.match(/<FormActions/g)?.length).toBe(3);
+    expect(requestsSource.match(/<FormActions/g)?.length).toBe(4);
     expect(requestsSource).not.toContain('className="requests-form__grid"');
     expect(requestsStyles).not.toContain('.requests-form__grid');
   });

@@ -93,6 +93,8 @@ const workOrderFieldsSchema = z
   .object({
     assetId: optionalUuid,
     requestId: optionalUuid,
+    idempotencyKey: uuid.optional(),
+    additionalScope: optionalText(500),
     vendorId: optionalUuid,
     assignedToUserId: optionalUuid,
     kind: workOrderKind,
@@ -382,11 +384,13 @@ maintenanceRoutes.get('/:id/maintenance/work-orders', async (c) => {
     ? workOrderPriority.parse(c.req.query('priority'))
     : null;
   const assetId = c.req.query('assetId') ? uuid.parse(c.req.query('assetId')) : null;
+  const requestId = c.req.query('requestId') ? uuid.parse(c.req.query('requestId')) : null;
   const filters = [
     `condominium_id=eq.${condominiumId}`,
     status ? `status=eq.${status}` : null,
     priority ? `priority=eq.${priority}` : null,
     assetId ? `asset_id=eq.${assetId}` : null,
+    requestId ? `request_id=eq.${requestId}` : null,
   ].filter(Boolean);
   const response = await rest(
     c,
@@ -412,6 +416,8 @@ maintenanceRoutes.post('/:id/maintenance/work-orders', async (c) => {
     target_condominium: uuid.parse(c.req.param('id')),
     target_asset: parsed.assetId ?? null,
     target_request: parsed.requestId ?? null,
+    idempotency_key: parsed.idempotencyKey ?? null,
+    additional_scope: parsed.additionalScope ?? null,
     target_vendor: parsed.vendorId ?? null,
     target_assignee: parsed.assignedToUserId ?? null,
     work_kind: parsed.kind,

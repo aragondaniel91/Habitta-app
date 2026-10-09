@@ -56,6 +56,11 @@ export function canManage(roles: CondominiumRole[]) {
   return roles.some((role) => role === 'condominium_admin' || role === 'accountant');
 }
 
+/** Mirrors maintenance authorization: assistants manage work; accounting-only roles do not. */
+export function canManageMaintenance(roles: CondominiumRole[]) {
+  return roles.some((role) => role === 'condominium_admin' || role === 'assistant');
+}
+
 /** Residents act on their own authorized data; the database still decides which rows are visible. */
 export function isResident(roles: CondominiumRole[]) {
   return roles.some((role) => RESIDENT_ROLES.includes(role));

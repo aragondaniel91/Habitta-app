@@ -4,6 +4,7 @@ import {
   allowedRoutes,
   canAccessRoute,
   canManage,
+  canManageMaintenance,
   canManageGovernance,
   isTenantOnly,
   rolesForCondominium,
@@ -156,5 +157,12 @@ describe('role aware navigation', () => {
     expect(isTenantOnly(['owner'])).toBe(false);
     expect(isTenantOnly(['owner', 'tenant'])).toBe(false);
     expect(isTenantOnly(['tenant', 'board_member'])).toBe(false);
+  });
+
+  it('matches maintenance mutation authorization for linked work orders', () => {
+    expect(canManageMaintenance(['condominium_admin'])).toBe(true);
+    expect(canManageMaintenance(['assistant'])).toBe(true);
+    expect(canManageMaintenance(['accountant'])).toBe(false);
+    expect(canManageMaintenance(['owner'])).toBe(false);
   });
 });
