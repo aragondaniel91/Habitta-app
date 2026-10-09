@@ -4,6 +4,7 @@ import {
   getExpenseStatusCounts,
   isValidExpenseAmount,
   nextExpenseActions,
+  normalizeExpenseAmount,
 } from './expenses';
 import type { ExpenseRecord } from './expenses';
 
@@ -70,5 +71,12 @@ describe('expense workspace helpers', () => {
     expect(isValidExpenseAmount('-1')).toBe(false);
     expect(isValidExpenseAmount('1.234')).toBe(false);
     expect(isValidExpenseAmount('1e2')).toBe(false);
+  });
+
+  it('normalizes numeric database values before controlled-input or request use', () => {
+    expect(normalizeExpenseAmount(1250.5)).toBe('1250.5');
+    expect(isValidExpenseAmount(1250.5)).toBe(true);
+    expect(normalizeExpenseAmount({ amount: 1250 })).toBe('');
+    expect(isValidExpenseAmount({ amount: 1250 })).toBe(false);
   });
 });

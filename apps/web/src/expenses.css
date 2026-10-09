@@ -205,6 +205,8 @@
   z-index: 1;
   width: min(520px, 100%);
   height: 100%;
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   background: var(--surface);
   box-shadow: -20px 0 50px rgb(13 27 42 / 18%);
@@ -221,9 +223,20 @@
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   backdrop-filter: blur(12px);
 }
+.expenses-drawer__header > :first-child {
+  min-width: 0;
+}
+.expenses-drawer__header h2 {
+  overflow-wrap: anywhere;
+}
+.expenses-drawer__header .drawer-header-actions {
+  flex: 0 0 auto;
+}
 .expenses-drawer__body {
   --form-actions-bottom-padding: 22px;
   --form-actions-inline-padding: 22px;
+  min-width: 0;
+  overflow-x: hidden;
   padding: 22px;
 }
 
@@ -266,10 +279,40 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.expenses-catalog-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.expenses-catalog-item > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.expenses-catalog-note {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.expenses-catalog-edit {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.expenses-catalog-edit > div:last-child {
+  display: flex;
+  gap: 8px;
+}
 
 .expenses-detail {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 .expenses-detail__amount {
   align-items: flex-end;
@@ -277,14 +320,21 @@
   border-radius: 14px;
   background: var(--surface-subtle);
 }
-.expenses-detail__amount small,
-.expenses-detail__amount strong {
+.expenses-detail__amount-copy {
+  min-width: 0;
+}
+.expenses-detail__amount-copy small,
+.expenses-detail__amount-copy strong {
   display: block;
 }
-.expenses-detail__amount strong {
+.expenses-detail__amount-copy strong {
   margin-top: 4px;
   color: var(--navy);
   font-size: 1.8rem;
+  overflow-wrap: anywhere;
+}
+.expenses-detail__amount > .badge {
+  flex: 0 0 auto;
 }
 .expenses-detail-list {
   display: grid;
@@ -297,6 +347,7 @@
   background: var(--border);
 }
 .expenses-detail-list div {
+  min-width: 0;
   padding: 13px;
   background: var(--surface);
 }
@@ -307,6 +358,7 @@
 .expenses-detail-list dd {
   margin: 4px 0 0;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 .expenses-detail__notes {
   margin: 0;
@@ -314,6 +366,7 @@
   border-radius: 10px;
   background: var(--surface-subtle);
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 .expenses-treasury-selection {
   padding: 14px;
@@ -332,6 +385,7 @@
 }
 .expenses-treasury-selection > div {
   display: flex;
+  min-width: 0;
   gap: 10px;
   margin-top: 12px;
 }
@@ -349,6 +403,7 @@
   color: var(--blue);
   font-weight: 700;
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 .expenses-timeline h3 {
   margin: 0 0 14px;
@@ -370,6 +425,7 @@
 .expenses-timeline article strong,
 .expenses-timeline article small {
   display: block;
+  overflow-wrap: anywhere;
 }
 .expenses-timeline article small {
   margin-top: 3px;

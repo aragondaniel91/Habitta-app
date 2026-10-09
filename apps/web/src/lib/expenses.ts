@@ -29,7 +29,8 @@ export type ExpenseRecord = {
   invoice_number: string | null;
   expense_date: string;
   due_date: string | null;
-  amount: string;
+  // PostgreSQL numeric values may arrive from REST as either JSON strings or numbers.
+  amount: string | number;
   currency_code: string;
   status: ExpenseStatus;
   payment_method: string | null;
@@ -113,9 +114,16 @@ export function formatExpenseDate(value: string | null) {
   return new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(normalized));
 }
 
+/** Makes hydrated money safe for controlled inputs and request serialization. */
+export function normalizeExpenseAmount(value: unknown) {
+  if (typeof value !== 'string' && typeof value !== 'number') return '';
+  return String(value).trim();
+}
+
 /** Mirrors the API's money contract so invalid values receive immediate form feedback. */
-export function isValidExpenseAmount(value: string) {
-  return /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(value.trim()) && Number(value) > 0;
+export function isValidExpenseAmount(value: unknown) {
+  const normalized = normalizeExpenseAmount(value);
+  return /^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/.test(normalized) && Number(normalized) > 0;
 }
 
 export function filterExpenses(

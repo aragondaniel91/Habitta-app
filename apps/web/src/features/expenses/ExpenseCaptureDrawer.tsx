@@ -5,8 +5,8 @@ import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid } from '../../components/FormLayout';
 import { Button, Field, Select } from '../../components/ui';
 import { PrivateDocumentUploader } from '../documents/PrivateDocumentUploader';
-import { apiRequest } from '../../lib/api';
-import { isValidExpenseAmount } from '../../lib/expenses';
+import { ApiRequestError, apiRequest } from '../../lib/api';
+import { isValidExpenseAmount, normalizeExpenseAmount } from '../../lib/expenses';
 import type { ExpenseCategory, ExpenseRecord, ExpenseVendor } from '../../lib/expenses';
 import '../../financial-capture.css';
 
@@ -39,7 +39,8 @@ export function ExpenseCaptureDrawer({
     expense?.expense_date ?? new Date().toISOString().slice(0, 10),
   );
   const [dueDate, setDueDate] = useState(expense?.due_date ?? '');
-  const [amount, setAmount] = useState(expense?.amount ?? '');
+  // React inputs must receive strings; the API can hydrate a numeric amount as a number.
+  const [amount, setAmount] = useState(() => normalizeExpenseAmount(expense?.amount));
   const [currencyCode, setCurrencyCode] = useState(expense?.currency_code ?? 'USD');
   const [paymentMethod, setPaymentMethod] = useState(expense?.payment_method ?? '');
   const [paymentReference, setPaymentReference] = useState(expense?.payment_reference ?? '');
@@ -52,7 +53,8 @@ export function ExpenseCaptureDrawer({
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (createdExpense) return;
-    if (!isValidExpenseAmount(amount)) {
+    const normalizedAmount = normalizeExpenseAmount(amount);
+    if (!isValidExpenseAmount(normalizedAmount)) {
       setMessage('Ingresa un monto mayor a cero con un máximo de dos decimales.');
       return;
     }
@@ -74,7 +76,7 @@ export function ExpenseCaptureDrawer({
             expenseDate,
             dueDate: dueDate || undefined,
             clearDue: Boolean(expense?.due_date) && !dueDate,
-            amount,
+            amount: normalizedAmount,
             currencyCode,
             paymentMethod: expense ? paymentMethod : paymentMethod || undefined,
             paymentReference: expense ? paymentReference : paymentReference || undefined,
@@ -91,7 +93,13 @@ export function ExpenseCaptureDrawer({
       setMessage('Borrador creado. Ahora puedes adjuntar su comprobante.');
       await onDraftCreated();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo registrar el gasto.');
+      if (expense && error instanceof ApiRequestError && error.status === 409) {
+        setMessage(
+          'El borrador cambió en otro lugar. No se guardó ningún cambio y lo que escribiste sigue aquí. Cierra y vuelve a abrirlo para comparar antes de guardar.',
+        );
+      } else {
+        setMessage(error instanceof Error ? error.message : 'No se pudo registrar el gasto.');
+      }
     } finally {
       setSaving(false);
     }

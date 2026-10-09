@@ -22,6 +22,7 @@ import {
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { ExpenseCaptureDrawer } from '../features/expenses/ExpenseCaptureDrawer';
+import { ExpenseCategoryManager } from '../features/expenses/ExpenseCategoryManager';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import { apiRequest } from '../lib/api';
@@ -225,13 +226,12 @@ function CatalogsPanel({
             Agregar
           </Button>
         </div>
-        <div className="expenses-chip-list">
-          {categories.map((category) => (
-            <Badge key={category.id} tone={category.is_active ? 'info' : 'neutral'}>
-              {category.name}
-            </Badge>
-          ))}
-        </div>
+        <ExpenseCategoryManager
+          categories={categories}
+          condominiumId={condominiumId}
+          onChanged={onChanged}
+          session={session}
+        />
       </section>
       <section>
         <h3>
@@ -687,13 +687,16 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             eyebrow="Trazabilidad del egreso"
             onClose={() => setDrawer(null)}
             title={selectedExpense.description}
+            wide
           >
             <div className="expenses-detail">
               <div className="expenses-detail__amount">
-                <small>Monto registrado</small>
-                <strong>
-                  {formatMoney(selectedExpense.amount, selectedExpense.currency_code)}
-                </strong>
+                <div className="expenses-detail__amount-copy">
+                  <small>Monto registrado</small>
+                  <strong>
+                    {formatMoney(selectedExpense.amount, selectedExpense.currency_code)}
+                  </strong>
+                </div>
                 <Badge tone={statusTone(selectedExpense.status)}>
                   {expenseStatusLabels[selectedExpense.status]}
                 </Badge>
@@ -777,7 +780,9 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
                         <div>
                           <ExpensesIcon size={17} />
                           <span>
-                            <strong>{attachment.original_filename}</strong>
+                            <strong title={attachment.original_filename}>
+                              {attachment.original_filename}
+                            </strong>
                             <small>
                               {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB ·{' '}
                               {attachment.document_type}

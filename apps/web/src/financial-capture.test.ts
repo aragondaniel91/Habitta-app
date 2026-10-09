@@ -112,6 +112,9 @@ describe('financial capture orchestration', () => {
     expect(page).toContain('Editar borrador');
     expect(capture).toContain("method: expense ? 'PATCH' : 'POST'");
     expect(capture).toContain('expectedVersion: expense?.version');
+    expect(capture).toContain('normalizeExpenseAmount(expense?.amount)');
+    expect(capture).toContain('amount: normalizedAmount');
+    expect(capture).toContain('No se guardó ningún cambio');
     expect(capture).toContain('categoryId === expense.category_id ? undefined : categoryId');
     expect(capture).toContain(
       "vendorId === (expense.vendor_id ?? '') ? undefined : vendorId || undefined",
@@ -131,6 +134,46 @@ describe('financial capture orchestration', () => {
     expect(page).toContain('/treasury/expenses/${selectedExpense.id}/account');
     expect(page).toContain("selectedExpense.status === 'approved' && treasuryAccounts.length");
     expect(page).toContain('Guardar cuenta');
+  });
+
+  it('keeps category maintenance scoped to edit/archive and detail attachments responsive', async () => {
+    const page = await source('./pages/ExpensesPage.tsx');
+    const categories = await source('./features/expenses/ExpenseCategoryManager.tsx');
+    const css = await source('./expenses.css');
+    const documentsCss = await source('./private-documents.css');
+
+    expect(page).toContain('ExpenseCategoryManager');
+    // Category creation stays the Catalogs panel's job; the manager below it only edits/archives.
+    // One create form each keeps HAB-EXPENSES-DRAFT-CATEGORIES-RECOVERY-002's fix from regressing
+    // into a duplicate "Nueva categoría"/"Nuevo proveedor" form the next time either panel changes.
+    expect(page.match(/placeholder="Nueva categoría"/g) ?? []).toHaveLength(1);
+    expect(page.match(/placeholder="Nuevo proveedor"/g) ?? []).toHaveLength(1);
+    expect(categories).not.toContain('placeholder="Nueva categoría"');
+    // The vendor directory stays independent: the category manager never references vendors.
+    expect(categories).not.toContain('vendor');
+    expect(categories).toContain("method: 'PATCH'");
+    expect(categories).toContain('{ isActive: !category.is_active }');
+    expect(categories).not.toContain("method: 'DELETE'");
+    expect(page).toContain('title={attachment.original_filename}');
+
+    // Responsive expense detail: desktop two-column metadata collapses to one column on mobile,
+    // and the drawer body never grows wider than the viewport in either layout.
+    expect(css).toContain('.expenses-drawer[data-wide]');
+    expect(css).toContain('overflow-x: hidden');
+    expect(css).toContain('overflow-wrap: anywhere');
+    const mobileExpenseCss = css.slice(css.indexOf('@media (max-width: 720px)'));
+    expect(mobileExpenseCss).toContain(
+      '.expenses-detail-list {\n    grid-template-columns: 1fr;',
+    );
+
+    // Long attachment filenames truncate instead of forcing horizontal scroll, on mobile and
+    // desktop alike; the full name stays available via the title attribute asserted above.
+    expect(documentsCss).toContain('text-overflow: ellipsis');
+    expect(documentsCss).toContain('white-space: nowrap');
+    const mobileDocumentsCss = documentsCss.slice(
+      documentsCss.indexOf('@media (max-width: 520px)'),
+    );
+    expect(mobileDocumentsCss).toContain('flex-direction: column;');
   });
 
   it('submits completed resident and admin captures to review only after the required proof', async () => {
