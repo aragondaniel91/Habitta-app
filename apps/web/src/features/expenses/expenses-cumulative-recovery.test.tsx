@@ -76,11 +76,13 @@ describe('cumulative expenses recovery: draft amount fix + category manager coex
         categories={[category]}
         condominiumId={condominiumId}
         onChanged={() => undefined}
+        onOpenDirectory={() => undefined}
         session={session}
       />,
     );
     expect(managerHtml).toContain('Mantenimiento E2E');
-    expect(managerHtml).toContain('Archivar Mantenimiento E2E');
+    expect(managerHtml).toContain('Acciones para Mantenimiento E2E');
+    expect(managerHtml).toContain('Archivar');
 
     // Neither surface duplicates the other's controls: the drawer never renders category
     // archive/edit actions, and the manager never renders the expense capture form fields.

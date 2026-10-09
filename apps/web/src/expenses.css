@@ -309,6 +309,107 @@
   gap: 8px;
 }
 
+.expenses-category-manager {
+  display: grid;
+  gap: 16px;
+}
+.expenses-category-manager__header,
+.expenses-category-manager__directory-link,
+.expenses-category-editor__heading,
+.expenses-category-row,
+.expenses-category-row__meta,
+.expenses-category-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.expenses-category-manager__header,
+.expenses-category-row {
+  justify-content: space-between;
+}
+.expenses-category-manager__header p,
+.expenses-category-row__main strong,
+.expenses-category-row__main span,
+.expenses-category-empty strong,
+.expenses-category-empty span {
+  display: block;
+  margin: 0;
+}
+.expenses-category-manager__header p,
+.expenses-category-manager__directory-link,
+.expenses-category-row__main span,
+.expenses-category-row__meta small,
+.expenses-category-empty span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.expenses-category-manager__header p {
+  max-width: 46rem;
+  margin-top: 5px;
+}
+.expenses-category-manager__directory-link {
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+.expenses-category-editor,
+.expenses-category-empty {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-subtle);
+}
+.expenses-category-editor {
+  display: grid;
+  gap: 12px;
+}
+.expenses-category-editor__heading {
+  justify-content: space-between;
+}
+.expenses-category-editor__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 12px;
+}
+.expenses-category-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.expenses-category-list {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.expenses-category-row {
+  min-width: 0;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.expenses-category-row:last-child {
+  border-bottom: 0;
+}
+.expenses-category-row__main {
+  min-width: 0;
+  flex: 1 1 15rem;
+}
+.expenses-category-row__main span {
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.expenses-category-row__meta {
+  flex: 0 0 auto;
+}
+.expenses-category-row__actions {
+  flex: 0 0 auto;
+}
+.expenses-category-empty {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
 .vendor-directory {
   display: grid;
   gap: 22px;
@@ -613,6 +714,26 @@
   }
   .vendor-directory__card-actions .button {
     flex: 1;
+  }
+  .expenses-category-manager__header,
+  .expenses-category-manager__directory-link,
+  .expenses-category-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .expenses-category-manager__header > .button,
+  .expenses-category-manager__directory-link > .button,
+  .expenses-category-row__actions {
+    width: 100%;
+  }
+  .expenses-category-row__actions .button {
+    flex: 1;
+  }
+  .expenses-category-editor__fields {
+    grid-template-columns: 1fr;
+  }
+  .expenses-category-editor__actions .button {
+    width: 100%;
   }
   .expenses-treasury-selection > div {
     align-items: stretch;

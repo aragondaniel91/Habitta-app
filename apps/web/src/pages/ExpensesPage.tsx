@@ -9,16 +9,7 @@ import {
   PaymentsIcon,
   PeopleIcon,
 } from '../components/icons';
-import {
-  Badge,
-  Button,
-  EmptyState,
-  Field,
-  InfoHint,
-  Select,
-  Skeleton,
-  Surface,
-} from '../components/ui';
+import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { ExpenseCaptureDrawer } from '../features/expenses/ExpenseCaptureDrawer';
@@ -145,75 +136,33 @@ function CatalogsPanel({
   condominiumId,
   session,
   categories,
+  expenses,
   onChanged,
+  onOpenDirectory,
 }: {
   condominiumId: string;
   session: Session;
   categories: ExpenseCategory[];
+  expenses: ExpenseRecord[];
   onChanged: () => void;
+  onOpenDirectory: () => void;
 }) {
-  const [categoryName, setCategoryName] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const createCategory = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      await apiRequest(`/v1/condominiums/${condominiumId}/expense-categories`, session, {
-        method: 'POST',
-        body: JSON.stringify({
-          code: categoryName
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLocaleLowerCase('es')
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)/g, ''),
-          name: categoryName,
-        }),
-      });
-      setCategoryName('');
-      onChanged();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="expenses-catalogs">
-      {error ? <div className="expenses-inline-alert">{error}</div> : null}
-      <section>
-        <h3>
-          Categorías
-          <InfoHint label="Más información sobre categorías">
-            Clasifican los egresos sin afectar la contabilidad de cuotas o pagos.
-          </InfoHint>
-        </h3>
-        <div className="expenses-catalog-create">
-          <input
-            className="input"
-            onChange={(event) => setCategoryName(event.target.value)}
-            placeholder="Nueva categoría"
-            value={categoryName}
-          />
-          <Button
-            disabled={saving || categoryName.trim().length < 2}
-            onClick={() => void createCategory()}
-            size="sm"
-            type="button"
-          >
-            Agregar
-          </Button>
-        </div>
-        <ExpenseCategoryManager
-          categories={categories}
-          condominiumId={condominiumId}
-          onChanged={onChanged}
-          session={session}
-        />
-      </section>
+      <ExpenseCategoryManager
+        categories={categories}
+        condominiumId={condominiumId}
+        expenseCounts={expenses.reduce<Record<string, number>>(
+          (counts, expense) => ({
+            ...counts,
+            [expense.category_id]: (counts[expense.category_id] ?? 0) + 1,
+          }),
+          {},
+        )}
+        onChanged={onChanged}
+        onOpenDirectory={onOpenDirectory}
+        session={session}
+      />
     </div>
   );
 }
@@ -628,7 +577,9 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             <CatalogsPanel
               categories={data.categories}
               condominiumId={condominiumId}
+              expenses={data.expenses}
               onChanged={() => void load()}
+              onOpenDirectory={() => setDrawer('vendors')}
               session={session}
             />
           </DrawerShell>

@@ -143,18 +143,25 @@ describe('financial capture orchestration', () => {
     const documentsCss = await source('./private-documents.css');
 
     expect(page).toContain('ExpenseCategoryManager');
-    // Category creation stays the Catalogs panel's job; the manager below it only edits/archives.
-    // Categories retain one creation form. Vendors deliberately have none here: their dedicated
-    // directory owns creation, which prevents the former quick-create from becoming a duplicate.
-    expect(page.match(/placeholder="Nueva categoría"/g) ?? []).toHaveLength(1);
+    // The consolidated manager owns the one category-create form. Vendors deliberately have none
+    // here: their dedicated directory owns creation, which prevents a duplicate quick-create.
+    expect(categories).toContain('placeholder="Nueva categoría"');
+    expect(categories).toContain("'POST'");
+    expect(categories).toContain('code: categoryCode(trimmedName)');
     expect(page.match(/placeholder="Nuevo proveedor"/g) ?? []).toHaveLength(0);
     expect(page).toContain('Directorio de proveedores');
-    expect(categories).not.toContain('placeholder="Nueva categoría"');
     // The vendor directory stays independent: the category manager never references vendors.
     expect(categories).not.toContain('vendor');
-    expect(categories).toContain("method: 'PATCH'");
+    // All category writes share the request helper; the PATCH callers are edit and archive/restore.
+    expect(categories).toContain("const request = async (path: string, method: 'POST' | 'PATCH'");
+    expect(categories).toContain(
+      'apiRequest(path, session, { method, body: JSON.stringify(body) })',
+    );
+    expect(categories.match(/'PATCH'/g) ?? []).toHaveLength(3);
     expect(categories).toContain('{ isActive: !category.is_active }');
     expect(categories).not.toContain("method: 'DELETE'");
+    expect(categories).not.toContain('<h3');
+    expect(page).toContain('title="Categorías de gastos"');
     expect(page).toContain('title={attachment.original_filename}');
 
     // Responsive expense detail: desktop two-column metadata collapses to one column on mobile,
