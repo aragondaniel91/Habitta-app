@@ -87,6 +87,7 @@ const ACTION_SUFFIXES = [
   'links',
   'match',
   'minutes',
+  'move',
   'occupancies',
   'override-decision',
   'owners',

@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(33);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -352,6 +352,133 @@ select throws_ok(
   'agenda item not found for assembly',
   'a resolution cannot link an agenda item from another assembly in the same condominium'
 );
+
+-- Controlled assembly corrections remain available only before the meeting starts.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '16900000-0000-0000-0000-000000000001', true);
+
+create temporary table hab169_edit_assembly as
+select (public.create_assembly(
+  (select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+  'Asamblea editable HAB-GOVERNANCE-UX-EDIT-001', 'Borrador inicial',
+  now() + interval '2 days', 'Salón principal', 'one_per_unit', 50
+)).id as id;
+
+select is(
+  (select status::text from public.assemblies where id = (select id from hab169_edit_assembly)),
+  'draft',
+  'edit-lifecycle assembly starts as a draft'
+);
+
+create temporary table hab169_edit_agenda_one as
+select (public.add_assembly_agenda_item(
+  (select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+  (select id from hab169_edit_assembly), 'Informe financiero', 'Revisión del período', null, 0
+)).id as id;
+
+create temporary table hab169_edit_agenda_two as
+select (public.add_assembly_agenda_item(
+  (select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+  (select id from hab169_edit_assembly), 'Informe legal', null, null, 1
+)).id as id;
+
+select is(
+  (public.update_assembly(
+    (select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), 1,
+    'Asamblea editable HAB-GOVERNANCE-UX-EDIT-001 (revisada)', 'Borrador corregido',
+    (select scheduled_at from public.assemblies where id = (select id from hab169_edit_assembly)) + interval '1 day',
+    'Salón secundario', 'one_per_unit', 50
+  )).version, 2,
+  'a draft assembly can have its title, schedule and location corrected'
+);
+
+select throws_ok(
+  $$select public.update_assembly((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), 1, 'Intento con versión vencida', null,
+    now() + interval '3 days', null, 'one_per_unit', 50)$$,
+  'P0001', 'assembly version conflict', 'editing a draft assembly with a stale version is rejected'
+);
+
+select lives_ok(
+  $$select public.update_assembly_agenda_item((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), (select id from hab169_edit_agenda_one),
+    'Informe financiero actualizado', 'Detalle ampliado del período')$$,
+  'a draft agenda item can be edited'
+);
+
+select is(
+  (select array_agg(id order by sort_order) from public.assembly_agenda_items where assembly_id = (select id from hab169_edit_assembly))::uuid[],
+  array[(select id from hab169_edit_agenda_one), (select id from hab169_edit_agenda_two)]::uuid[],
+  'agenda items start in their inserted order'
+);
+
+select lives_ok(
+  $$select public.move_assembly_agenda_item((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), (select id from hab169_edit_agenda_one), 'down')$$,
+  'the first agenda item can move down past the second'
+);
+
+select is(
+  (select array_agg(id order by sort_order) from public.assembly_agenda_items where assembly_id = (select id from hab169_edit_assembly))::uuid[],
+  array[(select id from hab169_edit_agenda_two), (select id from hab169_edit_agenda_one)]::uuid[],
+  'moving an agenda item swaps its order with its neighbor'
+);
+
+select lives_ok(
+  $$select public.delete_assembly_agenda_item((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), (select id from hab169_edit_agenda_two))$$,
+  'a draft agenda item can be removed'
+);
+
+select is(
+  (select sort_order from public.assembly_agenda_items where id = (select id from hab169_edit_agenda_one)),
+  0, 'removing an agenda item closes the gap left in the remaining order'
+);
+
+select is(
+  (public.transition_assembly((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), 'schedule', 2)).status::text,
+  'scheduled', 'edit-lifecycle assembly can be scheduled'
+);
+
+select throws_ok(
+  $$select public.update_assembly((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), 3, 'Asamblea editable', 'Borrador corregido',
+    now() + interval '4 days', 'Salón secundario', 'one_per_owner', 50)$$,
+  'P0001', 'voting basis and quorum are frozen once the assembly is scheduled',
+  'voting basis cannot change once the assembly is scheduled'
+);
+
+select is(
+  (public.update_assembly((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), 3, 'Asamblea editable HAB-GOVERNANCE-UX-EDIT-001 (confirmada)',
+    'Borrador corregido', now() + interval '4 days', 'Salón secundario', 'one_per_unit', 50)).version,
+  4, 'title, schedule and location stay correctable once scheduled'
+);
+
+select is(
+  (public.transition_assembly((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), 'start', 4)).status::text,
+  'in_progress', 'edit-lifecycle assembly can start'
+);
+
+select throws_ok(
+  $$select public.update_assembly((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), 5, 'Intento tardío', null,
+    now() + interval '5 days', null, 'one_per_unit', 50)$$,
+  'P0001', 'assembly is locked for edits after it starts',
+  'the assembly cannot be edited once it is in progress'
+);
+
+select throws_ok(
+  $$select public.update_assembly_agenda_item((select (payload #>> '{condominium,id}')::uuid from hab169_workspace_a),
+    (select id from hab169_edit_assembly), (select id from hab169_edit_agenda_one), 'Intento tardío', null)$$,
+  'P0001', 'assembly agenda is frozen after the meeting starts',
+  'agenda items cannot be edited once the assembly is in progress'
+);
+
+reset role;
 
 select * from finish();
 rollback;

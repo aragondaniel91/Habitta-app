@@ -106,6 +106,18 @@
   gap: 1rem;
 }
 
+.assemblies-detail__status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.assemblies-detail__lock-note {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 .assemblies-detail__summary dl {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -145,6 +157,23 @@
 .assemblies-resolutions p {
   margin: 0.35rem 0 0;
   color: var(--text-muted);
+}
+
+.assemblies-agenda-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.assemblies-agenda-row .assemblies-actions {
+  flex-wrap: nowrap;
+}
+
+.assemblies-agenda-edit {
+  display: grid;
+  gap: 0.65rem;
 }
 
 .assemblies-form,
@@ -254,5 +283,13 @@
   .assemblies-attendance > div {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .assemblies-agenda-row {
+    flex-direction: column;
+  }
+
+  .assemblies-agenda-row .assemblies-actions {
+    flex-wrap: wrap;
   }
 }

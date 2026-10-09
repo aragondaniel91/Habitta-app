@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { ConfirmDialog } from '../../components/Dialog';
 import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid } from '../../components/FormLayout';
 import { PageHeader } from '../../components/PageHeader';
-import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../../components/ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  InfoHint,
+  Select,
+  Skeleton,
+  Surface,
+} from '../../components/ui';
 import { apiRequest } from '../../lib/api';
 import { canManageGovernance, useCondominiumRoles } from '../../lib/roles';
 import './assemblies-workspace.css';
@@ -105,6 +115,8 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
   const [resolutions, setResolutions] = useState<Resolution[]>([]);
   const [quorum, setQuorum] = useState<Quorum | null>(null);
   const [drawer, setDrawer] = useState<'create' | 'detail' | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [agendaItemPendingDeletion, setAgendaItemPendingDeletion] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [acting, setActing] = useState(false);
@@ -137,6 +149,7 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
   useEffect(() => {
     setSelected(null);
     setDrawer(null);
+    setEditing(false);
   }, [condominiumId]);
 
   const openDetail = useCallback(
@@ -144,6 +157,7 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
       setSelected(assembly);
       setMinutes(assembly.minutes_body ?? '');
       setDrawer('detail');
+      setEditing(false);
       setDetailLoading(true);
       setError('');
       const base = `/v1/condominiums/${condominiumId}/assemblies/${assembly.id}`;
@@ -177,6 +191,75 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
       session,
     );
     await openDetail(fresh);
+  };
+
+  const updateAgendaItem = async (agendaItemId: string, title: string, description: string) => {
+    if (!selected) return;
+    setActing(true);
+    setError('');
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/assemblies/${selected.id}/agenda/${agendaItemId}`,
+        session,
+        { method: 'PATCH', body: JSON.stringify({ title, description: description || null }) },
+      );
+      setMessage('Punto de agenda actualizado.');
+      await refreshSelected();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo actualizar el punto de agenda.',
+      );
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const deleteAgendaItem = async (agendaItemId: string) => {
+    if (!selected) return;
+    setActing(true);
+    setError('');
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/assemblies/${selected.id}/agenda/${agendaItemId}`,
+        session,
+        { method: 'DELETE' },
+      );
+      setMessage('Punto de agenda eliminado.');
+      await refreshSelected();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo eliminar el punto de agenda.',
+      );
+    } finally {
+      setActing(false);
+      setAgendaItemPendingDeletion(null);
+    }
+  };
+
+  const moveAgendaItem = async (agendaItemId: string, direction: 'up' | 'down') => {
+    if (!selected) return;
+    setActing(true);
+    setError('');
+    try {
+      await apiRequest(
+        `/v1/condominiums/${condominiumId}/assemblies/${selected.id}/agenda/${agendaItemId}/move`,
+        session,
+        { method: 'POST', body: JSON.stringify({ direction }) },
+      );
+      await refreshSelected();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo reordenar el punto de agenda.',
+      );
+    } finally {
+      setActing(false);
+    }
   };
 
   const transition = async (action: 'schedule' | 'start' | 'complete' | 'cancel') => {
@@ -323,6 +406,13 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
       {drawer === 'detail' && selected ? (
         <Drawer
           eyebrow="Asamblea"
+          headerActions={
+            manage && ['draft', 'scheduled'].includes(selected.status) ? (
+              <Button onClick={() => setEditing(true)} size="sm" variant="secondary">
+                Editar
+              </Button>
+            ) : null
+          }
           onClose={() => setDrawer(null)}
           prefix="governance"
           title={selected.title}
@@ -336,8 +426,20 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
           ) : (
             <div className="assemblies-detail">
               <Surface className="assemblies-detail__summary">
-                <div>
+                <div className="assemblies-detail__status">
                   <Badge tone={statusTone(selected.status)}>{statusLabel[selected.status]}</Badge>
+                  {['in_progress', 'completed', 'cancelled'].includes(selected.status) ? (
+                    <span className="assemblies-detail__lock-note">
+                      {selected.status === 'cancelled'
+                        ? 'Asamblea cancelada: los datos quedan fijos para preservar el historial.'
+                        : 'Bloqueada para edición: la agenda, la base de votación y el quórum quedaron fijos cuando la asamblea inició.'}
+                    </span>
+                  ) : selected.status === 'scheduled' ? (
+                    <InfoHint label="Qué se puede corregir en una asamblea programada">
+                      El título, la descripción, la fecha y el lugar siguen siendo editables. La
+                      base de votación y el quórum quedan fijos una vez programada.
+                    </InfoHint>
+                  ) : null}
                 </div>
                 <dl>
                   <div>
@@ -370,11 +472,20 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
                 <h3>Agenda</h3>
                 {agenda.length ? (
                   <ol className="assemblies-list">
-                    {agenda.map((item) => (
-                      <li key={item.id}>
-                        <strong>{item.title}</strong>
-                        {item.description ? <p>{item.description}</p> : null}
-                      </li>
+                    {agenda.map((item, index) => (
+                      <AgendaItemRow
+                        acting={acting}
+                        canEdit={manage && ['draft', 'scheduled'].includes(selected.status)}
+                        isFirst={index === 0}
+                        isLast={index === agenda.length - 1}
+                        item={item}
+                        key={item.id}
+                        onDelete={() => setAgendaItemPendingDeletion(item.id)}
+                        onMove={(direction) => void moveAgendaItem(item.id, direction)}
+                        onUpdate={(title, description) =>
+                          void updateAgendaItem(item.id, title, description)
+                        }
+                      />
                     ))}
                   </ol>
                 ) : (
@@ -552,6 +663,32 @@ export function AssembliesWorkspace({ condominiumId, condominiumName, session }:
           )}
         </Drawer>
       ) : null}
+
+      {editing && selected ? (
+        <EditAssemblyDrawer
+          assembly={selected}
+          condominiumId={condominiumId}
+          onClose={() => setEditing(false)}
+          onUpdated={async (assembly) => {
+            setEditing(false);
+            setMessage('Asamblea actualizada.');
+            await refreshSelected(assembly.id);
+          }}
+          session={session}
+        />
+      ) : null}
+
+      {agendaItemPendingDeletion ? (
+        <ConfirmDialog
+          busy={acting}
+          confirmLabel="Eliminar punto de agenda"
+          description="Esta acción no se puede deshacer."
+          destructive
+          onCancel={() => setAgendaItemPendingDeletion(null)}
+          onConfirm={() => void deleteAgendaItem(agendaItemPendingDeletion)}
+          title="¿Eliminar este punto de agenda?"
+        />
+      ) : null}
     </div>
   );
 }
@@ -715,6 +852,259 @@ function CreateAssemblyDrawer({
         </FormActions>
       </form>
     </Drawer>
+  );
+}
+
+function EditAssemblyDrawer({
+  assembly,
+  condominiumId,
+  session,
+  onClose,
+  onUpdated,
+}: {
+  assembly: Assembly;
+  condominiumId: string;
+  session: Session;
+  onClose: () => void;
+  onUpdated: (assembly: Assembly) => Promise<void>;
+}) {
+  const votingLocked = assembly.status === 'scheduled';
+  const [title, setTitle] = useState(assembly.title);
+  const [description, setDescription] = useState(assembly.description ?? '');
+  const [scheduledAt, setScheduledAt] = useState(localDateTime(new Date(assembly.scheduled_at)));
+  const [location, setLocation] = useState(assembly.location ?? '');
+  const [basis, setBasis] = useState<VotingBasis>(assembly.voting_basis);
+  const [quorum, setQuorum] = useState(String(assembly.quorum_percentage));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await apiRequest<Assembly>(
+        `/v1/condominiums/${condominiumId}/assemblies/${assembly.id}`,
+        session,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            title,
+            description: description || null,
+            scheduledAt: new Date(scheduledAt).toISOString(),
+            location: location || null,
+            votingBasis: basis,
+            quorumPercentage: Number(quorum),
+            expectedVersion: assembly.version,
+          }),
+        },
+      );
+      await onUpdated(updated);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo actualizar la asamblea.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Drawer
+      eyebrow="Gobernanza formal"
+      onClose={onClose}
+      prefix="governance"
+      title="Editar asamblea"
+      wide
+    >
+      <form className="assemblies-form ux-form" onSubmit={submit}>
+        {error ? (
+          <div aria-live="polite" className="governance-inline-alert" role="status">
+            {error}
+          </div>
+        ) : null}
+        <Field label="Título">
+          <input
+            className="input"
+            onChange={(event) => setTitle(event.target.value)}
+            required
+            value={title}
+          />
+        </Field>
+        <Field label="Descripción">
+          <textarea
+            className="textarea"
+            onChange={(event) => setDescription(event.target.value)}
+            rows={4}
+            value={description}
+          />
+        </Field>
+        <FormGrid>
+          <Field label="Fecha y hora">
+            <input
+              className="input"
+              onChange={(event) => setScheduledAt(event.target.value)}
+              required
+              type="datetime-local"
+              value={scheduledAt}
+            />
+          </Field>
+          <Field label="Lugar">
+            <input
+              className="input"
+              onChange={(event) => setLocation(event.target.value)}
+              value={location}
+            />
+          </Field>
+        </FormGrid>
+        <FormGrid>
+          <Field
+            hint={votingLocked ? 'Fija una vez programada la asamblea.' : undefined}
+            label="Base de votación"
+          >
+            <Select
+              disabled={votingLocked}
+              onChange={(event) => setBasis(event.target.value as VotingBasis)}
+              value={basis}
+            >
+              <option value="one_per_unit">Un voto por unidad</option>
+              <option value="one_per_owner">Un voto por propietario</option>
+            </Select>
+          </Field>
+          <Field
+            hint={votingLocked ? 'Fijo una vez programada la asamblea.' : undefined}
+            label="Quórum requerido (%)"
+          >
+            <input
+              className="input"
+              disabled={votingLocked}
+              max="100"
+              min="0"
+              onChange={(event) => setQuorum(event.target.value)}
+              type="number"
+              value={quorum}
+            />
+          </Field>
+        </FormGrid>
+        <FormActions>
+          <Button disabled={saving || title.trim().length < 2} type="submit">
+            {saving ? 'Guardando…' : 'Guardar cambios'}
+          </Button>
+          <Button disabled={saving} onClick={onClose} type="button" variant="ghost">
+            Cancelar
+          </Button>
+        </FormActions>
+      </form>
+    </Drawer>
+  );
+}
+
+function AgendaItemRow({
+  item,
+  canEdit,
+  isFirst,
+  isLast,
+  acting,
+  onUpdate,
+  onDelete,
+  onMove,
+}: {
+  item: AgendaItem;
+  canEdit: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  acting: boolean;
+  onUpdate: (title: string, description: string) => void;
+  onDelete: () => void;
+  onMove: (direction: 'up' | 'down') => void;
+}) {
+  const [editingItem, setEditingItem] = useState(false);
+  const [title, setTitle] = useState(item.title);
+  const [description, setDescription] = useState(item.description ?? '');
+  if (editingItem)
+    return (
+      <li>
+        <div className="assemblies-agenda-edit">
+          <Field label="Tema de agenda">
+            <input
+              className="input"
+              onChange={(event) => setTitle(event.target.value)}
+              value={title}
+            />
+          </Field>
+          <Field label="Detalle">
+            <input
+              className="input"
+              onChange={(event) => setDescription(event.target.value)}
+              value={description}
+            />
+          </Field>
+          <div className="assemblies-actions">
+            <Button
+              disabled={acting || title.trim().length < 2}
+              onClick={() => {
+                onUpdate(title, description);
+                setEditingItem(false);
+              }}
+              size="sm"
+            >
+              Guardar
+            </Button>
+            <Button
+              onClick={() => {
+                setTitle(item.title);
+                setDescription(item.description ?? '');
+                setEditingItem(false);
+              }}
+              size="sm"
+              variant="ghost"
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </li>
+    );
+  return (
+    <li>
+      <div className="assemblies-agenda-row">
+        <div>
+          <strong>{item.title}</strong>
+          {item.description ? <p>{item.description}</p> : null}
+        </div>
+        {canEdit ? (
+          <div className="assemblies-actions">
+            <Button
+              aria-label="Mover punto de agenda hacia arriba"
+              disabled={acting || isFirst}
+              onClick={() => onMove('up')}
+              size="sm"
+              variant="ghost"
+            >
+              ↑
+            </Button>
+            <Button
+              aria-label="Mover punto de agenda hacia abajo"
+              disabled={acting || isLast}
+              onClick={() => onMove('down')}
+              size="sm"
+              variant="ghost"
+            >
+              ↓
+            </Button>
+            <Button
+              disabled={acting}
+              onClick={() => setEditingItem(true)}
+              size="sm"
+              variant="secondary"
+            >
+              Editar
+            </Button>
+            <Button disabled={acting} onClick={onDelete} size="sm" variant="danger">
+              Eliminar
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </li>
   );
 }
 

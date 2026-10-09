@@ -39,13 +39,17 @@ En la vista de detalle, las acciones disponibles cambian según el estado. La in
 
 Si otra sesión actualizó la reunión antes que tú, el backend rechaza una transición que use una versión antigua en lugar de sobrescribir silenciosamente el cambio más reciente.
 
+## Editar una asamblea
+
+Mientras la asamblea está en **Borrador** o **Programada**, la vista de detalle muestra **Editar**. Se pueden corregir título, descripción, fecha, hora y lugar. La base de votación y el porcentaje de quórum solo son editables en **Borrador**; al programar se congelan para no cambiar silenciosamente las reglas ya notificadas. Al iniciar, completar o cancelar, todos esos datos quedan fijos y la edición usa control optimista de versión.
+
 ## Agenda
 
-Mientras la asamblea está en **Borrador** o **Programada**, los administradores autorizados pueden agregar puntos desde el panel **Agenda**.
+Mientras la asamblea está en **Borrador** o **Programada**, los administradores autorizados pueden agregar, editar, reordenar y eliminar puntos desde el panel **Agenda**.
 
-La agenda puede incluir temas libres y, cuando corresponda, enlazar una propuesta comunitaria existente. El orden es determinista.
+La agenda puede incluir temas libres y, cuando corresponda, enlazar una propuesta comunitaria existente. El orden es determinista y eliminar un punto cierra el hueco del orden.
 
-Una vez iniciada la asamblea, la agenda queda congelada. Esto evita modificar retroactivamente qué asuntos formaban parte de la reunión.
+Una vez iniciada la asamblea, la agenda queda congelada: no se puede agregar, editar, reordenar ni eliminar puntos. Esto evita modificar retroactivamente qué asuntos formaban parte de la reunión.
 
 ## Iniciar la reunión y congelar elegibilidad
 

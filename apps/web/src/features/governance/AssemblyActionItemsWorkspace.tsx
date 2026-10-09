@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { ConfirmDialog } from '../../components/Dialog';
 import { Drawer } from '../../components/Drawer';
 import { FormActions, FormGrid } from '../../components/FormLayout';
 import { PageHeader } from '../../components/PageHeader';
@@ -170,12 +171,14 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
   const [loading, setLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [referenceError, setReferenceError] = useState('');
   const [labelError, setLabelError] = useState('');
   const [editor, setEditor] = useState<EditorState>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [saving, setSaving] = useState(false);
   const [transitioningId, setTransitioningId] = useState('');
+  const [cancellationPendingItem, setCancellationPendingItem] = useState<ActionItem | null>(null);
 
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
@@ -381,6 +384,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
     if (!editor || !manage || !draft.assemblyId) return;
     setSaving(true);
     setError('');
+    setMessage('');
     try {
       const payload = {
         title: draft.title,
@@ -409,6 +413,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
         );
       }
       setEditor(null);
+      setMessage(editor.mode === 'create' ? 'Acuerdo creado.' : 'Acuerdo actualizado.');
       await Promise.all([loadWorkspace(), loadAssignedLabels()]);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'No se pudo guardar el acuerdo.');
@@ -417,10 +422,22 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
     }
   };
 
+  const transitionMessages: Record<ActionItemStatus, string> = {
+    open: 'Acuerdo reabierto.',
+    in_progress: 'Acuerdo marcado en curso.',
+    completed: 'Acuerdo completado.',
+    cancelled: 'Acuerdo cancelado.',
+  };
+
   const transition = async (item: ActionItem, status: ActionItemStatus) => {
     if (!manage || isFinalized(item.status)) return;
+    if (status === 'cancelled' && cancellationPendingItem?.id !== item.id) {
+      setCancellationPendingItem(item);
+      return;
+    }
     setTransitioningId(item.id);
     setError('');
+    setMessage('');
     try {
       await apiRequest(
         `/v1/condominiums/${condominiumId}/assemblies/${item.assembly_id}/action-items/${item.id}/transition`,
@@ -430,6 +447,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
           body: JSON.stringify({ status, expectedVersion: item.version }),
         },
       );
+      setMessage(transitionMessages[status]);
       await loadWorkspace();
     } catch (transitionError) {
       setError(
@@ -439,6 +457,7 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       );
     } finally {
       setTransitioningId('');
+      setCancellationPendingItem(null);
     }
   };
 
@@ -478,6 +497,11 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
       {error ? (
         <div aria-live="polite" className="action-items-alert" role="status">
           {error}
+        </div>
+      ) : null}
+      {message ? (
+        <div aria-live="polite" className="governance-success-alert" role="status">
+          {message}
         </div>
       ) : null}
       {labelError ? (
@@ -886,6 +910,18 @@ export function AssemblyActionItemsWorkspace({ condominiumId, condominiumName, s
             </FormActions>
           </form>
         </Drawer>
+      ) : null}
+
+      {cancellationPendingItem ? (
+        <ConfirmDialog
+          busy={transitioningId === cancellationPendingItem.id}
+          confirmLabel="Sí, cancelar acuerdo"
+          description="Esta acción no se puede deshacer."
+          destructive
+          onCancel={() => setCancellationPendingItem(null)}
+          onConfirm={() => void transition(cancellationPendingItem, 'cancelled')}
+          title="¿Cancelar este acuerdo?"
+        />
       ) : null}
     </div>
   );

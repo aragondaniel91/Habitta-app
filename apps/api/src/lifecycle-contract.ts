@@ -322,7 +322,8 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     entity: 'assembly',
     create: '/:id/assemblies',
     classification: 'lifecycle',
-    correction: '/:id/assemblies/:assemblyId/transition',
+    correction: '/:id/assemblies/:assemblyId',
+    note: 'HAB-GOVERNANCE-ASSEMBLIES-AGREEMENTS-UX-EDIT-001: title, description, schedule and location stay editable through draft and scheduled; voting basis and quorum freeze once scheduled; every field locks once the meeting starts (transition route still drives the status itself).',
   },
   {
     module: 'governance',

@@ -30,6 +30,19 @@ const agendaSchema = z.object({
   sortOrder: z.number().int().min(0).max(1000),
 });
 
+const updateAssemblySchema = createSchema.extend({
+  expectedVersion: z.number().int().positive(),
+});
+
+const agendaUpdateSchema = z.object({
+  title: z.string().trim().min(2).max(180),
+  description: optionalText(2000),
+});
+
+const agendaMoveSchema = z.object({
+  direction: z.enum(['up', 'down']),
+});
+
 const transitionSchema = z.object({
   action: z.enum(['schedule', 'start', 'complete', 'cancel']),
   expectedVersion: z.number().int().positive(),
@@ -158,6 +171,23 @@ assembliesRoutes.get('/:id/assemblies/:assemblyId', async (c) => {
   return rows[0] ? c.json(rows[0], 200) : c.json({ error: 'Not found' }, 404);
 });
 
+assembliesRoutes.patch('/:id/assemblies/:assemblyId', async (c) => {
+  const parsed = await body(c, updateAssemblySchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'update_assembly', {
+    target_condominium_id: uuid.parse(c.req.param('id')),
+    target_assembly_id: uuid.parse(c.req.param('assemblyId')),
+    expected_version: parsed.expectedVersion,
+    assembly_title: parsed.title,
+    assembly_description: parsed.description ?? null,
+    assembly_scheduled_at: parsed.scheduledAt,
+    assembly_location: parsed.location ?? null,
+    assembly_voting_basis: parsed.votingBasis,
+    assembly_quorum_percentage: parsed.quorumPercentage,
+  });
+  return responseJson(c, response);
+});
+
 assembliesRoutes.get('/:id/assemblies/:assemblyId/agenda', async (c) => {
   const condominiumId = uuid.parse(c.req.param('id'));
   const assemblyId = uuid.parse(c.req.param('assemblyId'));
@@ -180,6 +210,40 @@ assembliesRoutes.post('/:id/assemblies/:assemblyId/agenda', async (c) => {
     item_sort_order: parsed.sortOrder,
   });
   return responseJson(c, response, 201);
+});
+
+assembliesRoutes.patch('/:id/assemblies/:assemblyId/agenda/:agendaItemId', async (c) => {
+  const parsed = await body(c, agendaUpdateSchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'update_assembly_agenda_item', {
+    target_condominium_id: uuid.parse(c.req.param('id')),
+    target_assembly_id: uuid.parse(c.req.param('assemblyId')),
+    target_agenda_item_id: uuid.parse(c.req.param('agendaItemId')),
+    item_title: parsed.title,
+    item_description: parsed.description ?? null,
+  });
+  return responseJson(c, response);
+});
+
+assembliesRoutes.delete('/:id/assemblies/:assemblyId/agenda/:agendaItemId', async (c) => {
+  const response = await rpc(c, 'delete_assembly_agenda_item', {
+    target_condominium_id: uuid.parse(c.req.param('id')),
+    target_assembly_id: uuid.parse(c.req.param('assemblyId')),
+    target_agenda_item_id: uuid.parse(c.req.param('agendaItemId')),
+  });
+  return responseJson(c, response);
+});
+
+assembliesRoutes.post('/:id/assemblies/:assemblyId/agenda/:agendaItemId/move', async (c) => {
+  const parsed = await body(c, agendaMoveSchema);
+  if (parsed instanceof Response) return parsed;
+  const response = await rpc(c, 'move_assembly_agenda_item', {
+    target_condominium_id: uuid.parse(c.req.param('id')),
+    target_assembly_id: uuid.parse(c.req.param('assemblyId')),
+    target_agenda_item_id: uuid.parse(c.req.param('agendaItemId')),
+    direction: parsed.direction,
+  });
+  return responseJson(c, response);
 });
 
 assembliesRoutes.post('/:id/assemblies/:assemblyId/transition', async (c) => {
