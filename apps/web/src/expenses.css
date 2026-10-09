@@ -57,10 +57,55 @@
   gap: 14px;
 }
 
+.expenses-financial-summary {
+  display: grid;
+  gap: 14px;
+}
+.expenses-financial-summary__heading,
+.expenses-lifecycle-summary__intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.expenses-financial-summary__heading h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1.05rem;
+}
+.expenses-financial-summary__heading p,
+.expenses-lifecycle-summary__intro span,
+.expenses-financial-summary__heading > span,
+.expenses-lifecycle-summary__empty {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.expenses-financial-summary__heading > span {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
 .expenses-metric {
   min-height: 145px;
   padding: 18px;
   border-top: 3px solid var(--blue);
+}
+.expenses-metric--interactive {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.expenses-metric--interactive:hover,
+.expenses-metric--interactive[aria-pressed='true'] {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--blue-soft);
+}
+.expenses-metric--interactive:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
 }
 
 .expenses-metric[data-tone='green'] {
@@ -96,6 +141,52 @@
 .expenses-metric p {
   font-size: 0.82rem;
   line-height: 1.45;
+}
+
+.expenses-lifecycle-summary {
+  overflow: hidden;
+}
+.expenses-lifecycle-summary__intro {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.expenses-lifecycle-summary__intro strong,
+.expenses-lifecycle-summary__intro span {
+  display: block;
+}
+.expenses-lifecycle-summary__intro span {
+  max-width: 42rem;
+}
+.expenses-lifecycle-summary__table-wrap {
+  overflow-x: auto;
+}
+.expenses-lifecycle-summary table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+}
+.expenses-lifecycle-summary th,
+.expenses-lifecycle-summary td {
+  padding: 13px 16px;
+  border-top: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+.expenses-lifecycle-summary thead th {
+  border-top: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.expenses-lifecycle-summary th:first-child {
+  text-align: left;
+}
+.expenses-lifecycle-summary tbody th {
+  color: var(--navy);
+}
+.expenses-lifecycle-summary__empty {
+  padding: 18px;
 }
 
 .expenses-currency-strip {
@@ -635,7 +726,9 @@
 
 @container page (max-width: 760px) {
   .expenses-overview,
-  .expenses-currency-strip {
+  .expenses-currency-strip,
+  .expenses-financial-summary__heading,
+  .expenses-lifecycle-summary__intro {
     align-items: stretch;
     flex-direction: column;
   }
@@ -671,7 +764,9 @@
 
 @media (max-width: 720px) {
   .expenses-overview,
-  .expenses-currency-strip {
+  .expenses-currency-strip,
+  .expenses-financial-summary__heading,
+  .expenses-lifecycle-summary__intro {
     align-items: stretch;
     flex-direction: column;
   }

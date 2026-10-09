@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(26);
 
 insert into auth.users (
   id,
@@ -169,6 +169,19 @@ select is(
   125.00::numeric,
   'expense summary preserves the USD total'
 );
+select is(
+  (
+    select (entry ->> 'paid_amount')::numeric
+    from jsonb_array_elements(
+      public.get_expense_summary(
+        (select (payload #>> '{condominium,id}')::uuid from operations_workspace)
+      ) -> 'totals_by_currency'
+    ) entry
+    where entry ->> 'currency_code' = 'USD'
+  ),
+  125.00::numeric,
+  'paid USD amount remains in the paid lifecycle bucket'
+);
 
 select public.create_expense(
   (select (payload #>> '{condominium,id}')::uuid from operations_workspace),
@@ -200,6 +213,31 @@ select is(
   2,
   'expense totals keep different currencies in separate rows'
 );
+select is(
+  (
+    select (entry ->> 'draft_amount')::numeric
+    from jsonb_array_elements(
+      public.get_expense_summary(
+        (select (payload #>> '{condominium,id}')::uuid from operations_workspace)
+      ) -> 'totals_by_currency'
+    ) entry
+    where entry ->> 'currency_code' = 'VES'
+  ),
+  500.00::numeric,
+  'draft VES amount remains separate from approved obligations and payments'
+);
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000e3', true);
+select throws_ok(
+  format(
+    'select public.get_expense_summary(%L::uuid)',
+    (select payload #>> '{condominium,id}' from operations_workspace)
+  ),
+  'P0001',
+  'expense reader required',
+  'unrelated user cannot read another condominium expense summary'
+);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000e1', true);
 
 reset role;
 

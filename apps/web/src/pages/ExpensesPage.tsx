@@ -2,13 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogBody, DialogFooter } from '../components/Dialog';
-import {
-  CheckCircleIcon,
-  ExpensesIcon,
-  FeesIcon,
-  PaymentsIcon,
-  PeopleIcon,
-} from '../components/icons';
+import { CheckCircleIcon, ExpensesIcon, FeesIcon, PaymentsIcon } from '../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
@@ -79,22 +73,176 @@ function MetricCard({
   value,
   detail,
   tone,
+  onClick,
+  selected = false,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   detail: string;
   tone: 'blue' | 'green' | 'navy' | 'red';
+  onClick?: () => void;
+  selected?: boolean;
 }) {
-  return (
-    <Surface className="expenses-metric" data-tone={tone}>
+  const content = (
+    <>
       <div className="expenses-metric__top">
         <span>{icon}</span>
         <small>{label}</small>
       </div>
       <strong>{value}</strong>
       <p>{detail}</p>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        aria-pressed={selected}
+        className="expenses-metric expenses-metric--interactive surface"
+        data-tone={tone}
+        onClick={onClick}
+        type="button"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Surface className="expenses-metric" data-tone={tone}>
+      {content}
     </Surface>
+  );
+}
+
+const lifecycleRows: Array<{
+  status: Exclude<ExpenseStatus, 'void'>;
+  label: string;
+  amountKey: 'draft_amount' | 'pending_amount' | 'approved_amount' | 'paid_amount';
+  detail: string;
+  icon: ReactNode;
+  tone: 'blue' | 'green' | 'navy' | 'red';
+}> = [
+  {
+    status: 'draft',
+    label: 'Borradores',
+    amountKey: 'draft_amount',
+    detail: 'En preparación. No son obligaciones.',
+    icon: <FeesIcon size={20} />,
+    tone: 'blue',
+  },
+  {
+    status: 'pending_approval',
+    label: 'Pendientes de aprobación',
+    amountKey: 'pending_amount',
+    detail: 'Esperan revisión de un administrador autorizado.',
+    icon: <CheckCircleIcon size={20} />,
+    tone: 'red',
+  },
+  {
+    status: 'approved',
+    label: 'Aprobados pendientes de pago',
+    amountKey: 'approved_amount',
+    detail: 'Obligaciones aprobadas; aún no se marcan como pagadas.',
+    icon: <ExpensesIcon size={20} />,
+    tone: 'navy',
+  },
+  {
+    status: 'paid',
+    label: 'Pagados',
+    amountKey: 'paid_amount',
+    detail: 'Marcados como pagados. No sustituyen la evidencia de tesorería.',
+    icon: <PaymentsIcon size={20} />,
+    tone: 'green',
+  },
+];
+
+export function ExpenseFinancialSummary({
+  expenses,
+  summary,
+  activeStatus,
+  onStatusSelect,
+}: {
+  expenses: ExpenseRecord[];
+  summary: ExpenseSummary;
+  activeStatus: string;
+  onStatusSelect: (status: ExpenseStatus) => void;
+}) {
+  const counts = getExpenseStatusCounts(expenses);
+
+  return (
+    <section
+      aria-labelledby="expenses-financial-summary-title"
+      className="expenses-financial-summary"
+    >
+      <div className="expenses-financial-summary__heading">
+        <div>
+          <h2 id="expenses-financial-summary-title">Estado financiero de gastos</h2>
+          <p>
+            Los importes se presentan por moneda y etapa; no se convierten ni se suman entre
+            monedas.
+          </p>
+        </div>
+        <span>{expenses.length} registros en el condominio</span>
+      </div>
+      <div className="expenses-metrics-grid">
+        {lifecycleRows.map((row) => (
+          <MetricCard
+            detail={row.detail}
+            icon={row.icon}
+            key={row.status}
+            label={row.label}
+            onClick={() => onStatusSelect(row.status)}
+            selected={activeStatus === row.status}
+            tone={row.tone}
+            value={String(counts[row.status])}
+          />
+        ))}
+      </div>
+      <Surface className="expenses-lifecycle-summary">
+        <div className="expenses-lifecycle-summary__intro">
+          <strong>Importes por estado y moneda</strong>
+          <span>
+            Estos importes corresponden a todos los gastos a los que tienes acceso, incluso si
+            filtras la lista.
+          </span>
+        </div>
+        {summary.totals_by_currency.length ? (
+          <div className="expenses-lifecycle-summary__table-wrap">
+            <table>
+              <caption className="sr-only">Importes de gastos por estado y moneda</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Moneda</th>
+                  {lifecycleRows.map((row) => (
+                    <th key={row.status} scope="col">
+                      {row.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {summary.totals_by_currency.map((currency) => (
+                  <tr key={currency.currency_code}>
+                    <th scope="row">{currency.currency_code}</th>
+                    {lifecycleRows.map((row) => (
+                      <td key={row.status}>
+                        {formatMoney(currency[row.amountKey], currency.currency_code)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="expenses-lifecycle-summary__empty">
+            No hay importes registrados para resumir todavía.
+          </p>
+        )}
+      </Surface>
+    </section>
   );
 }
 
@@ -228,7 +376,6 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     () => filterExpenses(data?.expenses ?? [], filters),
     [data?.expenses, filters],
   );
-  const counts = useMemo(() => getExpenseStatusCounts(data?.expenses ?? []), [data?.expenses]);
   const currencies = useMemo(
     () => [...new Set((data?.expenses ?? []).map((expense) => expense.currency_code))].sort(),
     [data?.expenses],
@@ -358,8 +505,6 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     );
   }
 
-  const firstCurrency = data.summary.totals_by_currency[0];
-
   return (
     <>
       <div className="expenses-page">
@@ -384,65 +529,17 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
 
         {error ? <div className="expenses-inline-alert">{error}</div> : null}
 
-        <section aria-label="Indicadores de gastos" className="expenses-metrics-grid">
-          <MetricCard
-            detail={
-              firstCurrency
-                ? 'Los importes se muestran separados por moneda.'
-                : 'Registra el primer gasto para iniciar el control.'
-            }
-            icon={<ExpensesIcon size={20} />}
-            label={firstCurrency ? `Total ${firstCurrency.currency_code}` : 'Gastos registrados'}
-            tone="blue"
-            value={
-              firstCurrency
-                ? formatMoney(firstCurrency.total_amount, firstCurrency.currency_code)
-                : String(data.expenses.length)
-            }
-          />
-          <MetricCard
-            detail="Requieren revisión de un administrador autorizado."
-            icon={<CheckCircleIcon size={20} />}
-            label="Pendientes de aprobación"
-            tone="red"
-            value={String(data.summary.pending_approval_count ?? counts.pending_approval)}
-          />
-          <MetricCard
-            detail="Gastos que ya completaron su ciclo de pago."
-            icon={<PaymentsIcon size={20} />}
-            label="Pagados"
-            tone="green"
-            value={String(counts.paid)}
-          />
-          <MetricCard
-            detail="Proveedores activos disponibles en el directorio."
-            icon={<PeopleIcon size={20} />}
-            label="Proveedores"
-            tone="navy"
-            value={String(
-              data.summary.active_vendor_count ||
-                data.vendors.filter((item) => item.is_active).length,
-            )}
-          />
-        </section>
-
-        {data.summary.totals_by_currency.length > 1 ? (
-          <Surface className="expenses-currency-strip">
-            <div>
-              <strong>Resumen por moneda</strong>
-              <span>Habitta nunca suma monedas distintas.</span>
-            </div>
-            <div>
-              {data.summary.totals_by_currency.map((summary) => (
-                <article key={summary.currency_code}>
-                  <small>{summary.currency_code}</small>
-                  <strong>{formatMoney(summary.total_amount, summary.currency_code)}</strong>
-                  <span>{summary.expense_count} movimientos</span>
-                </article>
-              ))}
-            </div>
-          </Surface>
-        ) : null}
+        <ExpenseFinancialSummary
+          activeStatus={filters.status}
+          expenses={data.expenses}
+          onStatusSelect={(status) =>
+            setFilters((current) => ({
+              ...current,
+              status: current.status === status ? '' : status,
+            }))
+          }
+          summary={data.summary}
+        />
 
         <Surface className="expenses-workspace">
           <div className="expenses-toolbar">

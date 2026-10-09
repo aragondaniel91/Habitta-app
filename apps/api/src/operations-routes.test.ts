@@ -19,6 +19,17 @@ describe('expenses and governance API routes', () => {
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
   });
 
+  it('serves the financial lifecycle summary through the tenant-scoped summary RPC', async () => {
+    const source = await readFile(routeUrl, 'utf8');
+    const signature = "operationsRoutes.get('/:id/expenses/summary'";
+    const summaryRoute = source.slice(source.indexOf(signature));
+    const summaryBody = summaryRoute.slice(0, summaryRoute.indexOf('\n\noperationsRoutes'));
+
+    expect(summaryBody).toContain("rpc(c, 'get_expense_summary'");
+    expect(summaryBody).toContain("target_condominium: uuid.parse(c.req.param('id'))");
+    expect(summaryBody).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+  });
+
   it('scopes expense-category edit/archive to the RLS policy, not API code', async () => {
     const source = await readFile(routeUrl, 'utf8');
     const patchSignature = "operationsRoutes.patch('/:id/expense-categories/:categoryId'";
