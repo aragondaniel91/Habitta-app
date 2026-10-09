@@ -128,6 +128,8 @@ describe('ReportsPage request ownership', () => {
   afterEach(() => {
     act(() => root.unmount());
     host.remove();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   const render = (condominiumId: string, token = 'token-1') =>
@@ -226,4 +228,5 @@ describe('ReportsPage request ownership', () => {
     expect(findButton('VES').getAttribute('aria-pressed')).toBe('true');
     expect(host.textContent).toContain('C1-VES');
   });
+
 });
