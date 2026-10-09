@@ -266,6 +266,13 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     () => rowsForSelection(currentData?.financialUnits ?? [], activeUnitId),
     [currentData?.financialUnits, activeUnitId],
   );
+  // A zero in a known currency is a real balance and is rendered as such. A null currency is the
+  // RPC's deliberate "this owned unit has no financial movement" marker; do not turn it into a
+  // made-up USD/VES zero or collapse it into the same message as a settled currency.
+  const selectedScopeHasNoFinancialMovement = useMemo(
+    () => selectedRows.some((row) => row.currency_code === null),
+    [selectedRows],
+  );
   // Consolidated, the summary function stays the authority. Narrowed to one unit, the per-unit
   // rows do -- both read the same ledger, so the two never disagree about the same money.
   const summaries = useMemo(
@@ -454,7 +461,9 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
                 <span>
                   {activeUnitId
                     ? `Saldo de ${residentUnitLabel(unitLabels, activeUnitId)}`
-                    : 'Saldo pendiente'}
+                    : financialUnits.length === 1
+                      ? 'Saldo pendiente de tu unidad'
+                      : 'Saldo pendiente de todas tus unidades'}
                 </span>
               </div>
               {summaries.length ? (
@@ -471,7 +480,11 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
               ) : (
                 <div className="resident-dashboard__all-clear">
                   <CheckCircleIcon size={22} />
-                  <strong>Sin saldos pendientes</strong>
+                  <strong>
+                    {selectedScopeHasNoFinancialMovement
+                      ? 'Sin movimientos registrados'
+                      : 'Sin saldos pendientes'}
+                  </strong>
                 </div>
               )}
               <p className="resident-dashboard__card-note">

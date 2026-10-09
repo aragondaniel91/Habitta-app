@@ -106,6 +106,25 @@ describe('HAB-427 which units the resident sees and which they may pay for', () 
     const selected = currencyRows(rowsForSelection(rows, 'unit-a'));
     expect(selected.map((entry) => entry.currency_code)).toEqual(['USD', 'VES']);
   });
+
+  it('keeps zero balances in each actual currency while leaving an absent currency absent', () => {
+    const selected = currencyRows(
+      rowsForSelection(
+        [
+          row({ currency_code: 'USD', net_outstanding: '0.00' }),
+          row({ currency_code: 'VES', net_outstanding: '0.00' }),
+          row({ unit_id: 'unit-without-movement', currency_code: null, net_outstanding: '0.00' }),
+        ],
+        '',
+      ),
+    );
+
+    expect(selected).toHaveLength(2);
+    expect(selected.map((entry) => [entry.currency_code, entry.net_outstanding])).toEqual([
+      ['USD', '0.00'],
+      ['VES', '0.00'],
+    ]);
+  });
 });
 
 describe('HAB-427 what a balance means', () => {
@@ -140,6 +159,20 @@ describe('HAB-427 the resident dashboard', () => {
     expect(dashboard).toContain('financialUnits.length > 1');
     expect(dashboard).toContain('<option value="">Todas mis unidades</option>');
     expect(dashboard).toContain('propertyCards.length > 1');
+  });
+
+  it('uses singular scope for one owned unit and plural scope only for several', () => {
+    // The same RLS-scoped set that controls the selector controls this label. A resident with one
+    // financial unit is not looking at an aggregate, even though no unit id is selected.
+    expect(dashboard).toContain("financialUnits.length === 1");
+    expect(dashboard).toContain("? 'Saldo pendiente de tu unidad'");
+    expect(dashboard).toContain("'Saldo pendiente de todas tus unidades'");
+  });
+
+  it('distinguishes no movement from a real zero', () => {
+    expect(dashboard).toContain('selectedScopeHasNoFinancialMovement');
+    expect(dashboard).toContain("? 'Sin movimientos registrados'");
+    expect(dashboard).toContain(": 'Sin saldos pendientes'");
   });
 
   it('still declares every hook before the early returns', () => {
