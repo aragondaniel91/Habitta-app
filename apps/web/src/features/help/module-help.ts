@@ -312,12 +312,15 @@ export const MODULE_HELP: ModuleHelpByRoute = {
     purpose:
       'Registra egresos operativos con categoría, proveedor, soporte, aprobación, pago, anulación y trazabilidad por moneda.',
     actions: [
-      'Administrar Categorías y proveedores.',
+      'Administrar Categorías y el Directorio de proveedores por separado.',
+      'Registrar, editar, archivar o reactivar proveedores sin borrar sus gastos históricos.',
       'Registrar un gasto y adjuntar factura, recibo o soporte.',
       'Mover el gasto por su ciclo de revisión, aprobación, pago o anulación.',
     ],
     steps: [
-      'Si falta la clasificación o el proveedor, pulsa Categorías y proveedores, escribe el nombre y usa Agregar.',
+      'Si falta una clasificación, pulsa Categorías y crea o administra la categoría correspondiente.',
+      'Si falta un proveedor, pulsa Directorio de proveedores y luego Nuevo proveedor. Completa Nombre comercial o razón social y, cuando corresponda, identificación fiscal, teléfono, correo o notas; guarda el formulario.',
+      'En el Directorio usa Editar para corregir los datos de un proveedor. Para impedir su uso en gastos nuevos usa Archivar y confirma la acción; sus gastos históricos permanecen vinculados. Usa Reactivar si vuelve a operar.',
       'Pulsa Registrar gasto y completa descripción, categoría, proveedor, monto, moneda, fecha y los demás campos aplicables.',
       'Guarda el borrador y adjunta el comprobante cuando el flujo lo solicite; no cierres el proceso creyendo que un borrador ya está aprobado.',
       'Abre el gasto desde la lista y revisa su estado, eventos y archivos adjuntos.',
@@ -336,7 +339,7 @@ export const MODULE_HELP: ModuleHelpByRoute = {
       'Un gasto pagado o anulado conserva su trazabilidad en vez de desaparecer.',
     ],
     troubleshooting: [
-      'Si no puedes seleccionar una categoría o proveedor, abre Categorías y proveedores y confirma que exista un registro activo.',
+      'Si no puedes seleccionar una categoría, abre Categorías y confirma que exista. Si no puedes seleccionar un proveedor, abre Directorio de proveedores y confirma que esté activo; los archivados no están disponibles para gastos nuevos.',
       'Si una acción no aparece, revisa el estado actual del gasto y tus permisos; las transiciones permitidas dependen de ambos.',
     ],
     tips: [

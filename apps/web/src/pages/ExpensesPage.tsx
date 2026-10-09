@@ -23,6 +23,7 @@ import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { ExpenseCaptureDrawer } from '../features/expenses/ExpenseCaptureDrawer';
 import { ExpenseCategoryManager } from '../features/expenses/ExpenseCategoryManager';
+import { VendorDirectoryDrawer } from '../features/expenses/VendorDirectoryDrawer';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import { apiRequest } from '../lib/api';
@@ -66,7 +67,7 @@ type TreasuryAccount = {
   is_active: boolean;
 };
 
-type Drawer = 'create' | 'edit' | 'detail' | 'catalogs' | null;
+type Drawer = 'create' | 'edit' | 'detail' | 'catalogs' | 'vendors' | null;
 
 const emptySummary: ExpenseSummary = {
   totals_by_currency: [],
@@ -144,17 +145,14 @@ function CatalogsPanel({
   condominiumId,
   session,
   categories,
-  vendors,
   onChanged,
 }: {
   condominiumId: string;
   session: Session;
   categories: ExpenseCategory[];
-  vendors: ExpenseVendor[];
   onChanged: () => void;
 }) {
   const [categoryName, setCategoryName] = useState('');
-  const [vendorName, setVendorName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -175,23 +173,6 @@ function CatalogsPanel({
         }),
       });
       setCategoryName('');
-      onChanged();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const createVendor = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      await apiRequest(`/v1/condominiums/${condominiumId}/vendors`, session, {
-        method: 'POST',
-        body: JSON.stringify({ name: vendorName }),
-      });
-      setVendorName('');
       onChanged();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo crear.');
@@ -232,37 +213,6 @@ function CatalogsPanel({
           onChanged={onChanged}
           session={session}
         />
-      </section>
-      <section>
-        <h3>
-          Proveedores
-          <InfoHint label="Más información sobre proveedores">
-            Directorio básico para relacionar gastos y soportes.
-          </InfoHint>
-        </h3>
-        <div className="expenses-catalog-create">
-          <input
-            className="input"
-            onChange={(event) => setVendorName(event.target.value)}
-            placeholder="Nuevo proveedor"
-            value={vendorName}
-          />
-          <Button
-            disabled={saving || vendorName.trim().length < 2}
-            onClick={() => void createVendor()}
-            size="sm"
-            type="button"
-          >
-            Agregar
-          </Button>
-        </div>
-        <div className="expenses-chip-list">
-          {vendors.map((vendor) => (
-            <Badge key={vendor.id} tone={vendor.is_active ? 'success' : 'neutral'}>
-              {vendor.name}
-            </Badge>
-          ))}
-        </div>
       </section>
     </div>
   );
@@ -468,7 +418,10 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
           actions={
             <>
               <Button onClick={() => setDrawer('catalogs')} size="sm" variant="secondary">
-                Categorías y proveedores
+                Categorías
+              </Button>
+              <Button onClick={() => setDrawer('vendors')} size="sm" variant="secondary">
+                Directorio de proveedores
               </Button>
               <Button onClick={() => setDrawer('create')} size="sm">
                 Registrar gasto
@@ -670,16 +623,25 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
           <DrawerShell
             eyebrow="Configuración operativa"
             onClose={() => setDrawer(null)}
-            title="Catálogos de gastos"
+            title="Categorías de gastos"
           >
             <CatalogsPanel
               categories={data.categories}
               condominiumId={condominiumId}
               onChanged={() => void load()}
               session={session}
-              vendors={data.vendors}
             />
           </DrawerShell>
+        ) : null}
+
+        {drawer === 'vendors' ? (
+          <VendorDirectoryDrawer
+            condominiumId={condominiumId}
+            onChanged={load}
+            onClose={() => setDrawer(null)}
+            session={session}
+            vendors={data.vendors}
+          />
         ) : null}
 
         {drawer === 'detail' && selectedExpense ? (

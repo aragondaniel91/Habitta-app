@@ -309,6 +309,96 @@
   gap: 8px;
 }
 
+.vendor-directory {
+  display: grid;
+  gap: 22px;
+}
+.vendor-directory__intro,
+.vendor-directory__form-heading,
+.vendor-directory__list-heading,
+.vendor-directory__card-title,
+.vendor-directory__card-actions,
+.vendor-directory__form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.vendor-directory__intro,
+.vendor-directory__form-heading,
+.vendor-directory__list-heading {
+  justify-content: space-between;
+}
+.vendor-directory__intro strong,
+.vendor-directory__intro p,
+.vendor-directory__form-heading h3,
+.vendor-directory__form-heading p,
+.vendor-directory__list-heading h3,
+.vendor-directory__list-heading span,
+.vendor-directory__card p,
+.vendor-directory__card small {
+  display: block;
+  margin: 0;
+}
+.vendor-directory__intro p,
+.vendor-directory__form-heading p,
+.vendor-directory__list-heading span,
+.vendor-directory__card p,
+.vendor-directory__card small {
+  color: var(--muted);
+}
+.vendor-directory__intro p,
+.vendor-directory__form-heading p {
+  margin-top: 5px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.vendor-directory__form,
+.vendor-directory__list {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-subtle);
+}
+.vendor-directory__field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.vendor-directory__form-actions {
+  justify-content: flex-end;
+}
+.vendor-directory__list {
+  display: grid;
+  gap: 14px;
+  background: var(--surface);
+}
+.vendor-directory__cards {
+  display: grid;
+  gap: 10px;
+}
+.vendor-directory__card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.vendor-directory__card-title {
+  flex-wrap: wrap;
+}
+.vendor-directory__card p,
+.vendor-directory__card small {
+  margin-top: 6px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.vendor-directory__card-actions {
+  flex: 0 0 auto;
+}
+
 .expenses-detail {
   display: grid;
   gap: 20px;
@@ -511,6 +601,18 @@
   .expenses-detail__amount {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .vendor-directory__intro,
+  .vendor-directory__form-heading,
+  .vendor-directory__card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .vendor-directory__field-grid {
+    grid-template-columns: 1fr;
+  }
+  .vendor-directory__card-actions .button {
+    flex: 1;
   }
   .expenses-treasury-selection > div {
     align-items: stretch;

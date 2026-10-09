@@ -5,6 +5,8 @@ import {
   isValidExpenseAmount,
   nextExpenseActions,
   normalizeExpenseAmount,
+  serializeVendorInput,
+  validateVendorInput,
 } from './expenses';
 import type { ExpenseRecord } from './expenses';
 
@@ -78,5 +80,32 @@ describe('expense workspace helpers', () => {
     expect(isValidExpenseAmount(1250.5)).toBe(true);
     expect(normalizeExpenseAmount({ amount: 1250 })).toBe('');
     expect(isValidExpenseAmount({ amount: 1250 })).toBe(false);
+  });
+
+  it('serializes profile clears explicitly and rejects invalid vendor contact data', () => {
+    expect(
+      serializeVendorInput({
+        name: '  Servicios Delta ',
+        taxIdentifier: ' ',
+        email: ' ',
+        phone: ' 0212-555-0101 ',
+        notes: '',
+      }),
+    ).toEqual({
+      name: 'Servicios Delta',
+      taxIdentifier: null,
+      email: null,
+      phone: '0212-555-0101',
+      notes: null,
+    });
+    expect(
+      validateVendorInput({
+        name: 'Delta',
+        taxIdentifier: '',
+        email: 'wrong',
+        phone: '',
+        notes: '',
+      }),
+    ).toContain('correo');
   });
 });

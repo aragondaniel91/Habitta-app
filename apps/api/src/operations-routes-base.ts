@@ -20,6 +20,8 @@ const money = z
   .regex(/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$/)
   .refine((value) => Number(value) > 0, 'Amount must be greater than zero');
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional();
+const nullableOptionalText = (maximum: number) =>
+  z.string().trim().max(maximum).nullable().optional();
 const optionalUrl = z.string().trim().url().max(1000).optional();
 
 const expenseCategorySchema = z.object({
@@ -34,10 +36,11 @@ const expenseCategorySchema = z.object({
 
 const vendorSchema = z.object({
   name: z.string().trim().min(2).max(160),
-  taxIdentifier: optionalText(80),
-  email: z.string().trim().email().optional(),
-  phone: optionalText(40),
-  notes: optionalText(1000),
+  // `null` deliberately clears an optional profile field during an edit.
+  taxIdentifier: nullableOptionalText(80),
+  email: z.string().trim().email().nullable().optional(),
+  phone: nullableOptionalText(40),
+  notes: nullableOptionalText(1000),
   isActive: z.boolean().optional(),
 });
 

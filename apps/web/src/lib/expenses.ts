@@ -20,6 +20,57 @@ export type ExpenseVendor = {
   is_active: boolean;
 };
 
+export type VendorInput = {
+  name: string;
+  taxIdentifier: string;
+  email: string;
+  phone: string;
+  notes: string;
+};
+
+export const emptyVendorInput = (): VendorInput => ({
+  name: '',
+  taxIdentifier: '',
+  email: '',
+  phone: '',
+  notes: '',
+});
+
+export function vendorToInput(vendor: ExpenseVendor): VendorInput {
+  return {
+    name: vendor.name,
+    taxIdentifier: vendor.tax_identifier ?? '',
+    email: vendor.email ?? '',
+    phone: vendor.phone ?? '',
+    notes: vendor.notes ?? '',
+  };
+}
+
+/** Converts cleared optional profile fields to `null` for the API edit contract. */
+export function serializeVendorInput(input: VendorInput) {
+  return {
+    name: input.name.trim(),
+    taxIdentifier: input.taxIdentifier.trim() || null,
+    email: input.email.trim() || null,
+    phone: input.phone.trim() || null,
+    notes: input.notes.trim() || null,
+  };
+}
+
+export function validateVendorInput(input: VendorInput) {
+  const value = serializeVendorInput(input);
+  if (value.name.length < 2 || value.name.length > 160)
+    return 'El nombre comercial debe tener entre 2 y 160 caracteres.';
+  if (value.taxIdentifier && value.taxIdentifier.length > 80)
+    return 'El RIF, NIT o RUC no puede superar 80 caracteres.';
+  if (value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email))
+    return 'Ingresa un correo electrónico válido.';
+  if (value.phone && value.phone.length > 40) return 'El teléfono no puede superar 40 caracteres.';
+  if (value.notes && value.notes.length > 1000)
+    return 'Las notas no pueden superar 1.000 caracteres.';
+  return '';
+}
+
 export type ExpenseRecord = {
   id: string;
   condominium_id: string;

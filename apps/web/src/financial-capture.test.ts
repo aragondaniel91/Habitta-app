@@ -144,10 +144,11 @@ describe('financial capture orchestration', () => {
 
     expect(page).toContain('ExpenseCategoryManager');
     // Category creation stays the Catalogs panel's job; the manager below it only edits/archives.
-    // One create form each keeps HAB-EXPENSES-DRAFT-CATEGORIES-RECOVERY-002's fix from regressing
-    // into a duplicate "Nueva categoría"/"Nuevo proveedor" form the next time either panel changes.
+    // Categories retain one creation form. Vendors deliberately have none here: their dedicated
+    // directory owns creation, which prevents the former quick-create from becoming a duplicate.
     expect(page.match(/placeholder="Nueva categoría"/g) ?? []).toHaveLength(1);
-    expect(page.match(/placeholder="Nuevo proveedor"/g) ?? []).toHaveLength(1);
+    expect(page.match(/placeholder="Nuevo proveedor"/g) ?? []).toHaveLength(0);
+    expect(page).toContain('Directorio de proveedores');
     expect(categories).not.toContain('placeholder="Nueva categoría"');
     // The vendor directory stays independent: the category manager never references vendors.
     expect(categories).not.toContain('vendor');
@@ -162,9 +163,7 @@ describe('financial capture orchestration', () => {
     expect(css).toContain('overflow-x: hidden');
     expect(css).toContain('overflow-wrap: anywhere');
     const mobileExpenseCss = css.slice(css.indexOf('@media (max-width: 720px)'));
-    expect(mobileExpenseCss).toContain(
-      '.expenses-detail-list {\n    grid-template-columns: 1fr;',
-    );
+    expect(mobileExpenseCss).toContain('.expenses-detail-list {\n    grid-template-columns: 1fr;');
 
     // Long attachment filenames truncate instead of forcing horizontal scroll, on mobile and
     // desktop alike; the full name stays available via the title attribute asserted above.

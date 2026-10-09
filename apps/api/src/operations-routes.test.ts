@@ -41,4 +41,18 @@ describe('expenses and governance API routes', () => {
     expect(patchBody).toContain('description: parsed.description');
     expect(patchBody).toContain('is_active: parsed.isActive');
   });
+
+  it('keeps vendor create and scoped edit on the caller JWT contract', async () => {
+    const source = await readFile(routeUrl, 'utf8');
+    const patchSignature = "operationsRoutes.patch('/:id/vendors/:vendorId'";
+    const patchRoute = source.slice(source.indexOf(patchSignature));
+    const patchBody = patchRoute.slice(0, patchRoute.indexOf('\n\noperationsRoutes'));
+
+    expect(source).toContain("operationsRoutes.post('/:id/vendors'");
+    expect(source).toContain('taxIdentifier: nullableOptionalText(80)');
+    expect(source).toContain('return responseJson(c, response, 201);');
+    expect(patchBody).toContain('vendors?id=eq.${vendorId}&condominium_id=eq.${condominiumId}');
+    expect(patchBody).toContain('tax_identifier: parsed.taxIdentifier');
+    expect(patchBody).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+  });
 });
