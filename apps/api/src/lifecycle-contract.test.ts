@@ -107,6 +107,7 @@ const ACTION_SUFFIXES = [
   'restore',
   'retry',
   'retry-storage-cleanup',
+  'return-for-correction',
   'revert',
   'reverse',
   'revisions',

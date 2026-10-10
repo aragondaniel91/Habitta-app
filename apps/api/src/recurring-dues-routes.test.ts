@@ -106,6 +106,26 @@ describe('HAB-347 recurring dues domain errors', () => {
     });
   });
 
+  it('maps the ordinary-only concept guard to an actionable validation error', () => {
+    expect(
+      recurringDomainFailureFromPostgrest({
+        message: 'recurring charge plan requires regular dues concept',
+      }),
+    ).toEqual({
+      status: 422,
+      error: 'recurring_plan_requires_regular_dues_concept',
+      publicMessage:
+        'Las cuotas ordinarias recurrentes solo pueden usar un concepto de cuota regular.',
+    });
+  });
+
+  it('maps governed review decisions without leaking database messages', () => {
+    expect(recurringDomainFailureFromPostgrest({ message: 'recurring run governance reason is required' }))
+      .toMatchObject({ status: 422, error: 'recurring_run_reason_required' });
+    expect(recurringDomainFailureFromPostgrest({ message: 'only pending review recurring runs can be returned for correction' }))
+      .toMatchObject({ status: 409, error: 'recurring_run_not_returnable' });
+  });
+
   it('fails closed for unknown PostgREST or PostgreSQL messages', () => {
     expect(
       recurringDomainFailureFromPostgrest({
@@ -124,6 +144,22 @@ describe('HAB-347 recurring dues domain errors', () => {
     expect(source).toContain('return rpcResult(c, response, 201)');
     expect(source).toContain('return rpcResult(c, response, 200)');
     expect(source).toContain("error: 'recurring_dues_upstream_failure'");
+  });
+});
+
+describe('HAB recurring-run governance API contract', () => {
+  it('uses scoped protected RPCs and requires a documented reason', () => {
+    expect(source).toContain("const runGovernanceSchema = z.object({ reason: z.string().trim().min(1).max(1000) })");
+    expect(source).toContain("'return_recurring_charge_run_for_correction'");
+    expect(source).toContain("'cancel_recurring_charge_run'");
+    expect(source).toContain("target_run: runId");
+    expect(source).toContain('return_reason: parsed.reason');
+    expect(source).toContain('cancellation_reason: parsed.reason');
+    expect(source).toContain('recurring_charge_run_governance_events(*)');
+    expect(source).toContain('recurring_charge_run_governance_events.order=created_at.desc');
+    expect(source).not.toMatch(
+      /rest\(c,\s*`?recurring_charge_runs[^)]*\{\s*method:\s*'(POST|PUT|PATCH|DELETE)'/s,
+    );
   });
 });
 

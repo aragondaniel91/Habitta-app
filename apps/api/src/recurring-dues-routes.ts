@@ -115,6 +115,7 @@ const planInputSchema = z
 
 const planStatusSchema = z.object({ isActive: z.boolean() });
 const runInputSchema = z.object({ period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) });
+const runGovernanceSchema = z.object({ reason: z.string().trim().min(1).max(1000) });
 const runQuerySchema = z.object({
   status: z.enum(['scheduled', 'pending_review', 'posted', 'cancelled']).optional(),
 });
@@ -257,6 +258,21 @@ const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
     status: 409,
     error: 'recurring_run_requires_review',
     publicMessage: 'Primero prepara y revisa la corrida antes de publicarla.',
+  },
+  'recurring charge plan requires regular dues concept': {
+    status: 422,
+    error: 'recurring_plan_requires_regular_dues_concept',
+    publicMessage: 'Las cuotas ordinarias recurrentes solo pueden usar un concepto de cuota regular.',
+  },
+  'recurring run governance reason is required': {
+    status: 422,
+    error: 'recurring_run_reason_required',
+    publicMessage: 'Documenta el motivo antes de continuar.',
+  },
+  'only pending review recurring runs can be returned for correction': {
+    status: 409,
+    error: 'recurring_run_not_returnable',
+    publicMessage: 'Solo una cuota pendiente de revisión puede devolverse para corrección.',
   },
   'posted recurring charge runs are immutable': {
     status: 409,
@@ -482,7 +498,7 @@ recurringDuesRoutes.get('/:id/recurring-charge-runs', async (c) => {
   const statusFilter = parsed.data.status ? `&status=eq.${parsed.data.status}` : '';
   const response = await rest(
     c,
-    `recurring_charge_runs?condominium_id=eq.${condominiumId}${statusFilter}&select=*&order=period.desc`,
+    `recurring_charge_runs?condominium_id=eq.${condominiumId}${statusFilter}&select=*,recurring_charge_run_governance_events(*)&recurring_charge_run_governance_events.order=created_at.desc&order=period.desc`,
   );
   return c.json(await response.json(), response.ok ? 200 : 403);
 });
@@ -528,6 +544,37 @@ recurringDuesRoutes.post('/:id/recurring-charge-runs/:runId/prepare', (c) =>
 );
 recurringDuesRoutes.post('/:id/recurring-charge-runs/:runId/post', (c) =>
   mutateRun(c, 'post_recurring_charge_run'),
+);
+
+async function governRun(
+  c: RecurringDuesContext,
+  rpcName: 'return_recurring_charge_run_for_correction' | 'cancel_recurring_charge_run',
+) {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const runId = uuidSchema.parse(c.req.param('runId'));
+  const parsed = await parseBody(c, runGovernanceSchema);
+  if (parsed instanceof Response) return parsed;
+  if (
+    !(await scopedExists(
+      c,
+      `recurring_charge_runs?id=eq.${runId}&condominium_id=eq.${condominiumId}&select=id`,
+    ))
+  )
+    return c.json({ error: 'Recurring run not found in condominium' }, 404);
+  const response = await rpc(c, rpcName, {
+    target_run: runId,
+    ...(rpcName === 'cancel_recurring_charge_run'
+      ? { cancellation_reason: parsed.reason }
+      : { return_reason: parsed.reason }),
+  });
+  return rpcResult(c, response, 200);
+}
+
+recurringDuesRoutes.post('/:id/recurring-charge-runs/:runId/return-for-correction', (c) =>
+  governRun(c, 'return_recurring_charge_run_for_correction'),
+);
+recurringDuesRoutes.post('/:id/recurring-charge-runs/:runId/cancel', (c) =>
+  governRun(c, 'cancel_recurring_charge_run'),
 );
 
 recurringDuesRoutes.post('/:id/late-fees/preview', async (c) => {

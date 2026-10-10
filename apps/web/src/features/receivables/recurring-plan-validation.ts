@@ -32,10 +32,17 @@ function parseDay(value: string) {
   return Number.isInteger(day) && day >= 1 && day <= 28 ? day : null;
 }
 
-export function validateRecurringPlanDraft(draft: RecurringPlanDraft): RecurringPlanValidation {
+export function validateRecurringPlanDraft(
+  draft: RecurringPlanDraft,
+  conceptCategory?: string,
+): RecurringPlanValidation {
   const errors: RecurringPlanValidation['errors'] = {};
 
   if (!uuidPattern.test(draft.conceptId)) errors.conceptId = 'Selecciona un concepto.';
+  else if (conceptCategory && conceptCategory !== 'regular_dues') {
+    errors.conceptId =
+      'Las cuotas ordinarias recurrentes solo pueden usar un concepto de cuota regular.';
+  }
   if (!uuidPattern.test(draft.financialScopeId)) {
     errors.financialScopeId = 'Selecciona un ámbito financiero.';
   }

@@ -38,6 +38,12 @@ describe('HAB-336 recurring plan semantic validation', () => {
     expect(result.errors.financialScopeId).toBe('Selecciona un ámbito financiero.');
   });
 
+  it('does not allow an extraordinary concept to be reused as an ordinary recurring plan', () => {
+    const result = validateRecurringPlanDraft(validDraft, 'extraordinary_dues');
+    expect(result.valid).toBe(false);
+    expect(result.errors.conceptId).toContain('cuota regular');
+  });
+
   it('rejects due day before issue day and days outside 1..28', () => {
     expect(
       validateRecurringPlanDraft({ ...validDraft, issueDay: '15', dueDay: '10' }).errors.dueDay,

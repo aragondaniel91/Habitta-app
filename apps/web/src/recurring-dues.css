@@ -170,12 +170,24 @@
 .recurring-dues-compact-list > div,
 .recurring-dues-history > div {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 11px 12px;
+}
+
+.recurring-dues-history > div {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.recurring-dues-compact-list__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .recurring-dues-plan-grid {
@@ -202,6 +214,19 @@
 
 .recurring-dues-plan-grid article > b {
   font-size: 18px;
+}
+
+.recurring-dues-plan-warning {
+  color: var(--amber);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.recurring-dues-governance-event {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
 }
 
 .recurring-dues-plan-grid article .button {
@@ -436,6 +461,10 @@
   .recurring-dues-history > div,
   .recurring-dues-allocation > div {
     grid-template-columns: 1fr;
+  }
+
+  .recurring-dues-compact-list__actions {
+    justify-content: flex-start;
   }
 
   .recurring-dues-unit-picker label {
