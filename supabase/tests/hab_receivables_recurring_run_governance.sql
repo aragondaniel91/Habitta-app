@@ -26,8 +26,16 @@ insert into public.financial_scopes (id, condominium_id, kind, code, name, creat
 values ('95050000-0000-0000-0000-000000000001', '95010000-0000-0000-0000-000000000001', 'condominium', 'general', 'General', '00000000-0000-0000-0000-000000095501');
 insert into public.recurring_charge_plans (id, condominium_id, concept_id, financial_scope_id, name, distribution, amount, currency_code, starts_on, created_by)
 values ('95060000-0000-0000-0000-000000000001', '95010000-0000-0000-0000-000000000001', '95040000-0000-0000-0000-000000000001', '95050000-0000-0000-0000-000000000001', 'Plan', 'fixed_per_unit', 10, 'USD', '2026-01-01', '00000000-0000-0000-0000-000000095501');
-insert into public.recurring_charge_runs (id, condominium_id, plan_id, period, issue_date, due_date, currency_code, status, distribution_snapshot, total_amount, prepared_at, prepared_by)
-values ('95070000-0000-0000-0000-000000000001', '95010000-0000-0000-0000-000000000001', '95060000-0000-0000-0000-000000000001', '2026-01', '2026-01-01', '2026-01-10', 'USD', 'pending_review', '[]', 10, now(), '00000000-0000-0000-0000-000000095501');
+-- Creating the plan schedules its first run via recurring_plan_schedule_initial_run.
+-- Reuse that run instead of inserting a duplicate (plan_id, period) test fixture.
+update public.recurring_charge_runs
+set id = '95070000-0000-0000-0000-000000000001',
+    status = 'pending_review',
+    distribution_snapshot = '[]'::jsonb,
+    total_amount = 10,
+    prepared_at = now(),
+    prepared_by = '00000000-0000-0000-0000-000000095501'
+where plan_id = '95060000-0000-0000-0000-000000000001' and period = '2026-01';
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000095501', true);

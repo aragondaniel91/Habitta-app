@@ -120,10 +120,16 @@ describe('HAB-347 recurring dues domain errors', () => {
   });
 
   it('maps governed review decisions without leaking database messages', () => {
-    expect(recurringDomainFailureFromPostgrest({ message: 'recurring run governance reason is required' }))
-      .toMatchObject({ status: 422, error: 'recurring_run_reason_required' });
-    expect(recurringDomainFailureFromPostgrest({ message: 'only pending review recurring runs can be returned for correction' }))
-      .toMatchObject({ status: 409, error: 'recurring_run_not_returnable' });
+    expect(
+      recurringDomainFailureFromPostgrest({
+        message: 'recurring run governance reason is required',
+      }),
+    ).toMatchObject({ status: 422, error: 'recurring_run_reason_required' });
+    expect(
+      recurringDomainFailureFromPostgrest({
+        message: 'only pending review recurring runs can be returned for correction',
+      }),
+    ).toMatchObject({ status: 409, error: 'recurring_run_not_returnable' });
   });
 
   it('fails closed for unknown PostgREST or PostgreSQL messages', () => {
@@ -149,10 +155,12 @@ describe('HAB-347 recurring dues domain errors', () => {
 
 describe('HAB recurring-run governance API contract', () => {
   it('uses scoped protected RPCs and requires a documented reason', () => {
-    expect(source).toContain("const runGovernanceSchema = z.object({ reason: z.string().trim().min(1).max(1000) })");
+    expect(source).toContain(
+      'const runGovernanceSchema = z.object({ reason: z.string().trim().min(1).max(1000) })',
+    );
     expect(source).toContain("'return_recurring_charge_run_for_correction'");
     expect(source).toContain("'cancel_recurring_charge_run'");
-    expect(source).toContain("target_run: runId");
+    expect(source).toContain('target_run: runId');
     expect(source).toContain('return_reason: parsed.reason');
     expect(source).toContain('cancellation_reason: parsed.reason');
     expect(source).toContain('recurring_charge_run_governance_events(*)');

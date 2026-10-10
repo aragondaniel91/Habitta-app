@@ -262,7 +262,8 @@ const recurringDomainFailures: Record<string, RecurringDomainFailure> = {
   'recurring charge plan requires regular dues concept': {
     status: 422,
     error: 'recurring_plan_requires_regular_dues_concept',
-    publicMessage: 'Las cuotas ordinarias recurrentes solo pueden usar un concepto de cuota regular.',
+    publicMessage:
+      'Las cuotas ordinarias recurrentes solo pueden usar un concepto de cuota regular.',
   },
   'recurring run governance reason is required': {
     status: 422,

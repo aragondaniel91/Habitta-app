@@ -810,11 +810,16 @@ export function RecurringDuesWorkspace({
                             );
                           })}
                           {(run.recurring_charge_run_governance_events ?? []).map((event) => (
-                            <p className="recurring-dues-governance-event" key={event.id} role="note">
+                            <p
+                              className="recurring-dues-governance-event"
+                              key={event.id}
+                              role="note"
+                            >
                               {event.action === 'returned_for_correction'
                                 ? 'Devuelto para corrección'
                                 : 'Cancelado'}{' '}
-                              · {event.reason} · {new Date(event.created_at).toLocaleString('es-VE')}
+                              · {event.reason} ·{' '}
+                              {new Date(event.created_at).toLocaleString('es-VE')}
                             </p>
                           ))}
                         </div>
@@ -984,7 +989,7 @@ export function RecurringDuesWorkspace({
                                   ? 'Primero resuelve la cuota pendiente de revisión.'
                                   : hasIncompatibleConcept
                                     ? 'Elige explícitamente un concepto de cuota regular antes de crear otro período.'
-                                  : 'Editar configuración de la cuota'
+                                    : 'Editar configuración de la cuota'
                             }
                             variant="secondary"
                           >
@@ -1092,8 +1097,12 @@ export function RecurringDuesWorkspace({
       {runToGovern ? (
         <ConfirmDialog
           busy={busyId === `${runToGovern.action}:${runToGovern.run.id}`}
-          busyLabel={runToGovern.action === 'cancel' ? 'Cancelando período…' : 'Devolviendo período…'}
-          confirmLabel={runToGovern.action === 'cancel' ? 'Cancelar período' : 'Devolver para corrección'}
+          busyLabel={
+            runToGovern.action === 'cancel' ? 'Cancelando período…' : 'Devolviendo período…'
+          }
+          confirmLabel={
+            runToGovern.action === 'cancel' ? 'Cancelar período' : 'Devolver para corrección'
+          }
           description={
             runToGovern.action === 'cancel'
               ? `Cancelarás el período ${runToGovern.run.period}. No se creará deuda, cuentas por cobrar ni asientos; esta decisión queda trazable y no se puede revertir.`
@@ -1107,7 +1116,11 @@ export function RecurringDuesWorkspace({
             }
           }}
           onConfirm={() => void governRun()}
-          title={runToGovern.action === 'cancel' ? 'Cancelar período recurrente' : 'Devolver para corrección'}
+          title={
+            runToGovern.action === 'cancel'
+              ? 'Cancelar período recurrente'
+              : 'Devolver para corrección'
+          }
         >
           <Field label="Motivo documentado" required>
             <textarea
@@ -1393,7 +1406,8 @@ export function RecurringDuesWorkspace({
                       <option value="">Selecciona un concepto</option>
                       {selectedPlanConcept && selectedPlanConcept.category !== 'regular_dues' ? (
                         <option disabled value={selectedPlanConcept.id}>
-                          {selectedPlanConcept.name} (concepto histórico no apto para cuota ordinaria)
+                          {selectedPlanConcept.name} (concepto histórico no apto para cuota
+                          ordinaria)
                         </option>
                       ) : null}
                       {ordinaryConcepts.map((concept) => (

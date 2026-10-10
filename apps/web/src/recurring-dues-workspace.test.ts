@@ -79,7 +79,7 @@ describe('HAB-185 recurring dues workspace contract', () => {
     // no longer be reopened.
     expect(workspaceSource).toContain('const latestGovernanceEvent = (run: RecurringRun)');
     expect(workspaceSource).toContain('Devuelta para corrección ·');
-    expect(workspaceSource).toContain("aria-label=\"Períodos cancelados\"");
+    expect(workspaceSource).toContain('aria-label="Períodos cancelados"');
     expect(workspaceSource).toContain('const cancelledRuns = runs');
     expect(recurringApiSource).toContain(
       'recurring_charge_run_governance_events.order=created_at.desc',
