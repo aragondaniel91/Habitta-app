@@ -1,6 +1,7 @@
 .account-statement-drawer {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 
 .receivables-drawer__body {
@@ -10,14 +11,19 @@
 
 .account-statement-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(140px, 1fr)) auto;
+  grid-template-columns: minmax(190px, 1.5fr) repeat(2, minmax(130px, 0.75fr)) auto;
   gap: 12px;
   align-items: end;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-subtle, rgba(15, 23, 42, 0.025));
 }
 
 .account-statement-filters input,
 .account-statement-filters select {
   width: 100%;
+  min-width: 0;
 }
 
 .account-statement-identity,
@@ -30,6 +36,12 @@
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
   padding: 14px;
+}
+
+.account-statement-identity {
+  padding: 18px;
+  border-color: color-mix(in srgb, var(--blue) 22%, var(--border-subtle));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--blue) 7%, var(--surface)), var(--surface));
 }
 
 .account-statement-identity > div:first-child,
@@ -59,16 +71,47 @@
 
 .account-statement-balance-section,
 .account-statement-owners,
-.account-statement-movements {
+.account-statement-movements,
+.account-statement-period-summary {
   display: grid;
   gap: 10px;
 }
 
+.account-statement-financial-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.account-statement-financial-overview > .account-statement-period-summary {
+  grid-column: 1 / -1;
+}
+
+.account-statement-financial-overview > .account-statement-balance-section[data-emphasis='primary'] {
+  grid-column: 1 / -1;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--blue) 24%, var(--border-subtle));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--blue) 4%, var(--surface));
+}
+
+.account-statement-financial-overview
+  > .account-statement-balance-section[data-emphasis='primary']
+  .account-statement-balance-grid article {
+  background: var(--surface);
+}
+
 .account-statement-section-heading {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.account-statement-section-heading > div {
+  display: grid;
+  gap: 4px;
 }
 
 .account-statement-balance-grid {
@@ -94,6 +137,47 @@
 
 .account-statement-balance-grid article strong {
   font-size: 18px;
+}
+
+.account-statement-period-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 9px;
+}
+
+.account-statement-period-summary__grid article {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-subtle, rgba(15, 23, 42, 0.025));
+  padding: 12px;
+}
+
+.account-statement-period-summary__grid dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.account-statement-period-summary__grid dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.account-statement-period-summary__grid dt {
+  color: var(--text-secondary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.account-statement-period-summary__grid dd {
+  margin: 0;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .account-statement-owners > div:last-child,
@@ -180,6 +264,7 @@
   gap: 10px;
   align-items: center;
   text-align: right;
+  min-width: 0;
 }
 
 .account-statement-movement-list article > div:last-child strong {
@@ -216,6 +301,24 @@
   .account-statement-movement-list article > div:last-child {
     grid-template-columns: 1fr;
     text-align: left;
+  }
+
+  .account-statement-period-summary__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-statement-period-summary__grid dl > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .account-statement-period-summary__grid dd {
+    white-space: normal;
+  }
+
+  .account-statement-financial-overview {
+    grid-template-columns: 1fr;
   }
 }
 

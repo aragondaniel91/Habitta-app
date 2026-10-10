@@ -21,22 +21,42 @@ const wrapperSource = readFileSync(
   new URL('./pages/ReceivablesDrawers.tsx', import.meta.url),
   'utf8',
 );
+const statementStyles = readFileSync(new URL('./account-statement.css', import.meta.url), 'utf8');
+const receivablesDrawerStyles = readFileSync(
+  new URL('./receivables-drawers.css', import.meta.url),
+  'utf8',
+);
 
 describe('HAB-186 unit financial account UI contract', () => {
-  it('routes the receivables entry point through a discoverable financial administration hub', () => {
-    expect(wrapperSource).toContain('FinancialAdministrationDrawer');
-    expect(administrationSource).toContain('Estado de cuenta, solvencia y propiedad');
+  it('opens the account statement directly from the receivables entry point', () => {
+    expect(wrapperSource).toContain('AccountStatementDrawer');
+    expect(statementSource).toContain('Estado de cuenta y solvencia');
+    expect(administrationSource).toContain('Operaciones administrativas');
+    expect(administrationSource).toContain('Estado de cuenta.');
+    expect(administrationSource).not.toContain('Disponible en Estado de cuenta');
     expect(administrationSource).toContain('Política de moneda y solvencia');
     expect(administrationSource).toContain('Configurar política financiera');
     expect(administrationSource).toContain('Sin FX automático');
   });
 
-  it('keeps the authoritative unit account available from the administration hub', () => {
-    expect(administrationSource).toContain('AccountStatementDrawer');
+  it('keeps financial administration separate from the reading flow', () => {
+    expect(wrapperSource).toContain("mode === 'administration'");
+    expect(statementSource).not.toContain('<OwnershipTransferPanel');
+    expect(statementSource).not.toContain('<FinancialIntegrityPanel');
+    expect(administrationSource).toContain('<OwnershipTransferPanel');
     expect(statementSource).toContain('/account-statement');
     expect(statementSource).toContain('/solvency?asOf=');
     expect(statementSource).toContain('/solvency-certificates');
     expect(statementSource).toContain('Cuenta de la unidad');
+  });
+
+  it('owns its styles on direct entry and keeps the wide layout responsive', () => {
+    expect(statementSource).toContain("import '../../account-statement.css';");
+    expect(statementSource).toContain("import '../../hab186-financial-integrity.css';");
+    expect(receivablesDrawerStyles).toMatch(
+      /\.receivables-drawer\[data-wide\]\s*\{\s*width:\s*min\(800px, 100vw\);/,
+    );
+    expect(statementStyles).toContain('.account-statement-financial-overview');
   });
 
   it('never presents a mixed-currency total in the statement UI', () => {
@@ -47,8 +67,7 @@ describe('HAB-186 unit financial account UI contract', () => {
   });
 
   it('makes property transfer an explicit effective-dated workflow', () => {
-    expect(statementSource).toContain('<OwnershipTransferPanel');
-    expect(administrationSource).toMatch(/transferencia de\s+propiedad con fecha efectiva/);
+    expect(administrationSource).toMatch(/Transferencia de propiedad/);
     expect(transferSource).toContain('/ownership-transfers');
     expect(transferSource).toContain(
       'Las alícuotas de los nuevos propietarios deben sumar exactamente 100%.',

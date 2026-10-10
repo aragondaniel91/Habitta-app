@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import '../../account-statement.css';
+import '../../hab186-financial-integrity.css';
 import { Drawer } from '../../components/Drawer';
 import { CheckCircleIcon, ReportsIcon } from '../../components/icons';
 import { Badge, Button, EmptyState, Field, Select, Skeleton } from '../../components/ui';
@@ -9,8 +11,6 @@ import { formatDashboardAmount, formatDashboardDate } from '../../lib/dashboard'
 import type { ReceivableUnit } from '../../lib/receivables';
 import { canManage, useCondominiumRoles } from '../../lib/roles';
 import { unitReferenceLabel } from '../../lib/unit-domain';
-import { FinancialIntegrityPanel } from './FinancialIntegrityPanel';
-import { OwnershipTransferPanel } from './OwnershipTransferPanel';
 
 type Amount = string | number;
 
@@ -53,6 +53,17 @@ type AccountStatement = {
   opening_balances: Balance[];
   movements: StatementMovement[];
   closing_balances: Balance[];
+};
+
+type MovementTotals = {
+  currency_code: string;
+  entries: MovementTotal[];
+};
+
+type MovementTotal = {
+  key: string;
+  label: string;
+  amount: number;
 };
 
 type SolvencyEvaluation = {
@@ -104,10 +115,18 @@ function statementCsv(statement: AccountStatement) {
   );
 }
 
-function BalanceCards({ title, balances }: { title: string; balances: Balance[] }) {
+function BalanceCards({
+  title,
+  balances,
+  emphasis = 'standard',
+}: {
+  title: string;
+  balances: Balance[];
+  emphasis?: 'primary' | 'standard';
+}) {
   if (!balances.length) return null;
   return (
-    <section className="account-statement-balance-section">
+    <section className="account-statement-balance-section" data-emphasis={emphasis}>
       <div className="account-statement-section-heading">
         <strong>{title}</strong>
         <span>Cada moneda se mantiene separada.</span>
@@ -117,6 +136,108 @@ function BalanceCards({ title, balances }: { title: string; balances: Balance[] 
           <article key={balance.currency_code}>
             <span>{balance.currency_code}</span>
             <strong>{formatDashboardAmount(balance.amount, balance.currency_code)}</strong>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function amountAsNumber(amount: Amount | null) {
+  if (amount == null) return 0;
+  const parsed = Number(amount);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function movementLabel(movement: StatementMovement) {
+  switch (movement.entry_type) {
+    case 'charge':
+      return 'Cargo';
+    case 'opening_debit':
+      return 'Saldo inicial (débito)';
+    case 'opening_credit':
+      return 'Saldo inicial (crédito)';
+    case 'adjustment_debit':
+      return 'Ajuste (débito)';
+    case 'adjustment_credit':
+      return 'Ajuste (crédito)';
+    case 'payment_credit':
+      return 'Pago aplicado';
+    case 'late_fee_charge':
+      return 'Recargo por mora';
+    case 'reversal':
+      return movement.debit != null ? 'Reversión (débito)' : 'Reversión (crédito)';
+    default:
+      return movement.entry_type;
+  }
+}
+
+function movementSummaryCategory(movement: StatementMovement) {
+  const direction = movement.debit != null ? 'debit' : 'credit';
+  switch (movement.entry_type) {
+    case 'charge':
+      return { key: 'charge', label: 'Cargos' };
+    case 'opening_debit':
+    case 'opening_credit':
+    case 'adjustment_debit':
+    case 'adjustment_credit':
+      return { key: movement.entry_type, label: movementLabel(movement) };
+    case 'payment_credit':
+      return { key: 'payment_credit', label: 'Pagos aplicados' };
+    case 'late_fee_charge':
+      return { key: 'late_fee_charge', label: 'Recargos por mora' };
+    case 'reversal':
+      return { key: `reversal_${direction}`, label: movementLabel(movement) };
+    default:
+      return { key: `${movement.entry_type}_${direction}`, label: movementLabel(movement) };
+  }
+}
+
+function movementTotals(movements: StatementMovement[]): MovementTotals[] {
+  const totalsByCurrency = new Map<string, MovementTotals>();
+
+  for (const movement of movements) {
+    const total = totalsByCurrency.get(movement.currency_code) ?? {
+      currency_code: movement.currency_code,
+      entries: [],
+    };
+    const category = movementSummaryCategory(movement);
+    const entry = total.entries.find((candidate) => candidate.key === category.key);
+    const amount = amountAsNumber(movement.debit ?? movement.credit);
+    if (entry) entry.amount += amount;
+    else total.entries.push({ ...category, amount });
+    totalsByCurrency.set(movement.currency_code, total);
+  }
+
+  return [...totalsByCurrency.values()].sort((left, right) =>
+    left.currency_code.localeCompare(right.currency_code),
+  );
+}
+
+function PeriodMovementSummary({ movements }: { movements: StatementMovement[] }) {
+  const totals = movementTotals(movements);
+  if (!totals.length) return null;
+
+  return (
+    <section className="account-statement-period-summary">
+      <div className="account-statement-section-heading">
+        <div>
+          <strong>Actividad del período</strong>
+          <span>Los movimientos se separan por tipo y moneda, sin conversión.</span>
+        </div>
+      </div>
+      <div className="account-statement-period-summary__grid">
+        {totals.map((total) => (
+          <article key={total.currency_code}>
+            <strong>{total.currency_code}</strong>
+            <dl>
+              {total.entries.map((entry) => (
+                <div key={entry.key}>
+                  <dt>{entry.label}</dt>
+                  <dd>{formatDashboardAmount(entry.amount, total.currency_code)}</dd>
+                </div>
+              ))}
+            </dl>
           </article>
         ))}
       </div>
@@ -314,31 +435,15 @@ export function AccountStatementDrawer({
               </div>
             </section>
 
-            {statement.owners.length ? (
-              <section className="account-statement-owners">
-                <div className="account-statement-section-heading">
-                  <strong>Propietarios del período</strong>
-                  <span>
-                    La identidad cambia; la cuenta y su historial permanecen en la unidad.
-                  </span>
-                </div>
-                <div>
-                  {statement.owners.map((owner) => (
-                    <article key={`${owner.person_id}-${owner.starts_at ?? ''}`}>
-                      <div>
-                        <strong>{owner.name}</strong>
-                      </div>
-                      {owner.ownership_percentage != null ? (
-                        <Badge tone="info">{owner.ownership_percentage}%</Badge>
-                      ) : null}
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            <BalanceCards balances={statement.opening_balances} title="Saldo inicial" />
-            <BalanceCards balances={statement.closing_balances} title="Saldo al cierre" />
+            <section className="account-statement-financial-overview" aria-label="Resumen financiero">
+              <BalanceCards
+                balances={statement.closing_balances}
+                emphasis="primary"
+                title="Saldo al cierre"
+              />
+              <BalanceCards balances={statement.opening_balances} title="Saldo inicial" />
+              <PeriodMovementSummary movements={statement.movements} />
+            </section>
 
             <section
               className="account-statement-solvency"
@@ -377,19 +482,25 @@ export function AccountStatementDrawer({
               </section>
             ) : null}
 
-            {manage && selectedUnit ? (
-              <OwnershipTransferPanel
-                condominiumId={condominiumId}
-                currentOwners={statement.owners}
-                onTransferred={() => void load()}
-                session={session}
-                unitId={selectedUnit.id}
-                unitLabel={selectedUnitLabel ?? selectedUnit.code}
-              />
-            ) : null}
-
-            {manage ? (
-              <FinancialIntegrityPanel condominiumId={condominiumId} session={session} />
+            {statement.owners.length ? (
+              <section className="account-statement-owners">
+                <div className="account-statement-section-heading">
+                  <strong>Titularidad registrada</strong>
+                  <span>La administración de propiedad se gestiona fuera del estado de cuenta.</span>
+                </div>
+                <div>
+                  {statement.owners.map((owner) => (
+                    <article key={`${owner.person_id}-${owner.starts_at ?? ''}`}>
+                      <div>
+                        <strong>{owner.name}</strong>
+                      </div>
+                      {owner.ownership_percentage != null ? (
+                        <Badge tone="info">{owner.ownership_percentage}%</Badge>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
             ) : null}
 
             {statement.movements.length ? (
@@ -404,7 +515,7 @@ export function AccountStatementDrawer({
                       <div>
                         <strong>{movement.description}</strong>
                         <span>
-                          {formatDashboardDate(movement.effective_date)} · {movement.entry_type}
+                          {formatDashboardDate(movement.effective_date)} · {movementLabel(movement)}
                         </span>
                       </div>
                       <div>
