@@ -760,14 +760,22 @@ export function RequestDetailDrawer({
           }),
         },
       );
-      setMessage(openWorkOrders.length ? 'Se abrió la orden existente o se registró la intervención adicional.' : 'Orden de trabajo creada y vinculada a la solicitud.');
+      setMessage(
+        openWorkOrders.length
+          ? 'Se abrió la orden existente o se registró la intervención adicional.'
+          : 'Orden de trabajo creada y vinculada a la solicitud.',
+      );
       setWorkOrderIntentKey('');
       setShowAdditionalWorkOrder(false);
       setAdditionalScope('');
       await loadDetail();
       window.location.assign(`/app/maintenance?workOrderId=${encodeURIComponent(created.id)}`);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear la orden de trabajo.');
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo crear la orden de trabajo.',
+      );
     } finally {
       workOrderCreationInFlight.current = false;
       setCreatingWorkOrder(false);
@@ -899,26 +907,92 @@ export function RequestDetailDrawer({
             <Surface className="request-management-panel request-work-orders-panel">
               <div className="requests-section-heading">
                 <span>Órdenes de trabajo</span>
-                <p>La primera orden conserva prioridad y ubicación; una nueva intervención exige un alcance distinto.</p>
+                <p>
+                  La primera orden conserva prioridad y ubicación; una nueva intervención exige un
+                  alcance distinto.
+                </p>
               </div>
               {detail?.workOrders.length ? (
                 <div className="request-work-orders" aria-label="Órdenes de trabajo vinculadas">
                   {detail.workOrders.map((workOrder) => (
-                    <button key={workOrder.id} onClick={() => window.location.assign(`/app/maintenance?workOrderId=${encodeURIComponent(workOrder.id)}`)} type="button">
-                      <strong>{workOrder.work_order_number}</strong><span>{workOrder.title}</span>
-                      <Badge tone={workOrder.status === 'completed' ? 'success' : 'warning'}>{workOrderStatusLabels[workOrder.status]}</Badge>
+                    <button
+                      key={workOrder.id}
+                      onClick={() =>
+                        window.location.assign(
+                          `/app/maintenance?workOrderId=${encodeURIComponent(workOrder.id)}`,
+                        )
+                      }
+                      type="button"
+                    >
+                      <strong>{workOrder.work_order_number}</strong>
+                      <span>{workOrder.title}</span>
+                      <Badge tone={workOrder.status === 'completed' ? 'success' : 'warning'}>
+                        {workOrderStatusLabels[workOrder.status]}
+                      </Badge>
                     </button>
                   ))}
                 </div>
-              ) : <p className="request-detail-empty">No hay órdenes vinculadas.</p>}
-              {!terminal ? <FormActions className="request-management-panel__actions">
-                {openWorkOrders.length ? <Button onClick={() => window.location.assign(`/app/maintenance?workOrderId=${encodeURIComponent(openWorkOrders[0]!.id)}`)} size="sm" type="button">Ver orden existente</Button> : <Button disabled={creatingWorkOrder} onClick={() => void createWorkOrder()} size="sm" type="button">{creatingWorkOrder ? 'Creando…' : 'Crear orden de trabajo'}</Button>}
-                <Button disabled={creatingWorkOrder} onClick={() => setShowAdditionalWorkOrder((value) => !value)} size="sm" type="button" variant="secondary">Crear otra intervención</Button>
-              </FormActions> : null}
-              {showAdditionalWorkOrder ? <div className="request-follow-up" role="group" aria-label="Intervención adicional">
-                <Field label="Alcance adicional" hint="Explica por qué esta intervención es distinta."><textarea className="textarea" onChange={(event) => setAdditionalScope(event.target.value)} rows={3} value={additionalScope} /></Field>
-                <Button disabled={creatingWorkOrder || additionalScope.trim().length < 3} onClick={() => void createWorkOrder(true)} size="sm" type="button">Confirmar intervención adicional</Button>
-              </div> : null}
+              ) : (
+                <p className="request-detail-empty">No hay órdenes vinculadas.</p>
+              )}
+              {!terminal ? (
+                <FormActions className="request-management-panel__actions">
+                  {openWorkOrders.length ? (
+                    <Button
+                      onClick={() =>
+                        window.location.assign(
+                          `/app/maintenance?workOrderId=${encodeURIComponent(openWorkOrders[0]!.id)}`,
+                        )
+                      }
+                      size="sm"
+                      type="button"
+                    >
+                      Ver orden existente
+                    </Button>
+                  ) : (
+                    <Button
+                      disabled={creatingWorkOrder}
+                      onClick={() => void createWorkOrder()}
+                      size="sm"
+                      type="button"
+                    >
+                      {creatingWorkOrder ? 'Creando…' : 'Crear orden de trabajo'}
+                    </Button>
+                  )}
+                  <Button
+                    disabled={creatingWorkOrder}
+                    onClick={() => setShowAdditionalWorkOrder((value) => !value)}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Crear otra intervención
+                  </Button>
+                </FormActions>
+              ) : null}
+              {showAdditionalWorkOrder ? (
+                <div className="request-follow-up" role="group" aria-label="Intervención adicional">
+                  <Field
+                    label="Alcance adicional"
+                    hint="Explica por qué esta intervención es distinta."
+                  >
+                    <textarea
+                      className="textarea"
+                      onChange={(event) => setAdditionalScope(event.target.value)}
+                      rows={3}
+                      value={additionalScope}
+                    />
+                  </Field>
+                  <Button
+                    disabled={creatingWorkOrder || additionalScope.trim().length < 3}
+                    onClick={() => void createWorkOrder(true)}
+                    size="sm"
+                    type="button"
+                  >
+                    Confirmar intervención adicional
+                  </Button>
+                </div>
+              ) : null}
             </Surface>
           ) : null}
           <div className="requests-section-heading">
@@ -1051,7 +1125,9 @@ export function RequestsPage({ condominiumId, condominiumName, session }: Props)
   const [filters, setFilters] = useState<ServiceRequestFilters>(initialFilters);
   const [view, setView] = useState<'board' | 'list'>('board');
   const [drawer, setDrawer] = useState<Drawer>(null);
-  const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get('requestId') ?? '');
+  const [selectedId, setSelectedId] = useState(
+    () => new URLSearchParams(window.location.search).get('requestId') ?? '',
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1105,7 +1181,9 @@ export function RequestsPage({ condominiumId, condominiumName, session }: Props)
   const stats = useMemo(() => getRequestStats(data?.requests ?? []), [data?.requests]);
   const selected = data?.requests.find((request) => request.id === selectedId);
 
-  useEffect(() => { if (selectedId && selected) setDrawer('detail'); }, [selected, selectedId]);
+  useEffect(() => {
+    if (selectedId && selected) setDrawer('detail');
+  }, [selected, selectedId]);
 
   const openDetail = (id: string) => {
     setSelectedId(id);

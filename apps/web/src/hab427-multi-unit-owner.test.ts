@@ -164,7 +164,7 @@ describe('HAB-427 the resident dashboard', () => {
   it('uses singular scope for one owned unit and plural scope only for several', () => {
     // The same RLS-scoped set that controls the selector controls this label. A resident with one
     // financial unit is not looking at an aggregate, even though no unit id is selected.
-    expect(dashboard).toContain("financialUnits.length === 1");
+    expect(dashboard).toContain('financialUnits.length === 1');
     expect(dashboard).toContain("? 'Saldo pendiente de tu unidad'");
     expect(dashboard).toContain("'Saldo pendiente de todas tus unidades'");
   });

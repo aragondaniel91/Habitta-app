@@ -228,5 +228,4 @@ describe('ReportsPage request ownership', () => {
     expect(findButton('VES').getAttribute('aria-pressed')).toBe('true');
     expect(host.textContent).toContain('C1-VES');
   });
-
 });

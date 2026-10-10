@@ -435,7 +435,10 @@ export function AccountStatementDrawer({
               </div>
             </section>
 
-            <section className="account-statement-financial-overview" aria-label="Resumen financiero">
+            <section
+              className="account-statement-financial-overview"
+              aria-label="Resumen financiero"
+            >
               <BalanceCards
                 balances={statement.closing_balances}
                 emphasis="primary"
@@ -486,7 +489,9 @@ export function AccountStatementDrawer({
               <section className="account-statement-owners">
                 <div className="account-statement-section-heading">
                   <strong>Titularidad registrada</strong>
-                  <span>La administración de propiedad se gestiona fuera del estado de cuenta.</span>
+                  <span>
+                    La administración de propiedad se gestiona fuera del estado de cuenta.
+                  </span>
                 </div>
                 <div>
                   {statement.owners.map((owner) => (

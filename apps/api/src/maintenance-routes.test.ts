@@ -15,7 +15,12 @@ const operationsWrapperSource = readFileSync(
   'utf8',
 );
 const idempotencyMigration = readFileSync(
-  fileURLToPath(new URL('../../../supabase/migrations/20261008110000_request_work_order_idempotency.sql', import.meta.url)),
+  fileURLToPath(
+    new URL(
+      '../../../supabase/migrations/20261008110000_request_work_order_idempotency.sql',
+      import.meta.url,
+    ),
+  ),
   'utf8',
 );
 
@@ -64,7 +69,9 @@ describe('maintenance routes contract', () => {
   });
 
   it('filters linked orders and forwards the request idempotency intent without weakening tenancy', () => {
-    expect(source).toContain("const requestId = c.req.query('requestId') ? uuid.parse(c.req.query('requestId')) : null");
+    expect(source).toContain(
+      "const requestId = c.req.query('requestId') ? uuid.parse(c.req.query('requestId')) : null",
+    );
     expect(source).toContain('requestId ? `request_id=eq.${requestId}` : null');
     expect(source).toContain('idempotencyKey: uuid.optional()');
     expect(source).toContain('idempotency_key: parsed.idempotencyKey ?? null');

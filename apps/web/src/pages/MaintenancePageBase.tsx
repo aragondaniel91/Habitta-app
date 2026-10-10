@@ -746,9 +746,14 @@ export function WorkOrderDetail({
   const [dueOn, setDueOn] = useState(workOrder.due_on ?? '');
 
   useEffect(() => {
-    setAssetId(workOrder.asset_id ?? ''); setVendorId(workOrder.vendor_id ?? ''); setKind(workOrder.kind);
-    setPriority(workOrder.priority); setTitle(workOrder.title); setDescription(workOrder.description);
-    setScheduledFor(toDateTimeLocal(workOrder.scheduled_for)); setDueOn(workOrder.due_on ?? '');
+    setAssetId(workOrder.asset_id ?? '');
+    setVendorId(workOrder.vendor_id ?? '');
+    setKind(workOrder.kind);
+    setPriority(workOrder.priority);
+    setTitle(workOrder.title);
+    setDescription(workOrder.description);
+    setScheduledFor(toDateTimeLocal(workOrder.scheduled_for));
+    setDueOn(workOrder.due_on ?? '');
   }, [workOrder]);
 
   const loadLogs = useCallback(async () => {
@@ -769,24 +774,69 @@ export function WorkOrderDetail({
   }, [loadLogs]);
 
   useEffect(() => {
-    if (!workOrder.request_id) { setRequest(null); return; }
-    void apiRequest<ServiceRequestRecord>(`/v1/condominiums/${condominiumId}/requests/${workOrder.request_id}`, session).then(setRequest).catch(() => setRequest(null));
+    if (!workOrder.request_id) {
+      setRequest(null);
+      return;
+    }
+    void apiRequest<ServiceRequestRecord>(
+      `/v1/condominiums/${condominiumId}/requests/${workOrder.request_id}`,
+      session,
+    )
+      .then(setRequest)
+      .catch(() => setRequest(null));
   }, [condominiumId, session, workOrder.request_id]);
 
   const saveDraft = async (event: FormEvent) => {
     event.preventDefault();
     if (draftSaveInFlight.current) return;
-    if (dueOn && scheduledFor && dueOn < scheduledFor.slice(0, 10)) { setError('La fecha límite no puede ser anterior a la fecha programada.'); return; }
+    if (dueOn && scheduledFor && dueOn < scheduledFor.slice(0, 10)) {
+      setError('La fecha límite no puede ser anterior a la fecha programada.');
+      return;
+    }
     draftSaveInFlight.current = true;
-    setBusy(true); setError('');
+    setBusy(true);
+    setError('');
     try {
-      const updated = await apiRequest<MaintenanceWorkOrder>(`/v1/condominiums/${condominiumId}/maintenance/work-orders/${workOrder.id}`, session, { method: 'PUT', body: JSON.stringify({ assetId: assetId || null, requestId: workOrder.request_id, vendorId: vendorId || null, assignedToUserId: workOrder.assigned_to_user_id, kind, priority, title, description, scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null, dueOn: dueOn || null, expectedVersion: workOrder.version }) });
-      setEditing(false); onChanged(updated);
-    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar la orden.'); } finally { draftSaveInFlight.current = false; setBusy(false); }
+      const updated = await apiRequest<MaintenanceWorkOrder>(
+        `/v1/condominiums/${condominiumId}/maintenance/work-orders/${workOrder.id}`,
+        session,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            assetId: assetId || null,
+            requestId: workOrder.request_id,
+            vendorId: vendorId || null,
+            assignedToUserId: workOrder.assigned_to_user_id,
+            kind,
+            priority,
+            title,
+            description,
+            scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
+            dueOn: dueOn || null,
+            expectedVersion: workOrder.version,
+          }),
+        },
+      );
+      setEditing(false);
+      onChanged(updated);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : 'No se pudo guardar la orden.',
+      );
+    } finally {
+      draftSaveInFlight.current = false;
+      setBusy(false);
+    }
   };
 
-  const transition = async (status: Exclude<MaintenanceWorkOrderStatus, 'draft'>, confirmed = false) => {
-    if (status === 'cancelled' && !confirmed) { setConfirmCancellation(true); return; }
+  const transition = async (
+    status: Exclude<MaintenanceWorkOrderStatus, 'draft'>,
+    confirmed = false,
+  ) => {
+    if (status === 'cancelled' && !confirmed) {
+      setConfirmCancellation(true);
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -863,7 +913,27 @@ export function WorkOrderDetail({
         </Badge>
       </div>
       <dl className="maintenance-detail-grid">
-        {workOrder.request_id ? <div><dt>Solicitud vinculada</dt><dd><Button onClick={() => window.location.assign(`/app/requests?requestId=${encodeURIComponent(workOrder.request_id!)}`)} size="sm" type="button" variant="secondary">{request ? `${request.request_number} · ${request.title}` : 'Ver solicitud vinculada'}</Button></dd></div> : null}
+        {workOrder.request_id ? (
+          <div>
+            <dt>Solicitud vinculada</dt>
+            <dd>
+              <Button
+                onClick={() =>
+                  window.location.assign(
+                    `/app/requests?requestId=${encodeURIComponent(workOrder.request_id!)}`,
+                  )
+                }
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                {request
+                  ? `${request.request_number} · ${request.title}`
+                  : 'Ver solicitud vinculada'}
+              </Button>
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>Activo</dt>
           <dd>{asset ? `${asset.code} · ${asset.name}` : 'Trabajo general'}</dd>
@@ -890,16 +960,125 @@ export function WorkOrderDetail({
         </div>
       </dl>
 
-      {workOrder.status === 'draft' ? <section className="maintenance-detail__section">
-        <div className="maintenance-detail__section-heading"><h3>Datos de la orden</h3><Button disabled={busy} onClick={() => { setError(''); setEditing((value) => !value); }} size="sm" type="button" variant="secondary">{editing ? 'Cerrar edición' : 'Editar orden'}</Button></div>
-        {editing ? <form className="maintenance-form ux-form" onSubmit={(event) => void saveDraft(event)}>
-          <FormGrid><Field label="Activo" hint="Opcional para trabajos generales"><Select onChange={(event) => setAssetId(event.target.value)} value={assetId}><option value="">Sin activo específico</option>{assets.filter((item) => item.status !== 'retired').map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</Select></Field><Field label="Proveedor" hint="Opcional"><Select onChange={(event) => setVendorId(event.target.value)} value={vendorId}><option value="">Sin proveedor</option>{vendors.filter((item) => item.is_active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select></Field></FormGrid>
-          <FormGrid><Field label="Tipo"><Select onChange={(event) => setKind(event.target.value as typeof kind)} value={kind}><option value="corrective">Correctiva</option><option value="emergency">Emergencia</option><option value="inspection">Inspección</option><option value="preventive">Preventiva</option></Select></Field><Field label="Prioridad"><Select onChange={(event) => setPriority(event.target.value as MaintenancePriority)} value={priority}><option value="low">Baja</option><option value="normal">Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option></Select></Field></FormGrid>
-          <Field label="Título"><input className="input" minLength={3} onChange={(event) => setTitle(event.target.value)} required value={title} /></Field><Field label="Descripción"><textarea className="textarea" minLength={3} onChange={(event) => setDescription(event.target.value)} required rows={4} value={description} /></Field>
-          <FormGrid><Field label="Programar para" hint="Define fecha y hora local"><input className="input" onChange={(event) => setScheduledFor(event.target.value)} type="datetime-local" value={scheduledFor} /></Field><Field label="Fecha límite" hint="Opcional"><input className="input" min={scheduledFor.slice(0, 10) || undefined} onChange={(event) => setDueOn(event.target.value)} type="date" value={dueOn} /></Field></FormGrid>
-          <FormActions><Button disabled={busy || title.trim().length < 3 || description.trim().length < 3} type="submit">{busy ? 'Guardando…' : 'Guardar cambios'}</Button></FormActions>
-        </form> : null}
-      </section> : null}
+      {workOrder.status === 'draft' ? (
+        <section className="maintenance-detail__section">
+          <div className="maintenance-detail__section-heading">
+            <h3>Datos de la orden</h3>
+            <Button
+              disabled={busy}
+              onClick={() => {
+                setError('');
+                setEditing((value) => !value);
+              }}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              {editing ? 'Cerrar edición' : 'Editar orden'}
+            </Button>
+          </div>
+          {editing ? (
+            <form className="maintenance-form ux-form" onSubmit={(event) => void saveDraft(event)}>
+              <FormGrid>
+                <Field label="Activo" hint="Opcional para trabajos generales">
+                  <Select onChange={(event) => setAssetId(event.target.value)} value={assetId}>
+                    <option value="">Sin activo específico</option>
+                    {assets
+                      .filter((item) => item.status !== 'retired')
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.code} · {item.name}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+                <Field label="Proveedor" hint="Opcional">
+                  <Select onChange={(event) => setVendorId(event.target.value)} value={vendorId}>
+                    <option value="">Sin proveedor</option>
+                    {vendors
+                      .filter((item) => item.is_active)
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              </FormGrid>
+              <FormGrid>
+                <Field label="Tipo">
+                  <Select
+                    onChange={(event) => setKind(event.target.value as typeof kind)}
+                    value={kind}
+                  >
+                    <option value="corrective">Correctiva</option>
+                    <option value="emergency">Emergencia</option>
+                    <option value="inspection">Inspección</option>
+                    <option value="preventive">Preventiva</option>
+                  </Select>
+                </Field>
+                <Field label="Prioridad">
+                  <Select
+                    onChange={(event) => setPriority(event.target.value as MaintenancePriority)}
+                    value={priority}
+                  >
+                    <option value="low">Baja</option>
+                    <option value="normal">Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="urgent">Urgente</option>
+                  </Select>
+                </Field>
+              </FormGrid>
+              <Field label="Título">
+                <input
+                  className="input"
+                  minLength={3}
+                  onChange={(event) => setTitle(event.target.value)}
+                  required
+                  value={title}
+                />
+              </Field>
+              <Field label="Descripción">
+                <textarea
+                  className="textarea"
+                  minLength={3}
+                  onChange={(event) => setDescription(event.target.value)}
+                  required
+                  rows={4}
+                  value={description}
+                />
+              </Field>
+              <FormGrid>
+                <Field label="Programar para" hint="Define fecha y hora local">
+                  <input
+                    className="input"
+                    onChange={(event) => setScheduledFor(event.target.value)}
+                    type="datetime-local"
+                    value={scheduledFor}
+                  />
+                </Field>
+                <Field label="Fecha límite" hint="Opcional">
+                  <input
+                    className="input"
+                    min={scheduledFor.slice(0, 10) || undefined}
+                    onChange={(event) => setDueOn(event.target.value)}
+                    type="date"
+                    value={dueOn}
+                  />
+                </Field>
+              </FormGrid>
+              <FormActions>
+                <Button
+                  disabled={busy || title.trim().length < 3 || description.trim().length < 3}
+                  type="submit"
+                >
+                  {busy ? 'Guardando…' : 'Guardar cambios'}
+                </Button>
+              </FormActions>
+            </form>
+          ) : null}
+        </section>
+      ) : null}
 
       {workOrder.status !== 'completed' && workOrder.status !== 'cancelled' ? (
         <section className="maintenance-detail__section">
@@ -908,10 +1087,22 @@ export function WorkOrderDetail({
           !workOrder.scheduled_for &&
           !workOrder.due_on ? (
             <p className="maintenance-detail__hint">
-              Esta orden necesita una fecha antes de poder programarse. {workOrder.status === 'draft' ? <Button onClick={() => setEditing(true)} size="sm" type="button" variant="secondary">Agregar fecha</Button> : null}
+              Esta orden necesita una fecha antes de poder programarse.{' '}
+              {workOrder.status === 'draft' ? (
+                <Button
+                  onClick={() => setEditing(true)}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  Agregar fecha
+                </Button>
+              ) : null}
             </p>
           ) : null}
-          {workOrder.status === 'draft' || workOrder.status === 'scheduled' || workOrder.status === 'in_progress' ? (
+          {workOrder.status === 'draft' ||
+          workOrder.status === 'scheduled' ||
+          workOrder.status === 'in_progress' ? (
             <Field label="Nota de cierre o cancelación">
               <textarea
                 className="textarea"
@@ -923,7 +1114,23 @@ export function WorkOrderDetail({
           ) : null}
           <div className="maintenance-detail__actions">
             {workOrder.status === 'draft' ? (
-              <><Button disabled={busy || (!workOrder.scheduled_for && !workOrder.due_on)} onClick={() => void transition('scheduled')} size="sm">Programar</Button><Button disabled={busy || note.trim().length < 3} onClick={() => void transition('cancelled')} size="sm" variant="danger">Cancelar orden</Button></>
+              <>
+                <Button
+                  disabled={busy || (!workOrder.scheduled_for && !workOrder.due_on)}
+                  onClick={() => void transition('scheduled')}
+                  size="sm"
+                >
+                  Programar
+                </Button>
+                <Button
+                  disabled={busy || note.trim().length < 3}
+                  onClick={() => void transition('cancelled')}
+                  size="sm"
+                  variant="danger"
+                >
+                  Cancelar orden
+                </Button>
+              </>
             ) : null}
             {workOrder.status === 'scheduled' ? (
               <Button disabled={busy} onClick={() => void transition('in_progress')} size="sm">
@@ -1049,7 +1256,19 @@ export function WorkOrderDetail({
           <p className="maintenance-detail__hint">Aún no hay servicios registrados.</p>
         )}
       </section>
-      {confirmCancellation ? <ConfirmDialog confirmLabel="Cancelar orden" description="La orden se conservará como cancelada con el motivo indicado." destructive onCancel={() => setConfirmCancellation(false)} onConfirm={() => { setConfirmCancellation(false); void transition('cancelled', true); }} title="¿Cancelar orden de trabajo?" /> : null}
+      {confirmCancellation ? (
+        <ConfirmDialog
+          confirmLabel="Cancelar orden"
+          description="La orden se conservará como cancelada con el motivo indicado."
+          destructive
+          onCancel={() => setConfirmCancellation(false)}
+          onConfirm={() => {
+            setConfirmCancellation(false);
+            void transition('cancelled', true);
+          }}
+          title="¿Cancelar orden de trabajo?"
+        />
+      ) : null}
     </div>
   );
 }
@@ -1060,7 +1279,9 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('overview');
   const [drawer, setDrawer] = useState<Drawer>(null);
-  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState(() => new URLSearchParams(window.location.search).get('workOrderId') ?? '');
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState(
+    () => new URLSearchParams(window.location.search).get('workOrderId') ?? '',
+  );
   const [assetQuery, setAssetQuery] = useState('');
   const [assetStatus, setAssetStatus] = useState<MaintenanceAssetStatus | ''>('');
   const [workOrderQuery, setWorkOrderQuery] = useState('');
@@ -1137,7 +1358,9 @@ export function MaintenancePage({ condominiumId, condominiumName, session }: Pro
     [data.workOrders, workOrderQuery, workOrderStatus, workOrderPriority],
   );
   const selectedWorkOrder = data.workOrders.find((item) => item.id === selectedWorkOrderId);
-  useEffect(() => { if (selectedWorkOrderId && selectedWorkOrder) setDrawer('detail'); }, [selectedWorkOrder, selectedWorkOrderId]);
+  useEffect(() => {
+    if (selectedWorkOrderId && selectedWorkOrder) setDrawer('detail');
+  }, [selectedWorkOrder, selectedWorkOrderId]);
 
   const generateDue = async () => {
     setGenerating(true);

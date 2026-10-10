@@ -478,7 +478,11 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
       downloaded.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo descargar el archivo de Excel.');
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo descargar el archivo de Excel.',
+      );
     } finally {
       setExportingXlsx(false);
     }
@@ -532,7 +536,12 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
             <Button onClick={exportCsv} size="sm">
               Exportar CSV
             </Button>
-            <Button disabled={exportingXlsx} onClick={() => void exportXlsx()} size="sm" variant="secondary">
+            <Button
+              disabled={exportingXlsx}
+              onClick={() => void exportXlsx()}
+              size="sm"
+              variant="secondary"
+            >
               {exportingXlsx ? 'Preparando Excel…' : 'Descargar Excel'}
             </Button>
           </>

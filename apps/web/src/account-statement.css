@@ -41,7 +41,11 @@
 .account-statement-identity {
   padding: 18px;
   border-color: color-mix(in srgb, var(--blue) 22%, var(--border-subtle));
-  background: linear-gradient(120deg, color-mix(in srgb, var(--blue) 7%, var(--surface)), var(--surface));
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--blue) 7%, var(--surface)),
+    var(--surface)
+  );
 }
 
 .account-statement-identity > div:first-child,
@@ -88,7 +92,8 @@
   grid-column: 1 / -1;
 }
 
-.account-statement-financial-overview > .account-statement-balance-section[data-emphasis='primary'] {
+.account-statement-financial-overview
+  > .account-statement-balance-section[data-emphasis='primary'] {
   grid-column: 1 / -1;
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--blue) 24%, var(--border-subtle));
@@ -98,7 +103,8 @@
 
 .account-statement-financial-overview
   > .account-statement-balance-section[data-emphasis='primary']
-  .account-statement-balance-grid article {
+  .account-statement-balance-grid
+  article {
   background: var(--surface);
 }
 
