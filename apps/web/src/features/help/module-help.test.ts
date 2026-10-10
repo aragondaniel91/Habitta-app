@@ -43,4 +43,20 @@ describe('contextual module help', () => {
     expect(MODULE_HELP.fees.importKinds).toEqual(['opening_balances']);
     expect(MODULE_HELP.payments.importKinds).toBeUndefined();
   });
+
+  it('describes the separate vendor directory workflow for expenses', () => {
+    const expensesHelp = [
+      ...MODULE_HELP.expenses.actions,
+      ...MODULE_HELP.expenses.steps,
+      ...(MODULE_HELP.expenses.troubleshooting ?? []),
+    ].join(' ');
+
+    expect(expensesHelp).toContain('Directorio de proveedores');
+    expect(expensesHelp).toContain('Nuevo proveedor');
+    expect(expensesHelp).toContain('Editar');
+    expect(expensesHelp).toContain('Archivar');
+    expect(expensesHelp).toContain('Reactivar');
+    expect(expensesHelp).toContain('gastos históricos permanecen vinculados');
+    expect(expensesHelp).not.toContain('Categorías y proveedores');
+  });
 });

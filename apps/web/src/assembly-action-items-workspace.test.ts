@@ -50,4 +50,12 @@ describe('HAB-196 assembly action items workspace contract', () => {
     expect(workspaceSource).toContain('/app/requests');
     expect(workspaceSource).toContain('/app/maintenance');
   });
+
+  it('confirms cancellation and reports each action item mutation', () => {
+    expect(workspaceSource).toContain("import { ConfirmDialog } from '../../components/Dialog'");
+    expect(workspaceSource).toContain('cancellationPendingItem');
+    expect(workspaceSource).toContain('transitionMessages');
+    expect(workspaceSource).toContain('governance-success-alert');
+    expect(workspaceSource).not.toContain('window.confirm');
+  });
 });

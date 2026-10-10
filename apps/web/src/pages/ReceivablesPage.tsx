@@ -349,6 +349,9 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             </Button>
             {manage ? (
               <>
+                <Button onClick={() => openDrawer('administration')} size="sm" variant="secondary">
+                  Administración financiera
+                </Button>
                 <Button onClick={() => setLateFeeDrawerOpen(true)} size="sm" variant="secondary">
                   Recargos por mora
                 </Button>

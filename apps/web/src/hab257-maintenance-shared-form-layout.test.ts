@@ -15,9 +15,9 @@ describe('HAB-257 Maintenance shared form layout', () => {
     expect(maintenanceSource).toContain(
       "import { FormActions, FormGrid } from '../components/FormLayout'",
     );
-    expect(count(maintenanceSource, '<FormGrid')).toBe(12);
+    expect(count(maintenanceSource, '<FormGrid')).toBe(15);
     expect(count(maintenanceSource, '<FormGrid columns={3}>')).toBe(3);
-    expect(count(maintenanceSource, '<FormActions>')).toBe(4);
+    expect(count(maintenanceSource, '<FormActions>')).toBe(5);
     expect(maintenanceSource).not.toContain('maintenance-form-grid');
     expect(maintenanceSource).not.toContain('maintenance-form__actions');
     expect(maintenanceSource).toContain('maintenance-detail__actions');

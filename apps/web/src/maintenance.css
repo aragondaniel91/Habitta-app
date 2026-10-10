@@ -541,6 +541,13 @@
   font-size: var(--ux-heading-sub);
 }
 
+.maintenance-detail__section-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
 .maintenance-detail__hint {
   margin-bottom: 0.8rem;
   font-size: 0.8rem;

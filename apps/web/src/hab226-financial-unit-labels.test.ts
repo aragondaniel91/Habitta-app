@@ -9,6 +9,7 @@ const residentUnitsSource = source('./lib/resident-units.ts');
 const receivablesPageSource = source('./pages/ReceivablesPage.tsx');
 const receivablesDrawersSource = source('./pages/ReceivablesDrawersImpl.tsx');
 const statementSource = source('./features/receivables/AccountStatementDrawer.tsx');
+const administrationSource = source('./features/receivables/FinancialAdministrationDrawer.tsx');
 const transferSource = source('./features/receivables/OwnershipTransferPanel.tsx');
 const recurringDuesSource = source('./features/receivables/RecurringDuesWorkspace.tsx');
 
@@ -75,8 +76,11 @@ describe('HAB-226 topology-safe financial unit labels', () => {
     expect(statementSource).toContain(
       "csvFileName('estado-de-cuenta', statement.account.unit_code)",
     );
-    expect(statementSource).toContain('unitId={selectedUnit.id}');
-    expect(statementSource).toContain('unitLabel={selectedUnitLabel ?? selectedUnit.code}');
+    // The statement is intentionally read-only apart from solvency issuance. Transfer is a
+    // separate administrative workflow, but its selected unit must remain UUID-backed.
+    expect(statementSource).not.toContain('<OwnershipTransferPanel');
+    expect(administrationSource).toContain('unitId={selectedUnit.id}');
+    expect(administrationSource).toContain('unitLabel={unitReferenceLabel({');
     expect(transferSource).toContain('unitLabel: string;');
     expect(transferSource).toContain('unitId: string;');
     expect(transferSource).toContain('Propiedad de {unitLabel}');

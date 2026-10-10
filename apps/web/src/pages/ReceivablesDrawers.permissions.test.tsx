@@ -19,7 +19,7 @@ const selectedReceivable = {
 
 const renderDrawer = (
   roles: Parameters<typeof RolesProvider>[0]['value'],
-  mode: 'receivable' | 'manual' | 'concept',
+  mode: 'receivable' | 'manual' | 'concept' | 'statement',
 ) =>
   renderToStaticMarkup(
     <RolesProvider value={roles}>
@@ -56,5 +56,13 @@ describe('Receivables write affordances', () => {
     expect(pageSource).toMatch(
       /receivables-tools-menu[\s\S]*\{manage \? \([\s\S]*Nuevo concepto[\s\S]*Importar saldos/,
     );
+  });
+
+  it('lets a read-only financial role enter the statement, without administration controls', () => {
+    const markup = renderDrawer(['board_member'], 'statement');
+    expect(markup).toContain('Selecciona una unidad');
+    expect(markup).toContain('Estado de cuenta y solvencia');
+    expect(markup).not.toContain('Configurar política financiera');
+    expect(markup).not.toContain('Emitir solvencia');
   });
 });

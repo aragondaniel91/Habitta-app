@@ -21,7 +21,7 @@ import {
 import type { ChargeConcept, ReceivableItem, ReceivableUnit } from '../lib/receivables';
 
 export type ReceivablesDrawerMode =
-  'receivable' | 'manual' | 'batch' | 'concept' | 'statement' | 'opening' | null;
+  'receivable' | 'manual' | 'batch' | 'concept' | 'statement' | 'administration' | 'opening' | null;
 
 type StatementRow = {
   effective_date: string;

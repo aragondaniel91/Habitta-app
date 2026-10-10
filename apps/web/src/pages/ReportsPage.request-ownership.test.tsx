@@ -128,6 +128,8 @@ describe('ReportsPage request ownership', () => {
   afterEach(() => {
     act(() => root.unmount());
     host.remove();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   const render = (condominiumId: string, token = 'token-1') =>

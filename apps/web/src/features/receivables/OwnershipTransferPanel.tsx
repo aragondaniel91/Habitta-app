@@ -219,14 +219,18 @@ export function OwnershipTransferPanel({
       ) : null}
 
       <div className="ownership-transfer-current">
-        {currentOwners.map((owner) => (
-          <div key={owner.person_id}>
-            <span>{owner.name}</span>
-            {owner.ownership_percentage != null ? (
-              <Badge tone="info">{owner.ownership_percentage}%</Badge>
-            ) : null}
-          </div>
-        ))}
+        {currentOwners.length ? (
+          currentOwners.map((owner) => (
+            <div key={owner.person_id}>
+              <span>{owner.name}</span>
+              {owner.ownership_percentage != null ? (
+                <Badge tone="info">{owner.ownership_percentage}%</Badge>
+              ) : null}
+            </div>
+          ))
+        ) : (
+          <span>No hay propietarios registrados para esta unidad.</span>
+        )}
       </div>
 
       {open ? (

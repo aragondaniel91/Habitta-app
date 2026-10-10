@@ -14,6 +14,15 @@ const operationsWrapperSource = readFileSync(
   fileURLToPath(new URL('./operations-routes.ts', import.meta.url)),
   'utf8',
 );
+const idempotencyMigration = readFileSync(
+  fileURLToPath(
+    new URL(
+      '../../../supabase/migrations/20261008110000_request_work_order_idempotency.sql',
+      import.meta.url,
+    ),
+  ),
+  'utf8',
+);
 
 describe('maintenance routes contract', () => {
   it('mounts maintenance under the authenticated condominium operations router', () => {
@@ -57,6 +66,18 @@ describe('maintenance routes contract', () => {
       source.match(/expectedVersion: z\.number\(\)\.int\(\)\.positive\(\)/g)?.length ?? 0,
     ).toBeGreaterThanOrEqual(3);
     expect(source).toContain('expected_version: parsed.expectedVersion');
+  });
+
+  it('filters linked orders and forwards the request idempotency intent without weakening tenancy', () => {
+    expect(source).toContain(
+      "const requestId = c.req.query('requestId') ? uuid.parse(c.req.query('requestId')) : null",
+    );
+    expect(source).toContain('requestId ? `request_id=eq.${requestId}` : null');
+    expect(source).toContain('idempotencyKey: uuid.optional()');
+    expect(source).toContain('idempotency_key: parsed.idempotencyKey ?? null');
+    expect(idempotencyMigration).toContain('pg_advisory_xact_lock');
+    expect(idempotencyMigration).toContain('maintenance_work_orders_request_intent_unique');
+    expect(idempotencyMigration).toContain('public.can_manage_maintenance(target_condominium)');
   });
 
   it('validates lifecycle, location and service cost invariants at the edge', () => {

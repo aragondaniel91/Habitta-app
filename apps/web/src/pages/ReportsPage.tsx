@@ -11,7 +11,7 @@ import {
 } from '../components/icons';
 import { Badge, Button, EmptyState, InfoHint, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
-import { apiRequest } from '../lib/api';
+import { apiBaseUrl, apiRequest } from '../lib/api';
 import {
   buildMonthlyFinancialSeries,
   formatDashboardAmount,
@@ -331,6 +331,7 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
   const [error, setError] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [period, setPeriod] = useState<ReportPeriod>(6);
+  const [exportingXlsx, setExportingXlsx] = useState(false);
 
   // A response belongs to the condominium that started it, not to the access token in effect at
   // that time. A Supabase session token refresh keeps the same tenant and must not be treated as
@@ -458,6 +459,35 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
     download('unidades', createUnitReportCsv(report.units, selectedCurrency));
   };
 
+  const exportXlsx = async () => {
+    if (exportingXlsx) return;
+    setExportingXlsx(true);
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/v1/condominiums/${condominiumId}/reports/financial.xlsx?months=${period}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } },
+      );
+      if (!response.ok) throw new Error('No se pudo preparar el archivo de Excel.');
+      const blob = await response.blob();
+      const downloaded = document.createElement('a');
+      const objectUrl = URL.createObjectURL(blob);
+      downloaded.href = objectUrl;
+      downloaded.download = `${condominiumName.replace(/[^\w.-]+/g, '_') || 'reporte-financiero'}-${period}m.xlsx`;
+      document.body.append(downloaded);
+      downloaded.click();
+      downloaded.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo descargar el archivo de Excel.',
+      );
+    } finally {
+      setExportingXlsx(false);
+    }
+  };
+
   if (loading && !data) return <ReportsLoading />;
 
   if (error && !data) {
@@ -505,6 +535,14 @@ export function ReportsPage({ condominiumId, condominiumName, session }: Props) 
             </Select>
             <Button onClick={exportCsv} size="sm">
               Exportar CSV
+            </Button>
+            <Button
+              disabled={exportingXlsx}
+              onClick={() => void exportXlsx()}
+              size="sm"
+              variant="secondary"
+            >
+              {exportingXlsx ? 'Preparando Excel…' : 'Descargar Excel'}
             </Button>
           </>
         }

@@ -20,8 +20,8 @@ describe('HAB-275 Governance shared form layout', () => {
     expect(count(governance, '<FormGrid columns={3}>')).toBe(1);
     expect(count(governance, '<FormActions>')).toBe(1);
     expect(count(rules, '<FormGrid')).toBe(1);
-    expect(count(assemblies, '<FormGrid')).toBe(2);
-    expect(count(assemblies, '<FormActions>')).toBe(1);
+    expect(count(assemblies, '<FormGrid')).toBe(4);
+    expect(count(assemblies, '<FormActions>')).toBe(2);
     expect(count(actionItems, '<FormGrid')).toBe(1);
     expect(count(actionItems, '<FormActions>')).toBe(1);
     expect(governance).not.toContain('governance-form-grid');

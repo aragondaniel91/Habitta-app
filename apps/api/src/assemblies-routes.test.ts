@@ -33,6 +33,23 @@ describe('assemblies routes contract', () => {
     expect(source).toContain('assembly_action_items?condominium_id=eq.${condominiumId}');
   });
 
+  it('exposes a guarded edit path for draft and scheduled assemblies', () => {
+    expect(source).toContain("assembliesRoutes.patch('/:id/assemblies/:assemblyId'");
+    expect(source).toContain("rpc(c, 'update_assembly'");
+    expect(source).toContain(
+      "assembliesRoutes.patch('/:id/assemblies/:assemblyId/agenda/:agendaItemId'",
+    );
+    expect(source).toContain("rpc(c, 'update_assembly_agenda_item'");
+    expect(source).toContain(
+      "assembliesRoutes.delete('/:id/assemblies/:assemblyId/agenda/:agendaItemId'",
+    );
+    expect(source).toContain("rpc(c, 'delete_assembly_agenda_item'");
+    expect(source).toContain(
+      "assembliesRoutes.post('/:id/assemblies/:assemblyId/agenda/:agendaItemId/move'",
+    );
+    expect(source).toContain("rpc(c, 'move_assembly_agenda_item'");
+  });
+
   it('uses lifecycle RPCs for every sensitive write', () => {
     expect(source).toContain("rpc(c, 'create_assembly'");
     expect(source).toContain("rpc(c, 'add_assembly_agenda_item'");

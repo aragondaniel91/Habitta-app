@@ -2,26 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogBody, DialogFooter } from '../components/Dialog';
-import {
-  CheckCircleIcon,
-  ExpensesIcon,
-  FeesIcon,
-  PaymentsIcon,
-  PeopleIcon,
-} from '../components/icons';
-import {
-  Badge,
-  Button,
-  EmptyState,
-  Field,
-  InfoHint,
-  Select,
-  Skeleton,
-  Surface,
-} from '../components/ui';
+import { CheckCircleIcon, ExpensesIcon, FeesIcon, PaymentsIcon } from '../components/icons';
+import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { Drawer } from '../components/Drawer';
 import { PageHeader } from '../components/PageHeader';
 import { ExpenseCaptureDrawer } from '../features/expenses/ExpenseCaptureDrawer';
+import { ExpenseCategoryManager } from '../features/expenses/ExpenseCategoryManager';
+import { VendorDirectoryDrawer } from '../features/expenses/VendorDirectoryDrawer';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import { apiRequest } from '../lib/api';
@@ -65,7 +52,7 @@ type TreasuryAccount = {
   is_active: boolean;
 };
 
-type Drawer = 'create' | 'edit' | 'detail' | 'catalogs' | null;
+type Drawer = 'create' | 'edit' | 'detail' | 'catalogs' | 'vendors' | null;
 
 const emptySummary: ExpenseSummary = {
   totals_by_currency: [],
@@ -86,22 +73,176 @@ function MetricCard({
   value,
   detail,
   tone,
+  onClick,
+  selected = false,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   detail: string;
   tone: 'blue' | 'green' | 'navy' | 'red';
+  onClick?: () => void;
+  selected?: boolean;
 }) {
-  return (
-    <Surface className="expenses-metric" data-tone={tone}>
+  const content = (
+    <>
       <div className="expenses-metric__top">
         <span>{icon}</span>
         <small>{label}</small>
       </div>
       <strong>{value}</strong>
       <p>{detail}</p>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        aria-pressed={selected}
+        className="expenses-metric expenses-metric--interactive surface"
+        data-tone={tone}
+        onClick={onClick}
+        type="button"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Surface className="expenses-metric" data-tone={tone}>
+      {content}
     </Surface>
+  );
+}
+
+const lifecycleRows: Array<{
+  status: Exclude<ExpenseStatus, 'void'>;
+  label: string;
+  amountKey: 'draft_amount' | 'pending_amount' | 'approved_amount' | 'paid_amount';
+  detail: string;
+  icon: ReactNode;
+  tone: 'blue' | 'green' | 'navy' | 'red';
+}> = [
+  {
+    status: 'draft',
+    label: 'Borradores',
+    amountKey: 'draft_amount',
+    detail: 'En preparación. No son obligaciones.',
+    icon: <FeesIcon size={20} />,
+    tone: 'blue',
+  },
+  {
+    status: 'pending_approval',
+    label: 'Pendientes de aprobación',
+    amountKey: 'pending_amount',
+    detail: 'Esperan revisión de un administrador autorizado.',
+    icon: <CheckCircleIcon size={20} />,
+    tone: 'red',
+  },
+  {
+    status: 'approved',
+    label: 'Aprobados pendientes de pago',
+    amountKey: 'approved_amount',
+    detail: 'Obligaciones aprobadas; aún no se marcan como pagadas.',
+    icon: <ExpensesIcon size={20} />,
+    tone: 'navy',
+  },
+  {
+    status: 'paid',
+    label: 'Pagados',
+    amountKey: 'paid_amount',
+    detail: 'Marcados como pagados. No sustituyen la evidencia de tesorería.',
+    icon: <PaymentsIcon size={20} />,
+    tone: 'green',
+  },
+];
+
+export function ExpenseFinancialSummary({
+  expenses,
+  summary,
+  activeStatus,
+  onStatusSelect,
+}: {
+  expenses: ExpenseRecord[];
+  summary: ExpenseSummary;
+  activeStatus: string;
+  onStatusSelect: (status: ExpenseStatus) => void;
+}) {
+  const counts = getExpenseStatusCounts(expenses);
+
+  return (
+    <section
+      aria-labelledby="expenses-financial-summary-title"
+      className="expenses-financial-summary"
+    >
+      <div className="expenses-financial-summary__heading">
+        <div>
+          <h2 id="expenses-financial-summary-title">Estado financiero de gastos</h2>
+          <p>
+            Los importes se presentan por moneda y etapa; no se convierten ni se suman entre
+            monedas.
+          </p>
+        </div>
+        <span>{expenses.length} registros en el condominio</span>
+      </div>
+      <div className="expenses-metrics-grid">
+        {lifecycleRows.map((row) => (
+          <MetricCard
+            detail={row.detail}
+            icon={row.icon}
+            key={row.status}
+            label={row.label}
+            onClick={() => onStatusSelect(row.status)}
+            selected={activeStatus === row.status}
+            tone={row.tone}
+            value={String(counts[row.status])}
+          />
+        ))}
+      </div>
+      <Surface className="expenses-lifecycle-summary">
+        <div className="expenses-lifecycle-summary__intro">
+          <strong>Importes por estado y moneda</strong>
+          <span>
+            Estos importes corresponden a todos los gastos a los que tienes acceso, incluso si
+            filtras la lista.
+          </span>
+        </div>
+        {summary.totals_by_currency.length ? (
+          <div className="expenses-lifecycle-summary__table-wrap">
+            <table>
+              <caption className="sr-only">Importes de gastos por estado y moneda</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Moneda</th>
+                  {lifecycleRows.map((row) => (
+                    <th key={row.status} scope="col">
+                      {row.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {summary.totals_by_currency.map((currency) => (
+                  <tr key={currency.currency_code}>
+                    <th scope="row">{currency.currency_code}</th>
+                    {lifecycleRows.map((row) => (
+                      <td key={row.status}>
+                        {formatMoney(currency[row.amountKey], currency.currency_code)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="expenses-lifecycle-summary__empty">
+            No hay importes registrados para resumir todavía.
+          </p>
+        )}
+      </Surface>
+    </section>
   );
 }
 
@@ -143,127 +284,33 @@ function CatalogsPanel({
   condominiumId,
   session,
   categories,
-  vendors,
+  expenses,
   onChanged,
+  onOpenDirectory,
 }: {
   condominiumId: string;
   session: Session;
   categories: ExpenseCategory[];
-  vendors: ExpenseVendor[];
+  expenses: ExpenseRecord[];
   onChanged: () => void;
+  onOpenDirectory: () => void;
 }) {
-  const [categoryName, setCategoryName] = useState('');
-  const [vendorName, setVendorName] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const createCategory = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      await apiRequest(`/v1/condominiums/${condominiumId}/expense-categories`, session, {
-        method: 'POST',
-        body: JSON.stringify({
-          code: categoryName
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLocaleLowerCase('es')
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)/g, ''),
-          name: categoryName,
-        }),
-      });
-      setCategoryName('');
-      onChanged();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const createVendor = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      await apiRequest(`/v1/condominiums/${condominiumId}/vendors`, session, {
-        method: 'POST',
-        body: JSON.stringify({ name: vendorName }),
-      });
-      setVendorName('');
-      onChanged();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="expenses-catalogs">
-      {error ? <div className="expenses-inline-alert">{error}</div> : null}
-      <section>
-        <h3>
-          Categorías
-          <InfoHint label="Más información sobre categorías">
-            Clasifican los egresos sin afectar la contabilidad de cuotas o pagos.
-          </InfoHint>
-        </h3>
-        <div className="expenses-catalog-create">
-          <input
-            className="input"
-            onChange={(event) => setCategoryName(event.target.value)}
-            placeholder="Nueva categoría"
-            value={categoryName}
-          />
-          <Button
-            disabled={saving || categoryName.trim().length < 2}
-            onClick={() => void createCategory()}
-            size="sm"
-            type="button"
-          >
-            Agregar
-          </Button>
-        </div>
-        <div className="expenses-chip-list">
-          {categories.map((category) => (
-            <Badge key={category.id} tone={category.is_active ? 'info' : 'neutral'}>
-              {category.name}
-            </Badge>
-          ))}
-        </div>
-      </section>
-      <section>
-        <h3>
-          Proveedores
-          <InfoHint label="Más información sobre proveedores">
-            Directorio básico para relacionar gastos y soportes.
-          </InfoHint>
-        </h3>
-        <div className="expenses-catalog-create">
-          <input
-            className="input"
-            onChange={(event) => setVendorName(event.target.value)}
-            placeholder="Nuevo proveedor"
-            value={vendorName}
-          />
-          <Button
-            disabled={saving || vendorName.trim().length < 2}
-            onClick={() => void createVendor()}
-            size="sm"
-            type="button"
-          >
-            Agregar
-          </Button>
-        </div>
-        <div className="expenses-chip-list">
-          {vendors.map((vendor) => (
-            <Badge key={vendor.id} tone={vendor.is_active ? 'success' : 'neutral'}>
-              {vendor.name}
-            </Badge>
-          ))}
-        </div>
-      </section>
+      <ExpenseCategoryManager
+        categories={categories}
+        condominiumId={condominiumId}
+        expenseCounts={expenses.reduce<Record<string, number>>(
+          (counts, expense) => ({
+            ...counts,
+            [expense.category_id]: (counts[expense.category_id] ?? 0) + 1,
+          }),
+          {},
+        )}
+        onChanged={onChanged}
+        onOpenDirectory={onOpenDirectory}
+        session={session}
+      />
     </div>
   );
 }
@@ -329,7 +376,6 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     () => filterExpenses(data?.expenses ?? [], filters),
     [data?.expenses, filters],
   );
-  const counts = useMemo(() => getExpenseStatusCounts(data?.expenses ?? []), [data?.expenses]);
   const currencies = useMemo(
     () => [...new Set((data?.expenses ?? []).map((expense) => expense.currency_code))].sort(),
     [data?.expenses],
@@ -459,8 +505,6 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     );
   }
 
-  const firstCurrency = data.summary.totals_by_currency[0];
-
   return (
     <>
       <div className="expenses-page">
@@ -468,7 +512,10 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
           actions={
             <>
               <Button onClick={() => setDrawer('catalogs')} size="sm" variant="secondary">
-                Categorías y proveedores
+                Categorías
+              </Button>
+              <Button onClick={() => setDrawer('vendors')} size="sm" variant="secondary">
+                Directorio de proveedores
               </Button>
               <Button onClick={() => setDrawer('create')} size="sm">
                 Registrar gasto
@@ -482,65 +529,17 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
 
         {error ? <div className="expenses-inline-alert">{error}</div> : null}
 
-        <section aria-label="Indicadores de gastos" className="expenses-metrics-grid">
-          <MetricCard
-            detail={
-              firstCurrency
-                ? 'Los importes se muestran separados por moneda.'
-                : 'Registra el primer gasto para iniciar el control.'
-            }
-            icon={<ExpensesIcon size={20} />}
-            label={firstCurrency ? `Total ${firstCurrency.currency_code}` : 'Gastos registrados'}
-            tone="blue"
-            value={
-              firstCurrency
-                ? formatMoney(firstCurrency.total_amount, firstCurrency.currency_code)
-                : String(data.expenses.length)
-            }
-          />
-          <MetricCard
-            detail="Requieren revisión de un administrador autorizado."
-            icon={<CheckCircleIcon size={20} />}
-            label="Pendientes de aprobación"
-            tone="red"
-            value={String(data.summary.pending_approval_count ?? counts.pending_approval)}
-          />
-          <MetricCard
-            detail="Gastos que ya completaron su ciclo de pago."
-            icon={<PaymentsIcon size={20} />}
-            label="Pagados"
-            tone="green"
-            value={String(counts.paid)}
-          />
-          <MetricCard
-            detail="Proveedores activos disponibles en el directorio."
-            icon={<PeopleIcon size={20} />}
-            label="Proveedores"
-            tone="navy"
-            value={String(
-              data.summary.active_vendor_count ||
-                data.vendors.filter((item) => item.is_active).length,
-            )}
-          />
-        </section>
-
-        {data.summary.totals_by_currency.length > 1 ? (
-          <Surface className="expenses-currency-strip">
-            <div>
-              <strong>Resumen por moneda</strong>
-              <span>Habitta nunca suma monedas distintas.</span>
-            </div>
-            <div>
-              {data.summary.totals_by_currency.map((summary) => (
-                <article key={summary.currency_code}>
-                  <small>{summary.currency_code}</small>
-                  <strong>{formatMoney(summary.total_amount, summary.currency_code)}</strong>
-                  <span>{summary.expense_count} movimientos</span>
-                </article>
-              ))}
-            </div>
-          </Surface>
-        ) : null}
+        <ExpenseFinancialSummary
+          activeStatus={filters.status}
+          expenses={data.expenses}
+          onStatusSelect={(status) =>
+            setFilters((current) => ({
+              ...current,
+              status: current.status === status ? '' : status,
+            }))
+          }
+          summary={data.summary}
+        />
 
         <Surface className="expenses-workspace">
           <div className="expenses-toolbar">
@@ -670,16 +669,27 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
           <DrawerShell
             eyebrow="Configuración operativa"
             onClose={() => setDrawer(null)}
-            title="Catálogos de gastos"
+            title="Categorías de gastos"
           >
             <CatalogsPanel
               categories={data.categories}
               condominiumId={condominiumId}
+              expenses={data.expenses}
               onChanged={() => void load()}
+              onOpenDirectory={() => setDrawer('vendors')}
               session={session}
-              vendors={data.vendors}
             />
           </DrawerShell>
+        ) : null}
+
+        {drawer === 'vendors' ? (
+          <VendorDirectoryDrawer
+            condominiumId={condominiumId}
+            onChanged={load}
+            onClose={() => setDrawer(null)}
+            session={session}
+            vendors={data.vendors}
+          />
         ) : null}
 
         {drawer === 'detail' && selectedExpense ? (
@@ -687,13 +697,16 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             eyebrow="Trazabilidad del egreso"
             onClose={() => setDrawer(null)}
             title={selectedExpense.description}
+            wide
           >
             <div className="expenses-detail">
               <div className="expenses-detail__amount">
-                <small>Monto registrado</small>
-                <strong>
-                  {formatMoney(selectedExpense.amount, selectedExpense.currency_code)}
-                </strong>
+                <div className="expenses-detail__amount-copy">
+                  <small>Monto registrado</small>
+                  <strong>
+                    {formatMoney(selectedExpense.amount, selectedExpense.currency_code)}
+                  </strong>
+                </div>
                 <Badge tone={statusTone(selectedExpense.status)}>
                   {expenseStatusLabels[selectedExpense.status]}
                 </Badge>
@@ -777,7 +790,9 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
                         <div>
                           <ExpensesIcon size={17} />
                           <span>
-                            <strong>{attachment.original_filename}</strong>
+                            <strong title={attachment.original_filename}>
+                              {attachment.original_filename}
+                            </strong>
                             <small>
                               {Math.max(1, Math.ceil(attachment.size_bytes / 1024))} KB ·{' '}
                               {attachment.document_type}

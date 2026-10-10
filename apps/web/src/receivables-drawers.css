@@ -26,6 +26,11 @@
   animation: receivables-drawer-in 190ms ease-out;
 }
 
+/* The account statement opts into Drawer wide. Keep legacy receivables drawers compact. */
+.receivables-drawer[data-wide] {
+  width: min(800px, 100vw);
+}
+
 @keyframes receivables-drawer-in {
   from {
     opacity: 0;

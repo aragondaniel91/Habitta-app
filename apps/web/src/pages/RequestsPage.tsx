@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -13,7 +13,9 @@ import { Drawer } from '../components/Drawer';
 import { FormActions, FormGrid } from '../components/FormLayout';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
-import { canManage, useCondominiumRoles } from '../lib/roles';
+import { canManage, canManageMaintenance, useCondominiumRoles } from '../lib/roles';
+import { workOrderStatusLabels } from '../lib/maintenance';
+import type { MaintenanceWorkOrder } from '../lib/maintenance';
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import {
@@ -83,6 +85,7 @@ type DetailData = {
   comments: ServiceRequestComment[];
   events: ServiceRequestEvent[];
   attachments: ServiceRequestAttachment[];
+  workOrders: MaintenanceWorkOrder[];
 };
 
 type Drawer = 'create' | 'detail' | 'categories' | null;
@@ -550,7 +553,7 @@ function DetailTimeline({ detail }: { detail: DetailData }) {
   );
 }
 
-function RequestDetailDrawer({
+export function RequestDetailDrawer({
   request,
   condominiumId,
   session,
@@ -559,6 +562,7 @@ function RequestDetailDrawer({
   people,
   onClose,
   onChanged,
+  canManageMaintenance,
 }: {
   request: ServiceRequestRecord;
   condominiumId: string;
@@ -568,6 +572,7 @@ function RequestDetailDrawer({
   people: ServiceRequestPerson[];
   onClose: () => void;
   onChanged: (request?: ServiceRequestRecord) => Promise<void>;
+  canManageMaintenance: boolean;
 }) {
   const [detail, setDetail] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -584,20 +589,30 @@ function RequestDetailDrawer({
   const [visibility, setVisibility] = useState<ServiceRequestVisibility>('public');
   const [cancelReason, setCancelReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const [creatingWorkOrder, setCreatingWorkOrder] = useState(false);
+  const [additionalScope, setAdditionalScope] = useState('');
+  const [showAdditionalWorkOrder, setShowAdditionalWorkOrder] = useState(false);
+  const [workOrderIntentKey, setWorkOrderIntentKey] = useState('');
+  const workOrderCreationInFlight = useRef(false);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
     setDetailError('');
     const base = `/v1/condominiums/${condominiumId}/requests/${request.id}`;
-    const [comments, events, attachments] = await Promise.allSettled([
+    const [comments, events, attachments, workOrders] = await Promise.allSettled([
       apiRequest<ServiceRequestComment[]>(`${base}/comments`, session),
       apiRequest<ServiceRequestEvent[]>(`${base}/events`, session),
       apiRequest<ServiceRequestAttachment[]>(`${base}/attachments`, session),
+      apiRequest<MaintenanceWorkOrder[]>(
+        `/v1/condominiums/${condominiumId}/maintenance/work-orders?requestId=${request.id}`,
+        session,
+      ),
     ]);
     setDetail({
       comments: comments.status === 'fulfilled' ? comments.value : [],
       events: events.status === 'fulfilled' ? events.value : [],
       attachments: attachments.status === 'fulfilled' ? attachments.value : [],
+      workOrders: workOrders.status === 'fulfilled' ? workOrders.value : [],
     });
     setDetailError(requestDetailLoadError({ comments, events, attachments }));
     setLoading(false);
@@ -714,6 +729,58 @@ function RequestDetailDrawer({
   const assigneePeople = people.filter((item) => item.auth_user_id && item.status !== 'inactive');
   const allowedStatuses = nextRequestStatuses(request.status);
   const terminal = ['closed', 'cancelled'].includes(request.status);
+  const openWorkOrders =
+    detail?.workOrders.filter((item) => !['completed', 'cancelled'].includes(item.status)) ?? [];
+
+  const createWorkOrder = async (additional = false) => {
+    if (workOrderCreationInFlight.current) return;
+    if (additional && additionalScope.trim().length < 3) {
+      setError('Describe el alcance distinto de la intervención adicional.');
+      return;
+    }
+    workOrderCreationInFlight.current = true;
+    const idempotencyKey = workOrderIntentKey || crypto.randomUUID();
+    setWorkOrderIntentKey(idempotencyKey);
+    setCreatingWorkOrder(true);
+    setError('');
+    try {
+      const created = await apiRequest<MaintenanceWorkOrder>(
+        `/v1/condominiums/${condominiumId}/maintenance/work-orders`,
+        session,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            requestId: request.id,
+            idempotencyKey,
+            additionalScope: additional ? additionalScope.trim() : undefined,
+            kind: 'corrective',
+            priority: request.priority,
+            title: additional ? `${request.title} · ${additionalScope.trim()}` : request.title,
+            description: `${request.description}\n\nContexto: ${unit ? `Unidad ${unit.code}` : 'Área común'}.${additional ? `\n\nAlcance adicional: ${additionalScope.trim()}` : ''}`,
+          }),
+        },
+      );
+      setMessage(
+        openWorkOrders.length
+          ? 'Se abrió la orden existente o se registró la intervención adicional.'
+          : 'Orden de trabajo creada y vinculada a la solicitud.',
+      );
+      setWorkOrderIntentKey('');
+      setShowAdditionalWorkOrder(false);
+      setAdditionalScope('');
+      await loadDetail();
+      window.location.assign(`/app/maintenance?workOrderId=${encodeURIComponent(created.id)}`);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo crear la orden de trabajo.',
+      );
+    } finally {
+      workOrderCreationInFlight.current = false;
+      setCreatingWorkOrder(false);
+    }
+  };
 
   return (
     <DrawerShell eyebrow={request.request_number} onClose={onClose} title={request.title} wide>
@@ -836,6 +903,98 @@ function RequestDetailDrawer({
 
       <div className="request-detail-grid">
         <section>
+          {canManageMaintenance ? (
+            <Surface className="request-management-panel request-work-orders-panel">
+              <div className="requests-section-heading">
+                <span>Órdenes de trabajo</span>
+                <p>
+                  La primera orden conserva prioridad y ubicación; una nueva intervención exige un
+                  alcance distinto.
+                </p>
+              </div>
+              {detail?.workOrders.length ? (
+                <div className="request-work-orders" aria-label="Órdenes de trabajo vinculadas">
+                  {detail.workOrders.map((workOrder) => (
+                    <button
+                      key={workOrder.id}
+                      onClick={() =>
+                        window.location.assign(
+                          `/app/maintenance?workOrderId=${encodeURIComponent(workOrder.id)}`,
+                        )
+                      }
+                      type="button"
+                    >
+                      <strong>{workOrder.work_order_number}</strong>
+                      <span>{workOrder.title}</span>
+                      <Badge tone={workOrder.status === 'completed' ? 'success' : 'warning'}>
+                        {workOrderStatusLabels[workOrder.status]}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="request-detail-empty">No hay órdenes vinculadas.</p>
+              )}
+              {!terminal ? (
+                <FormActions className="request-management-panel__actions">
+                  {openWorkOrders.length ? (
+                    <Button
+                      onClick={() =>
+                        window.location.assign(
+                          `/app/maintenance?workOrderId=${encodeURIComponent(openWorkOrders[0]!.id)}`,
+                        )
+                      }
+                      size="sm"
+                      type="button"
+                    >
+                      Ver orden existente
+                    </Button>
+                  ) : (
+                    <Button
+                      disabled={creatingWorkOrder}
+                      onClick={() => void createWorkOrder()}
+                      size="sm"
+                      type="button"
+                    >
+                      {creatingWorkOrder ? 'Creando…' : 'Crear orden de trabajo'}
+                    </Button>
+                  )}
+                  <Button
+                    disabled={creatingWorkOrder}
+                    onClick={() => setShowAdditionalWorkOrder((value) => !value)}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Crear otra intervención
+                  </Button>
+                </FormActions>
+              ) : null}
+              {showAdditionalWorkOrder ? (
+                <div className="request-follow-up" role="group" aria-label="Intervención adicional">
+                  <Field
+                    label="Alcance adicional"
+                    hint="Explica por qué esta intervención es distinta."
+                  >
+                    <textarea
+                      className="textarea"
+                      onChange={(event) => setAdditionalScope(event.target.value)}
+                      rows={3}
+                      value={additionalScope}
+                    />
+                  </Field>
+                  <Button
+                    disabled={creatingWorkOrder || additionalScope.trim().length < 3}
+                    onClick={() => void createWorkOrder(true)}
+                    size="sm"
+                    type="button"
+                  >
+                    Confirmar intervención adicional
+                  </Button>
+                </div>
+              ) : null}
+            </Surface>
+          ) : null}
           <div className="requests-section-heading">
             <span>Actividad</span>
             <p>Historial inmutable de cambios y conversaciones.</p>
@@ -958,6 +1117,7 @@ function RequestDetailDrawer({
 export function RequestsPage({ condominiumId, condominiumName, session }: Props) {
   const roles = useCondominiumRoles();
   const manage = canManage(roles);
+  const manageMaintenance = canManageMaintenance(roles);
   const [data, setData] = useState<WorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -965,7 +1125,9 @@ export function RequestsPage({ condominiumId, condominiumName, session }: Props)
   const [filters, setFilters] = useState<ServiceRequestFilters>(initialFilters);
   const [view, setView] = useState<'board' | 'list'>('board');
   const [drawer, setDrawer] = useState<Drawer>(null);
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedId, setSelectedId] = useState(
+    () => new URLSearchParams(window.location.search).get('requestId') ?? '',
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1018,6 +1180,10 @@ export function RequestsPage({ condominiumId, condominiumName, session }: Props)
   );
   const stats = useMemo(() => getRequestStats(data?.requests ?? []), [data?.requests]);
   const selected = data?.requests.find((request) => request.id === selectedId);
+
+  useEffect(() => {
+    if (selectedId && selected) setDrawer('detail');
+  }, [selected, selectedId]);
 
   const openDetail = (id: string) => {
     setSelectedId(id);
@@ -1294,6 +1460,7 @@ export function RequestsPage({ condominiumId, condominiumName, session }: Props)
       ) : null}
       {drawer === 'detail' && selected ? (
         <RequestDetailDrawer
+          canManageMaintenance={manageMaintenance}
           categories={data.categories}
           condominiumId={condominiumId}
           onChanged={handleChanged}

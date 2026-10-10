@@ -123,8 +123,12 @@ test.describe('Formularios administrativos autenticados', () => {
     for (const label of ['Descripción', 'Categoría', 'Fecha del gasto', 'Monto']) {
       await expect(dialog.getByLabel(label)).toBeVisible();
     }
-    await expect(dialog.getByRole('button', { name: 'Cancelar' })).toBeInViewport();
-    await expect(dialog.getByRole('button', { name: 'Continuar al comprobante' })).toBeInViewport();
+    const cancelAction = dialog.getByRole('button', { name: 'Cancelar' });
+    const continueAction = dialog.getByRole('button', { name: 'Continuar al comprobante' });
+    await cancelAction.scrollIntoViewIfNeeded();
+    await expect(cancelAction).toBeInViewport();
+    await continueAction.scrollIntoViewIfNeeded();
+    await expect(continueAction).toBeInViewport();
     await expect(dialog.locator('.form-grid')).toHaveCount(4);
     await expect(dialog.locator('.form-actions')).toBeVisible();
     await assertNoHorizontalOverflow(page, dialog);

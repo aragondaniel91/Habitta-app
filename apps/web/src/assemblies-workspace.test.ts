@@ -29,6 +29,8 @@ describe('HAB-171 assemblies workspace contract', () => {
       '/minutes/publish`,',
       '/resolutions`,',
       '/publish`,',
+      '/agenda/${agendaItemId}`,',
+      '/agenda/${agendaItemId}/move`,',
     ]) {
       expect(workspaceSource).toContain(route);
     }
@@ -42,5 +44,20 @@ describe('HAB-171 assemblies workspace contract', () => {
     expect(workspaceSource).toContain('resolution.published_at');
     expect(workspaceSource).toContain('Iniciar y congelar elegibilidad');
     expect(workspaceSource).toContain('Quórum alcanzado');
+  });
+
+  it('gives authorized managers a discoverable, versioned edit path before the meeting starts', () => {
+    expect(workspaceSource).toContain('function EditAssemblyDrawer');
+    expect(workspaceSource).toContain('setEditing(true)');
+    expect(workspaceSource).toContain("['draft', 'scheduled'].includes(selected.status)");
+    expect(workspaceSource).toContain('expectedVersion: assembly.version');
+    expect(workspaceSource).toContain('votingLocked');
+  });
+
+  it('explains locked assembly history and controls agenda edit, reorder, and removal', () => {
+    expect(workspaceSource).toContain('Bloqueada para edición');
+    expect(workspaceSource).toContain('function AgendaItemRow');
+    expect(workspaceSource).toContain('agendaItemPendingDeletion');
+    expect(workspaceSource).not.toContain('window.confirm');
   });
 });
