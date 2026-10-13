@@ -27,4 +27,17 @@ describe('HAB-319 payment-method creation success lifecycle', () => {
     expect(drawers).toContain("drawer.type === 'methods'");
     expect(drawers).toContain('<PaymentMethodsView');
   });
+
+  it('shows only truthful fields for the selected manual method', async () => {
+    const drawers = await source();
+
+    expect(drawers).toContain('const methodFields');
+    expect(drawers).toContain('label="Número de cuenta"');
+    expect(drawers).toContain('label="Teléfono"');
+    expect(drawers).toContain('label="Correo"');
+    expect(drawers).toContain('SWIFT/BIC e IBAN');
+    expect(drawers).not.toContain('Cuenta enmascarada');
+    expect(drawers).not.toContain('Teléfono enmascarado');
+    expect(drawers).not.toContain('Correo enmascarado');
+  });
 });

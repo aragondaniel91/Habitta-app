@@ -166,28 +166,120 @@ export const batchSchema = z
     path: ['dueDate'],
   });
 export const reverseReceivableSchema = z.object({ reason: z.string().trim().min(3).max(500) });
-export const paymentMethodSchema = z.object({
-  methodType: z.enum([
-    'bank_transfer',
-    'pago_movil',
-    'zelle',
-    'cash',
-    'international_transfer',
-    'paypal_manual',
-    'other',
-  ]),
+const paymentMethodTypeSchema = z.enum([
+  'bank_transfer',
+  'pago_movil',
+  'zelle',
+  'cash',
+  'international_transfer',
+  'paypal_manual',
+  'other',
+]);
+
+const paymentMethodDetailsSchema = z.object({
+  accountHolder: z.string().trim().optional(),
+  bankName: z.string().trim().optional(),
+  // These names mirror legacy database/API columns. They are capture values, not a claim that
+  // values are encrypted or masked at rest.
+  accountIdentifierMasked: z.string().trim().optional(),
+  phoneMasked: z.string().trim().optional(),
+  emailMasked: z.string().trim().email().optional(),
+  instructions: z.string().trim().optional(),
+});
+
+const paymentMethodBaseSchema = z.object({
+  methodType: paymentMethodTypeSchema,
   displayName: z.string().trim().min(1),
   currencyCode: z.string().regex(/^[A-Z]{3}$/),
-  accountHolder: z.string().optional(),
-  bankName: z.string().optional(),
-  accountIdentifierMasked: z.string().optional(),
-  phoneMasked: z.string().optional(),
-  emailMasked: z.string().email().optional(),
-  instructions: z.string().optional(),
+  ...paymentMethodDetailsSchema.shape,
   requiresReference: z.boolean().optional(),
   requiresProof: z.boolean().optional(),
   isActive: z.boolean().optional(),
 });
+
+export const paymentMethodSchema = paymentMethodBaseSchema.superRefine((value, ctx) => {
+  const required = (field: keyof z.infer<typeof paymentMethodDetailsSchema>, label: string) => {
+    if (!value[field])
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: `${label} es obligatorio para este método.`,
+      });
+  };
+  switch (value.methodType) {
+    case 'bank_transfer':
+      required('accountHolder', 'Titular');
+      required('bankName', 'Banco');
+      required('accountIdentifierMasked', 'Número de cuenta');
+      break;
+    case 'pago_movil':
+      required('accountHolder', 'Titular');
+      required('bankName', 'Banco');
+      required('phoneMasked', 'Teléfono');
+      break;
+    case 'zelle':
+      required('accountHolder', 'Nombre o titular');
+      if (!value.emailMasked && !value.phoneMasked)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['emailMasked'],
+          message: 'Indica correo o teléfono para Zelle.',
+        });
+      break;
+    case 'cash':
+    case 'other':
+      required('instructions', 'Las instrucciones');
+      break;
+    case 'international_transfer':
+      required('accountHolder', 'Beneficiario o titular');
+      required('bankName', 'Banco');
+      required('accountIdentifierMasked', 'Número de cuenta');
+      break;
+    case 'paypal_manual':
+      required('emailMasked', 'Correo de PayPal');
+      break;
+  }
+});
+
+export const paymentMethodUpdateSchema = paymentMethodBaseSchema.partial().extend({
+  emailMasked: z.union([z.string().email(), z.literal('')]).optional(),
+});
+
+export type PaymentMethodType = z.infer<typeof paymentMethodTypeSchema>;
+export type PaymentMethodDetails = z.infer<typeof paymentMethodDetailsSchema>;
+
+/** Clears details that do not belong to the selected manual method before persistence. */
+export const sanitizePaymentMethodDetails = <
+  T extends PaymentMethodDetails & { methodType: PaymentMethodType },
+>(
+  value: T,
+) => {
+  const keep: Record<PaymentMethodType, Array<keyof PaymentMethodDetails>> = {
+    bank_transfer: ['accountHolder', 'bankName', 'accountIdentifierMasked', 'instructions'],
+    pago_movil: ['accountHolder', 'bankName', 'phoneMasked', 'instructions'],
+    zelle: ['accountHolder', 'phoneMasked', 'emailMasked', 'instructions'],
+    cash: ['instructions'],
+    international_transfer: [
+      'accountHolder',
+      'bankName',
+      'accountIdentifierMasked',
+      'instructions',
+    ],
+    paypal_manual: ['accountHolder', 'emailMasked', 'instructions'],
+    other: ['instructions'],
+  };
+  const selected = new Set(keep[value.methodType]);
+  return {
+    accountHolder: selected.has('accountHolder') ? value.accountHolder || null : null,
+    bankName: selected.has('bankName') ? value.bankName || null : null,
+    accountIdentifierMasked: selected.has('accountIdentifierMasked')
+      ? value.accountIdentifierMasked || null
+      : null,
+    phoneMasked: selected.has('phoneMasked') ? value.phoneMasked || null : null,
+    emailMasked: selected.has('emailMasked') ? value.emailMasked || null : null,
+    instructions: selected.has('instructions') ? value.instructions || null : null,
+  };
+};
 export const paymentDraftSchema = z.object({
   unitId: uuidSchema,
   paymentMethodId: uuidSchema,
