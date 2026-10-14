@@ -165,7 +165,102 @@ export const batchSchema = z
     message: 'dueDate must not precede issueDate',
     path: ['dueDate'],
   });
+export const chargeWithInstallmentPlansSchema = z
+  .object({
+    conceptId: uuidSchema,
+    name: z.string().trim().min(1).max(240),
+    currencyCode: z.string().regex(/^[A-Z]{3}$/),
+    issueDate: z.string().date(),
+    dueDate: z.string().date(),
+    fixedAmount: money,
+    rows: z
+      .array(z.object({ unitId: uuidSchema }))
+      .min(1)
+      .max(100),
+    installments: z
+      .array(z.object({ dueDate: z.string().date(), amount: money }))
+      .min(1)
+      .max(60),
+    idempotencyKey: z.string().trim().min(8).max(180),
+  })
+  .superRefine((value, context) => {
+    if (value.dueDate < value.issueDate)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dueDate'],
+        message: 'Invalid due date',
+      });
+    if (new Set(value.rows.map((row) => row.unitId)).size !== value.rows.length)
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['rows'], message: 'Duplicate unit' });
+    const cents = (amount: string) => Math.round(Number(amount) * 100);
+    if (
+      value.installments.reduce((total, item) => total + cents(item.amount), 0) !==
+      cents(value.fixedAmount)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: 'Installments must equal the original amount',
+      });
+  });
 export const reverseReceivableSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+const agreementInstallmentSchema = z.object({
+  dueDate: z.string().date(),
+  amount: decimalAmountSchema,
+  currencyCode: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .optional(),
+});
+export const paymentAgreementCreateSchema = z
+  .object({
+    unitId: uuidSchema,
+    legalObligorPersonId: uuidSchema.optional(),
+    currencyCode: z.string().regex(/^[A-Z]{3}$/),
+    receivableItemIds: z.array(uuidSchema).min(1).max(100),
+    installments: z.array(agreementInstallmentSchema).min(1).max(60),
+    reason: z.string().trim().max(500).optional(),
+    idempotencyKey: z.string().trim().min(8).max(180),
+  })
+  .superRefine((value, context) => {
+    if (new Set(value.receivableItemIds).size !== value.receivableItemIds.length)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['receivableItemIds'],
+        message: 'Duplicate receivable item',
+      });
+    if (
+      value.installments.some(
+        (item) => item.currencyCode && item.currencyCode !== value.currencyCode,
+      )
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: 'Installments must use the agreement currency',
+      });
+  });
+export const paymentAgreementTransitionSchema = z
+  .object({
+    action: z.enum(['counter', 'accept', 'reject', 'cancel']),
+    installments: z.array(agreementInstallmentSchema).min(1).max(60).optional(),
+    reason: z.string().trim().max(500).optional(),
+    expectedVersion: z.number().int().positive().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.action === 'counter' && !value.installments)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: 'A counterproposal needs installments',
+      });
+    if (value.action !== 'counter' && value.installments)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: 'Only a counterproposal can change installments',
+      });
+  });
 const paymentMethodTypeSchema = z.enum([
   'bank_transfer',
   'pago_movil',

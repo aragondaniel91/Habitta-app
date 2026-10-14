@@ -80,6 +80,21 @@ describe('HAB-369 one header shape for every module', () => {
     expect(css).toContain('.page-header__tabs');
   });
 
+  it('reshapes a crowded desktop action cluster instead of narrowing the title column', () => {
+    const header = css.slice(
+      css.indexOf('.page-header {'),
+      css.indexOf('}', css.indexOf('.page-header {')),
+    );
+    const actions = css.slice(
+      css.indexOf('.page-header__actions {'),
+      css.indexOf('}', css.indexOf('.page-header__actions {')),
+    );
+    expect(header).toContain('minmax(20rem, 1fr) minmax(18rem, 40rem)');
+    expect(actions).toContain('flex-wrap: wrap');
+    expect(actions).toContain('width: 100%');
+    expect(css).toContain('@media (max-width: 960px)');
+  });
+
   it('normalizes module (md) and shell-injected (sm) actions to one shared control contract', () => {
     const rule = css.slice(
       css.indexOf('.page-header__actions > .button {'),

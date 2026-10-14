@@ -11,6 +11,7 @@ import {
   chargeConceptSchema,
   receivableSchema,
   batchSchema,
+  chargeWithInstallmentPlansSchema,
   openingBalancesSchema,
   reverseReceivableSchema,
   paymentMethodSchema,
@@ -50,6 +51,7 @@ import { unitsDirectoryRoutes } from './units-directory-routes';
 import { tenancyRoutes } from './tenancy-routes';
 import { withinRateLimit } from './http-security';
 import { attachPaymentActorNames } from './payment-actor-names';
+import { registerPaymentAgreementRoutes } from './payment-agreement-routes';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
@@ -94,6 +96,7 @@ app.route('/v1/condominiums', financialExportRoutes);
 app.route('/v1/condominiums', peopleRelationshipRoutes);
 app.route('/v1/condominiums', recurringDuesRoutes);
 app.route('/v1/condominiums', unitsDirectoryRoutes);
+registerPaymentAgreementRoutes(app.basePath('/v1/condominiums'));
 const rest = (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   path: string,
@@ -627,6 +630,52 @@ app.post('/v1/condominiums/:id/charge-batches/commit', async (c) => {
     }),
   });
   return c.json(await r.json(), r.ok ? 201 : 403);
+});
+app.post('/v1/condominiums/:id/charge-installment-plans/preview', async (c) => {
+  const p = await body(c, chargeWithInstallmentPlansSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/preview_charge_installment_plans', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_concept: p.conceptId,
+      batch_currency: p.currencyCode,
+      issue_on: p.issueDate,
+      due_on: p.dueDate,
+      fixed_amount: p.fixedAmount,
+      rows: p.rows.map((row: { unitId: string }) => ({ unit_id: row.unitId })),
+      target_schedule: p.installments.map((item: { dueDate: string; amount: string }) => ({
+        due_date: item.dueDate,
+        amount: item.amount,
+        currency_code: p.currencyCode,
+      })),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+app.post('/v1/condominiums/:id/charge-installment-plans/publish', async (c) => {
+  const p = await body(c, chargeWithInstallmentPlansSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/post_charge_installment_plans', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_concept: p.conceptId,
+      batch_name: p.name,
+      batch_currency: p.currencyCode,
+      issue_on: p.issueDate,
+      due_on: p.dueDate,
+      fixed_amount: p.fixedAmount,
+      rows: p.rows.map((row: { unitId: string }) => ({ unit_id: row.unitId })),
+      target_schedule: p.installments.map((item: { dueDate: string; amount: string }) => ({
+        due_date: item.dueDate,
+        amount: item.amount,
+        currency_code: p.currencyCode,
+      })),
+      key: p.idempotencyKey,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 400);
 });
 app.post('/v1/condominiums/:id/opening-balances/preview', async (c) => {
   const p = await body(c, openingBalancesSchema);

@@ -293,6 +293,26 @@
   margin: 0.35rem 0 0;
 }
 
+.receivables-unit-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.45rem;
+  max-height: 13rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+}
+
+.receivables-unit-selector label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  color: var(--text-strong);
+  font-size: 0.78rem;
+}
+
 .receivables-statement-skeleton {
   display: block;
   min-height: 300px;

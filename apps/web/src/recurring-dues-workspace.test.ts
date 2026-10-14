@@ -19,6 +19,10 @@ const chooserSource = readFileSync(
   new URL('./features/receivables/ChargeCreationChooser.tsx', import.meta.url),
   'utf8',
 );
+const chargePlanSource = readFileSync(
+  new URL('./features/receivables/ChargeInstallmentPlanDrawer.tsx', import.meta.url),
+  'utf8',
+);
 const rollForwardSource = readFileSync(
   new URL(
     '../../../supabase/migrations/20260815213500_hab185_recurring_roll_forward.sql',
@@ -41,8 +45,16 @@ describe('HAB-185 recurring dues workspace contract', () => {
     expect(chooserSource).toContain('Ordinaria recurrente');
     expect(chooserSource).toContain('Extraordinaria');
     expect(chooserSource).toContain('Cargo puntual');
-    expect(pageSource).toContain("openDrawer('batch')");
-    expect(pageSource).toContain("openDrawer('manual')");
+    // One-off and extraordinary charges now share the recipient-and-payment-mode wizard.
+    // Keeping the old direct drawers here would bypass recipient selection and could silently
+    // post to every active unit.
+    expect(pageSource).toContain('setChargePlanOpen(true)');
+    expect(pageSource).toContain('<ChargeInstallmentPlanDrawer');
+    expect(chargePlanSource).toContain('Pago único');
+    expect(chargePlanSource).toContain('Proponer plan de cuotas');
+    expect(chargePlanSource).toContain('Fechas personalizadas');
+    expect(chargePlanSource).toContain('rows: selected.map((unitId) => ({ unitId }))');
+    expect(chargePlanSource).toContain('charge-installment-plans/publish');
   });
 
   it('uses authenticated API routes rather than direct Supabase writes', () => {

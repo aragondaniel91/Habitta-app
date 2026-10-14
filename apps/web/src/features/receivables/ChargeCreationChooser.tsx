@@ -7,9 +7,18 @@ type Props = {
   onOrdinary: () => void;
   onExtraordinary: () => void;
   onOneOff: () => void;
+  onInstallmentPlan: () => void;
+  onAgreement: () => void;
 };
 
-export function ChargeCreationChooser({ onClose, onOrdinary, onExtraordinary, onOneOff }: Props) {
+export function ChargeCreationChooser({
+  onClose,
+  onOrdinary,
+  onExtraordinary,
+  onOneOff,
+  onInstallmentPlan,
+  onAgreement,
+}: Props) {
   return (
     <Drawer eyebrow="Cuentas por cobrar" onClose={onClose} prefix="receivables" title="Nueva cuota">
       <div className="charge-creation-chooser">
@@ -51,6 +60,34 @@ export function ChargeCreationChooser({ onClose, onOrdinary, onExtraordinary, on
           </div>
           <Button onClick={onOneOff} variant="secondary">
             Crear cargo puntual
+          </Button>
+        </Surface>
+
+        <Surface className="charge-creation-option" data-kind="installment-plan">
+          <div className="charge-creation-option__copy">
+            <span>Operación extraordinaria</span>
+            <strong>Extraordinaria con plan de cuotas</strong>
+            <p>
+              Publica un único cargo original por unidad y propone un calendario de pago; no
+              registra pagos ni duplica la deuda.
+            </p>
+          </div>
+          <Button onClick={onInstallmentPlan} variant="secondary">
+            Crear con plan de cuotas
+          </Button>
+        </Surface>
+
+        <Surface className="charge-creation-option" data-kind="agreement">
+          <div className="charge-creation-option__copy">
+            <span>Calendario de pago</span>
+            <strong>Proponer acuerdo para un cargo existente</strong>
+            <p>
+              Divide únicamente el saldo vigente de un cargo original. No crea una cuota nueva ni
+              registra un pago.
+            </p>
+          </div>
+          <Button onClick={onAgreement} variant="secondary">
+            Abrir acuerdos de pago
           </Button>
         </Surface>
       </div>
