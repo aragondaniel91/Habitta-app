@@ -33,8 +33,10 @@ import type {
 } from '../lib/receivables';
 import { ReceivablesDrawerHost, type ReceivablesDrawerMode } from './ReceivablesDrawers';
 import { ChargeCreationChooser } from '../features/receivables/ChargeCreationChooser';
+import { ChargeInstallmentPlanDrawer } from '../features/receivables/ChargeInstallmentPlanDrawer';
 import { LateFeeSettingsDrawer } from '../features/receivables/LateFeeSettingsDrawer';
 import { RecurringDuesWorkspace } from '../features/receivables/RecurringDuesWorkspace';
+import { PaymentAgreementsPanel } from '../features/payment-agreements/PaymentAgreementsPanel';
 import '../receivables.css';
 import '../receivables-core.css';
 import '../receivables-drawers.css';
@@ -160,6 +162,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
   const [lateFeeDrawerOpen, setLateFeeDrawerOpen] = useState(false);
   const [chargeChooserOpen, setChargeChooserOpen] = useState(false);
+  const [chargePlanOpen, setChargePlanOpen] = useState(false);
 
   const load = useCallback(
     async (background = false) => {
@@ -338,6 +341,15 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       });
     });
   };
+  const openPaymentAgreements = () => {
+    setChargeChooserOpen(false);
+    requestAnimationFrame(() => {
+      document.querySelector('#payment-agreements-workspace')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  };
 
   return (
     <div className="receivables-page">
@@ -360,6 +372,9 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
                 </Button>
               </>
             ) : null}
+            <Button onClick={openPaymentAgreements} size="sm" variant="secondary">
+              Acuerdos de pago
+            </Button>
           </>
         }
         description={`${condominiumName} · cartera separada por moneda y trazabilidad completa.`}
@@ -387,6 +402,13 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
         onCreateConcept={() => openDrawer('concept')}
         onLedgerChanged={() => void load(true)}
         session={session}
+      />
+
+      <PaymentAgreementsPanel
+        canManage={manage}
+        condominiumId={condominiumId}
+        session={session}
+        unitLabel={unitLabel}
       />
 
       <div className="receivables-currency-row">
@@ -744,7 +766,24 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             setChargeChooserOpen(false);
             openDrawer('manual');
           }}
+          onInstallmentPlan={() => {
+            setChargeChooserOpen(false);
+            setChargePlanOpen(true);
+          }}
+          onAgreement={openPaymentAgreements}
           onOrdinary={chooseOrdinaryCharge}
+        />
+      ) : null}
+      {chargePlanOpen ? (
+        <ChargeInstallmentPlanDrawer
+          buildingNameById={buildingNameById}
+          concepts={data.concepts}
+          condominiumId={condominiumId}
+          onClose={() => setChargePlanOpen(false)}
+          onRefresh={() => load(true)}
+          selectedCurrency={selectedCurrency}
+          session={session}
+          units={data.units}
         />
       ) : null}
 

@@ -19,6 +19,10 @@ const chooserSource = readFileSync(
   new URL('./features/receivables/ChargeCreationChooser.tsx', import.meta.url),
   'utf8',
 );
+const chargePlanSource = readFileSync(
+  new URL('./features/receivables/ChargeInstallmentPlanDrawer.tsx', import.meta.url),
+  'utf8',
+);
 const rollForwardSource = readFileSync(
   new URL(
     '../../../supabase/migrations/20260815213500_hab185_recurring_roll_forward.sql',
@@ -41,8 +45,16 @@ describe('HAB-185 recurring dues workspace contract', () => {
     expect(chooserSource).toContain('Ordinaria recurrente');
     expect(chooserSource).toContain('Extraordinaria');
     expect(chooserSource).toContain('Cargo puntual');
-    expect(pageSource).toContain("openDrawer('batch')");
-    expect(pageSource).toContain("openDrawer('manual')");
+    // One-off and extraordinary charges now share the recipient-and-payment-mode wizard.
+    // Keeping the old direct drawers here would bypass recipient selection and could silently
+    // post to every active unit.
+    expect(pageSource).toContain('setChargePlanOpen(true)');
+    expect(pageSource).toContain('<ChargeInstallmentPlanDrawer');
+    expect(chargePlanSource).toContain('Pago único');
+    expect(chargePlanSource).toContain('Proponer plan de cuotas');
+    expect(chargePlanSource).toContain('Fechas personalizadas');
+    expect(chargePlanSource).toContain('rows: selected.map((unitId) => ({ unitId }))');
+    expect(chargePlanSource).toContain('charge-installment-plans/publish');
   });
 
   it('uses authenticated API routes rather than direct Supabase writes', () => {
@@ -53,11 +65,37 @@ describe('HAB-185 recurring dues workspace contract', () => {
       '/runs`',
       '/prepare`',
       '/post`',
+      '/return-for-correction`',
+      '/cancel`',
     ]) {
       expect(workspaceSource).toContain(route);
     }
     expect(workspaceSource).not.toContain('/rest/v1/');
     expect(workspaceSource).not.toContain('supabase.from(');
+  });
+
+  it('keeps review governance actions reasoned, confirmed, and recoverable in the workspace', () => {
+    expect(workspaceSource).toContain('Devolver para corrección');
+    expect(workspaceSource).toContain('Cancelar período');
+    expect(workspaceSource).toContain('Motivo documentado');
+    expect(workspaceSource).toContain('return-for-correction');
+    expect(workspaceSource).toContain('recurring_charge_run_governance_events');
+    expect(workspaceSource).toContain('podrás actualizar el plan y prepararlo nuevamente');
+    expect(workspaceSource).toContain('No se creará deuda, cuentas por cobrar ni asientos');
+    expect(workspaceCss).toContain('.recurring-dues-governance-event');
+  });
+
+  it('keeps the governance decision trail visible after the run leaves pending review', () => {
+    // A returned run moves to "scheduled"; the reason that sent it back must stay visible so the
+    // admin does not re-prepare blind, and a cancelled run must stay traceable even though it can
+    // no longer be reopened.
+    expect(workspaceSource).toContain('const latestGovernanceEvent = (run: RecurringRun)');
+    expect(workspaceSource).toContain('Devuelta para corrección ·');
+    expect(workspaceSource).toContain('aria-label="Períodos cancelados"');
+    expect(workspaceSource).toContain('const cancelledRuns = runs');
+    expect(recurringApiSource).toContain(
+      'recurring_charge_run_governance_events.order=created_at.desc',
+    );
   });
 
   it('makes financial scope and distribution semantics explicit to operators', () => {
@@ -107,11 +145,11 @@ describe('HAB-185 recurring dues workspace contract', () => {
   it('keeps concept creation inside the recurring dues workflow', () => {
     expect(workspaceSource).toContain('onCreateConcept: () => void');
     expect(pageSource).toContain("onCreateConcept={() => openDrawer('concept')}");
-    expect(workspaceSource).toContain('No hay conceptos de cobro activos.');
+    expect(workspaceSource).toContain('Crea un concepto de cuota regular.');
     expect(workspaceSource).toContain('Crear primer concepto');
     expect(workspaceSource).toContain('Nuevo concepto');
     expect(workspaceSource).toContain(
-      'activeConcepts.some((concept) => concept.id === current.conceptId)',
+      'ordinaryConcepts.some((concept) => concept.id === current.conceptId)',
     );
     expect(workspaceSource).toContain("item.category === 'regular_dues'");
     expect(workspaceSource).toContain("'Crear y programar'");

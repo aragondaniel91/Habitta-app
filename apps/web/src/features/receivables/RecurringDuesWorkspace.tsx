@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../../components/Dialog';
@@ -67,6 +67,15 @@ type RecurringRun = {
   distribution_snapshot: Allocation[] | null;
   total_amount: string | number | null;
   charge_batch_id: string | null;
+  recurring_charge_run_governance_events?: RunGovernanceEvent[];
+};
+
+type RunGovernanceEvent = {
+  id: string;
+  action: 'returned_for_correction' | 'cancelled';
+  reason: string;
+  actor_id: string;
+  created_at: string;
 };
 
 type Building = { id: string; name: string };
@@ -132,9 +141,9 @@ const scopeKindLabels: Record<FinancialScopeKind, string> = {
 };
 
 const initialPlanForm = (concepts: ChargeConcept[], scopes: FinancialScope[]): PlanForm => {
-  const concept =
-    concepts.find((item) => item.is_active !== false && item.category === 'regular_dues') ??
-    concepts.find((item) => item.is_active !== false);
+  const concept = concepts.find(
+    (item) => item.is_active !== false && item.category === 'regular_dues',
+  );
   const scope =
     scopes.find((item) => item.is_active && item.kind === 'condominium') ??
     scopes.find((item) => item.is_active);
@@ -221,6 +230,11 @@ export function RecurringDuesWorkspace({
   const [scopeView, setScopeView] = useState<'catalog' | 'form'>('catalog');
   const [editingScopeId, setEditingScopeId] = useState('');
   const [runToPost, setRunToPost] = useState<RecurringRun | null>(null);
+  const [runToGovern, setRunToGovern] = useState<{
+    run: RecurringRun;
+    action: 'return-for-correction' | 'cancel';
+  } | null>(null);
+  const [governanceReason, setGovernanceReason] = useState('');
   const [planToStop, setPlanToStop] = useState<RecurringPlan | null>(null);
   const [expandedRunId, setExpandedRunId] = useState('');
   const [scopeForm, setScopeForm] = useState<ScopeForm>(initialScopeForm);
@@ -268,6 +282,8 @@ export function RecurringDuesWorkspace({
     setEditingPlanId('');
     setScopeDrawerOpen(false);
     setRunToPost(null);
+    setRunToGovern(null);
+    setGovernanceReason('');
     setExpandedRunId('');
   }, [condominiumId]);
 
@@ -276,7 +292,18 @@ export function RecurringDuesWorkspace({
     () => concepts.filter((concept) => concept.is_active !== false),
     [concepts],
   );
-  const planValidation = useMemo(() => validateRecurringPlanDraft(planForm), [planForm]);
+  const ordinaryConcepts = useMemo(
+    () => activeConcepts.filter((concept) => concept.category === 'regular_dues'),
+    [activeConcepts],
+  );
+  const selectedPlanConcept = useMemo(
+    () => concepts.find((concept) => concept.id === planForm.conceptId),
+    [concepts, planForm.conceptId],
+  );
+  const planValidation = useMemo(
+    () => validateRecurringPlanDraft(planForm, selectedPlanConcept?.category),
+    [planForm, selectedPlanConcept?.category],
+  );
   const activePlans = plans.filter((plan) => plan.status === 'active');
   // A stopped plan still owns published history, so it stays listed instead of vanishing.
   const visiblePlans = [...plans].sort((left, right) =>
@@ -292,8 +319,19 @@ export function RecurringDuesWorkspace({
     .filter((run) => run.status === 'posted')
     .sort((left, right) => right.period.localeCompare(left.period))
     .slice(0, 3);
+  // Governance decisions must stay traceable even after the run leaves the pending-review list.
+  const cancelledRuns = runs
+    .filter((run) => run.status === 'cancelled')
+    .sort((left, right) => right.period.localeCompare(left.period))
+    .slice(0, 5);
+  const latestGovernanceEvent = (run: RecurringRun) =>
+    (run.recurring_charge_run_governance_events ?? [])[0];
 
   const planById = useMemo(() => new Map(plans.map((plan) => [plan.id, plan])), [plans]);
+  const conceptById = useMemo(
+    () => new Map(concepts.map((concept) => [concept.id, concept])),
+    [concepts],
+  );
   const scopeById = useMemo(() => new Map(scopes.map((scope) => [scope.id, scope])), [scopes]);
   const buildingNameById = useMemo(
     () => Object.fromEntries(buildings.map((building) => [building.id, building.name])),
@@ -359,11 +397,10 @@ export function RecurringDuesWorkspace({
   };
 
   useEffect(() => {
-    if (!planDrawerOpen || editingPlanId || !activeConcepts.length) return;
+    if (!planDrawerOpen || editingPlanId || !ordinaryConcepts.length) return;
     setPlanForm((current) => {
-      if (activeConcepts.some((concept) => concept.id === current.conceptId)) return current;
-      const concept =
-        activeConcepts.find((item) => item.category === 'regular_dues') ?? activeConcepts[0];
+      if (ordinaryConcepts.some((concept) => concept.id === current.conceptId)) return current;
+      const concept = ordinaryConcepts[0];
       if (!concept) return current;
       return {
         ...current,
@@ -373,7 +410,7 @@ export function RecurringDuesWorkspace({
         currencyCode: concept.default_currency_code ?? current.currencyCode,
       };
     });
-  }, [activeConcepts, editingPlanId, planDrawerOpen]);
+  }, [editingPlanId, ordinaryConcepts, planDrawerOpen]);
 
   const openCreateScopeDrawer = () => {
     setEditingScopeId('');
@@ -445,7 +482,7 @@ export function RecurringDuesWorkspace({
 
   const savePlan = async (event: FormEvent) => {
     event.preventDefault();
-    const validation = validateRecurringPlanDraft(planForm);
+    const validation = validateRecurringPlanDraft(planForm, selectedPlanConcept?.category);
     if (!validation.valid) {
       setError('Revisa los campos marcados antes de guardar el plan.');
       return;
@@ -578,6 +615,43 @@ export function RecurringDuesWorkspace({
     }
   };
 
+  const openGovernanceDialog = (run: RecurringRun, action: 'return-for-correction' | 'cancel') => {
+    setGovernanceReason('');
+    setRunToGovern({ run, action });
+  };
+
+  const governRun = async () => {
+    if (!runToGovern || !governanceReason.trim()) {
+      setError('Documenta el motivo antes de continuar.');
+      return;
+    }
+    const { run, action } = runToGovern;
+    setBusyId(`${action}:${run.id}`);
+    setError('');
+    const path =
+      action === 'cancel'
+        ? `/v1/condominiums/${condominiumId}/recurring-charge-runs/${run.id}/cancel`
+        : `/v1/condominiums/${condominiumId}/recurring-charge-runs/${run.id}/return-for-correction`;
+    try {
+      await apiRequest(path, session, {
+        method: 'POST',
+        body: JSON.stringify({ reason: governanceReason.trim() }),
+      });
+      setRunToGovern(null);
+      setGovernanceReason('');
+      setExpandedRunId(action === 'return-for-correction' ? run.id : '');
+      await load();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No se pudo registrar la decisión del período.',
+      );
+    } finally {
+      setBusyId('');
+    }
+  };
+
   if (!canManage) return null;
 
   return (
@@ -683,13 +757,31 @@ export function RecurringDuesWorkspace({
                           {expanded ? 'Ocultar reparto' : 'Revisar reparto'}
                         </Button>
                         {canManage ? (
-                          <Button
-                            disabled={busyId === `post:${run.id}`}
-                            onClick={() => setRunToPost(run)}
-                            size="sm"
-                          >
-                            {busyId === `post:${run.id}` ? 'Publicando…' : 'Aprobar y publicar'}
-                          </Button>
+                          <>
+                            <Button
+                              disabled={busyId === `return-for-correction:${run.id}`}
+                              onClick={() => openGovernanceDialog(run, 'return-for-correction')}
+                              size="sm"
+                              variant="secondary"
+                            >
+                              Devolver para corrección
+                            </Button>
+                            <Button
+                              disabled={busyId === `cancel:${run.id}`}
+                              onClick={() => openGovernanceDialog(run, 'cancel')}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              Cancelar período
+                            </Button>
+                            <Button
+                              disabled={busyId === `post:${run.id}`}
+                              onClick={() => setRunToPost(run)}
+                              size="sm"
+                            >
+                              {busyId === `post:${run.id}` ? 'Publicando…' : 'Aprobar y publicar'}
+                            </Button>
+                          </>
                         ) : null}
                       </div>
                       {expanded ? (
@@ -717,6 +809,19 @@ export function RecurringDuesWorkspace({
                               </div>
                             );
                           })}
+                          {(run.recurring_charge_run_governance_events ?? []).map((event) => (
+                            <p
+                              className="recurring-dues-governance-event"
+                              key={event.id}
+                              role="note"
+                            >
+                              {event.action === 'returned_for_correction'
+                                ? 'Devuelto para corrección'
+                                : 'Cancelado'}{' '}
+                              · {event.reason} ·{' '}
+                              {new Date(event.created_at).toLocaleString('es-VE')}
+                            </p>
+                          ))}
                         </div>
                       ) : null}
                     </article>
@@ -742,28 +847,88 @@ export function RecurringDuesWorkspace({
               <div className="recurring-dues-compact-list">
                 {scheduledRuns.map((run) => {
                   const plan = planById.get(run.plan_id);
+                  const returnedEvent = latestGovernanceEvent(run);
                   return (
-                    <div key={run.id}>
+                    <Fragment key={run.id}>
                       <div>
-                        <strong>{plan?.name ?? 'Cuota ordinaria'}</strong>
-                        <span>
-                          {run.period} · emisión {run.issue_date}
-                        </span>
+                        <div>
+                          <strong>{plan?.name ?? 'Cuota ordinaria'}</strong>
+                          <span>
+                            {run.period} · emisión {run.issue_date}
+                          </span>
+                        </div>
+                        <div className="recurring-dues-compact-list__actions">
+                          <Badge tone="info">Programada</Badge>
+                          {canManage ? (
+                            <>
+                              <Button
+                                disabled={busyId === `prepare:${run.id}`}
+                                onClick={() => void prepareRun(run)}
+                                size="sm"
+                                variant="secondary"
+                              >
+                                {busyId === `prepare:${run.id}`
+                                  ? 'Preparando…'
+                                  : 'Preparar para revisión'}
+                              </Button>
+                              <Button
+                                disabled={busyId === `cancel:${run.id}`}
+                                onClick={() => openGovernanceDialog(run, 'cancel')}
+                                size="sm"
+                                variant="ghost"
+                              >
+                                Cancelar período
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
-                      <Badge tone="info">Programada</Badge>
-                      {canManage ? (
-                        <Button
-                          disabled={busyId === `prepare:${run.id}`}
-                          onClick={() => void prepareRun(run)}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          {busyId === `prepare:${run.id}`
-                            ? 'Preparando…'
-                            : 'Preparar para revisión'}
-                        </Button>
+                      {returnedEvent ? (
+                        <p className="recurring-dues-governance-event" role="note">
+                          Devuelta para corrección · {returnedEvent.reason} ·{' '}
+                          {new Date(returnedEvent.created_at).toLocaleString('es-VE')}
+                        </p>
                       ) : null}
-                    </div>
+                    </Fragment>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          {cancelledRuns.length ? (
+            <section className="recurring-dues-section" aria-label="Períodos cancelados">
+              <div className="recurring-dues-section__title">
+                <div>
+                  <h3>
+                    Períodos cancelados
+                    <InfoHint label="Más información sobre períodos cancelados">
+                      Decisión trazable: sin deuda, cuentas por cobrar ni asientos. No pueden
+                      reabrirse para revisión.
+                    </InfoHint>
+                  </h3>
+                </div>
+              </div>
+              <div className="recurring-dues-compact-list">
+                {cancelledRuns.map((run) => {
+                  const plan = planById.get(run.plan_id);
+                  const cancelEvent = latestGovernanceEvent(run);
+                  return (
+                    <Fragment key={run.id}>
+                      <div>
+                        <div>
+                          <strong>{plan?.name ?? 'Cuota ordinaria'}</strong>
+                          <span>{run.period}</span>
+                        </div>
+                        <Badge tone="neutral">Cancelada</Badge>
+                      </div>
+                      {cancelEvent ? (
+                        <p className="recurring-dues-governance-event" role="note">
+                          {cancelEvent.reason} ·{' '}
+                          {new Date(cancelEvent.created_at).toLocaleString('es-VE')}
+                        </p>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </div>
@@ -786,6 +951,8 @@ export function RecurringDuesWorkspace({
               <div className="recurring-dues-plan-grid">
                 {visiblePlans.map((plan) => {
                   const scope = scopeById.get(plan.financial_scope_id);
+                  const concept = conceptById.get(plan.concept_id);
+                  const hasIncompatibleConcept = concept?.category !== 'regular_dues';
                   const hasPendingReview = pendingRuns.some((run) => run.plan_id === plan.id);
                   const stopped = plan.status !== 'active';
                   return (
@@ -802,6 +969,12 @@ export function RecurringDuesWorkspace({
                           ? 'Por alícuota'
                           : 'Monto fijo por unidad'}
                       </p>
+                      {hasIncompatibleConcept ? (
+                        <p className="recurring-dues-plan-warning" role="note">
+                          Concepto histórico no ordinario{concept?.name ? `: ${concept.name}` : ''}.
+                          No se crearán períodos nuevos hasta elegir un concepto de cuota regular.
+                        </p>
+                      ) : null}
                       <b>{money(plan.amount, plan.currency_code)}</b>
                       {canManage ? (
                         <div className="recurring-dues-plan-actions">
@@ -814,7 +987,9 @@ export function RecurringDuesWorkspace({
                                 ? 'Reactiva la cuota para poder editar su configuración.'
                                 : hasPendingReview
                                   ? 'Primero resuelve la cuota pendiente de revisión.'
-                                  : 'Editar configuración de la cuota'
+                                  : hasIncompatibleConcept
+                                    ? 'Elige explícitamente un concepto de cuota regular antes de crear otro período.'
+                                    : 'Editar configuración de la cuota'
                             }
                             variant="secondary"
                           >
@@ -822,9 +997,14 @@ export function RecurringDuesWorkspace({
                           </Button>
                           {stopped ? null : (
                             <Button
-                              disabled={busyId === `schedule:${plan.id}`}
+                              disabled={hasIncompatibleConcept || busyId === `schedule:${plan.id}`}
                               onClick={() => void scheduleNext(plan)}
                               size="sm"
+                              title={
+                                hasIncompatibleConcept
+                                  ? 'Este plan conserva un concepto histórico no ordinario. Selecciona una cuota regular antes de programar otro período.'
+                                  : 'Programar el siguiente período sin crear deuda todavía'
+                              }
                               variant="ghost"
                             >
                               {busyId === `schedule:${plan.id}`
@@ -834,9 +1014,14 @@ export function RecurringDuesWorkspace({
                           )}
                           {stopped ? (
                             <Button
-                              disabled={busyId === `status:${plan.id}`}
+                              disabled={hasIncompatibleConcept || busyId === `status:${plan.id}`}
                               onClick={() => void setPlanStatus(plan, true)}
                               size="sm"
+                              title={
+                                hasIncompatibleConcept
+                                  ? 'Este plan no puede reactivarse con un concepto no ordinario.'
+                                  : 'Reactivar la cuota recurrente'
+                              }
                               variant="ghost"
                             >
                               {busyId === `status:${plan.id}` ? 'Reactivando…' : 'Reactivar'}
@@ -907,6 +1092,47 @@ export function RecurringDuesWorkspace({
           onConfirm={() => void postRun(runToPost)}
           title="Aprobar y publicar cuota"
         />
+      ) : null}
+
+      {runToGovern ? (
+        <ConfirmDialog
+          busy={busyId === `${runToGovern.action}:${runToGovern.run.id}`}
+          busyLabel={
+            runToGovern.action === 'cancel' ? 'Cancelando período…' : 'Devolviendo período…'
+          }
+          confirmLabel={
+            runToGovern.action === 'cancel' ? 'Cancelar período' : 'Devolver para corrección'
+          }
+          description={
+            runToGovern.action === 'cancel'
+              ? `Cancelarás el período ${runToGovern.run.period}. No se creará deuda, cuentas por cobrar ni asientos; esta decisión queda trazable y no se puede revertir.`
+              : `Devolverás el período ${runToGovern.run.period} a edición. Se borrará el reparto congelado y podrás actualizar el plan y prepararlo nuevamente; todavía no existe deuda.`
+          }
+          destructive={runToGovern.action === 'cancel'}
+          onCancel={() => {
+            if (!busyId) {
+              setRunToGovern(null);
+              setGovernanceReason('');
+            }
+          }}
+          onConfirm={() => void governRun()}
+          title={
+            runToGovern.action === 'cancel'
+              ? 'Cancelar período recurrente'
+              : 'Devolver para corrección'
+          }
+        >
+          <Field label="Motivo documentado" required>
+            <textarea
+              className="input"
+              maxLength={1000}
+              onChange={(event) => setGovernanceReason(event.target.value)}
+              required
+              rows={4}
+              value={governanceReason}
+            />
+          </Field>
+        </ConfirmDialog>
       ) : null}
 
       {planToStop ? (
@@ -1157,7 +1383,7 @@ export function RecurringDuesWorkspace({
             </p>
             <FormSection
               actions={
-                activeConcepts.length ? (
+                ordinaryConcepts.length ? (
                   <Button onClick={onCreateConcept} size="sm" type="button" variant="secondary">
                     Nuevo concepto
                   </Button>
@@ -1168,7 +1394,7 @@ export function RecurringDuesWorkspace({
               variant="card"
             >
               <FormGrid>
-                {activeConcepts.length ? (
+                {ordinaryConcepts.length ? (
                   <Field error={planValidation.errors.conceptId} label="Concepto" required>
                     <Select
                       required
@@ -1178,7 +1404,13 @@ export function RecurringDuesWorkspace({
                       }
                     >
                       <option value="">Selecciona un concepto</option>
-                      {activeConcepts.map((concept) => (
+                      {selectedPlanConcept && selectedPlanConcept.category !== 'regular_dues' ? (
+                        <option disabled value={selectedPlanConcept.id}>
+                          {selectedPlanConcept.name} (concepto histórico no apto para cuota
+                          ordinaria)
+                        </option>
+                      ) : null}
+                      {ordinaryConcepts.map((concept) => (
                         <option key={concept.id} value={concept.id}>
                           {concept.name}
                         </option>
@@ -1189,7 +1421,10 @@ export function RecurringDuesWorkspace({
                   <div className="recurring-dues-concept-empty" role="status">
                     <div>
                       <strong>Concepto</strong>
-                      <span>No hay conceptos de cobro activos.</span>
+                      <span>
+                        Crea un concepto de cuota regular. Los conceptos extraordinarios y puntuales
+                        se registran desde sus propios flujos.
+                      </span>
                     </div>
                     <Button onClick={onCreateConcept} size="sm" type="button" variant="secondary">
                       Crear primer concepto

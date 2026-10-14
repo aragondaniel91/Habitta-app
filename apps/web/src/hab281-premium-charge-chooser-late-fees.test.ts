@@ -9,18 +9,22 @@ const chooserCss = source('./features/receivables/charge-creation-chooser.css');
 const lateFees = source('./features/receivables/LateFeeSettingsDrawer.tsx');
 const lateFeesClient = source('./features/receivables/lateFees.ts');
 const lateFeesCss = source('./late-fees.css');
+const chargePlan = source('./features/receivables/ChargeInstallmentPlanDrawer.tsx');
 
 describe('HAB-281 premium charge chooser and late-fee settings', () => {
   it('gives charge creation a coherent premium hierarchy without changing flow callbacks', () => {
     expect(chooser).not.toContain('optionStyle');
     expect(chooser).not.toContain('style={{');
-    expect(count(chooser, 'className="charge-creation-option"')).toBe(3);
+    expect(count(chooser, 'className="charge-creation-option"')).toBe(5);
     expect(chooser).toContain('onClick={onOrdinary}');
     expect(chooser).toContain('onClick={onExtraordinary}');
+    expect(chooser).toContain('onClick={onAgreement}');
     expect(chooser).toContain('onClick={onOneOff}');
+    expect(chooser).toContain('onClick={onInstallmentPlan}');
     expect(chooser).toContain('Ordinaria recurrente');
     expect(chooser).toContain('Extraordinaria de una sola vez');
     expect(chooser).toContain('Cargo puntual');
+    expect(chooser).toContain('Extraordinaria con plan de cuotas');
     expect(chooserCss).toContain('.charge-creation-option');
   });
 
@@ -62,5 +66,16 @@ describe('HAB-281 premium charge chooser and late-fee settings', () => {
     expect(lateFees).toContain('confirmLabel="Generar recargos"');
     expect(lateFeesClient).toContain('/late-fees/preview');
     expect(count(lateFees, 'disabled={!canManage}')).toBeGreaterThanOrEqual(6);
+  });
+
+  it('keeps the selected-recipient installment flow explicit and previewed', () => {
+    expect(chargePlan).toContain('Proponer plan de cuotas');
+    expect(chargePlan).toContain('Pago único');
+    expect(chargePlan).toContain('Buscar unidad');
+    expect(chargePlan).toContain('type="checkbox"');
+    expect(chargePlan).toContain("'charge-installment-plans' : 'charge-batches'");
+    expect(chargePlan).toContain('charge-installment-plans/publish');
+    expect(chargePlan).toContain('Confirmar publicación');
+    expect(chargePlan).toContain('Propietario legal:');
   });
 });

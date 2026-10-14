@@ -11,9 +11,12 @@ import {
   chargeConceptSchema,
   receivableSchema,
   batchSchema,
+  chargeWithInstallmentPlansSchema,
   openingBalancesSchema,
   reverseReceivableSchema,
   paymentMethodSchema,
+  paymentMethodUpdateSchema,
+  sanitizePaymentMethodDetails,
   paymentDraftSchema,
   paymentUpdateSchema,
   paymentReasonSchema,
@@ -48,6 +51,7 @@ import { unitsDirectoryRoutes } from './units-directory-routes';
 import { tenancyRoutes } from './tenancy-routes';
 import { withinRateLimit } from './http-security';
 import { attachPaymentActorNames } from './payment-actor-names';
+import { registerPaymentAgreementRoutes } from './payment-agreement-routes';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
 
@@ -92,6 +96,7 @@ app.route('/v1/condominiums', financialExportRoutes);
 app.route('/v1/condominiums', peopleRelationshipRoutes);
 app.route('/v1/condominiums', recurringDuesRoutes);
 app.route('/v1/condominiums', unitsDirectoryRoutes);
+registerPaymentAgreementRoutes(app.basePath('/v1/condominiums'));
 const rest = (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   path: string,
@@ -626,6 +631,52 @@ app.post('/v1/condominiums/:id/charge-batches/commit', async (c) => {
   });
   return c.json(await r.json(), r.ok ? 201 : 403);
 });
+app.post('/v1/condominiums/:id/charge-installment-plans/preview', async (c) => {
+  const p = await body(c, chargeWithInstallmentPlansSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/preview_charge_installment_plans', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_concept: p.conceptId,
+      batch_currency: p.currencyCode,
+      issue_on: p.issueDate,
+      due_on: p.dueDate,
+      fixed_amount: p.fixedAmount,
+      rows: p.rows.map((row: { unitId: string }) => ({ unit_id: row.unitId })),
+      target_schedule: p.installments.map((item: { dueDate: string; amount: string }) => ({
+        due_date: item.dueDate,
+        amount: item.amount,
+        currency_code: p.currencyCode,
+      })),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 400);
+});
+app.post('/v1/condominiums/:id/charge-installment-plans/publish', async (c) => {
+  const p = await body(c, chargeWithInstallmentPlansSchema);
+  if (p instanceof Response) return p;
+  const r = await rest(c, 'rpc/post_charge_installment_plans', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_concept: p.conceptId,
+      batch_name: p.name,
+      batch_currency: p.currencyCode,
+      issue_on: p.issueDate,
+      due_on: p.dueDate,
+      fixed_amount: p.fixedAmount,
+      rows: p.rows.map((row: { unitId: string }) => ({ unit_id: row.unitId })),
+      target_schedule: p.installments.map((item: { dueDate: string; amount: string }) => ({
+        due_date: item.dueDate,
+        amount: item.amount,
+        currency_code: p.currencyCode,
+      })),
+      key: p.idempotencyKey,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 400);
+});
 app.post('/v1/condominiums/:id/opening-balances/preview', async (c) => {
   const p = await body(c, openingBalancesSchema);
   if (p instanceof Response) return p;
@@ -1067,6 +1118,9 @@ app.get('/v1/condominiums/:id/requests/:requestId/attachments', async (c) => {
 app.post('/v1/condominiums/:id/payment-methods', async (c) => {
   const p = await body(c, paymentMethodSchema);
   if (p instanceof Response) return p;
+  // The sanitizer is the single source of truth for which details belong to a method type: it
+  // nulls out whatever the UI hid for this type instead of trusting the client to have done so.
+  const details = sanitizePaymentMethodDetails(p);
   const r = await rest(c, 'condominium_payment_methods', {
     method: 'POST',
     body: JSON.stringify({
@@ -1074,12 +1128,12 @@ app.post('/v1/condominiums/:id/payment-methods', async (c) => {
       method_type: p.methodType,
       display_name: p.displayName,
       currency_code: p.currencyCode,
-      account_holder: p.accountHolder,
-      bank_name: p.bankName,
-      account_identifier_masked: p.accountIdentifierMasked,
-      phone_masked: p.phoneMasked,
-      email_masked: p.emailMasked,
-      instructions: p.instructions,
+      account_holder: details.accountHolder,
+      bank_name: details.bankName,
+      account_identifier_masked: details.accountIdentifierMasked,
+      phone_masked: details.phoneMasked,
+      email_masked: details.emailMasked,
+      instructions: details.instructions,
       requires_reference: p.requiresReference ?? false,
       requires_proof: p.requiresProof ?? false,
       is_active: p.isActive ?? true,
@@ -1091,13 +1145,36 @@ app.post('/v1/condominiums/:id/payment-methods', async (c) => {
 app.patch('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
   // Empty strings are clear operations only for editable optional details. Creation continues to
   // require a valid email when one is supplied.
-  const p = await body(
-    c,
-    paymentMethodSchema.partial().extend({
-      emailMasked: z.union([z.string().email(), z.literal('')]).optional(),
-    }),
-  );
+  const p = await body(c, paymentMethodUpdateSchema);
   if (p instanceof Response) return p;
+  // A patch that omits methodType (e.g. the active-toggle) only touches the fields it sends.
+  let details: Partial<ReturnType<typeof sanitizePaymentMethodDetails>> = {
+    accountHolder: p.accountHolder === '' ? null : p.accountHolder,
+    bankName: p.bankName === '' ? null : p.bankName,
+    accountIdentifierMasked: p.accountIdentifierMasked === '' ? null : p.accountIdentifierMasked,
+    phoneMasked: p.phoneMasked === '' ? null : p.phoneMasked,
+    emailMasked: p.emailMasked === '' ? null : p.emailMasked,
+    instructions: p.instructions === '' ? null : p.instructions,
+  };
+  // A patch that changes the method type always carries the full form, so it is re-validated
+  // against the strict per-type schema and re-sanitized: the client cannot leave a prior type's
+  // field behind by omission once the type itself changes.
+  if (p.methodType) {
+    const candidate = paymentMethodSchema.safeParse({
+      methodType: p.methodType,
+      displayName: p.displayName ?? '',
+      currencyCode: p.currencyCode ?? '',
+      accountHolder: p.accountHolder,
+      bankName: p.bankName,
+      accountIdentifierMasked: p.accountIdentifierMasked,
+      phoneMasked: p.phoneMasked,
+      emailMasked: p.emailMasked === '' ? undefined : p.emailMasked,
+      instructions: p.instructions,
+    });
+    if (!candidate.success)
+      return c.json({ error: candidate.error.issues[0]?.message ?? 'Invalid payment method' }, 400);
+    details = sanitizePaymentMethodDetails(candidate.data);
+  }
   const r = await rest(
     c,
     `condominium_payment_methods?id=eq.${uuidSchema.parse(c.req.param('methodId'))}&condominium_id=eq.${uuidSchema.parse(c.req.param('id'))}`,
@@ -1107,13 +1184,12 @@ app.patch('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
         method_type: p.methodType,
         display_name: p.displayName,
         currency_code: p.currencyCode,
-        account_holder: p.accountHolder === '' ? null : p.accountHolder,
-        bank_name: p.bankName === '' ? null : p.bankName,
-        account_identifier_masked:
-          p.accountIdentifierMasked === '' ? null : p.accountIdentifierMasked,
-        phone_masked: p.phoneMasked === '' ? null : p.phoneMasked,
-        email_masked: p.emailMasked === '' ? null : p.emailMasked,
-        instructions: p.instructions === '' ? null : p.instructions,
+        account_holder: details.accountHolder,
+        bank_name: details.bankName,
+        account_identifier_masked: details.accountIdentifierMasked,
+        phone_masked: details.phoneMasked,
+        email_masked: details.emailMasked,
+        instructions: details.instructions,
         requires_reference: p.requiresReference,
         requires_proof: p.requiresProof,
         is_active: p.isActive,

@@ -20,6 +20,25 @@ import {
 
 export type { PaymentsDrawerMode } from './PaymentsDrawersCore';
 
+type ManualMethodType =
+  | 'bank_transfer'
+  | 'pago_movil'
+  | 'zelle'
+  | 'cash'
+  | 'international_transfer'
+  | 'paypal_manual'
+  | 'other';
+
+const methodFields: Record<ManualMethodType, string[]> = {
+  bank_transfer: ['holder', 'bank', 'account', 'instructions'],
+  pago_movil: ['holder', 'bank', 'phone', 'instructions'],
+  zelle: ['holder', 'email', 'phone', 'instructions'],
+  cash: ['instructions'],
+  international_transfer: ['holder', 'bank', 'account', 'instructions'],
+  paypal_manual: ['holder', 'email', 'instructions'],
+  other: ['instructions'],
+};
+
 type Props = ComponentProps<typeof CorePaymentsDrawerHost>;
 
 function ReceiptDrawerFrame({
@@ -97,6 +116,7 @@ function PaymentMethodsView({
   const [deleting, setDeleting] = useState<PaymentMethod | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [methodType, setMethodType] = useState<ManualMethodType>('bank_transfer');
   const methodPath = (id?: string) =>
     `/v1/condominiums/${condominiumId}/payment-methods${id ? `/${id}` : ''}`;
 
@@ -127,6 +147,7 @@ function PaymentMethodsView({
       form.reset();
       const wasEditing = Boolean(editing);
       setEditing(null);
+      setMethodType('bank_transfer');
       await onChanged(wasEditing ? 'Método de pago actualizado.' : 'Método de pago creado.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo guardar el método.');
@@ -196,6 +217,7 @@ function PaymentMethodsView({
                   disabled={saving || toggling !== null}
                   onClick={() => {
                     setMessage('');
+                    setMethodType(method.method_type as ManualMethodType);
                     setEditing(method);
                   }}
                   size="sm"
@@ -248,7 +270,11 @@ function PaymentMethodsView({
           {message ? <div className="payments-form__message">{message}</div> : null}
           <div className="payments-form__grid">
             <Field label="Tipo">
-              <Select defaultValue={editing?.method_type ?? 'bank_transfer'} name="methodType">
+              <Select
+                name="methodType"
+                onChange={(event) => setMethodType(event.target.value as ManualMethodType)}
+                value={methodType}
+              >
                 <option value="bank_transfer">Transferencia bancaria</option>
                 <option value="pago_movil">Pago Móvil</option>
                 <option value="zelle">Zelle</option>
@@ -278,51 +304,98 @@ function PaymentMethodsView({
               required
             />
           </Field>
-          <div className="payments-form__grid">
-            <Field label="Titular">
+          {methodFields[methodType].some((field) => field === 'holder' || field === 'bank') ? (
+            <div className="payments-form__grid">
+              {methodFields[methodType].includes('holder') ? (
+                <Field
+                  label={
+                    methodType === 'international_transfer'
+                      ? 'Beneficiario / Titular'
+                      : methodType === 'zelle'
+                        ? 'Nombre / Titular'
+                        : 'Titular'
+                  }
+                >
+                  <input
+                    className="input"
+                    defaultValue={editing?.account_holder ?? ''}
+                    name="accountHolder"
+                    required={[
+                      'bank_transfer',
+                      'pago_movil',
+                      'zelle',
+                      'international_transfer',
+                    ].includes(methodType)}
+                  />
+                </Field>
+              ) : null}
+              {methodFields[methodType].includes('bank') ? (
+                <Field label="Banco">
+                  <input
+                    className="input"
+                    defaultValue={editing?.bank_name ?? ''}
+                    name="bankName"
+                    required
+                  />
+                </Field>
+              ) : null}
+            </div>
+          ) : null}
+          {methodFields[methodType].some((field) => field === 'account' || field === 'phone') ? (
+            <div className="payments-form__grid">
+              {methodFields[methodType].includes('account') ? (
+                <Field label="Número de cuenta">
+                  <input
+                    className="input"
+                    defaultValue={editing?.account_identifier_masked ?? ''}
+                    name="accountIdentifierMasked"
+                    required
+                  />
+                </Field>
+              ) : null}
+              {methodFields[methodType].includes('phone') ? (
+                <Field label="Teléfono">
+                  <input
+                    className="input"
+                    defaultValue={editing?.phone_masked ?? ''}
+                    name="phoneMasked"
+                  />
+                </Field>
+              ) : null}
+            </div>
+          ) : null}
+          {methodFields[methodType].includes('email') ? (
+            <Field label="Correo">
               <input
                 className="input"
-                defaultValue={editing?.account_holder ?? ''}
-                name="accountHolder"
+                defaultValue={editing?.email_masked ?? ''}
+                name="emailMasked"
+                required={methodType === 'paypal_manual'}
+                type="email"
               />
             </Field>
-            <Field label="Banco">
-              <input className="input" defaultValue={editing?.bank_name ?? ''} name="bankName" />
-            </Field>
-          </div>
-          <div className="payments-form__grid">
-            <Field label="Cuenta enmascarada">
-              <input
-                className="input"
-                defaultValue={editing?.account_identifier_masked ?? ''}
-                name="accountIdentifierMasked"
-                placeholder="****1234"
+          ) : null}
+          {methodFields[methodType].includes('instructions') ? (
+            <Field
+              hint={
+                methodType === 'international_transfer'
+                  ? 'Incluye SWIFT/BIC e IBAN si aplican; por ahora se registran como instrucciones.'
+                  : undefined
+              }
+              label={
+                methodType === 'cash'
+                  ? 'Lugar e instrucciones para entregar efectivo'
+                  : 'Instrucciones'
+              }
+            >
+              <textarea
+                className="payments-textarea"
+                defaultValue={editing?.instructions ?? ''}
+                name="instructions"
+                required={methodType === 'cash' || methodType === 'other'}
               />
             </Field>
-            <Field label="Teléfono enmascarado">
-              <input
-                className="input"
-                defaultValue={editing?.phone_masked ?? ''}
-                name="phoneMasked"
-                placeholder="****5678"
-              />
-            </Field>
-          </div>
-          <Field label="Correo enmascarado">
-            <input
-              className="input"
-              defaultValue={editing?.email_masked ?? ''}
-              name="emailMasked"
-              placeholder="a***@correo.com"
-            />
-          </Field>
-          <Field label="Instrucciones">
-            <textarea
-              className="payments-textarea"
-              defaultValue={editing?.instructions ?? ''}
-              name="instructions"
-            />
-          </Field>
+          ) : null}
           <div className="payments-checkbox-row">
             <label>
               <input
@@ -347,6 +420,7 @@ function PaymentMethodsView({
                 disabled={saving}
                 onClick={() => {
                   setMessage('');
+                  setMethodType('bank_transfer');
                   setEditing(null);
                 }}
                 type="button"

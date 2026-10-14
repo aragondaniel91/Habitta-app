@@ -165,29 +165,216 @@ export const batchSchema = z
     message: 'dueDate must not precede issueDate',
     path: ['dueDate'],
   });
+export const chargeWithInstallmentPlansSchema = z
+  .object({
+    conceptId: uuidSchema,
+    name: z.string().trim().min(1).max(240),
+    currencyCode: z.string().regex(/^[A-Z]{3}$/),
+    issueDate: z.string().date(),
+    dueDate: z.string().date(),
+    fixedAmount: money,
+    rows: z
+      .array(z.object({ unitId: uuidSchema }))
+      .min(1)
+      .max(100),
+    installments: z
+      .array(z.object({ dueDate: z.string().date(), amount: money }))
+      .min(1)
+      .max(60),
+    idempotencyKey: z.string().trim().min(8).max(180),
+  })
+  .superRefine((value, context) => {
+    if (value.dueDate < value.issueDate)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dueDate'],
+        message: 'Invalid due date',
+      });
+    if (new Set(value.rows.map((row) => row.unitId)).size !== value.rows.length)
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['rows'], message: 'Duplicate unit' });
+    const cents = (amount: string) => Math.round(Number(amount) * 100);
+    if (
+      value.installments.reduce((total, item) => total + cents(item.amount), 0) !==
+      cents(value.fixedAmount)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: 'Installments must equal the original amount',
+      });
+  });
 export const reverseReceivableSchema = z.object({ reason: z.string().trim().min(3).max(500) });
-export const paymentMethodSchema = z.object({
-  methodType: z.enum([
-    'bank_transfer',
-    'pago_movil',
-    'zelle',
-    'cash',
-    'international_transfer',
-    'paypal_manual',
-    'other',
-  ]),
+const agreementInstallmentSchema = z.object({
+  dueDate: z.string().date(),
+  amount: decimalAmountSchema,
+  currencyCode: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .optional(),
+});
+export const paymentAgreementCreateSchema = z
+  .object({
+    unitId: uuidSchema,
+    legalObligorPersonId: uuidSchema.optional(),
+    currencyCode: z.string().regex(/^[A-Z]{3}$/),
+    receivableItemIds: z.array(uuidSchema).min(1).max(100),
+    installments: z.array(agreementInstallmentSchema).min(1).max(60),
+    reason: z.string().trim().max(500).optional(),
+    idempotencyKey: z.string().trim().min(8).max(180),
+  })
+  .superRefine((value, context) => {
+    if (new Set(value.receivableItemIds).size !== value.receivableItemIds.length)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['receivableItemIds'],
+        message: 'Duplicate receivable item',
+      });
+    if (
+      value.installments.some(
+        (item) => item.currencyCode && item.currencyCode !== value.currencyCode,
+      )
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: 'Installments must use the agreement currency',
+      });
+  });
+export const paymentAgreementTransitionSchema = z
+  .object({
+    action: z.enum(['counter', 'accept', 'reject', 'cancel']),
+    installments: z.array(agreementInstallmentSchema).min(1).max(60).optional(),
+    reason: z.string().trim().max(500).optional(),
+    expectedVersion: z.number().int().positive().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.action === 'counter' && !value.installments)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: 'A counterproposal needs installments',
+      });
+    if (value.action !== 'counter' && value.installments)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: 'Only a counterproposal can change installments',
+      });
+  });
+const paymentMethodTypeSchema = z.enum([
+  'bank_transfer',
+  'pago_movil',
+  'zelle',
+  'cash',
+  'international_transfer',
+  'paypal_manual',
+  'other',
+]);
+
+const paymentMethodDetailsSchema = z.object({
+  accountHolder: z.string().trim().optional(),
+  bankName: z.string().trim().optional(),
+  // These names mirror legacy database/API columns. They are capture values, not a claim that
+  // values are encrypted or masked at rest.
+  accountIdentifierMasked: z.string().trim().optional(),
+  phoneMasked: z.string().trim().optional(),
+  emailMasked: z.string().trim().email().optional(),
+  instructions: z.string().trim().optional(),
+});
+
+const paymentMethodBaseSchema = z.object({
+  methodType: paymentMethodTypeSchema,
   displayName: z.string().trim().min(1),
   currencyCode: z.string().regex(/^[A-Z]{3}$/),
-  accountHolder: z.string().optional(),
-  bankName: z.string().optional(),
-  accountIdentifierMasked: z.string().optional(),
-  phoneMasked: z.string().optional(),
-  emailMasked: z.string().email().optional(),
-  instructions: z.string().optional(),
+  ...paymentMethodDetailsSchema.shape,
   requiresReference: z.boolean().optional(),
   requiresProof: z.boolean().optional(),
   isActive: z.boolean().optional(),
 });
+
+export const paymentMethodSchema = paymentMethodBaseSchema.superRefine((value, ctx) => {
+  const required = (field: keyof z.infer<typeof paymentMethodDetailsSchema>, label: string) => {
+    if (!value[field])
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: `${label} es obligatorio para este método.`,
+      });
+  };
+  switch (value.methodType) {
+    case 'bank_transfer':
+      required('accountHolder', 'Titular');
+      required('bankName', 'Banco');
+      required('accountIdentifierMasked', 'Número de cuenta');
+      break;
+    case 'pago_movil':
+      required('accountHolder', 'Titular');
+      required('bankName', 'Banco');
+      required('phoneMasked', 'Teléfono');
+      break;
+    case 'zelle':
+      required('accountHolder', 'Nombre o titular');
+      if (!value.emailMasked && !value.phoneMasked)
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['emailMasked'],
+          message: 'Indica correo o teléfono para Zelle.',
+        });
+      break;
+    case 'cash':
+    case 'other':
+      required('instructions', 'Las instrucciones');
+      break;
+    case 'international_transfer':
+      required('accountHolder', 'Beneficiario o titular');
+      required('bankName', 'Banco');
+      required('accountIdentifierMasked', 'Número de cuenta');
+      break;
+    case 'paypal_manual':
+      required('emailMasked', 'Correo de PayPal');
+      break;
+  }
+});
+
+export const paymentMethodUpdateSchema = paymentMethodBaseSchema.partial().extend({
+  emailMasked: z.union([z.string().email(), z.literal('')]).optional(),
+});
+
+export type PaymentMethodType = z.infer<typeof paymentMethodTypeSchema>;
+export type PaymentMethodDetails = z.infer<typeof paymentMethodDetailsSchema>;
+
+/** Clears details that do not belong to the selected manual method before persistence. */
+export const sanitizePaymentMethodDetails = <
+  T extends PaymentMethodDetails & { methodType: PaymentMethodType },
+>(
+  value: T,
+) => {
+  const keep: Record<PaymentMethodType, Array<keyof PaymentMethodDetails>> = {
+    bank_transfer: ['accountHolder', 'bankName', 'accountIdentifierMasked', 'instructions'],
+    pago_movil: ['accountHolder', 'bankName', 'phoneMasked', 'instructions'],
+    zelle: ['accountHolder', 'phoneMasked', 'emailMasked', 'instructions'],
+    cash: ['instructions'],
+    international_transfer: [
+      'accountHolder',
+      'bankName',
+      'accountIdentifierMasked',
+      'instructions',
+    ],
+    paypal_manual: ['accountHolder', 'emailMasked', 'instructions'],
+    other: ['instructions'],
+  };
+  const selected = new Set(keep[value.methodType]);
+  return {
+    accountHolder: selected.has('accountHolder') ? value.accountHolder || null : null,
+    bankName: selected.has('bankName') ? value.bankName || null : null,
+    accountIdentifierMasked: selected.has('accountIdentifierMasked')
+      ? value.accountIdentifierMasked || null
+      : null,
+    phoneMasked: selected.has('phoneMasked') ? value.phoneMasked || null : null,
+    emailMasked: selected.has('emailMasked') ? value.emailMasked || null : null,
+    instructions: selected.has('instructions') ? value.instructions || null : null,
+  };
+};
 export const paymentDraftSchema = z.object({
   unitId: uuidSchema,
   paymentMethodId: uuidSchema,

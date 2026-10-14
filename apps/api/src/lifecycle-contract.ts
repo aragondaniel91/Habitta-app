@@ -165,6 +165,14 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     correction: '/v1/invitations/:token/accept',
     note: 'Superseded by issuing a new invitation; tokens expire on their own.',
   },
+  {
+    module: 'fees',
+    entity: 'payment agreement proposal',
+    create: '/:id/payment-agreements',
+    classification: 'lifecycle',
+    correction: '/:id/payment-agreements/:agreementId/transition',
+    note: 'A repayment schedule never edits a receivable, allocation or ledger. Pending proposals are countered, accepted, rejected or cancelled through an immutable event trail.',
+  },
 
   // ---------------------------------------------------------------- payments
   {

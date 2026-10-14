@@ -7,6 +7,8 @@ import {
   announcementScheduleSchema,
   signInSchema,
   tenantContextSchema,
+  paymentMethodSchema,
+  sanitizePaymentMethodDetails,
 } from './index';
 
 describe('validation schemas', () => {
@@ -71,5 +73,44 @@ describe('validation schemas', () => {
       }).success,
     ).toBe(false);
     expect(serviceRequestUpdateSchema.safeParse({ status: 'cancelled' }).success).toBe(false);
+  });
+
+  it('validates manual payment details by method type and clears irrelevant legacy fields', () => {
+    expect(
+      paymentMethodSchema.safeParse({
+        methodType: 'pago_movil',
+        displayName: 'Pago móvil',
+        currencyCode: 'VES',
+        accountHolder: 'Condominio',
+        bankName: 'Banco',
+        phoneMasked: '+58 412 1234567',
+      }).success,
+    ).toBe(true);
+    expect(
+      paymentMethodSchema.safeParse({
+        methodType: 'zelle',
+        displayName: 'Zelle',
+        currencyCode: 'USD',
+        accountHolder: 'Condominio',
+      }).success,
+    ).toBe(false);
+    expect(
+      sanitizePaymentMethodDetails({
+        methodType: 'cash',
+        accountHolder: 'old holder',
+        bankName: 'old bank',
+        accountIdentifierMasked: '1234',
+        phoneMasked: '555',
+        emailMasked: 'old@example.com',
+        instructions: 'Entregar en administración.',
+      }),
+    ).toEqual({
+      accountHolder: null,
+      bankName: null,
+      accountIdentifierMasked: null,
+      phoneMasked: null,
+      emailMasked: null,
+      instructions: 'Entregar en administración.',
+    });
   });
 });
