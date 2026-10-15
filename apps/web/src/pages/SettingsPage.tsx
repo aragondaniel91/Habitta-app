@@ -21,9 +21,11 @@ import {
 } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { CondominiumBillingPanel } from '../features/settings/CondominiumBillingPanel';
+import { CollectionConnectorPanel } from '../features/settings/CollectionConnectorPanel';
 import { CondominiumDangerZone } from '../features/settings/CondominiumDangerZone';
 import { CondominiumIdentityPanel } from '../features/settings/CondominiumIdentityPanel';
 import '../features/settings/settings-section-nav.css';
+import '../features/settings/collection-connector-panel.css';
 import {
   getNotificationSettings,
   getPreferences,
@@ -665,6 +667,7 @@ export function SettingsPage({ condominiumId, condominiumName, session }: Props)
         condominiumName={condominiumName}
         session={session}
       />
+      <CollectionConnectorPanel condominiumId={condominiumId} session={session} />
 
       <section className="settings-danger-section settings-anchor-section" id="seguridad">
         <CondominiumDangerZone

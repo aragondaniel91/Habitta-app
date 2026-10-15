@@ -191,6 +191,22 @@ export const LIFECYCLE_CONTRACT: readonly LifecycleEntity[] = [
     correction: '/v1/condominiums/:id/payments/:paymentId',
     note: 'Editable while draft or correction_requested; reversible once approved.',
   },
+  {
+    module: 'payments',
+    entity: 'collection provider connector',
+    create: '/v1/condominiums/:id/collection-connectors',
+    classification: 'configuration',
+    correction: '/v1/condominiums/:id/collection-connectors/:connectionId/disable',
+    note: 'HAB-PAYMENT-CONNECTOR-HUB-001: stores authorized, condominium-scoped metadata only; it remains PENDING and cannot process payments or hold credentials.',
+  },
+  {
+    module: 'payments',
+    entity: 'collection provider connector disablement',
+    create: '/v1/condominiums/:id/collection-connectors/:connectionId/disable',
+    classification: 'lifecycle',
+    correction: '/v1/condominiums/:id/collection-connectors',
+    note: 'Disabling is terminal for that metadata record. A mistake is corrected by creating a distinct PENDING connector, never by restoring or changing its status to CONNECTED.',
+  },
 
   // ---------------------------------------------------------------- treasury
   {

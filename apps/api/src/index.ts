@@ -179,6 +179,62 @@ app.get('/v1/condominiums/:id', async (c) =>
     ).json(),
   ),
 );
+const collectionConnectorCreateSchema = z.object({
+  providerKey: z.string().regex(/^[a-z0-9][a-z0-9_-]{1,31}$/),
+  countryCode: z.string().regex(/^[A-Z]{2}$/),
+  displayLabel: z.string().trim().min(1).max(120),
+  environment: z.enum(['sandbox', 'production']),
+  condominiumIds: z.array(uuidSchema).min(1).max(100),
+});
+// Metadata-only connector endpoints. Database RPCs authorize and audit each mutation; the API
+// forwards the caller token and never possesses provider credentials or a service-role path.
+app.get('/v1/condominiums/:id/collection-connectors/catalog', async (c) => {
+  uuidSchema.parse(c.req.param('id'));
+  const r = await rest(
+    c,
+    'collection_provider_catalog?select=provider_key,country_code,display_name,capabilities,lifecycle_status,reviewed_at&order=display_name,country_code',
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.get('/v1/condominiums/:id/collection-connectors', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const r = await rest(
+    c,
+    `condominium_collection_provider_connection_assignments?condominium_id=eq.${condominiumId}&select=condominium_collection_provider_connections(id,provider_key,display_label,environment,connection_status,connector_country_code,created_at)`,
+  );
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
+app.post('/v1/condominiums/:id/collection-connectors', async (c) => {
+  const p = await body(c, collectionConnectorCreateSchema);
+  if (p instanceof Response) return p;
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  if (!p.condominiumIds.includes(condominiumId))
+    return c.json({ error: 'Selected condominium is required' }, 400);
+  const organization = await rest(c, `condominiums?id=eq.${condominiumId}&select=organization_id`);
+  const organizations = (await organization.json()) as { organization_id?: string }[];
+  if (!organization.ok || !organizations[0]?.organization_id)
+    return c.json({ error: 'Condominium not found' }, 404);
+  const r = await rest(c, 'rpc/create_collection_provider_connection', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_organization: organizations[0].organization_id,
+      target_provider_key: p.providerKey,
+      target_country_code: p.countryCode,
+      target_display_label: p.displayLabel,
+      target_environment: p.environment,
+      target_condominiums: p.condominiumIds,
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 201 : 403);
+});
+app.post('/v1/condominiums/:id/collection-connectors/:connectionId/disable', async (c) => {
+  uuidSchema.parse(c.req.param('id'));
+  const r = await rest(c, 'rpc/disable_collection_provider_connection', {
+    method: 'POST',
+    body: JSON.stringify({ target_connection: uuidSchema.parse(c.req.param('connectionId')) }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
 // NOTE (HAB-483 cleanup): the legacy inline buildings/units GET+POST+PATCH handlers that used to
 // live here were removed — they were dead code, unreachable because `structure-routes.ts` (mounted
 // via `adminInvitationRoutes` earlier in this file) already registers the same paths and Hono
