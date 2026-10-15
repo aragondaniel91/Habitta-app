@@ -40,6 +40,14 @@ describe('manual payment method API foundation', () => {
     );
   });
 
+  it('keeps collection connector mutations behind caller-scoped RPCs and exposes no provider secret route', async () => {
+    const source = await readFile(indexUrl, 'utf8');
+    expect(source).toContain('rpc/create_collection_provider_connection');
+    expect(source).toContain('rpc/disable_collection_provider_connection');
+    expect(source).not.toMatch(/collection-connectors\/(?:webhook|tokens?|secrets?|credentials?)/i);
+    expect(source).not.toMatch(/service_role.*collection-connectors/is);
+  });
+
   it('sends payment-method POST and PATCH to PostgREST with the caller token, never service role', async () => {
     const requests: Array<{ url: string; init: RequestInit | undefined }> = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
