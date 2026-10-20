@@ -94,7 +94,8 @@ test('administrador envía pago por cuota mediante asistente compartido', async 
   await row.getByRole('button', { name: 'Revisar' }).click();
   const review = page.getByRole('dialog', { name: 'Revisar pago' });
   await expect(review).toBeVisible();
-  await expect(review.getByText('Información adicional', { exact: true })).toBeVisible();
+  await expect(review.getByText('Comentarios del pagador', { exact: true })).toBeVisible();
+  await expect(review.getByText('Comprobante adjunto', { exact: true })).toBeVisible();
   await expect(review.getByText('Recibido en la oficina de administración.')).toBeVisible();
   await expect(review.getByText(chargeName, { exact: true })).toBeVisible();
   // No se invoca aprobación ni se escribe en libro mayor.

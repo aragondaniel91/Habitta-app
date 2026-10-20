@@ -76,3 +76,91 @@
   color: var(--red);
   font-size: 0.72rem;
 }
+
+/* Compact, read-only resident proposal in the administrator review modal. */
+.payments-allocation-editor--proposal {
+  gap: 0.5rem;
+}
+
+.payments-allocation-editor__proposal-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.payments-allocation-editor__proposal-label strong {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.payments-allocation-editor__proposal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.75rem;
+  background: var(--surface);
+}
+
+.payments-allocation-editor__proposal-charge {
+  display: grid;
+  gap: 0.2rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.payments-allocation-editor__proposal-charge strong {
+  overflow-wrap: anywhere;
+  font-size: 0.79rem;
+}
+
+.payments-allocation-editor__proposal-charge small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.payments-allocation-editor__proposal-row output {
+  flex: 0 1 auto;
+  max-width: 100%;
+  font-size: 0.85rem;
+  font-weight: 750;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.payments-allocation-editor__preview-summary {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.payments-allocation-editor__preview-totals {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.payments-allocation-editor__preview-totals p {
+  margin: 0;
+}
+
+.payments-allocation-editor--proposal > button {
+  justify-self: start;
+  width: auto;
+  min-height: 34px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.74rem;
+}
+
+.payments-review__allocation:has(.payments-allocation-editor--proposal) {
+  gap: 0.65rem;
+  padding: 0.8rem;
+}

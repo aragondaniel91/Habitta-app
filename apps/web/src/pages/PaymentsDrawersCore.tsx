@@ -7,6 +7,8 @@ import { Badge, Button, Field, Select } from '../components/ui';
 import { paymentApi, paymentProof } from '../features/payments/api';
 import { paymentProofFileError } from '../features/payments/proof-file';
 import { PaymentAllocationEditor } from '../features/payments/components/PaymentAllocationEditor';
+import { resolveResidentProposal } from '../features/payments/resident-proposal-approval';
+import { moneyValueString } from '../features/payments/allocation-amounts';
 import { PaymentProofPreview } from '../features/payments/components/PaymentProofPreview';
 import { PaymentProofUploader } from '../features/payments/components/PaymentProofUploader';
 import {
@@ -319,6 +321,8 @@ export function ReviewPayment({
   const [treasuryLoading, setTreasuryLoading] = useState(true);
   const [allocationIntent, setAllocationIntent] = useState<PaymentAllocationIntent | null>(null);
   const [allocationIntentLoading, setAllocationIntentLoading] = useState(true);
+  const [allocationIntentError, setAllocationIntentError] = useState('');
+  const [allocationIntentRetry, setAllocationIntentRetry] = useState(0);
   const [proofHistory, setProofHistory] = useState<
     Array<{
       id: string;
@@ -380,6 +384,8 @@ export function ReviewPayment({
   useEffect(() => {
     let active = true;
     setAllocationIntentLoading(true);
+    setAllocationIntentError('');
+    setAllocationIntent(null);
     paymentApi<PaymentAllocationIntent | null>(
       `/v1/condominiums/${condominiumId}/payments/${payment.id}/allocation-intent`,
       session,
@@ -388,7 +394,12 @@ export function ReviewPayment({
         if (active) setAllocationIntent(intent);
       })
       .catch(() => {
-        if (active) setAllocationIntent(null);
+        if (active) {
+          setAllocationIntent(null);
+          setAllocationIntentError(
+            'No se pudo verificar la propuesta. No se permite la asignación manual sin comprobar si existe.',
+          );
+        }
       })
       .finally(() => {
         if (active) setAllocationIntentLoading(false);
@@ -396,7 +407,7 @@ export function ReviewPayment({
     return () => {
       active = false;
     };
-  }, [condominiumId, payment.id, session]);
+  }, [condominiumId, payment.id, session, allocationIntentRetry]);
 
   useEffect(() => {
     // Residents only inspect a submitted payment here. Do not probe the treasury surface merely
@@ -480,8 +491,20 @@ export function ReviewPayment({
   };
 
   const proposals = allocationIntent?.proposals ?? [];
+  const resolvedProposal =
+    !allocationIntentLoading && !allocationIntentError
+      ? resolveResidentProposal({
+          intent: allocationIntent,
+          paymentId: payment.id,
+          paymentAmount: payment.original_amount,
+          paymentCurrency: payment.original_currency_code,
+          receivables,
+        })
+      : null;
   const totalCents = proposals.reduce((total, proposal) => {
-    const [whole, fraction = ''] = proposal.payment_amount.split('.');
+    const value = moneyValueString(proposal.payment_amount);
+    if (!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(value)) return total;
+    const [whole, fraction = ''] = value.split('.');
     return total + BigInt(whole ?? 0) * 100n + BigInt(fraction.padEnd(2, '0'));
   }, 0n);
   const totalProposed = `${totalCents / 100n}.${(totalCents % 100n).toString().padStart(2, '0')}`;
@@ -675,22 +698,54 @@ export function ReviewPayment({
           </Badge>
         </div>
       </div>
-      {payment.notes?.trim() ? (
-        <div className="payments-review__reference">
-          <span>Información adicional</span>
-          <strong>{payment.notes}</strong>
+      <section
+        className="payments-review__submitted-evidence"
+        aria-label="Datos y comprobante del pago"
+      >
+        <div className="payments-form__section-heading">
+          <strong>Datos y comprobante</strong>
+          <span>Información enviada por quien registró el pago.</span>
         </div>
-      ) : null}
-      {payment.reference ? (
-        <div className="payments-review__reference">
-          <span>Referencia</span>
-          <strong>{payment.reference}</strong>
+        <div className="payments-review__submitted-grid">
+          <div className="payments-review__submitted-fields">
+            <div>
+              <span>Método</span>
+              <strong>{method?.display_name ?? 'Método de pago registrado'}</strong>
+            </div>
+            <div>
+              <span>Referencia del pago</span>
+              <strong>{payment.reference?.trim() || 'Sin referencia registrada'}</strong>
+            </div>
+            <div>
+              <span>Comentarios del pagador</span>
+              <p>{payment.notes?.trim() || 'No agregó comentarios.'}</p>
+            </div>
+          </div>
+          <div className="payments-review__submitted-proof">
+            <strong>Comprobante adjunto</strong>
+            <PaymentProofPreview
+              compact
+              condominiumId={condominiumId}
+              missingHint="Puedes solicitar una corrección para que el pagador adjunte el archivo."
+              paymentId={payment.id}
+              session={session}
+            />
+            {proofHistory.length > 1 ? (
+              <details className="payments-detail__history">
+                <summary>Historial del comprobante ({proofHistory.length} versiones)</summary>
+                <ol>
+                  {proofHistory.map((entry) => (
+                    <li key={entry.id}>
+                      {entry.original_filename} · {formatDashboardDate(entry.created_at)}
+                      {entry.superseded_at ? ' · Reemplazado' : ' · Actual'}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            ) : null}
+          </div>
         </div>
-      ) : null}
-      <div className="payments-review__reference">
-        <span>Método</span>
-        <strong>{method?.display_name ?? 'Método de pago registrado'}</strong>
-      </div>
+      </section>
       <section
         className="payments-proof-section"
         aria-label="Propuesta de aplicación del residente"
@@ -778,31 +833,6 @@ export function ReviewPayment({
           ) : null}
         </div>
       ) : null}
-      <div className="payments-proof-section">
-        <div className="payments-form__section-heading">
-          <strong>Comprobante</strong>
-          <span>Verifica que monto, fecha y referencia coincidan con el comprobante.</span>
-        </div>
-        <PaymentProofPreview
-          condominiumId={condominiumId}
-          missingHint="Si el método exige comprobante, usa «Solicitar corrección» e indica que falta adjuntarlo."
-          paymentId={payment.id}
-          session={session}
-        />
-        {proofHistory.length > 1 ? (
-          <details className="payments-detail__history">
-            <summary>Comprobante reemplazado · {proofHistory.length} versiones registradas</summary>
-            <ol>
-              {proofHistory.map((entry) => (
-                <li key={entry.id}>
-                  {entry.original_filename} · {formatDashboardDate(entry.created_at)}
-                  {entry.superseded_at ? ' · Reemplazado' : ' · Actual'}
-                </li>
-              ))}
-            </ol>
-          </details>
-        ) : null}
-      </div>
       {!readOnly ? (
         <div className="payments-review__decision">
           <Field label="Motivo para corrección, rechazo o reverso">
@@ -842,17 +872,14 @@ export function ReviewPayment({
         <div className="payments-review__allocation">
           <div className="payments-form__section-heading">
             <strong>Aplicación del pago</strong>
-            <span>
-              Previsualiza la distribución antes de aprobar. Las monedas nunca se mezclan sin tasa
-              explícita.
-            </span>
+            <span>Revisa la cuenta receptora y confirma la aplicación propuesta.</span>
           </div>
           <Field
             label="Cuenta de tesorería"
             hint={
               treasuryAccounts.length === 0 && !treasuryLoading
                 ? `No hay cuentas activas en ${payment.original_currency_code}; Habitta creará una cuenta transitoria claramente identificada.`
-                : 'El pago aprobado ingresará a esta cuenta.'
+                : 'Destino del pago aprobado.'
             }
           >
             <Select
@@ -877,35 +904,61 @@ export function ReviewPayment({
               ))}
             </Select>
           </Field>
-          <PaymentAllocationEditor
-            onApprove={async (allocations: AllocationInput[]) => {
-              setMessage('');
-              try {
-                await selectTreasuryAccountBeforeApproval();
-                await paymentApi(`${endpoint}/approve`, session, {
+          {allocationIntentLoading ? (
+            <p role="status">Cargando la distribución registrada por el residente…</p>
+          ) : allocationIntentError ? (
+            <div className="payments-allocation-editor__problem" role="alert">
+              <p>{allocationIntentError}</p>
+              <Button
+                onClick={() => setAllocationIntentRetry((attempt) => attempt + 1)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Reintentar consulta de propuesta
+              </Button>
+            </div>
+          ) : resolvedProposal?.kind === 'invalid' ? (
+            <p className="payments-allocation-editor__problem" role="alert">
+              {resolvedProposal.reason} No se cambiará la distribución automáticamente.
+            </p>
+          ) : resolvedProposal ? (
+            <PaymentAllocationEditor
+              key={allocationIntent?.updated_at ?? 'legacy-manual'}
+              proposedAllocations={
+                resolvedProposal.kind === 'resident-proposal'
+                  ? resolvedProposal.allocations
+                  : undefined
+              }
+              onApprove={async (allocations: AllocationInput[]) => {
+                setMessage('');
+                try {
+                  await selectTreasuryAccountBeforeApproval();
+                  await paymentApi(`${endpoint}/approve`, session, {
+                    method: 'POST',
+                    body: JSON.stringify({ allocations }),
+                  });
+                  await onChanged('Pago aprobado, aplicado y registrado en tesorería.');
+                } catch (error) {
+                  const nextMessage =
+                    error instanceof Error ? error.message : 'No se pudo aprobar el pago.';
+                  setMessage(nextMessage);
+                  throw error;
+                }
+              }}
+              onPreview={(allocations) =>
+                paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
                   method: 'POST',
                   body: JSON.stringify({ allocations }),
-                });
-                await onChanged('Pago aprobado, aplicado y registrado en tesorería.');
-              } catch (error) {
-                const nextMessage =
-                  error instanceof Error ? error.message : 'No se pudo aprobar el pago.';
-                setMessage(nextMessage);
-                throw error;
+                })
               }
-            }}
-            onPreview={(allocations) =>
-              paymentApi<AllocationPreview>(`${endpoint}/allocation-preview`, session, {
-                method: 'POST',
-                body: JSON.stringify({ allocations }),
-              })
-            }
-            paymentCurrency={payment.original_currency_code}
-            receivables={receivables.filter(
-              (item) =>
-                item.unit_id === payment.unit_id && Number(item.outstanding_amount ?? 0) > 0,
-            )}
-          />
+              paymentCurrency={payment.original_currency_code}
+              receivables={receivables.filter(
+                (item) =>
+                  item.unit_id === payment.unit_id && Number(item.outstanding_amount ?? 0) > 0,
+              )}
+            />
+          ) : null}
         </div>
       ) : null}
       {!readOnly && payment.status === 'approved' ? (

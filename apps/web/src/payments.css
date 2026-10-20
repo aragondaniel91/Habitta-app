@@ -1652,3 +1652,63 @@
     justify-content: end;
   }
 }
+
+/* Review evidence is visible above proposed payment allocations. */
+.payments-review__submitted-evidence {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-subtle);
+}
+.payments-review__submitted-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+.payments-review__submitted-fields {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+.payments-review__submitted-fields > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.payments-review__submitted-fields > div:last-child {
+  border-bottom: 0;
+}
+.payments-review__submitted-fields span {
+  color: var(--muted);
+  font-size: 0.69rem;
+  font-weight: 650;
+}
+.payments-review__submitted-fields strong,
+.payments-review__submitted-fields p {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 0.81rem;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.payments-review__submitted-proof {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+}
+.payments-review__submitted-proof > strong {
+  color: var(--text-strong);
+  font-size: 0.75rem;
+}
+@media (max-width: 700px) {
+  .payments-review__submitted-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

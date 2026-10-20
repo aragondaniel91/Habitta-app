@@ -7,7 +7,8 @@ import './payment-proof-uploader.css';
 type ProofState =
   | { status: 'loading' }
   | { status: 'ready'; url: string; contentType: string }
-  | { status: 'missing'; message: string };
+  | { status: 'missing'; message: string }
+  | { status: 'error'; message: string };
 
 /**
  * Shows the active payment proof inline so a reviewer can verify it without leaving the payment.
@@ -19,14 +20,17 @@ export function PaymentProofPreview({
   session,
   refreshKey = 0,
   missingHint,
+  compact = false,
 }: {
   condominiumId: string;
   paymentId: string;
   session: Session;
   refreshKey?: number;
   missingHint?: string;
+  compact?: boolean;
 }) {
   const [state, setState] = useState<ProofState>({ status: 'loading' });
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -42,14 +46,17 @@ export function PaymentProofPreview({
           });
           return;
         }
-        if (!(value instanceof Blob)) return;
+        if (!(value instanceof Blob)) {
+          setState({ status: 'error', message: 'No pudimos interpretar el comprobante adjunto.' });
+          return;
+        }
         url = URL.createObjectURL(value);
         setState({ status: 'ready', url, contentType: value.type });
       })
       .catch((error: unknown) => {
         if (!active) return;
         setState({
-          status: 'missing',
+          status: 'error',
           message:
             error instanceof Error ? error.message : 'No se pudo cargar el comprobante del pago.',
         });
@@ -58,7 +65,7 @@ export function PaymentProofPreview({
       active = false;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [condominiumId, paymentId, session, refreshKey]);
+  }, [condominiumId, paymentId, session, refreshKey, retryCount]);
 
   if (state.status === 'loading') {
     return (
@@ -77,9 +84,32 @@ export function PaymentProofPreview({
     );
   }
 
+  if (state.status === 'error') {
+    return (
+      <div className="payments-proof-preview" data-state="error" role="alert">
+        <strong>{state.message}</strong>
+        <Button
+          onClick={() => setRetryCount((count) => count + 1)}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          Reintentar comprobante
+        </Button>
+      </div>
+    );
+  }
+
   const isPdf = state.contentType === 'application/pdf';
   return (
-    <div className="payments-proof-preview" data-state="ready">
+    <div
+      className={
+        compact
+          ? 'payments-proof-preview payments-proof-preview--compact'
+          : 'payments-proof-preview'
+      }
+      data-state="ready"
+    >
       {isPdf ? (
         <object
           aria-label="Comprobante del pago (PDF)"
@@ -99,7 +129,7 @@ export function PaymentProofPreview({
           type="button"
           variant="secondary"
         >
-          Ver comprobante
+          Abrir comprobante completo
         </Button>
       </div>
     </div>

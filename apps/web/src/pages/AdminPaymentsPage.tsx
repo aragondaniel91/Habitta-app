@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Dialog, DialogBody } from '../components/Dialog';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, FeesIcon, PaymentsIcon, ReportsIcon } from '../components/icons';
@@ -42,7 +43,6 @@ type PaymentsData = {
   concepts: ChargeConcept[];
   payments: Payment[];
   paymentsPage: PageInfo;
-  receivables: Receivable[];
   reviewQueue: Payment[];
   reviewQueueAvailable: boolean;
 };
@@ -154,6 +154,68 @@ function CurrencyTabs({
   );
 }
 
+type ScopedReviewProps = {
+  condominiumId: string;
+  drawer: Extract<Exclude<PaymentsDrawerMode, null>, { type: 'review' | 'details' }>;
+  loadReceivablesForUnit: (unitId: string) => Promise<Receivable[]>;
+  methods: PaymentMethod[];
+  onChanged: (message: string) => Promise<void>;
+  onClose: () => void;
+  session: Session;
+  units: Unit[];
+  buildingNameById: Record<string, string>;
+};
+
+function ScopedReviewDrawer({ drawer, loadReceivablesForUnit, ...props }: ScopedReviewProps) {
+  const [snapshot, setSnapshot] = useState<{
+    items: Receivable[];
+    loading: boolean;
+    error: string;
+  }>({ items: [], loading: true, error: '' });
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setSnapshot({ items: [], loading: true, error: '' });
+    void loadReceivablesForUnit(drawer.payment.unit_id)
+      .then((items) => {
+        if (active) setSnapshot({ items, loading: false, error: '' });
+      })
+      .catch((cause: unknown) => {
+        if (active)
+          setSnapshot({
+            items: [],
+            loading: false,
+            error: cause instanceof Error ? cause.message : 'No se pudieron cargar las cuotas.',
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [drawer.payment.unit_id, loadReceivablesForUnit, retry]);
+  if (!snapshot.loading && !snapshot.error)
+    return <PaymentsDrawerHost {...props} drawer={drawer} receivables={snapshot.items} />;
+  return (
+    <Dialog
+      onClose={props.onClose}
+      size="md"
+      title={drawer.type === 'review' ? 'Revisar pago' : 'Detalle del pago'}
+    >
+      <DialogBody>
+        {snapshot.error ? (
+          <>
+            <p role="alert">{snapshot.error}</p>
+            <Button onClick={() => setRetry((value) => value + 1)} size="sm" variant="secondary">
+              Reintentar carga de cuotas
+            </Button>
+          </>
+        ) : (
+          <p role="status">Consultando cuotas de esta unidad antes de abrir el pago…</p>
+        )}
+      </DialogBody>
+    </Dialog>
+  );
+}
+
 export function PaymentsPage({ condominiumId, condominiumName, session }: Props) {
   const [data, setData] = useState<PaymentsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -170,6 +232,23 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   const [reviewSearch, setReviewSearch] = useState('');
   const [reviewFocus, setReviewFocus] = useState<'all' | 'pending' | 'actions'>('all');
   const [drawer, setDrawer] = useState<PaymentsDrawerMode>(null);
+
+  // The payments screen does not need every charge across the condominium.
+  // Query just the selected unit and only while a capture/review modal is open.
+  const loadReceivablesForUnit = useCallback(
+    (unitId: string) =>
+      collectAllPages((page) =>
+        apiRequest<PaginatedResponse<Receivable>>(
+          financialPagePath(
+            `/v1/condominiums/${condominiumId}/receivables?unitId=${encodeURIComponent(unitId)}`,
+            page,
+            REFERENCE_PAGE_SIZE,
+          ),
+          session,
+        ),
+      ),
+    [condominiumId, session],
+  );
 
   const load = useCallback(
     async (background = false) => {
@@ -207,17 +286,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
             session,
           ),
         ).catch(() => [] as ChargeConcept[]);
-        const receivablesPromise = collectAllPages((page) =>
-          apiRequest<PaginatedResponse<Receivable>>(
-            financialPagePath(
-              `/v1/condominiums/${condominiumId}/receivables`,
-              page,
-              REFERENCE_PAGE_SIZE,
-            ),
-            session,
-          ),
-        ).catch(() => [] as Receivable[]);
-        const [units, buildings, methods, concepts, paymentsPage, receivables, reviewQueueResult] =
+        const [units, buildings, methods, concepts, paymentsPage, reviewQueueResult] =
           await Promise.all([
             apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
             apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
@@ -231,7 +300,6 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
               ),
               session,
             ),
-            receivablesPromise,
             reviewQueuePromise,
           ]);
         setData({
@@ -241,7 +309,6 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           concepts,
           payments: paymentsPage.items,
           paymentsPage: pageInfo(paymentsPage),
-          receivables,
           reviewQueue: reviewQueueResult.items,
           reviewQueueAvailable: reviewQueueResult.available,
         });
@@ -1039,23 +1106,39 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           onComplete={onChanged}
           onDraftCreated={() => load(true)}
           {...(drawer.type === 'edit' ? { payment: drawer.payment } : {})}
-          receivables={data.receivables}
+          loadReceivablesForUnit={loadReceivablesForUnit}
+          receivables={[]}
           session={session}
           units={captureUnitOptions}
         />
       ) : null}
 
-      <PaymentsDrawerHost
-        condominiumId={condominiumId}
-        drawer={drawer?.type === 'create' || drawer?.type === 'edit' ? null : drawer}
-        methods={data.methods}
-        onChanged={onChanged}
-        onClose={() => setDrawer(null)}
-        receivables={data.receivables}
-        session={session}
-        units={data.units}
-        buildingNameById={buildingNameById}
-      />
+      {drawer?.type === 'review' || drawer?.type === 'details' ? (
+        <ScopedReviewDrawer
+          key={`${condominiumId}:${drawer.payment.id}:${drawer.type}`}
+          condominiumId={condominiumId}
+          drawer={drawer}
+          loadReceivablesForUnit={loadReceivablesForUnit}
+          methods={data.methods}
+          onChanged={onChanged}
+          onClose={() => setDrawer(null)}
+          session={session}
+          units={data.units}
+          buildingNameById={buildingNameById}
+        />
+      ) : (
+        <PaymentsDrawerHost
+          condominiumId={condominiumId}
+          drawer={drawer?.type === 'create' || drawer?.type === 'edit' ? null : drawer}
+          methods={data.methods}
+          onChanged={onChanged}
+          onClose={() => setDrawer(null)}
+          receivables={[]}
+          session={session}
+          units={data.units}
+          buildingNameById={buildingNameById}
+        />
+      )}
     </div>
   );
 }
