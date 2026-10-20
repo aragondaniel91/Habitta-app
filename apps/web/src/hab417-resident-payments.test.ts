@@ -51,6 +51,18 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
     expect(residentPaymentsView).not.toContain('Reversar pago aprobado');
   });
 
+  it('opens submitted payments as read-only details with the proof and payment method', () => {
+    const drawers = source('./pages/PaymentsDrawersCore.tsx');
+    expect(residentPaymentsView).toContain("return 'Ver detalle';");
+    expect(residentPaymentsPage).toContain(
+      "setDrawer({ type: 'details', payment: currentPayment })",
+    );
+    expect(drawers).toContain("drawer.type === 'details'");
+    expect(drawers).toContain('<span>Método</span>');
+    expect(drawers).toContain('<PaymentProofPreview');
+    expect(drawers).toMatch(/cualquier aplicación ya\s+asociada/);
+  });
+
   it('keeps tenant-only presentation aligned with the database restriction', () => {
     // The route gate now asks its own question. `isTenantOnly` was the right test while tenants
     // were the only restricted residents; family members and authorized occupants are refused the
@@ -81,7 +93,33 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
 
 describe('HAB-417 the resident dashboard says whose home this is', () => {
   const dashboard = readFileSync(new URL('./pages/ResidentDashboard.tsx', import.meta.url), 'utf8');
+  const adminDashboard = readFileSync(
+    new URL('./pages/AdministrativeDashboard.tsx', import.meta.url),
+    'utf8',
+  );
   const dashboardCss = readFileSync(new URL('./resident-dashboard.css', import.meta.url), 'utf8');
+
+  it('distinguishes a resident action from a payment awaiting review without inventing a charge', () => {
+    expect(dashboard).toContain("['draft', 'correction_requested']");
+    expect(dashboard).toContain("['submitted', 'under_review']");
+    expect(dashboard).toContain('Acción pendiente');
+    expect(dashboard).toContain('En espera de revisión');
+    expect(dashboard).not.toContain('AcciÃ³n pendiente');
+    expect(dashboard).not.toContain('En espera de revisiÃ³n');
+    expect(dashboard).toContain('formatDashboardAmount(');
+    expect(dashboard).toContain('charge_concept_name');
+    expect(dashboard).toContain('onNavigate(paymentsRoute)');
+    expect(dashboard).not.toContain('/payments/review-queue');
+  });
+
+  it('keeps the administrative queue split by real review state and amount', () => {
+    expect(adminDashboard).toContain("payment.status === 'submitted'");
+    expect(adminDashboard).toContain("payment.status === 'under_review'");
+    expect(adminDashboard).toMatch(/pagos esperan revisi\u00f3n/);
+    expect(adminDashboard).toMatch(/acciones de revisi\u00f3n pendientes/);
+    expect(adminDashboard).toContain('original_amount');
+    expect(adminDashboard).toContain('charge_concept_name');
+  });
 
   it('reads the resident own units without a new endpoint or a new permission', () => {
     // `can_read_unit` already admits the active owner of a unit and its active tenant, so the

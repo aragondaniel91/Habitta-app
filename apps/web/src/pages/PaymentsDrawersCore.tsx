@@ -4,7 +4,8 @@ import type { Session } from '@supabase/supabase-js';
 import { useDialogBehavior } from '../components/Drawer';
 import { PaymentsIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
-import { paymentApi } from '../features/payments/api';
+import { paymentApi, paymentProof } from '../features/payments/api';
+import { paymentProofFileError } from '../features/payments/proof-file';
 import { PaymentAllocationEditor } from '../features/payments/components/PaymentAllocationEditor';
 import { PaymentProofPreview } from '../features/payments/components/PaymentProofPreview';
 import { PaymentProofUploader } from '../features/payments/components/PaymentProofUploader';
@@ -13,6 +14,7 @@ import {
   type AllocationInput,
   type AllocationPreview,
   type Payment,
+  type PaymentAllocationIntent,
   type PaymentMethod,
   type PaymentReceipt,
   type Receivable,
@@ -26,6 +28,7 @@ export type PaymentsDrawerMode =
   | { type: 'create' }
   | { type: 'edit'; payment: Payment }
   | { type: 'review'; payment: Payment }
+  | { type: 'details'; payment: Payment }
   | { type: 'receipt'; payment: Payment; receipt: PaymentReceipt }
   | { type: 'methods' }
   | null;
@@ -50,6 +53,7 @@ function DrawerFrame({
   description,
   icon,
   onClose,
+  centered = true,
   children,
 }: {
   eyebrow: string;
@@ -57,6 +61,7 @@ function DrawerFrame({
   description: string;
   icon: ReactNode;
   onClose: () => void;
+  centered?: boolean;
   children: ReactNode;
 }) {
   const panel = useRef<HTMLElement>(null);
@@ -81,7 +86,10 @@ function DrawerFrame({
   useDialogBehavior(panel, onClose, closeDisabled);
 
   return (
-    <div className="payments-drawer-layer" role="presentation">
+    <div
+      className={`payments-drawer-layer${centered ? ' payments-drawer-layer--centered' : ''}`}
+      role="presentation"
+    >
       <button
         aria-label="Cerrar panel"
         className="payments-drawer-backdrop"
@@ -93,7 +101,7 @@ function DrawerFrame({
       <aside
         aria-label={title}
         aria-modal="true"
-        className="payments-drawer"
+        className={`payments-drawer${centered ? ' payments-drawer--centered' : ''}`}
         ref={panel}
         role="dialog"
         tabIndex={-1}
@@ -288,27 +296,115 @@ export function ReviewPayment({
   session,
   payment,
   receivables,
+  methods = [],
   onChanged,
+  readOnly = false,
+  unitLabel,
+  onClose,
 }: {
   condominiumId: string;
   session: Session;
   payment: Payment;
   receivables: Receivable[];
+  methods?: PaymentMethod[];
   onChanged: (message: string) => Promise<void>;
+  readOnly?: boolean;
+  unitLabel?: string;
+  onClose?: () => void;
 }) {
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [treasuryAccounts, setTreasuryAccounts] = useState<TreasuryAccount[]>([]);
   const [treasuryLoading, setTreasuryLoading] = useState(true);
+  const [allocationIntent, setAllocationIntent] = useState<PaymentAllocationIntent | null>(null);
+  const [allocationIntentLoading, setAllocationIntentLoading] = useState(true);
+  const [proofHistory, setProofHistory] = useState<
+    Array<{
+      id: string;
+      original_filename: string;
+      created_at: string;
+      superseded_at: string | null;
+    }>
+  >([]);
+  const [proofVersion, setProofVersion] = useState(0);
+  const [replacementFile, setReplacementFile] = useState<File | null>(null);
+  const [replacementBusy, setReplacementBusy] = useState(false);
+  const [replacementMessage, setReplacementMessage] = useState('');
   const [selectedTreasuryAccountId, setSelectedTreasuryAccountId] = useState(
     payment.treasury_account_id ?? '',
   );
   const endpoint = `/v1/condominiums/${condominiumId}/payments/${payment.id}`;
   const canApprove = payment.can_approve === true;
   const independentApprovalTitle = 'Requiere aprobaci\u00f3n de otro revisor';
+  const method = methods.find((item) => item.id === payment.payment_method_id);
+  const mayReplaceProof =
+    readOnly &&
+    payment.submitted_by_user_id === session.user.id &&
+    ['submitted', 'under_review'].includes(payment.status);
+  const replaceProof = async () => {
+    if (!mayReplaceProof || !replacementFile || replacementBusy) return;
+    setReplacementBusy(true);
+    setReplacementMessage('');
+    try {
+      await paymentProof(`${endpoint}/proof`, session, replacementFile);
+      setProofVersion((revision) => revision + 1);
+      setReplacementFile(null);
+      setReplacementMessage(
+        'Comprobante actualizado. Se conservó la versión anterior en el historial.',
+      );
+    } catch (cause) {
+      setReplacementMessage(
+        cause instanceof Error ? cause.message : 'No se pudo reemplazar el comprobante.',
+      );
+    } finally {
+      setReplacementBusy(false);
+    }
+  };
 
   useEffect(() => {
+    let active = true;
+    setProofHistory([]);
+    paymentApi<typeof proofHistory>(`${endpoint}/proof/history`, session)
+      .then((rows) => {
+        if (active) setProofHistory(rows);
+      })
+      .catch(() => {
+        if (active) setProofHistory([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [endpoint, session, proofVersion]);
+
+  useEffect(() => {
+    let active = true;
+    setAllocationIntentLoading(true);
+    paymentApi<PaymentAllocationIntent | null>(
+      `/v1/condominiums/${condominiumId}/payments/${payment.id}/allocation-intent`,
+      session,
+    )
+      .then((intent) => {
+        if (active) setAllocationIntent(intent);
+      })
+      .catch(() => {
+        if (active) setAllocationIntent(null);
+      })
+      .finally(() => {
+        if (active) setAllocationIntentLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [condominiumId, payment.id, session]);
+
+  useEffect(() => {
+    // Residents only inspect a submitted payment here. Do not probe the treasury surface merely
+    // to render a read-only proof/reference detail.
+    if (readOnly) {
+      setTreasuryLoading(false);
+      return undefined;
+    }
     let active = true;
     setTreasuryLoading(true);
     paymentApi<TreasuryAccount[]>(`/v1/condominiums/${condominiumId}/treasury/accounts`, session)
@@ -346,6 +442,7 @@ export function ReviewPayment({
     payment.id,
     payment.original_currency_code,
     payment.treasury_account_id,
+    readOnly,
     session,
   ]);
 
@@ -382,6 +479,168 @@ export function ReviewPayment({
     );
   };
 
+  const proposals = allocationIntent?.proposals ?? [];
+  const totalCents = proposals.reduce((total, proposal) => {
+    const [whole, fraction = ''] = proposal.payment_amount.split('.');
+    return total + BigInt(whole ?? 0) * 100n + BigInt(fraction.padEnd(2, '0'));
+  }, 0n);
+  const totalProposed = `${totalCents / 100n}.${(totalCents % 100n).toString().padStart(2, '0')}`;
+
+  if (readOnly) {
+    const summary = [
+      { label: 'Unidad', value: unitLabel ?? 'Unidad registrada' },
+      { label: 'Método', value: method?.display_name ?? 'Método registrado' },
+      { label: 'Referencia', value: payment.reference || 'Sin referencia' },
+      { label: 'Fecha', value: formatDashboardDate(payment.payment_date) },
+      { label: 'Pagador', value: payment.payer_name },
+      {
+        label: 'Total enviado',
+        value: formatDashboardAmount(payment.original_amount, payment.original_currency_code),
+      },
+    ];
+    return (
+      <div className="payments-detail">
+        <div className="payments-detail__status">
+          <Badge tone={paymentStatusTone(payment.status)}>
+            {paymentStatusLabels[payment.status] ?? payment.status}
+          </Badge>
+        </div>
+        <div className="payments-detail__summary">
+          {summary.map((item) => (
+            <div className="payments-detail__stat" key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+        {payment.notes?.trim() ? (
+          <section className="payments-detail__section" aria-label="Información adicional del pago">
+            <div className="payments-detail__heading">
+              <h3>Información adicional</h3>
+            </div>
+            <p>{payment.notes}</p>
+          </section>
+        ) : null}
+        <section className="payments-detail__section" aria-label="Propuesta del residente">
+          <div className="payments-detail__heading">
+            <h3>Propuesta del residente</h3>
+            <p>Es una propuesta para revisión; los saldos no cambian hasta su aprobación.</p>
+          </div>
+          {allocationIntentLoading ? (
+            <p role="status">Cargando propuesta…</p>
+          ) : proposals.length ? (
+            <div className="payments-detail__proposal">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Cuota</th>
+                    <th scope="col">Pendiente actual</th>
+                    <th scope="col">Propuesto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {proposals.map((proposal) => {
+                    const charge = receivables.find(
+                      (item) => item.id === proposal.receivable_item_id,
+                    );
+                    return (
+                      <tr key={proposal.receivable_item_id}>
+                        <td data-label="Cuota">{charge?.description ?? 'Cargo registrado'}</td>
+                        <td data-label="Pendiente actual">
+                          {charge?.outstanding_amount != null
+                            ? formatDashboardAmount(charge.outstanding_amount, charge.currency_code)
+                            : 'No disponible'}
+                        </td>
+                        <td data-label="Propuesto">
+                          <strong>
+                            {formatDashboardAmount(
+                              proposal.payment_amount,
+                              proposal.payment_currency_code,
+                            )}
+                          </strong>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="payments-detail__proposal-total">
+                <span>{proposals.length} cuota(s)</span>
+                <strong>
+                  Total propuesto:{' '}
+                  {formatDashboardAmount(totalProposed, payment.original_currency_code)}
+                </strong>
+              </div>
+            </div>
+          ) : (
+            <p className="payments-detail__empty">
+              Este pago no tiene una distribución propuesta registrada.
+            </p>
+          )}
+        </section>
+        <section className="payments-detail__section" aria-label="Comprobante del pago">
+          <div className="payments-detail__heading">
+            <h3>Comprobante</h3>
+          </div>
+          <PaymentProofPreview
+            key={proofVersion}
+            condominiumId={condominiumId}
+            paymentId={payment.id}
+            session={session}
+          />
+          {proofHistory.length > 1 ? (
+            <p className="payments-detail__proof-version" role="status">
+              Este comprobante se reemplazó {proofHistory.length - 1}{' '}
+              {proofHistory.length === 2 ? 'vez' : 'veces'}. Se conserva el historial.
+            </p>
+          ) : null}
+          {mayReplaceProof ? (
+            <div className="payments-detail__proof-replace">
+              <Field label="Reemplazar comprobante">
+                <label className="payments-detail__proof-dropzone">
+                  <input
+                    aria-label="Nuevo comprobante"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    type="file"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      const error = file ? paymentProofFileError(file) : null;
+                      setReplacementFile(error ? null : (file ?? null));
+                      event.currentTarget.value = '';
+                      setReplacementMessage(error ?? '');
+                    }}
+                  />
+                  <span>
+                    {replacementFile ? 'Cambiar archivo elegido' : 'Seleccionar imagen o PDF'}
+                  </span>
+                </label>
+              </Field>
+              {replacementFile ? <small>Nuevo archivo: {replacementFile.name}</small> : null}
+              <Button
+                disabled={!replacementFile || replacementBusy}
+                onClick={() => void replaceProof()}
+                type="button"
+                variant="secondary"
+              >
+                {replacementBusy ? 'Guardando…' : 'Guardar nuevo comprobante'}
+              </Button>
+              <small>
+                La versión anterior queda guardada para auditoría; el pago continúa pendiente de
+                revisión.
+              </small>
+              {replacementMessage ? <p role="status">{replacementMessage}</p> : null}
+            </div>
+          ) : null}
+        </section>
+        <footer className="payments-detail__footer">
+          <Button onClick={onClose} variant="secondary" type="button">
+            Cerrar
+          </Button>
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className="payments-review">
       <div className="payments-review__summary">
@@ -416,30 +675,109 @@ export function ReviewPayment({
           </Badge>
         </div>
       </div>
+      {payment.notes?.trim() ? (
+        <div className="payments-review__reference">
+          <span>Información adicional</span>
+          <strong>{payment.notes}</strong>
+        </div>
+      ) : null}
       {payment.reference ? (
         <div className="payments-review__reference">
           <span>Referencia</span>
           <strong>{payment.reference}</strong>
         </div>
       ) : null}
+      <div className="payments-review__reference">
+        <span>Método</span>
+        <strong>{method?.display_name ?? 'Método de pago registrado'}</strong>
+      </div>
+      <section
+        className="payments-proof-section"
+        aria-label="Propuesta de aplicación del residente"
+      >
+        <div className="payments-form__section-heading">
+          <strong>Propuesta del residente</strong>
+          <span>Es una guía para revisión; no ha aplicado ni registrado cargos.</span>
+        </div>
+        {allocationIntentLoading ? (
+          <p>Cargando propuesta…</p>
+        ) : allocationIntent?.proposals?.length ? (
+          <div className="payments-detail__proposal payments-review__proposal">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Concepto</th>
+                  <th scope="col">Pendiente actual</th>
+                  <th scope="col">Monto propuesto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allocationIntent.proposals.map((proposal) => {
+                  const receivable = receivables.find(
+                    (item) => item.id === proposal.receivable_item_id,
+                  );
+                  return (
+                    <tr key={proposal.receivable_item_id}>
+                      <td data-label="Concepto">{receivable?.description ?? 'Cargo publicado'}</td>
+                      <td data-label="Pendiente actual">
+                        {receivable?.outstanding_amount != null
+                          ? formatDashboardAmount(
+                              receivable.outstanding_amount,
+                              receivable.currency_code,
+                            )
+                          : 'No disponible'}
+                      </td>
+                      <td data-label="Monto propuesto">
+                        <strong>
+                          {formatDashboardAmount(
+                            proposal.payment_amount,
+                            proposal.payment_currency_code,
+                          )}
+                        </strong>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="payments-detail__proposal-total">
+              <span>{allocationIntent.proposals.length} cuotas seleccionadas</span>
+              <strong>
+                Total propuesto:{' '}
+                {formatDashboardAmount(totalProposed, payment.original_currency_code)}
+              </strong>
+            </div>
+          </div>
+        ) : (
+          <p>No se registró una propuesta de aplicación para este pago.</p>
+        )}
+      </section>
+      {readOnly ? (
+        <div className="payments-form__notice" role="status">
+          Este pago está enviado a administración. Sus datos, comprobante y cualquier aplicación ya
+          asociada se muestran solo para consulta hasta que cambie de estado.
+        </div>
+      ) : null}
       {message ? <div className="payments-form__message">{message}</div> : null}
-      {!canApprove ? (
+      {!readOnly && !canApprove ? (
         <div className="payments-form__notice" role="status">
           Próximo paso: otro revisor debe validar y aprobar este pago. El registrador no puede
           aprobarlo cuando existe un revisor independiente.
         </div>
       ) : null}
-      <div className="payments-review__actions">
-        {payment.status === 'submitted' ? (
-          <Button
-            disabled={processingAction !== null}
-            onClick={() => void transition('start-review', 'Revisión iniciada.')}
-            variant="secondary"
-          >
-            {processingAction === 'start-review' ? 'Procesando…' : 'Iniciar revisión'}
-          </Button>
-        ) : null}
-      </div>
+      {!readOnly ? (
+        <div className="payments-review__actions">
+          {payment.status === 'submitted' ? (
+            <Button
+              disabled={processingAction !== null}
+              onClick={() => void transition('start-review', 'Revisión iniciada.')}
+              variant="secondary"
+            >
+              {processingAction === 'start-review' ? 'Procesando…' : 'Iniciar revisión'}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="payments-proof-section">
         <div className="payments-form__section-heading">
           <strong>Comprobante</strong>
@@ -451,41 +789,56 @@ export function ReviewPayment({
           paymentId={payment.id}
           session={session}
         />
+        {proofHistory.length > 1 ? (
+          <details className="payments-detail__history">
+            <summary>Comprobante reemplazado · {proofHistory.length} versiones registradas</summary>
+            <ol>
+              {proofHistory.map((entry) => (
+                <li key={entry.id}>
+                  {entry.original_filename} · {formatDashboardDate(entry.created_at)}
+                  {entry.superseded_at ? ' · Reemplazado' : ' · Actual'}
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
       </div>
-      <div className="payments-review__decision">
-        <Field label="Motivo para corrección, rechazo o reverso">
-          <textarea
-            className="payments-textarea"
-            disabled={processingAction !== null}
-            onChange={(event) => setReason(event.target.value)}
-            value={reason}
-          />
-        </Field>
-        <div>
-          <Button
-            disabled={!reason.trim() || processingAction !== null}
-            onClick={() => void transition('request-correction', 'Corrección solicitada.', true)}
-            variant="secondary"
-          >
-            {processingAction === 'request-correction' ? 'Procesando…' : 'Solicitar corrección'}
-          </Button>
-          <Button
-            disabled={!reason.trim() || processingAction !== null}
-            onClick={() => void transition('reject', 'Pago rechazado.', true)}
-            variant="danger"
-          >
-            {processingAction === 'reject' ? 'Procesando…' : 'Rechazar'}
-          </Button>
+      {!readOnly ? (
+        <div className="payments-review__decision">
+          <Field label="Motivo para corrección, rechazo o reverso">
+            <textarea
+              className="payments-textarea"
+              disabled={processingAction !== null}
+              onChange={(event) => setReason(event.target.value)}
+              value={reason}
+            />
+          </Field>
+          <div>
+            <Button
+              disabled={!reason.trim() || processingAction !== null}
+              onClick={() => void transition('request-correction', 'Corrección solicitada.', true)}
+              variant="secondary"
+            >
+              {processingAction === 'request-correction' ? 'Procesando…' : 'Solicitar corrección'}
+            </Button>
+            <Button
+              disabled={!reason.trim() || processingAction !== null}
+              onClick={() => void transition('reject', 'Pago rechazado.', true)}
+              variant="danger"
+            >
+              {processingAction === 'reject' ? 'Procesando…' : 'Rechazar'}
+            </Button>
+          </div>
         </div>
-      </div>
-      {!canApprove ? (
+      ) : null}
+      {!readOnly && !canApprove ? (
         <div className="payments-form__message" role="status">
           <strong>{independentApprovalTitle}</strong>
           <br />
           Este pago debe aprobarlo otro revisor.
         </div>
       ) : null}
-      {canApprove ? (
+      {!readOnly && canApprove ? (
         <div className="payments-review__allocation">
           <div className="payments-form__section-heading">
             <strong>Aplicación del pago</strong>
@@ -555,7 +908,7 @@ export function ReviewPayment({
           />
         </div>
       ) : null}
-      {payment.status === 'approved' ? (
+      {!readOnly && payment.status === 'approved' ? (
         <Button
           disabled={!reason.trim() || processingAction !== null}
           onClick={() => void transition('reverse', 'Pago reversado.', true)}
@@ -582,22 +935,34 @@ export function PaymentsDrawerHost({
   if (!drawer) return null;
 
   // 'methods' and 'receipt' are handled upstream by PaymentsDrawers.tsx, which intercepts those
-  // drawer modes with its own views before ever delegating to this host. Only null, 'create',
-  // 'edit' and 'review' reach here.
+  // drawer modes with its own views before ever delegating to this host. Create, edit, review and
+  // resident read-only details reach this shared host.
 
-  if (drawer.type === 'review') {
+  if (drawer.type === 'review' || drawer.type === 'details') {
+    const readOnly = drawer.type === 'details';
     return (
       <DrawerFrame
-        description="Valida referencia, comprobante, tesorería y aplicación antes de aprobar."
-        eyebrow="Control financiero"
+        description={
+          readOnly
+            ? 'Consulta los datos enviados sin modificar el pago.'
+            : 'Valida referencia, comprobante, tesorería y aplicación antes de aprobar.'
+        }
+        eyebrow={readOnly ? 'Seguimiento de pago' : 'Control financiero'}
         icon={<PaymentsIcon size={22} />}
         onClose={onClose}
-        title="Revisar pago"
+        centered
+        title={readOnly ? 'Detalle del pago' : 'Revisar pago'}
       >
         <ReviewPayment
           condominiumId={condominiumId}
+          methods={methods}
           onChanged={onChanged}
           payment={drawer.payment}
+          readOnly={readOnly}
+          unitLabel={
+            units.find((unit) => unit.id === drawer.payment.unit_id)?.code ?? 'Unidad registrada'
+          }
+          onClose={onClose}
           receivables={receivables}
           session={session}
         />

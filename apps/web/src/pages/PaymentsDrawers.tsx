@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ComponentProps, FormEvent, ReactNode } from 'react';
-import { ConfirmDialog } from '../components/Dialog';
-import { Drawer, useDialogBehavior } from '../components/Drawer';
+import { ConfirmDialog, Dialog, DialogBody } from '../components/Dialog';
+import { useDialogBehavior } from '../components/Drawer';
 import { CheckCircleIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
 import { paymentApi } from '../features/payments/api';
@@ -56,7 +56,7 @@ function ReceiptDrawerFrame({
   useDialogBehavior(panel, onClose);
 
   return (
-    <div className="payments-drawer-layer" role="presentation">
+    <div className="payments-drawer-layer payments-drawer-layer--centered" role="presentation">
       <button
         aria-label="Cerrar panel"
         className="payments-drawer-backdrop"
@@ -67,7 +67,7 @@ function ReceiptDrawerFrame({
       <aside
         aria-label={title}
         aria-modal="true"
-        className="payments-drawer"
+        className="payments-drawer payments-drawer--centered"
         ref={panel}
         role="dialog"
         tabIndex={-1}
@@ -96,7 +96,35 @@ function ReceiptDrawerFrame({
   );
 }
 
-function PaymentMethodsView({
+function MethodActionIcon({ action }: { action: 'edit' | 'toggle' | 'delete' }) {
+  const shared = {
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+  return (
+    <svg aria-hidden="true" height="17" viewBox="0 0 24 24" width="17" {...shared}>
+      {action === 'edit' ? (
+        <>
+          <path d="m15 5 4 4M4 20l4.5-1 10.8-10.8a2 2 0 0 0 0-2.8l-.7-.7a2 2 0 0 0-2.8 0L5 15.5 4 20Z" />
+        </>
+      ) : action === 'toggle' ? (
+        <>
+          <path d="M12 3v9" />
+          <path d="M7 5.6a9 9 0 1 0 10 0" />
+        </>
+      ) : (
+        <>
+          <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+export function PaymentMethodsView({
   condominiumId,
   session,
   methods,
@@ -112,6 +140,7 @@ function PaymentMethodsView({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState<PaymentMethod | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<PaymentMethod | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -122,6 +151,7 @@ function PaymentMethodsView({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (saving) return;
     const form = event.currentTarget;
     const values = Object.fromEntries(new FormData(form));
     setSaving(true);
@@ -148,6 +178,7 @@ function PaymentMethodsView({
       const wasEditing = Boolean(editing);
       setEditing(null);
       setMethodType('bank_transfer');
+      setFormOpen(false);
       await onChanged(wasEditing ? 'Método de pago actualizado.' : 'Método de pago creado.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo guardar el método.');
@@ -193,247 +224,321 @@ function PaymentMethodsView({
     }
   };
 
+  const openNew = () => {
+    setEditing(null);
+    setMethodType('bank_transfer');
+    setMessage('');
+    setFormOpen(true);
+  };
+  const openEdit = (method: PaymentMethod) => {
+    setEditing(method);
+    setMethodType(method.method_type as ManualMethodType);
+    setMessage('');
+    setFormOpen(true);
+  };
+  const closeForm = () => {
+    if (saving) return;
+    setFormOpen(false);
+    setEditing(null);
+    setMessage('');
+  };
+
   return (
     <div className="payments-methods-workspace">
-      <div className="payments-method-list">
-        {methods.map((method) => (
-          <article key={method.id}>
-            <div>
-              <strong>{method.display_name}</strong>
-              <span>
-                {method.method_type.replaceAll('_', ' ')} · {method.currency_code}
-              </span>
-            </div>
-            <div>
-              {method.requires_reference ? <Badge tone="info">Referencia</Badge> : null}
-              {method.requires_proof ? <Badge tone="warning">Comprobante</Badge> : null}
-              <Badge tone={method.is_active ? 'success' : 'neutral'}>
-                {method.is_active ? 'Activo' : 'Inactivo'}
-              </Badge>
-            </div>
-            {manage ? (
-              <div className="payments-method-list__actions">
-                <Button
-                  disabled={saving || toggling !== null}
-                  onClick={() => {
-                    setMessage('');
-                    setMethodType(method.method_type as ManualMethodType);
-                    setEditing(method);
-                  }}
-                  size="sm"
-                  variant="ghost"
-                >
-                  Editar
-                </Button>
-                <Button
-                  disabled={saving || toggling !== null}
-                  onClick={() => void toggleActive(method)}
-                  size="sm"
-                  variant="ghost"
-                >
-                  {toggling === method.id
-                    ? 'Guardando…'
-                    : method.is_active
-                      ? 'Desactivar'
-                      : 'Reactivar'}
-                </Button>
-                <Button
-                  disabled={saving || toggling !== null}
-                  onClick={() => {
-                    setDeleteError('');
-                    setDeleting(method);
-                  }}
-                  size="sm"
-                  variant="ghost"
-                >
-                  Eliminar
-                </Button>
-              </div>
-            ) : null}
-          </article>
-        ))}
+      <div className="payments-methods-toolbar">
+        <div>
+          <strong>Métodos configurados</strong>
+          <span>
+            {methods.length} en total · {methods.filter((method) => method.is_active).length}{' '}
+            activos
+          </span>
+        </div>
+        {manage ? (
+          <Button onClick={openNew} size="sm" type="button">
+            Configurar métodos
+          </Button>
+        ) : null}
       </div>
-      {manage ? (
-        <form
-          className="payments-form payments-method-form ux-form"
-          key={editing?.id ?? 'new'}
-          onSubmit={(event) => void submit(event)}
+      {message && !formOpen ? (
+        <div className="payments-form__message" role="status">
+          {message}
+        </div>
+      ) : null}
+      {methods.length ? (
+        <div className="payments-methods-table-scroll">
+          <table className="payments-methods-table">
+            <thead>
+              <tr>
+                <th scope="col">Método</th>
+                <th scope="col">Moneda</th>
+                <th scope="col">Requisitos</th>
+                <th scope="col">Estado</th>
+                {manage ? <th scope="col">Acciones</th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {methods.map((method) => (
+                <tr key={method.id}>
+                  <td data-label="Método">
+                    <strong>{method.display_name}</strong>
+                    <small>{method.method_type.replaceAll('_', ' ')}</small>
+                  </td>
+                  <td data-label="Moneda">{method.currency_code}</td>
+                  <td data-label="Requisitos">
+                    <div className="payments-methods-table__badges">
+                      {method.requires_reference ? <Badge tone="info">Referencia</Badge> : null}
+                      {method.requires_proof ? <Badge tone="warning">Comprobante</Badge> : null}
+                      {!method.requires_reference && !method.requires_proof ? (
+                        <span>No requeridos</span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td data-label="Estado">
+                    <Badge tone={method.is_active ? 'success' : 'neutral'}>
+                      {method.is_active ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                  </td>
+                  {manage ? (
+                    <td data-label="Acciones">
+                      <div className="payments-methods-table__actions">
+                        <button
+                          aria-label={`Editar ${method.display_name}`}
+                          className="payments-methods-table__action"
+                          disabled={saving || toggling !== null || deleteBusy}
+                          onClick={() => openEdit(method)}
+                          title="Editar"
+                          type="button"
+                        >
+                          <MethodActionIcon action="edit" />
+                        </button>
+                        <button
+                          aria-label={`${method.is_active ? 'Desactivar' : 'Activar'} ${method.display_name}`}
+                          className="payments-methods-table__action"
+                          data-tone={method.is_active ? 'neutral' : 'success'}
+                          disabled={saving || toggling !== null || deleteBusy}
+                          onClick={() => void toggleActive(method)}
+                          title={method.is_active ? 'Desactivar' : 'Activar'}
+                          type="button"
+                        >
+                          <MethodActionIcon action="toggle" />
+                        </button>
+                        <button
+                          aria-label={`Eliminar ${method.display_name}`}
+                          className="payments-methods-table__action"
+                          data-tone="danger"
+                          disabled={saving || toggling !== null || deleteBusy}
+                          onClick={() => {
+                            setDeleteError('');
+                            setDeleting(method);
+                          }}
+                          title="Eliminar"
+                          type="button"
+                        >
+                          <MethodActionIcon action="delete" />
+                        </button>
+                      </div>
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="payments-methods-empty">
+          <strong>No hay métodos configurados.</strong>
+          <p>Agrega el primero para habilitar opciones de pago.</p>
+        </div>
+      )}
+      {manage && formOpen ? (
+        <Dialog
+          closeDisabled={saving}
+          description={
+            editing
+              ? 'Edita la configuración del método; los pagos históricos conservan sus datos registrados.'
+              : 'Configura un método disponible para nuevas operaciones.'
+          }
+          eyebrow="Configuración financiera"
+          onClose={closeForm}
+          size="lg"
+          title={editing ? 'Editar método de pago' : 'Configurar método de pago'}
         >
-          <div className="payments-form__section-heading">
-            <strong>{editing ? `Editar «${editing.display_name}»` : 'Agregar método'}</strong>
-            <span>
-              {editing
-                ? 'Los cambios aplican a pagos nuevos. Los recibos emitidos conservan los datos con los que se aprobaron.'
-                : 'Publica instrucciones claras para residentes y administradores.'}
-            </span>
-          </div>
-          {message ? <div className="payments-form__message">{message}</div> : null}
-          <div className="payments-form__grid">
-            <Field label="Tipo">
-              <Select
-                name="methodType"
-                onChange={(event) => setMethodType(event.target.value as ManualMethodType)}
-                value={methodType}
-              >
-                <option value="bank_transfer">Transferencia bancaria</option>
-                <option value="pago_movil">Pago Móvil</option>
-                <option value="zelle">Zelle</option>
-                <option value="cash">Efectivo</option>
-                <option value="international_transfer">Transferencia internacional</option>
-                <option value="paypal_manual">PayPal (manual)</option>
-                <option value="other">Otro</option>
-              </Select>
-            </Field>
-            <Field
-              hint={
-                editing ? 'Cambiarla no afecta pagos ya registrados con este método.' : undefined
-              }
-              label="Moneda"
+          <DialogBody>
+            <form
+              className="payments-form payments-method-form ux-form"
+              key={editing?.id ?? 'new'}
+              onSubmit={(event) => void submit(event)}
             >
-              <Select defaultValue={editing?.currency_code ?? 'USD'} name="currencyCode">
-                <option>USD</option>
-                <option>VES</option>
-              </Select>
-            </Field>
-          </div>
-          <Field label="Nombre visible">
-            <input
-              className="input"
-              defaultValue={editing?.display_name}
-              name="displayName"
-              required
-            />
-          </Field>
-          {methodFields[methodType].some((field) => field === 'holder' || field === 'bank') ? (
-            <div className="payments-form__grid">
-              {methodFields[methodType].includes('holder') ? (
+              <div className="payments-form__section-heading">
+                <strong>{editing ? `Editar «${editing.display_name}»` : 'Agregar método'}</strong>
+                <span>
+                  {editing
+                    ? 'Los cambios aplican a pagos nuevos. Los recibos emitidos conservan los datos con los que se aprobaron.'
+                    : 'Publica instrucciones claras para residentes y administradores.'}
+                </span>
+              </div>
+              {message ? <div className="payments-form__message">{message}</div> : null}
+              <div className="payments-form__grid">
+                <Field label="Tipo">
+                  <Select
+                    name="methodType"
+                    onChange={(event) => setMethodType(event.target.value as ManualMethodType)}
+                    value={methodType}
+                  >
+                    <option value="bank_transfer">Transferencia bancaria</option>
+                    <option value="pago_movil">Pago Móvil</option>
+                    <option value="zelle">Zelle</option>
+                    <option value="cash">Efectivo</option>
+                    <option value="international_transfer">Transferencia internacional</option>
+                    <option value="paypal_manual">PayPal (manual)</option>
+                    <option value="other">Otro</option>
+                  </Select>
+                </Field>
                 <Field
-                  label={
+                  hint={
+                    editing
+                      ? 'Cambiarla no afecta pagos ya registrados con este método.'
+                      : undefined
+                  }
+                  label="Moneda"
+                >
+                  <Select defaultValue={editing?.currency_code ?? 'USD'} name="currencyCode">
+                    <option>USD</option>
+                    <option>VES</option>
+                  </Select>
+                </Field>
+              </div>
+              <Field label="Nombre visible">
+                <input
+                  className="input"
+                  defaultValue={editing?.display_name}
+                  name="displayName"
+                  required
+                />
+              </Field>
+              {methodFields[methodType].some((field) => field === 'holder' || field === 'bank') ? (
+                <div className="payments-form__grid">
+                  {methodFields[methodType].includes('holder') ? (
+                    <Field
+                      label={
+                        methodType === 'international_transfer'
+                          ? 'Beneficiario / Titular'
+                          : methodType === 'zelle'
+                            ? 'Nombre / Titular'
+                            : 'Titular'
+                      }
+                    >
+                      <input
+                        className="input"
+                        defaultValue={editing?.account_holder ?? ''}
+                        name="accountHolder"
+                        required={[
+                          'bank_transfer',
+                          'pago_movil',
+                          'zelle',
+                          'international_transfer',
+                        ].includes(methodType)}
+                      />
+                    </Field>
+                  ) : null}
+                  {methodFields[methodType].includes('bank') ? (
+                    <Field label="Banco">
+                      <input
+                        className="input"
+                        defaultValue={editing?.bank_name ?? ''}
+                        name="bankName"
+                        required
+                      />
+                    </Field>
+                  ) : null}
+                </div>
+              ) : null}
+              {methodFields[methodType].some(
+                (field) => field === 'account' || field === 'phone',
+              ) ? (
+                <div className="payments-form__grid">
+                  {methodFields[methodType].includes('account') ? (
+                    <Field label="Número de cuenta">
+                      <input
+                        className="input"
+                        defaultValue={editing?.account_identifier_masked ?? ''}
+                        name="accountIdentifierMasked"
+                        required
+                      />
+                    </Field>
+                  ) : null}
+                  {methodFields[methodType].includes('phone') ? (
+                    <Field label="Teléfono">
+                      <input
+                        className="input"
+                        defaultValue={editing?.phone_masked ?? ''}
+                        name="phoneMasked"
+                      />
+                    </Field>
+                  ) : null}
+                </div>
+              ) : null}
+              {methodFields[methodType].includes('email') ? (
+                <Field label="Correo">
+                  <input
+                    className="input"
+                    defaultValue={editing?.email_masked ?? ''}
+                    name="emailMasked"
+                    required={methodType === 'paypal_manual'}
+                    type="email"
+                  />
+                </Field>
+              ) : null}
+              {methodFields[methodType].includes('instructions') ? (
+                <Field
+                  hint={
                     methodType === 'international_transfer'
-                      ? 'Beneficiario / Titular'
-                      : methodType === 'zelle'
-                        ? 'Nombre / Titular'
-                        : 'Titular'
+                      ? 'Incluye SWIFT/BIC e IBAN si aplican; por ahora se registran como instrucciones.'
+                      : undefined
+                  }
+                  label={
+                    methodType === 'cash'
+                      ? 'Lugar e instrucciones para entregar efectivo'
+                      : 'Instrucciones'
                   }
                 >
-                  <input
-                    className="input"
-                    defaultValue={editing?.account_holder ?? ''}
-                    name="accountHolder"
-                    required={[
-                      'bank_transfer',
-                      'pago_movil',
-                      'zelle',
-                      'international_transfer',
-                    ].includes(methodType)}
+                  <textarea
+                    className="payments-textarea"
+                    defaultValue={editing?.instructions ?? ''}
+                    name="instructions"
+                    required={methodType === 'cash' || methodType === 'other'}
                   />
                 </Field>
               ) : null}
-              {methodFields[methodType].includes('bank') ? (
-                <Field label="Banco">
+              <div className="payments-checkbox-row">
+                <label>
                   <input
-                    className="input"
-                    defaultValue={editing?.bank_name ?? ''}
-                    name="bankName"
-                    required
-                  />
-                </Field>
-              ) : null}
-            </div>
-          ) : null}
-          {methodFields[methodType].some((field) => field === 'account' || field === 'phone') ? (
-            <div className="payments-form__grid">
-              {methodFields[methodType].includes('account') ? (
-                <Field label="Número de cuenta">
+                    defaultChecked={editing?.requires_reference ?? false}
+                    name="requiresReference"
+                    type="checkbox"
+                  />{' '}
+                  Exigir referencia
+                </label>
+                <label>
                   <input
-                    className="input"
-                    defaultValue={editing?.account_identifier_masked ?? ''}
-                    name="accountIdentifierMasked"
-                    required
-                  />
-                </Field>
-              ) : null}
-              {methodFields[methodType].includes('phone') ? (
-                <Field label="Teléfono">
-                  <input
-                    className="input"
-                    defaultValue={editing?.phone_masked ?? ''}
-                    name="phoneMasked"
-                  />
-                </Field>
-              ) : null}
-            </div>
-          ) : null}
-          {methodFields[methodType].includes('email') ? (
-            <Field label="Correo">
-              <input
-                className="input"
-                defaultValue={editing?.email_masked ?? ''}
-                name="emailMasked"
-                required={methodType === 'paypal_manual'}
-                type="email"
-              />
-            </Field>
-          ) : null}
-          {methodFields[methodType].includes('instructions') ? (
-            <Field
-              hint={
-                methodType === 'international_transfer'
-                  ? 'Incluye SWIFT/BIC e IBAN si aplican; por ahora se registran como instrucciones.'
-                  : undefined
-              }
-              label={
-                methodType === 'cash'
-                  ? 'Lugar e instrucciones para entregar efectivo'
-                  : 'Instrucciones'
-              }
-            >
-              <textarea
-                className="payments-textarea"
-                defaultValue={editing?.instructions ?? ''}
-                name="instructions"
-                required={methodType === 'cash' || methodType === 'other'}
-              />
-            </Field>
-          ) : null}
-          <div className="payments-checkbox-row">
-            <label>
-              <input
-                defaultChecked={editing?.requires_reference ?? false}
-                name="requiresReference"
-                type="checkbox"
-              />{' '}
-              Exigir referencia
-            </label>
-            <label>
-              <input
-                defaultChecked={editing?.requires_proof ?? false}
-                name="requiresProof"
-                type="checkbox"
-              />{' '}
-              Exigir comprobante
-            </label>
-          </div>
-          <div className="payments-review__actions">
-            {editing ? (
-              <Button
-                disabled={saving}
-                onClick={() => {
-                  setMessage('');
-                  setMethodType('bank_transfer');
-                  setEditing(null);
-                }}
-                type="button"
-                variant="secondary"
-              >
-                Cancelar edición
-              </Button>
-            ) : null}
-            <Button disabled={saving} type="submit">
-              {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear método'}
-            </Button>
-          </div>
-        </form>
+                    defaultChecked={editing?.requires_proof ?? false}
+                    name="requiresProof"
+                    type="checkbox"
+                  />{' '}
+                  Exigir comprobante
+                </label>
+              </div>
+              <div className="payments-review__actions">
+                <Button disabled={saving} onClick={closeForm} type="button" variant="secondary">
+                  Cancelar
+                </Button>
+                <Button disabled={saving} type="submit">
+                  {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear método'}
+                </Button>
+              </div>
+            </form>
+          </DialogBody>
+        </Dialog>
       ) : null}
 
       {deleting ? (
@@ -638,23 +743,29 @@ export function PaymentsDrawerHost(props: Props) {
 
   if (drawer.type === 'methods') {
     return (
-      <Drawer
-        description="Configura métodos de pago visibles para residentes y administradores."
+      <Dialog
+        description="Consulta y administra métodos de pago del condominio."
         eyebrow="Configuración financiera"
         onClose={props.onClose}
-        prefix="payments"
+        size="lg"
         title="Métodos de pago"
-        wide
       >
-        <PaymentMethodsView
-          condominiumId={props.condominiumId}
-          methods={props.methods}
-          onChanged={props.onChanged}
-          session={props.session}
-        />
-      </Drawer>
+        <DialogBody>
+          <PaymentMethodsView
+            condominiumId={props.condominiumId}
+            methods={props.methods}
+            onChanged={props.onChanged}
+            session={props.session}
+          />
+        </DialogBody>
+      </Dialog>
     );
   }
+
+  // Residents use `details` for submitted and under-review payments. It must reach the core
+  // drawer, where ReviewPayment renders the read-only method, proof and saved proposal view.
+  // Keep this branch explicit: receipt is the only mode this wrapper owns.
+  if (drawer.type === 'details') return <CorePaymentsDrawerHost {...props} />;
 
   if (drawer.type !== 'receipt') return <CorePaymentsDrawerHost {...props} />;
 

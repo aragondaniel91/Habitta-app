@@ -62,6 +62,8 @@ type Props = {
   presentation?: 'legacy' | 'workspace';
   /** Rendered next to the close button, for actions that belong to the panel itself. */
   headerActions?: ReactNode;
+  /** Center all dialog-like drawers. Disable only for true navigation sidebars. */
+  centered?: boolean;
 };
 
 /**
@@ -156,6 +158,7 @@ export function Drawer({
   closeDisabled = false,
   presentation = 'legacy',
   headerActions,
+  centered = true,
 }: Props) {
   const panel = useRef<HTMLElement>(null);
   const [descendantBusy, setDescendantBusy] = useState(false);
@@ -181,7 +184,11 @@ export function Drawer({
 
   return (
     <div
-      className={[`${prefix}-drawer-layer`, workspace ? 'ux-drawer-layer' : '']
+      className={[
+        `${prefix}-drawer-layer`,
+        workspace ? 'ux-drawer-layer' : '',
+        centered ? 'habitta-drawer-centered-layer' : '',
+      ]
         .filter(Boolean)
         .join(' ')}
       data-presentation={presentation}
@@ -189,7 +196,11 @@ export function Drawer({
     >
       <button
         aria-label="Cerrar panel"
-        className={[`${prefix}-drawer-backdrop`, workspace ? 'ux-drawer-backdrop' : '']
+        className={[
+          `${prefix}-drawer-backdrop`,
+          workspace ? 'ux-drawer-backdrop' : '',
+          centered ? 'habitta-drawer-centered-backdrop' : '',
+        ]
           .filter(Boolean)
           .join(' ')}
         disabled={effectiveCloseDisabled}
@@ -200,7 +211,11 @@ export function Drawer({
       <aside
         aria-label={title}
         aria-modal="true"
-        className={[`${prefix}-drawer`, workspace ? 'ux-drawer-panel' : '']
+        className={[
+          `${prefix}-drawer`,
+          workspace ? 'ux-drawer-panel' : '',
+          centered ? 'habitta-drawer-centered-panel' : '',
+        ]
           .filter(Boolean)
           .join(' ')}
         data-presentation={presentation}
@@ -233,7 +248,11 @@ export function Drawer({
           </div>
         </header>
         <div
-          className={[`${prefix}-drawer__body`, workspace ? 'ux-drawer-panel__body' : '']
+          className={[
+            `${prefix}-drawer__body`,
+            workspace ? 'ux-drawer-panel__body' : '',
+            centered ? 'habitta-drawer-centered-body' : '',
+          ]
             .filter(Boolean)
             .join(' ')}
         >

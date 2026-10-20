@@ -52,6 +52,7 @@ type Props = {
 const paymentActionLabel = (status: string) => {
   if (status === 'correction_requested') return 'Corregir pago';
   if (status === 'draft') return 'Continuar';
+  if (status === 'submitted' || status === 'under_review') return 'Ver detalle';
   if (status === 'approved' || status === 'reversed') return 'Ver recibo';
   return '';
 };

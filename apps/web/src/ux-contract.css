@@ -585,3 +585,63 @@
     max-width: min(280px, 84vw);
   }
 }
+
+/* Shared Habitta modal geometry: keep module-specific form styles and focus behavior. */
+.habitta-drawer-centered-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: clamp(0.65rem, 3vw, 1.75rem) !important;
+  overflow: hidden !important;
+}
+.habitta-drawer-centered-layer > .habitta-drawer-centered-backdrop {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  background: rgb(13 27 42 / 0.55);
+}
+.habitta-drawer-centered-layer > .habitta-drawer-centered-panel {
+  position: relative !important;
+  inset: auto !important;
+  transform: none !important;
+  z-index: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: min(100%, 48rem) !important;
+  max-width: calc(100vw - 1.3rem) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: min(92dvh, 950px) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-lg) + 0.25rem);
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgb(13 27 42 / 0.25);
+}
+.habitta-drawer-centered-layer > .habitta-drawer-centered-panel[data-wide='true'] {
+  width: min(100%, 64rem) !important;
+}
+.habitta-drawer-centered-panel > .habitta-drawer-centered-body {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+@media (max-width: 540px) {
+  .habitta-drawer-centered-layer {
+    padding: 0.45rem !important;
+  }
+  .habitta-drawer-centered-layer > .habitta-drawer-centered-panel {
+    width: 100% !important;
+    max-width: calc(100vw - 0.9rem) !important;
+    max-height: calc(100dvh - 0.9rem) !important;
+  }
+}

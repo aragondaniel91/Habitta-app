@@ -324,6 +324,15 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         .slice(0, 4),
     [currentData?.payments, activeUnitId],
   );
+  const paymentNeedingAction = useMemo(
+    () =>
+      recentPayments.find((payment) => ['draft', 'correction_requested'].includes(payment.status)),
+    [recentPayments],
+  );
+  const paymentAwaitingReview = useMemo(
+    () => recentPayments.find((payment) => ['submitted', 'under_review'].includes(payment.status)),
+    [recentPayments],
+  );
   const importantAnnouncements = useMemo(
     () =>
       [...(currentData?.announcements ?? [])]
@@ -615,6 +624,64 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
 
       {showsFinancialContext ? (
         <section aria-label="Pagos recientes" className="resident-dashboard__payments-row">
+          {paymentNeedingAction || paymentAwaitingReview ? (
+            <div className="resident-dashboard__payment-attention" aria-label="Estado de pagos">
+              {paymentNeedingAction ? (
+                <button
+                  className="resident-dashboard__payment-attention-card"
+                  onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
+                  type="button"
+                >
+                  <span className="resident-dashboard__payment-attention-icon" data-tone="warning">
+                    <PaymentsIcon size={19} />
+                  </span>
+                  <span>
+                    <strong>Acción pendiente</strong>
+                    <small>
+                      {formatDashboardAmount(
+                        paymentNeedingAction.original_amount,
+                        paymentNeedingAction.original_currency_code,
+                      )}{' '}
+                      · {paymentStatusLabels[paymentNeedingAction.status]}
+                    </small>
+                    <small>
+                      {paymentNeedingAction.charge_concept_name
+                        ? `Cargo aplicado: ${paymentNeedingAction.charge_concept_name}`
+                        : 'Aún no hay un cargo aplicado a este pago.'}
+                    </small>
+                  </span>
+                  <ArrowRightIcon aria-hidden="true" size={17} />
+                </button>
+              ) : null}
+              {paymentAwaitingReview ? (
+                <button
+                  className="resident-dashboard__payment-attention-card"
+                  onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
+                  type="button"
+                >
+                  <span className="resident-dashboard__payment-attention-icon" data-tone="info">
+                    <PaymentsIcon size={19} />
+                  </span>
+                  <span>
+                    <strong>En espera de revisión</strong>
+                    <small>
+                      {formatDashboardAmount(
+                        paymentAwaitingReview.original_amount,
+                        paymentAwaitingReview.original_currency_code,
+                      )}{' '}
+                      · {paymentStatusLabels[paymentAwaitingReview.status]}
+                    </small>
+                    <small>
+                      {paymentAwaitingReview.charge_concept_name
+                        ? `Cargo aplicado: ${paymentAwaitingReview.charge_concept_name}`
+                        : 'Se mostrará un cargo solo si se aprueba y aplica el pago.'}
+                    </small>
+                  </span>
+                  <ArrowRightIcon aria-hidden="true" size={17} />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <Surface className="resident-dashboard__panel">
             <div className="resident-dashboard__section-heading">
               <div>

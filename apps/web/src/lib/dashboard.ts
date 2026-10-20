@@ -57,6 +57,8 @@ export type DashboardPayment = {
   payment_date: string;
   submitted_at?: string;
   created_at?: string;
+  /** Present only when an authorized payment read includes an already-applied charge concept. */
+  charge_concept_name?: string | null;
 };
 
 export type DashboardActivity = {

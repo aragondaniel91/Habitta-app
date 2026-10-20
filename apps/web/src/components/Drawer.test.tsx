@@ -16,6 +16,8 @@ describe('Drawer', () => {
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="true"');
     expect(html).toContain('aria-label="Registrar pago"');
+    expect(html).toContain('habitta-drawer-centered-layer');
+    expect(html).toContain('habitta-drawer-centered-panel');
     expect(html).toContain('<h2>Registrar pago</h2>');
   });
 
@@ -40,7 +42,16 @@ describe('Drawer', () => {
       </Drawer>,
     );
 
-    expect(html).toMatch(/class="requests-drawer-backdrop"[^>]*tabindex="-1"/);
+    expect(html).toMatch(/class="requests-drawer-backdrop[^"]*"[^>]*tabindex="-1"/);
+  });
+
+  it('allows an explicitly non-modal navigation panel to opt out', () => {
+    const html = renderToStaticMarkup(
+      <Drawer centered={false} onClose={() => undefined} prefix="requests" title="Navegación">
+        <p>contenido</p>
+      </Drawer>,
+    );
+    expect(html).not.toContain('habitta-drawer-centered-layer');
   });
 
   it('omits the eyebrow when the module does not supply one', () => {

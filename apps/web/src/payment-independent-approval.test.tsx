@@ -75,6 +75,7 @@ describe('independent payment approval review DOM', () => {
 
     expect(html).toContain('payments-review__allocation');
     expect(html).toContain('Previsualizar aplicaci');
+    expect(html).toContain('Propuesta del residente');
     expect(html).not.toContain('Requiere aprobaci');
   });
 

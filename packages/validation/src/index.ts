@@ -435,6 +435,11 @@ export const approvePaymentSchema = z
         message: 'Duplicate receivable item',
       });
   });
+// A resident may propose where a payment should be applied, but only a reviewer can create the
+// immutable allocation and ledger credit. This is deliberately a separate payload from approval.
+export const paymentAllocationIntentSchema = z.object({
+  allocations: z.array(allocationSchema).min(1).max(100),
+});
 export const openingBalancesSchema = z.object({
   rows: z
     .array(

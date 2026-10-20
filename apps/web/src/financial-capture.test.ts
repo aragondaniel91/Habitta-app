@@ -15,7 +15,8 @@ describe('financial capture orchestration', () => {
     expect(router).toContain('ResidentPaymentsPage');
     expect(router).toContain('AdminPaymentsPage');
 
-    expect(admin).toContain('import { PaymentCaptureDrawer }');
+    expect(admin).toContain('import { ResidentPaymentWizard }');
+    expect(admin).toContain('context="administrator"');
     expect(admin).toContain("drawer?.type === 'create' || drawer?.type === 'edit'");
     expect(admin).toContain(
       "drawer={drawer?.type === 'create' || drawer?.type === 'edit' ? null : drawer}",
@@ -186,6 +187,7 @@ describe('financial capture orchestration', () => {
     const capture = await source('./features/payments/components/PaymentCaptureDrawer.tsx');
     const resident = await source('./pages/ResidentPaymentsPage.tsx');
     const admin = await source('./pages/AdminPaymentsPage.tsx');
+    const wizard = await source('./features/payments/components/ResidentPaymentWizard.tsx');
 
     // A completed capture ends by handing the payment to review. It is still not approval,
     // allocation or a treasury posting, and the assertions above continue to forbid all three.
@@ -201,9 +203,13 @@ describe('financial capture orchestration', () => {
 
     // Both user-facing payment capture surfaces now opt in. This prevents the admin's
     // "Registrar pago" flow from looking finished while leaving the record in draft.
-    expect(resident).toContain('submitOnComplete');
-    expect(admin).toContain('submitOnComplete');
+    expect(resident).toContain('ResidentPaymentWizard');
+    expect(admin).toContain('context="administrator"');
     expect(admin).toContain("drawer?.type === 'create' || drawer?.type === 'edit'");
+    expect(wizard).toContain('if (submit)');
+    expect(wizard).toContain('/payments/${savedPayment.id}/submit');
+    expect(wizard).toContain('(!selectedMethod.requires_proof || proof || payment)');
+    expect(wizard).toContain('closeDisabled={saving}');
     expect(capture).toContain('Guardar pendiente de revisión');
     expect(capture).toContain('Registrar y enviar a revisión');
   });
@@ -211,10 +217,10 @@ describe('financial capture orchestration', () => {
   it('explains action-required payment states and gives the admin a direct correction path', async () => {
     const admin = await source('./pages/AdminPaymentsPage.tsx');
 
-    expect(admin).toContain('Pagos que necesitan tu atención');
-    expect(admin).toContain('Un borrador todavía no fue enviado a validación.');
-    expect(admin).toContain('Completa datos/comprobante y envía el pago a validación.');
-    expect(admin).toContain('Corrección solicitada:');
+    expect(admin).toContain('Mis registros por completar');
+    expect(admin).toContain('únicamente tus propias capturas');
+    expect(admin).toContain('payment.submitted_by_user_id === session.user.id');
+    expect(admin).toContain('Corrección:');
     expect(admin).toContain("setDrawer({ type: 'edit', payment })");
   });
 
