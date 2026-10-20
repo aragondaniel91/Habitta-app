@@ -865,17 +865,14 @@ export function ReviewPayment({
         <div className="payments-review__allocation">
           <div className="payments-form__section-heading">
             <strong>Aplicación del pago</strong>
-            <span>
-              Previsualiza la distribución antes de aprobar. Las monedas nunca se mezclan sin tasa
-              explícita.
-            </span>
+            <span>Revisa la cuenta receptora y confirma la aplicación propuesta.</span>
           </div>
           <Field
             label="Cuenta de tesorería"
             hint={
               treasuryAccounts.length === 0 && !treasuryLoading
                 ? `No hay cuentas activas en ${payment.original_currency_code}; Habitta creará una cuenta transitoria claramente identificada.`
-                : 'El pago aprobado ingresará a esta cuenta.'
+                : 'Destino del pago aprobado.'
             }
           >
             <Select

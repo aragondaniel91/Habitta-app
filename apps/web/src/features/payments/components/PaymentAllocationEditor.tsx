@@ -197,7 +197,13 @@ export function PaymentAllocationEditor({
   };
 
   return (
-    <div className="payments-allocation-editor">
+    <div
+      className={
+        proposalMode
+          ? 'payments-allocation-editor payments-allocation-editor--proposal'
+          : 'payments-allocation-editor'
+      }
+    >
       {!proposalMode ? (
         <label>
           Obligación
@@ -225,10 +231,10 @@ export function PaymentAllocationEditor({
           </select>
         </label>
       ) : (
-        <p className="payments-allocation-editor__empty" role="status">
-          Distribución indicada por el residente. Habitta la comprueba con los saldos actuales; no
-          tienes que seleccionar las obligaciones otra vez.
-        </p>
+        <div className="payments-allocation-editor__proposal-label" role="status">
+          <span>Distribución indicada por el residente</span>
+          <strong>Solo lectura</strong>
+        </div>
       )}
       {!receivables.length && !proposalMode ? (
         <p className="payments-allocation-editor__empty">
@@ -241,12 +247,17 @@ export function PaymentAllocationEditor({
         const problem = allocationProblem(allocation);
         if (proposalMode) {
           return (
-            <div className="payments-allocation-editor__derived" key={allocation.receivableItemId}>
-              <strong>{receivable?.description ?? 'Obligación registrada'}</strong>
-              <span>
-                Pendiente actual: {receivable?.outstanding_amount ?? '—'}{' '}
-                {receivable?.currency_code ?? allocation.receivableCurrencyCode}
-              </span>
+            <div
+              className="payments-allocation-editor__derived payments-allocation-editor__proposal-row"
+              key={allocation.receivableItemId}
+            >
+              <div className="payments-allocation-editor__proposal-charge">
+                <strong>{receivable?.description ?? 'Obligación registrada'}</strong>
+                <small>
+                  Saldo {receivable?.outstanding_amount ?? '—'}{' '}
+                  {receivable?.currency_code ?? allocation.receivableCurrencyCode}
+                </small>
+              </div>
               <output>
                 Aplicar {allocation.paymentAmount} {allocation.paymentCurrencyCode}
               </output>
@@ -352,9 +363,11 @@ export function PaymentAllocationEditor({
         </p>
       ) : null}
       {preview && (
-        <div>
-          <p>Usado: {preview.total_used}</p>
-          <p>Remanente: {preview.remaining}</p>
+        <div className={proposalMode ? 'payments-allocation-editor__preview-summary' : undefined}>
+          <div className="payments-allocation-editor__preview-totals">
+            <p>Usado: {preview.total_used}</p>
+            <p>Remanente: {preview.remaining}</p>
+          </div>
           {preview.warnings.map((warning) => (
             <p key={warning}>{warning}</p>
           ))}
