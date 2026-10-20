@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmDialog } from '../../../components/Dialog';
 import { Button } from '../../../components/ui';
 import {
@@ -6,6 +6,7 @@ import {
   isPositiveAllocationRate,
   isPositiveMoneyAmount,
   moneyExceeds,
+  moneyValueString,
 } from '../allocation-amounts';
 import {
   approvalAllocations,
@@ -21,13 +22,20 @@ export function PaymentAllocationEditor({
   paymentCurrency,
   onPreview,
   onApprove,
+  proposedAllocations,
 }: {
   receivables: Receivable[];
   paymentCurrency: string;
   onPreview: (allocations: AllocationInput[]) => Promise<AllocationPreview>;
   onApprove: (allocations: AllocationInput[]) => Promise<void>;
+  /** Immutable, resident-selected distribution. Manual editor is legacy-only. */
+  proposedAllocations?: AllocationInput[] | undefined;
 }) {
-  const [allocations, setAllocations] = useState<AllocationInput[]>([]);
+  const [allocations, setAllocations] = useState<AllocationInput[]>(
+    () => proposedAllocations?.map((item) => ({ ...item })) ?? [],
+  );
+  const proposalMode = proposedAllocations !== undefined;
+  const autoPreviewStarted = useRef(false);
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
   const [previewSnapshot, setPreviewSnapshot] = useState<AllocationPreviewSnapshot>();
   const [previewing, setPreviewing] = useState(false);
@@ -37,7 +45,13 @@ export function PaymentAllocationEditor({
   const [confirmingApproval, setConfirmingApproval] = useState(false);
   const latestPreviewRequest = useRef(0);
   const receivableById = useMemo(
-    () => new Map(receivables.map((receivable) => [receivable.id, receivable])),
+    () =>
+      new Map(
+        receivables.map((receivable) => [
+          receivable.id,
+          { ...receivable, outstanding_amount: moneyValueString(receivable.outstanding_amount) },
+        ]),
+      ),
     [receivables],
   );
   const currentPreviewIsCurrent = previewIsCurrent(previewSnapshot, allocations, paymentCurrency);
@@ -152,6 +166,14 @@ export function PaymentAllocationEditor({
     }
   };
 
+  // The resident already supplied the allocations: verify with the authoritative server
+  // automatically, and never let an administrator change them silently.
+  useEffect(() => {
+    if (!proposalMode || autoPreviewStarted.current) return;
+    autoPreviewStarted.current = true;
+    if (readyForPreview) void runPreview();
+  }, [proposalMode, readyForPreview]); // The editor is keyed by payment + intent version.
+
   const approve = async () => {
     if (saving || previewing) return;
     const previewedAllocations = approvalAllocations(previewSnapshot, allocations, paymentCurrency);
@@ -176,32 +198,39 @@ export function PaymentAllocationEditor({
 
   return (
     <div className="payments-allocation-editor">
-      <label>
-        Obligación
-        <select
-          onChange={(event) => {
-            const nextId = event.target.value;
-            setSelectedReceivableId(nextId);
-            const value = receivableById.get(nextId);
-            if (value && !allocations.some((item) => item.receivableItemId === value.id)) {
-              setPreviewError('');
-              setApprovalError('');
-              add(value);
-              setSelectedReceivableId('');
-            }
-          }}
-          value={selectedReceivableId}
-        >
-          <option value="">Seleccionar obligación</option>
-          {receivables.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.description} · Pendiente {item.outstanding_amount ?? '0.00'}{' '}
-              {item.currency_code}
-            </option>
-          ))}
-        </select>
-      </label>
-      {!receivables.length ? (
+      {!proposalMode ? (
+        <label>
+          Obligación
+          <select
+            onChange={(event) => {
+              const nextId = event.target.value;
+              setSelectedReceivableId(nextId);
+              const value = receivableById.get(nextId);
+              if (value && !allocations.some((item) => item.receivableItemId === value.id)) {
+                setPreviewError('');
+                setApprovalError('');
+                add(value);
+                setSelectedReceivableId('');
+              }
+            }}
+            value={selectedReceivableId}
+          >
+            <option value="">Seleccionar obligación</option>
+            {receivables.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.description} · Pendiente {item.outstanding_amount ?? '0.00'}{' '}
+                {item.currency_code}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="payments-allocation-editor__empty" role="status">
+          Distribución indicada por el residente. Habitta la comprueba con los saldos actuales; no
+          tienes que seleccionar las obligaciones otra vez.
+        </p>
+      )}
+      {!receivables.length && !proposalMode ? (
         <p className="payments-allocation-editor__empty">
           Esta unidad no tiene obligaciones pendientes disponibles para aplicar.
         </p>
@@ -210,6 +239,25 @@ export function PaymentAllocationEditor({
         const receivable = receivableById.get(allocation.receivableItemId);
         const crossCurrency = allocation.receivableCurrencyCode !== paymentCurrency;
         const problem = allocationProblem(allocation);
+        if (proposalMode) {
+          return (
+            <div className="payments-allocation-editor__derived" key={allocation.receivableItemId}>
+              <strong>{receivable?.description ?? 'Obligación registrada'}</strong>
+              <span>
+                Pendiente actual: {receivable?.outstanding_amount ?? '—'}{' '}
+                {receivable?.currency_code ?? allocation.receivableCurrencyCode}
+              </span>
+              <output>
+                Aplicar {allocation.paymentAmount} {allocation.paymentCurrencyCode}
+              </output>
+              {problem ? (
+                <p className="payments-allocation-editor__problem" role="alert">
+                  {problem}
+                </p>
+              ) : null}
+            </div>
+          );
+        }
         return (
           <fieldset key={allocation.receivableItemId}>
             <legend>
@@ -281,8 +329,15 @@ export function PaymentAllocationEditor({
         type="button"
         variant="secondary"
       >
-        {previewing ? 'Previsualizando…' : 'Previsualizar aplicación'}
+        {previewing
+          ? 'Verificando propuesta…'
+          : proposalMode
+            ? 'Verificar nuevamente'
+            : 'Previsualizar aplicación'}
       </Button>
+      {proposalMode && previewing ? (
+        <p role="status">Validando automáticamente los importes propuestos…</p>
+      ) : null}
       {previewIsStale ? (
         <p role="status">Los cambios requieren una nueva previsualización antes de aprobar.</p>
       ) : null}

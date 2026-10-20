@@ -74,7 +74,10 @@ describe('independent payment approval review DOM', () => {
     const html = renderReview(true);
 
     expect(html).toContain('payments-review__allocation');
-    expect(html).toContain('Previsualizar aplicaci');
+    // SSR renders before the authoritative allocation-intent request completes.
+    // The approval editor must not appear until we know whether a proposal exists.
+    expect(html).toContain('Cargando la distribución registrada por el residente');
+    expect(html).not.toContain('Seleccionar obligación');
     expect(html).toContain('Propuesta del residente');
     expect(html).not.toContain('Requiere aprobaci');
   });
@@ -83,6 +86,9 @@ describe('independent payment approval review DOM', () => {
     const html = renderReview(true);
 
     expect(html).toContain('payments-review__allocation');
-    expect(html).toContain('Previsualizar aplicaci');
+    // SSR renders before the authoritative allocation-intent request completes.
+    // The approval editor must not appear until we know whether a proposal exists.
+    expect(html).toContain('Cargando la distribución registrada por el residente');
+    expect(html).not.toContain('Seleccionar obligación');
   });
 });

@@ -710,6 +710,12 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
                         <strong>
                           {formatDashboardAmount(item.outstanding_amount, item.currency_code)}
                         </strong>
+                        {item.status === 'partially_paid' && item.original_amount ? (
+                          <small>
+                            Importe original:{' '}
+                            {formatDashboardAmount(item.original_amount, item.currency_code)}
+                          </small>
+                        ) : null}
                       </td>
                       <td data-label="Estado">
                         <StatusBadge status={item.status} />

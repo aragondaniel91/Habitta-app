@@ -21,6 +21,8 @@ type Props = {
   session: Session;
   units: PaymentUnitOption[];
   receivables: Receivable[];
+  /** Admin only: fetch authoritative outstanding items for the selected unit on demand. */
+  loadReceivablesForUnit?: (unitId: string) => Promise<Receivable[]>;
   methods: PaymentMethod[];
   concepts?: ChargeConcept[];
   context?: 'resident' | 'administrator';
@@ -60,6 +62,7 @@ export function ResidentPaymentWizard({
   session,
   units,
   receivables,
+  loadReceivablesForUnit,
   methods,
   concepts = [],
   context = 'resident',
@@ -89,6 +92,47 @@ export function ResidentPaymentWizard({
   const [proof, setProof] = useState<File>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [unitReceivables, setUnitReceivables] = useState<{
+    unitId: string;
+    items: Receivable[];
+    loading: boolean;
+    error: string;
+  }>({ unitId: '', items: [], loading: false, error: '' });
+  const [unitRetry, setUnitRetry] = useState(0);
+
+  useEffect(() => {
+    if (!loadReceivablesForUnit || !unitId) return;
+    let active = true;
+    setUnitReceivables({ unitId, items: [], loading: true, error: '' });
+    void loadReceivablesForUnit(unitId)
+      .then((items) => {
+        if (active) setUnitReceivables({ unitId, items, loading: false, error: '' });
+      })
+      .catch((cause: unknown) => {
+        if (active)
+          setUnitReceivables({
+            unitId,
+            items: [],
+            loading: false,
+            error:
+              cause instanceof Error
+                ? cause.message
+                : 'No se pudieron cargar las cuotas de esta unidad.',
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [loadReceivablesForUnit, unitId, unitRetry]);
+
+  const unitSnapshotReady =
+    !loadReceivablesForUnit ||
+    (unitReceivables.unitId === unitId && !unitReceivables.loading && !unitReceivables.error);
+  const effectiveReceivables = loadReceivablesForUnit
+    ? unitSnapshotReady
+      ? unitReceivables.items
+      : []
+    : receivables;
 
   useEffect(() => {
     if (!payment) return undefined;
@@ -132,10 +176,10 @@ export function ResidentPaymentWizard({
 
   const available = useMemo(
     () =>
-      receivables.filter(
+      effectiveReceivables.filter(
         (item) => item.unit_id === unitId && (toCents(item.outstanding_amount) ?? 0) > 0,
       ),
-    [receivables, unitId],
+    [effectiveReceivables, unitId],
   );
   const currencies = useMemo(
     () => [...new Set(available.map((item) => item.currency_code))].sort(),
@@ -232,7 +276,7 @@ export function ResidentPaymentWizard({
   );
   const canContinue =
     step === 1
-      ? Boolean(unitId && currency && selected.length)
+      ? Boolean(unitId && unitSnapshotReady && currency && selected.length)
       : step === 2
         ? amountValid
         : step === 3
@@ -248,7 +292,7 @@ export function ResidentPaymentWizard({
     setStep((value) => Math.min(4, value + 1));
   };
   const save = async (submit: boolean) => {
-    if (!amountValid || !methodValid || saving || !selectedMethod) return;
+    if (!unitSnapshotReady || !amountValid || !methodValid || saving || !selectedMethod) return;
     setSaving(true);
     setError('');
     try {
@@ -378,7 +422,25 @@ export function ResidentPaymentWizard({
                 ))}
               </Select>
             </Field>
-            {unitId ? (
+            {unitId && loadReceivablesForUnit && !unitSnapshotReady ? (
+              <div className="resident-payment-wizard__note" role="status">
+                {unitReceivables.unitId === unitId && unitReceivables.error ? (
+                  <>
+                    <p>{unitReceivables.error}</p>
+                    <Button
+                      onClick={() => setUnitRetry((value) => value + 1)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Reintentar carga de cuotas
+                    </Button>
+                  </>
+                ) : (
+                  <p>Cargando saldos pendientes de la unidad…</p>
+                )}
+              </div>
+            ) : null}
+            {unitId && unitSnapshotReady ? (
               <Field label="Moneda de los cargos">
                 <Select
                   onChange={(event) => {

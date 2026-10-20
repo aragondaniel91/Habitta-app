@@ -72,3 +72,13 @@ export function moneyExceeds(value: string, limit: string): boolean {
   if (valueCents === null || limitCents === null) return false;
   return valueCents > limitCents;
 }
+
+/** Supabase/PostgREST may serialize PostgreSQL numeric as JSON numbers or strings.
+ * Normalize at the API boundary; validation and arithmetic remain decimal-string/BigInt.
+ * Unknown objects, booleans, non-finite numbers and exponent forms fail validation.
+ */
+export function moneyValueString(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return '';
+}
