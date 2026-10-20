@@ -70,6 +70,42 @@ describe('independent payment approval review DOM', () => {
     expect(html).not.toContain('Pago enviado a validación');
   });
 
+  it('shows resident reference, comments and proof ahead of allocations without duplicating the viewer', () => {
+    const html = renderToStaticMarkup(
+      <ReviewPayment
+        condominiumId="condominium-1"
+        onChanged={async () => undefined}
+        payment={{
+          ...payment,
+          can_approve: true,
+          reference: 'TRANSFER-REF-4839',
+          notes: 'Abono para cuota extraordinaria y condominio.',
+        }}
+        receivables={[]}
+        session={{ access_token: 'token', user: { id: 'reviewer-2' } } as never}
+      />,
+    );
+
+    expect(html).toContain('Datos y comprobante');
+    expect(html).toContain('Referencia del pago');
+    expect(html).toContain('TRANSFER-REF-4839');
+    expect(html).toContain('Comentarios del pagador');
+    expect(html).toContain('Abono para cuota extraordinaria y condominio.');
+    expect(html).toContain('Comprobante adjunto');
+    expect(html.match(/payments-proof-preview/g)?.length).toBe(1);
+    expect(html.indexOf('Datos y comprobante')).toBeLessThan(
+      html.indexOf('Propuesta del residente'),
+    );
+    expect(html.indexOf('Comprobante adjunto')).toBeLessThan(html.indexOf('Aplicación del pago'));
+  });
+
+  it('explicitly tells the reviewer when reference or comments were not provided', () => {
+    const html = renderReview(true);
+    expect(html).toContain('Sin referencia registrada');
+    expect(html).toContain('No agregó comentarios.');
+    expect(html).toContain('Cargando comprobante');
+  });
+
   it('renders approval controls for a distinct payment reviewer', () => {
     const html = renderReview(true);
 

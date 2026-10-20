@@ -698,22 +698,54 @@ export function ReviewPayment({
           </Badge>
         </div>
       </div>
-      {payment.notes?.trim() ? (
-        <div className="payments-review__reference">
-          <span>Información adicional</span>
-          <strong>{payment.notes}</strong>
+      <section
+        className="payments-review__submitted-evidence"
+        aria-label="Datos y comprobante del pago"
+      >
+        <div className="payments-form__section-heading">
+          <strong>Datos y comprobante</strong>
+          <span>Información enviada por quien registró el pago.</span>
         </div>
-      ) : null}
-      {payment.reference ? (
-        <div className="payments-review__reference">
-          <span>Referencia</span>
-          <strong>{payment.reference}</strong>
+        <div className="payments-review__submitted-grid">
+          <div className="payments-review__submitted-fields">
+            <div>
+              <span>Método</span>
+              <strong>{method?.display_name ?? 'Método de pago registrado'}</strong>
+            </div>
+            <div>
+              <span>Referencia del pago</span>
+              <strong>{payment.reference?.trim() || 'Sin referencia registrada'}</strong>
+            </div>
+            <div>
+              <span>Comentarios del pagador</span>
+              <p>{payment.notes?.trim() || 'No agregó comentarios.'}</p>
+            </div>
+          </div>
+          <div className="payments-review__submitted-proof">
+            <strong>Comprobante adjunto</strong>
+            <PaymentProofPreview
+              compact
+              condominiumId={condominiumId}
+              missingHint="Puedes solicitar una corrección para que el pagador adjunte el archivo."
+              paymentId={payment.id}
+              session={session}
+            />
+            {proofHistory.length > 1 ? (
+              <details className="payments-detail__history">
+                <summary>Historial del comprobante ({proofHistory.length} versiones)</summary>
+                <ol>
+                  {proofHistory.map((entry) => (
+                    <li key={entry.id}>
+                      {entry.original_filename} · {formatDashboardDate(entry.created_at)}
+                      {entry.superseded_at ? ' · Reemplazado' : ' · Actual'}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            ) : null}
+          </div>
         </div>
-      ) : null}
-      <div className="payments-review__reference">
-        <span>Método</span>
-        <strong>{method?.display_name ?? 'Método de pago registrado'}</strong>
-      </div>
+      </section>
       <section
         className="payments-proof-section"
         aria-label="Propuesta de aplicación del residente"
@@ -801,31 +833,6 @@ export function ReviewPayment({
           ) : null}
         </div>
       ) : null}
-      <div className="payments-proof-section">
-        <div className="payments-form__section-heading">
-          <strong>Comprobante</strong>
-          <span>Verifica que monto, fecha y referencia coincidan con el comprobante.</span>
-        </div>
-        <PaymentProofPreview
-          condominiumId={condominiumId}
-          missingHint="Si el método exige comprobante, usa «Solicitar corrección» e indica que falta adjuntarlo."
-          paymentId={payment.id}
-          session={session}
-        />
-        {proofHistory.length > 1 ? (
-          <details className="payments-detail__history">
-            <summary>Comprobante reemplazado · {proofHistory.length} versiones registradas</summary>
-            <ol>
-              {proofHistory.map((entry) => (
-                <li key={entry.id}>
-                  {entry.original_filename} · {formatDashboardDate(entry.created_at)}
-                  {entry.superseded_at ? ' · Reemplazado' : ' · Actual'}
-                </li>
-              ))}
-            </ol>
-          </details>
-        ) : null}
-      </div>
       {!readOnly ? (
         <div className="payments-review__decision">
           <Field label="Motivo para corrección, rechazo o reverso">

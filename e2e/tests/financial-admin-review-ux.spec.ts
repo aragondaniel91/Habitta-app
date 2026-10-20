@@ -128,7 +128,11 @@ test.describe('Pagos administrador — prioridad y revisión central', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveClass(/payments-drawer--centered/);
     await expect(dialog.getByText('Propuesta del residente')).toBeVisible();
-    await expect(dialog.getByText('Comprobante', { exact: true })).toBeVisible();
+    const submittedEvidence = dialog.getByRole('region', { name: 'Datos y comprobante del pago' });
+    await expect(submittedEvidence).toBeVisible();
+    await expect(submittedEvidence.getByText('Comprobante adjunto')).toBeVisible();
+    await expect(submittedEvidence.getByText('Referencia del pago')).toBeVisible();
+    await expect(submittedEvidence.getByText('Comentarios del pagador')).toBeVisible();
     await expect(dialog.getByRole('button', { name: /Solicitar corrección/ })).toBeVisible();
     if (evidence) {
       await page.screenshot({ path: join(evidence, 'admin-review-desktop.png'), fullPage: true });

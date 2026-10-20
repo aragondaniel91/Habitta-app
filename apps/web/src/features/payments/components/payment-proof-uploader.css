@@ -127,3 +127,28 @@
   border: 0;
   border-radius: var(--radius-sm, 6px);
 }
+
+.payments-proof-preview--compact {
+  gap: 0.45rem;
+  padding: 0.55rem;
+}
+.payments-proof-preview--compact .payments-proof-preview__image {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+}
+.payments-proof-preview--compact .payments-proof-preview__frame {
+  height: 180px;
+}
+.payments-proof-preview--compact .payments-proof-uploader__actions {
+  justify-content: start;
+}
+.payments-proof-preview--compact .payments-proof-uploader__actions button {
+  min-height: 34px;
+  max-width: 100%;
+  font-size: 0.75rem;
+}
+.payments-proof-preview[data-state='error'] {
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+}
