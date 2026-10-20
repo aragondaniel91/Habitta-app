@@ -21,6 +21,7 @@ import {
   paymentUpdateSchema,
   paymentReasonSchema,
   approvePaymentSchema,
+  paymentAllocationIntentSchema,
   notificationPreferencesSchema,
   notificationSettingsSchema,
   lateFeeSettingsSchema,
@@ -51,6 +52,7 @@ import { unitsDirectoryRoutes } from './units-directory-routes';
 import { tenancyRoutes } from './tenancy-routes';
 import { withinRateLimit } from './http-security';
 import { attachPaymentActorNames } from './payment-actor-names';
+import { attachPaymentChargeConceptNames } from './payment-charge-concepts';
 import { registerPaymentAgreementRoutes } from './payment-agreement-routes';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
@@ -1288,8 +1290,12 @@ app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
     }),
   );
   return c.json(
-    await attachPaymentActorNames(condominiumId, withApprovalCapability, (name, payload) =>
-      rpc(c, name, payload),
+    await attachPaymentChargeConceptNames(
+      condominiumId,
+      await attachPaymentActorNames(condominiumId, withApprovalCapability, (name, payload) =>
+        rpc(c, name, payload),
+      ),
+      (path) => rest(c, path),
     ),
   );
 });
@@ -1332,8 +1338,14 @@ app.get('/v1/condominiums/:id/payments/:paymentId', async (c) => {
     [rows[0] as Record<string, unknown>],
     (name, payload) => rpc(c, name, payload),
   );
+  const paymentWithActors = withActorNames ?? (rows[0] as Record<string, unknown>);
+  const [withChargeConcept] = await attachPaymentChargeConceptNames(
+    condominiumId,
+    [paymentWithActors],
+    (path) => rest(c, path),
+  );
   return c.json({
-    ...withActorNames,
+    ...(withChargeConcept ?? paymentWithActors),
     can_approve: capability.ok && (await capability.json()) === true,
   });
 });
@@ -1412,6 +1424,23 @@ app.post('/v1/condominiums/:id/payments/:paymentId/allocation-preview', async (c
   });
   return responseJson(c, r, 200, 409);
 });
+app.put('/v1/condominiums/:id/payments/:paymentId/allocation-intent', async (c) => {
+  const p = await body(c, paymentAllocationIntentSchema);
+  if (p instanceof Response) return p;
+  const r = await rpc(c, 'save_payment_allocation_intent', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_payment: uuidSchema.parse(c.req.param('paymentId')),
+    proposals: rpcAllocations(p.allocations),
+  });
+  return responseJson(c, r, 200, 409);
+});
+app.get('/v1/condominiums/:id/payments/:paymentId/allocation-intent', async (c) => {
+  const r = await rpc(c, 'get_payment_allocation_intent', {
+    target: uuidSchema.parse(c.req.param('id')),
+    target_payment: uuidSchema.parse(c.req.param('paymentId')),
+  });
+  return responseJson(c, r, 200, 404);
+});
 app.get('/v1/condominiums/:id/payments/:paymentId/receipt', async (c) => {
   const r = await rest(
     c,
@@ -1477,12 +1506,14 @@ app.get('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
     c,
     `payment_proofs?condominium_id=eq.${id}&payment_id=eq.${payment}&superseded_at=is.null&select=id,original_filename,content_type`,
   );
+  if (!r.ok) return c.json({ error: 'Forbidden' }, r.status === 401 ? 401 : 403);
   const rows = (await r.json()) as {
     id: string;
     original_filename: string;
     content_type: string;
   }[];
-  if (!r.ok || !rows[0]) return c.json({ error: 'Proof not found' }, 404);
+  // An authorized payment without an uploaded proof is an expected empty state, not a broken resource.
+  if (!rows[0]) return new Response(null, { status: 204 });
   const object = await c.env.PAYMENT_PROOFS.get(`payments/${rows[0].id}`);
   if (!object) return c.json({ error: 'Proof unavailable' }, 404);
   return new Response(object.body, {
@@ -1491,6 +1522,18 @@ app.get('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
       'Content-Disposition': `attachment; filename="${safeName(rows[0].original_filename)}"`,
     },
   });
+});
+
+// History is scoped by the caller's RLS privileges; storage paths and file digests stay private.
+app.get('/v1/condominiums/:id/payments/:paymentId/proof/history', async (c) => {
+  const id = uuidSchema.parse(c.req.param('id'));
+  const payment = uuidSchema.parse(c.req.param('paymentId'));
+  const response = await rest(
+    c,
+    `payment_proofs?condominium_id=eq.${id}&payment_id=eq.${payment}&select=id,original_filename,created_at,superseded_at&order=created_at.desc,id.desc`,
+  );
+  if (!response.ok) return c.json({ error: 'Forbidden' }, response.status === 401 ? 401 : 403);
+  return c.json(await response.json());
 });
 
 app.get('/v1/notifications', async (c) => {

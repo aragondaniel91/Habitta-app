@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { uuidSchema } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
 import { attachPaymentActorNames } from './payment-actor-names';
+import { attachPaymentChargeConceptNames } from './payment-charge-concepts';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
@@ -96,11 +97,15 @@ const paginatedFinancialList =
         if (items.length >= total) {
           return c.json(
             table === 'payments'
-              ? await attachPaymentActorNames(
+              ? await attachPaymentChargeConceptNames(
                   id,
-                  items as Record<string, unknown>[],
-                  (name, payload) =>
-                    rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) }),
+                  await attachPaymentActorNames(
+                    id,
+                    items as Record<string, unknown>[],
+                    (name, payload) =>
+                      rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) }),
+                  ),
+                  (path) => rest(c, path),
                 )
               : items,
           );
@@ -134,8 +139,12 @@ const paginatedFinancialList =
     const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
     const enrichedItems =
       table === 'payments'
-        ? await attachPaymentActorNames(id, items as Record<string, unknown>[], (name, payload) =>
-            rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) }),
+        ? await attachPaymentChargeConceptNames(
+            id,
+            await attachPaymentActorNames(id, items as Record<string, unknown>[], (name, payload) =>
+              rest(c, `rpc/${name}`, { method: 'POST', body: JSON.stringify(payload) }),
+            ),
+            (path) => rest(c, path),
           )
         : items;
     return c.json({

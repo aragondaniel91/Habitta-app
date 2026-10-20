@@ -584,6 +584,12 @@ export function AdministrativeDashboard({
     .sort((left, right) => right.updated_at.localeCompare(left.updated_at))
     .slice(0, 3);
   const latestOpenRequest = openRequests[0];
+  const paymentsAwaitingReview = dashboardData.reviewQueue.filter(
+    (payment) => payment.status === 'submitted',
+  );
+  const paymentsInReview = dashboardData.reviewQueue.filter(
+    (payment) => payment.status === 'under_review',
+  );
 
   return (
     <div className="dashboard-page">
@@ -781,24 +787,80 @@ export function AdministrativeDashboard({
             </div>
           </div>
           <div className="dashboard-priority-list">
-            <button
-              disabled={!paymentsRoute}
-              onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
-              type="button"
-            >
-              <span data-tone={dashboardData.reviewQueue.length ? 'warning' : 'success'}>
-                <PaymentsIcon size={19} />
-              </span>
-              <div>
-                <strong>
-                  {dashboardData.reviewQueueAvailable
-                    ? `${dashboardData.reviewQueue.length} pagos por revisar`
-                    : 'Bandeja de pagos restringida'}
-                </strong>
-                <small>Validación manual de referencias y comprobantes.</small>
-              </div>
-              <ArrowRightIcon size={17} />
-            </button>
+            {dashboardData.reviewQueueAvailable ? (
+              <>
+                <button
+                  disabled={!paymentsRoute}
+                  onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
+                  type="button"
+                >
+                  <span data-tone={paymentsAwaitingReview.length ? 'warning' : 'success'}>
+                    <PaymentsIcon size={19} />
+                  </span>
+                  <div>
+                    <strong>
+                      {paymentsAwaitingReview.length
+                        ? `${paymentsAwaitingReview.length} pagos esperan revisión`
+                        : 'Sin pagos esperando revisión'}
+                    </strong>
+                    <small>
+                      {paymentsAwaitingReview[0]
+                        ? `${formatDashboardAmount(paymentsAwaitingReview[0].original_amount, paymentsAwaitingReview[0].original_currency_code)} · ${paymentsAwaitingReview[0].payer_name}`
+                        : 'Los pagos enviados aparecerán aquí.'}
+                    </small>
+                    {paymentsAwaitingReview[0]?.charge_concept_name ? (
+                      <small>Cargo aplicado: {paymentsAwaitingReview[0].charge_concept_name}</small>
+                    ) : null}
+                  </div>
+                  <ArrowRightIcon aria-hidden="true" size={17} />
+                </button>
+                <button
+                  disabled={!paymentsRoute}
+                  onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
+                  type="button"
+                >
+                  <span data-tone={paymentsInReview.length ? 'warning' : 'success'}>
+                    <PaymentsIcon size={19} />
+                  </span>
+                  <div>
+                    <strong>
+                      {paymentsInReview.length
+                        ? `${paymentsInReview.length} acciones de revisión pendientes`
+                        : 'Sin acciones de revisión pendientes'}
+                    </strong>
+                    <small>
+                      {paymentsInReview[0]
+                        ? `${formatDashboardAmount(paymentsInReview[0].original_amount, paymentsInReview[0].original_currency_code)} · ${paymentsInReview[0].payer_name}`
+                        : 'Los pagos en revisión aparecerán aquí.'}
+                    </small>
+                    {paymentsInReview[0]?.charge_concept_name ? (
+                      <small>Cargo aplicado: {paymentsInReview[0].charge_concept_name}</small>
+                    ) : null}
+                  </div>
+                  <ArrowRightIcon aria-hidden="true" size={17} />
+                </button>
+              </>
+            ) : null}
+            {!dashboardData.reviewQueueAvailable ? (
+              <button
+                disabled={!paymentsRoute}
+                onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
+                type="button"
+              >
+                <span data-tone={dashboardData.reviewQueue.length ? 'warning' : 'success'}>
+                  <PaymentsIcon size={19} />
+                </span>
+                <div>
+                  <strong>
+                    {dashboardData.reviewQueueAvailable
+                      ? `${dashboardData.reviewQueue.length} pagos por revisar`
+                      : 'Bandeja de pagos restringida'}
+                  </strong>
+                  <small>Validación manual de referencias y comprobantes.</small>
+                </div>
+                <ArrowRightIcon size={17} />
+              </button>
+            ) : null}
             <button
               disabled={!feesRoute}
               onClick={() => feesRoute && onNavigate(feesRoute)}

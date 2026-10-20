@@ -3,9 +3,10 @@ import type { Session } from '@supabase/supabase-js';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState, Skeleton, Surface } from '../components/ui';
 import { PaymentsIcon } from '../components/icons';
-import { PaymentCaptureDrawer } from '../features/payments/components/PaymentCaptureDrawer';
+import { ResidentPaymentWizard } from '../features/payments/components/ResidentPaymentWizard';
 import { paymentApi } from '../features/payments/api';
 import type {
+  ChargeConcept,
   Payment,
   PaymentMethod,
   PaymentReceipt,
@@ -33,6 +34,7 @@ type ResidentPaymentsData = {
   buildings: Building[];
   financialUnits: ResidentFinancialUnit[];
   methods: PaymentMethod[];
+  concepts: ChargeConcept[];
   payments: Payment[];
   paymentsPage: PageInfo;
   receivables: Receivable[];
@@ -90,18 +92,28 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
             session,
           ),
         );
+        const conceptsPromise = collectAllPages((page) =>
+          apiRequest<PaginatedResponse<ChargeConcept>>(
+            financialPagePath(
+              `/v1/condominiums/${condominiumId}/charge-concepts`,
+              page,
+              REFERENCE_PAGE_SIZE,
+            ),
+            session,
+          ),
+        ).catch(() => [] as ChargeConcept[]);
         const receivablesPromise = collectAllPages((page) =>
           apiRequest<PaginatedResponse<Receivable>>(
             `${financialPagePath(
               `/v1/condominiums/${condominiumId}/receivables`,
               page,
               REFERENCE_PAGE_SIZE,
-            )}${unitQuery}`,
+            )}`,
             session,
           ),
         ).catch(() => [] as Receivable[]);
 
-        const [units, buildings, financialUnits, methods, paymentsPage, receivables] =
+        const [units, buildings, financialUnits, methods, concepts, paymentsPage, receivables] =
           await Promise.all([
             apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
             apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
@@ -112,6 +124,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
               session,
             ).catch(() => [] as ResidentFinancialUnit[]),
             methodsPromise,
+            conceptsPromise,
             apiRequest<PaginatedResponse<Payment>>(
               `${financialPagePath(
                 `/v1/condominiums/${condominiumId}/payments`,
@@ -128,6 +141,7 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
           buildings,
           financialUnits,
           methods,
+          concepts,
           payments: paymentsPage.items,
           paymentsPage: pageInfo(paymentsPage),
           receivables,
@@ -246,11 +260,28 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
     setDrawer(null);
     await load(true);
   };
+  // The wizard owns the actual POST /submit transition. This follow-up only runs after its
+  // requested draft save or review handoff has persisted, so the page refreshes from server state.
+  const submitOnComplete = (nextMessage: string) => onChanged(nextMessage);
 
   const openPayment = async (payment: Payment) => {
     setMessage('');
     if (['draft', 'correction_requested'].includes(payment.status)) {
       setDrawer({ type: 'edit', payment });
+      return;
+    }
+    if (['submitted', 'under_review'].includes(payment.status)) {
+      try {
+        const currentPayment = await paymentApi<Payment>(
+          `/v1/condominiums/${condominiumId}/payments/${payment.id}`,
+          session,
+        );
+        setDrawer({ type: 'details', payment: currentPayment });
+      } catch (requestError) {
+        setMessage(
+          requestError instanceof Error ? requestError.message : 'No se pudo abrir el pago.',
+        );
+      }
       return;
     }
     if (!['approved', 'reversed'].includes(payment.status)) return;
@@ -286,15 +317,14 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
 
   if (!data) return null;
 
-  const capturePayment =
+  const editablePayment =
     drawer?.type === 'edit' && ['draft', 'correction_requested'].includes(drawer.payment.status)
       ? drawer.payment
       : undefined;
   // A resident with nothing to pay for cannot open the create flow at all. The view hides the
   // button too, but the guard belongs here: a drawer that opens onto no valid destination can only
   // end in a refusal.
-  const captureOpen =
-    (drawer?.type === 'create' && payableUnits.length > 0) || Boolean(capturePayment);
+  const wizardOpen = drawer?.type === 'create' || Boolean(editablePayment);
 
   return (
     <>
@@ -320,24 +350,25 @@ export function ResidentPaymentsPage({ condominiumId, condominiumName, session }
         unitOptions={financialUnits}
       />
 
-      {captureOpen ? (
-        <PaymentCaptureDrawer
+      {wizardOpen && payableUnits.length > 0 ? (
+        <ResidentPaymentWizard
           condominiumId={condominiumId}
           methods={data.methods}
+          concepts={data.concepts}
           onClose={() => setDrawer(null)}
-          onComplete={onChanged}
+          onComplete={submitOnComplete}
           onDraftCreated={() => load(true)}
-          {...(capturePayment ? { payment: capturePayment } : {})}
+          receivables={data.receivables}
           session={session}
-          submitOnComplete
           units={payableUnits}
+          {...(editablePayment ? { payment: editablePayment } : {})}
         />
       ) : null}
 
       <PaymentsDrawerHost
         buildingNameById={buildingNameById}
         condominiumId={condominiumId}
-        drawer={drawer?.type === 'receipt' ? drawer : null}
+        drawer={drawer?.type === 'receipt' || drawer?.type === 'details' ? drawer : null}
         methods={data.methods}
         onChanged={onChanged}
         onClose={() => setDrawer(null)}

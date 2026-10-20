@@ -200,7 +200,7 @@ describe('HAB-427 the resident payments page', () => {
   it('hands the capture drawer the payable units, never the visible ones', () => {
     // Scoped to the capture drawer's own props. The receipt host below it still receives the full
     // unit list, which is correct -- it names units on a receipt rather than offering destinations.
-    const capture = paymentsPage.slice(paymentsPage.indexOf('<PaymentCaptureDrawer'));
+    const capture = paymentsPage.slice(paymentsPage.indexOf('<ResidentPaymentWizard'));
     const captureProps = capture.slice(0, capture.indexOf('/>'));
     expect(captureProps).toContain('units={payableUnits}');
     expect(captureProps).not.toContain('units={data.units}');
@@ -208,7 +208,7 @@ describe('HAB-427 the resident payments page', () => {
   });
 
   it('will not open the create flow with nothing to pay for', () => {
-    expect(paymentsPage).toContain("drawer?.type === 'create' && payableUnits.length > 0");
+    expect(paymentsPage).toContain('wizardOpen && payableUnits.length > 0');
     expect(paymentsPage).toContain('canRegisterPayment={payableUnits.length > 0}');
   });
 

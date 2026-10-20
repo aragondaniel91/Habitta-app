@@ -95,18 +95,22 @@ test.describe('Formularios administrativos autenticados', () => {
     await expect(opener).toBeFocused();
   });
 
-  test('Payments muestra el drawer y acciones compartidas sin overflow móvil', async ({ page }) => {
+  test('Payments conserva el asistente central accesible y sin overflow móvil', async ({
+    page,
+  }) => {
     await signInAsAdministrator(page);
     const { dialog } = await openAtMobileSize(page, '/app/payments', 'Registrar pago');
 
-    await expect(dialog).toHaveAccessibleName('Registrar pago');
-    for (const label of ['Unidad', 'Método de pago', 'Fecha del pago', 'Monto']) {
-      await expect(dialog.getByLabel(label)).toBeVisible();
-    }
+    await expect(dialog).toHaveAccessibleName('Registrar un pago');
+    await expect(dialog.getByLabel('Unidad del pago')).toBeVisible();
+    await expect(dialog.getByRole('list', { name: 'Progreso' })).toBeVisible();
+    await expect(dialog.getByText('Unidad y cargos', { exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Cancelar' })).toBeInViewport();
-    await expect(dialog.getByRole('button', { name: 'Continuar al comprobante' })).toBeInViewport();
-    await expect(dialog.locator('.form-grid')).toBeVisible();
-    await expect(dialog.locator('.form-actions')).toBeVisible();
+    const continueButton = dialog.getByRole('button', { name: 'Continuar', exact: true });
+    await expect(continueButton).toBeInViewport();
+    await expect(dialog.locator('.resident-payment-wizard__grid')).toBeVisible();
+    await continueButton.click();
+    await expect(dialog.getByRole('alert')).toContainText('Completa los datos obligatorios');
     await assertNoHorizontalOverflow(page, dialog);
 
     await dialog.getByRole('button', { name: 'Cancelar' }).click();

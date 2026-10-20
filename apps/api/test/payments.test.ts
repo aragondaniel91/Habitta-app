@@ -144,6 +144,45 @@ describe('payment HTTP routes', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual([{ id: payment, can_approve: false }]);
   });
+  it('attaches an authorized applied charge concept to a payment read', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/auth/v1/user')) return auth();
+        if (url.includes('/rpc/can_review_payments')) return Response.json(true);
+        if (url.includes('/rpc/can_approve_payment')) return Response.json(false);
+        if (url.includes('/rest/v1/payments?')) {
+          return Response.json([{ id: payment, status: 'submitted' }]);
+        }
+        if (url.includes('/rest/v1/payment_allocations?')) {
+          return Response.json([{ payment_id: payment, receivable_item_id: condo }]);
+        }
+        if (url.includes('/rest/v1/receivable_items?')) {
+          return Response.json([{ id: condo, concept_id: payment }]);
+        }
+        if (url.includes('/rest/v1/charge_concepts?')) {
+          return Response.json([{ id: payment, name: 'Cuota ordinaria' }]);
+        }
+        return Response.json([]);
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/review-queue`,
+      { headers: token },
+      env(),
+    );
+
+    expect(await response.json()).toEqual([
+      {
+        id: payment,
+        status: 'submitted',
+        can_approve: false,
+        charge_concept_name: 'Cuota ordinaria',
+      },
+    ]);
+  });
   it('keeps payer data separate from the authenticated registrar in payment detail', async () => {
     vi.stubGlobal(
       'fetch',
@@ -505,6 +544,104 @@ describe('payment HTTP routes', () => {
     expect(put).toHaveBeenCalledOnce();
     expect(remove).toHaveBeenCalledOnce();
   });
+  it('treats a payment with no stored proof as a 204 empty state, without querying R2', async () => {
+    const get = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) =>
+        String(input).includes('/auth/v1/user') ? auth() : Response.json([]),
+      ),
+    );
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}/proof`,
+      { headers: token },
+      env({ get }),
+    );
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe('');
+    expect(get).not.toHaveBeenCalled();
+  });
+  it('does not conceal a permission failure on proof retrieval as a missing proof', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) =>
+        String(input).includes('/auth/v1/user')
+          ? auth()
+          : Response.json({ code: '42501' }, { status: 403 }),
+      ),
+    );
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}/proof`,
+      { headers: token },
+      env(),
+    );
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'Forbidden' });
+  });
+
+  it('returns the scoped proof version history without revealing R2 paths or digests', async () => {
+    const queries: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/auth/v1/user')) return auth();
+        queries.push(url);
+        return Response.json([
+          {
+            id: payment,
+            original_filename: 'latest.png',
+            created_at: '2026-10-19T10:00:00Z',
+            superseded_at: null,
+          },
+          {
+            id: condo,
+            original_filename: 'original.png',
+            created_at: '2026-10-18T10:00:00Z',
+            superseded_at: '2026-10-19T10:00:00Z',
+          },
+        ]);
+      }),
+    );
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}/proof/history`,
+      { headers: token },
+      env(),
+    );
+    expect(response.status).toBe(200);
+    const versions = (await response.json()) as Array<{
+      original_filename: string;
+      superseded_at: string | null;
+    }>;
+    expect(versions).toHaveLength(2);
+    expect(versions[0]).toMatchObject({ original_filename: 'latest.png', superseded_at: null });
+    expect(JSON.stringify(versions)).not.toContain('object_key');
+    expect(JSON.stringify(versions)).not.toContain('sha256');
+    expect(queries).toEqual([
+      expect.stringContaining(
+        `payment_proofs?condominium_id=eq.${condo}&payment_id=eq.${payment}&select=id,original_filename,created_at,superseded_at`,
+      ),
+    ]);
+  });
+
+  it('never returns proof history when row access is denied', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) =>
+        String(input).includes('/auth/v1/user')
+          ? auth()
+          : Response.json({ code: '42501' }, { status: 403 }),
+      ),
+    );
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}/proof/history`,
+      { headers: token },
+      env(),
+    );
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'Forbidden' });
+  });
+
   it('uses a safe Content-Disposition filename', async () => {
     let calls = 0;
     vi.stubGlobal(

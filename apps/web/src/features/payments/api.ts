@@ -108,7 +108,7 @@ export const paymentProof = async (
   path: string,
   session: Session,
   file?: File,
-): Promise<Blob | { id: string }> => {
+): Promise<Blob | { id: string } | null> => {
   const response = await fetch(
     `${apiBaseUrl}${path}`,
     file
@@ -129,5 +129,6 @@ export const paymentProof = async (
       value?.error ? paymentFailureMessage(value) : 'No se pudo procesar el comprobante.',
     );
   }
+  if (!file && response.status === 204) return null;
   return file ? ((await response.json()) as { id: string }) : response.blob();
 };

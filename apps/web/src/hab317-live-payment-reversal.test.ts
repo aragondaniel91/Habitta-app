@@ -17,7 +17,7 @@ describe('HAB-317 live approved-payment reversal', () => {
 
     expect(page).toContain("if (['approved', 'reversed'].includes(payment.status))");
     expect(page).toContain("setDrawer({ type: 'receipt', payment, receipt })");
-    expect(drawers).toContain("import { ConfirmDialog } from '../components/Dialog'");
+    expect(drawers).toContain("ConfirmDialog, Dialog, DialogBody } from '../components/Dialog'");
     expect(drawers).toContain("payment.status === 'approved' && manage");
 
     // The resident never gets an administrative reversal control.

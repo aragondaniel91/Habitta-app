@@ -35,7 +35,7 @@ const setValue = (
   );
 };
 
-const renderMethodsDrawer = () => {
+const renderMethodsDrawer = (openForm = true) => {
   const host = document.createElement('div');
   const root = createRoot(host);
   document.body.append(host);
@@ -56,6 +56,9 @@ const renderMethodsDrawer = () => {
       </RolesProvider>,
     );
   });
+  if (openForm) {
+    act(() => host.querySelector<HTMLButtonElement>('.payments-methods-toolbar button')?.click());
+  }
   return { host, root };
 };
 
@@ -75,6 +78,18 @@ afterEach(() => {
 });
 
 describe('manual payment method type-specific fields', () => {
+  it('keeps the form closed until requested and opens it as a centered dialog', () => {
+    const { host, root } = renderMethodsDrawer(false);
+    expect(host.querySelector('form')).toBeNull();
+    act(() => host.querySelector<HTMLButtonElement>('.payments-methods-toolbar button')?.click());
+    expect(
+      host.querySelector('[role="dialog"][aria-label="Configurar método de pago"]'),
+    ).toBeNull();
+    expect(host.querySelector('.app-dialog[role="dialog"]')).not.toBeNull();
+    expect(host.querySelector('input[name="displayName"]')).not.toBeNull();
+    act(() => root.unmount());
+  });
+
   it('shows only the holder/bank/account fields for bank_transfer', () => {
     const { host, root } = renderMethodsDrawer();
     expect(host.querySelector('input[name="accountHolder"]')).not.toBeNull();

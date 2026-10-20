@@ -34,7 +34,15 @@ export function PaymentProofPreview({
     setState({ status: 'loading' });
     paymentProof(`/v1/condominiums/${condominiumId}/payments/${paymentId}/proof`, session)
       .then((value) => {
-        if (!active || !(value instanceof Blob)) return;
+        if (!active) return;
+        if (value === null) {
+          setState({
+            status: 'missing',
+            message: 'Este pago todavía no tiene comprobante adjunto.',
+          });
+          return;
+        }
+        if (!(value instanceof Blob)) return;
         url = URL.createObjectURL(value);
         setState({ status: 'ready', url, contentType: value.type });
       })
@@ -91,7 +99,7 @@ export function PaymentProofPreview({
           type="button"
           variant="secondary"
         >
-          Abrir en pestaña nueva
+          Ver comprobante
         </Button>
       </div>
     </div>

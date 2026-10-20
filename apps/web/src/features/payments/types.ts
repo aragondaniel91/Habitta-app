@@ -51,9 +51,24 @@ export type PaymentMethod = {
   phone_masked?: string | null;
   email_masked?: string | null;
 };
+export type ChargeConcept = {
+  id: string;
+  name: string;
+  category:
+    | 'regular_dues'
+    | 'extraordinary_dues'
+    | 'service'
+    | 'penalty'
+    | 'adjustment'
+    | 'opening_balance'
+    | 'other';
+  is_active: boolean;
+};
 export type Receivable = {
   id: string;
   unit_id: string;
+  concept_id?: string | null;
+  due_date?: string | null;
   description: string;
   currency_code: string;
   outstanding_amount?: string;
@@ -65,6 +80,17 @@ export type AllocationInput = {
   paymentCurrencyCode: string;
   receivableCurrencyCode: string;
   receivablePerPaymentRate?: string;
+};
+export type PaymentAllocationIntent = {
+  payment_id: string;
+  proposals: Array<{
+    receivable_item_id: string;
+    payment_amount: string;
+    receivable_amount: string;
+    payment_currency_code: string;
+    receivable_currency_code: string;
+  }>;
+  updated_at: string;
 };
 export type AllocationPreview = {
   total_used: string;
