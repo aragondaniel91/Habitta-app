@@ -3,7 +3,7 @@ import { Dialog, DialogBody } from '../components/Dialog';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, FeesIcon, PaymentsIcon, ReportsIcon } from '../components/icons';
-import { FinancialPagination } from '../components/FinancialPagination';
+import { useServerPaymentHistory } from './useServerPaymentHistory';
 import { PaymentSortHeader } from '../components/PaymentSortHeader';
 import { Badge, Button, EmptyState, InfoHint, Select, Skeleton, Surface } from '../components/ui';
 import { PageChromeExtension, PageHeader } from '../components/PageHeader';
@@ -20,7 +20,7 @@ import {
 import { ApiRequestError, apiRequest } from '../lib/api';
 import { unitReferenceLabel } from '../lib/unit-domain';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
-import { collectAllPages, financialPagePath, mergePageItems, pageInfo } from '../lib/pagination';
+import { collectAllPages, financialPagePath, pageInfo } from '../lib/pagination';
 import {
   defaultPaymentTableSort,
   filterPaymentTableColumns,
@@ -33,7 +33,6 @@ import {
 } from '../lib/payment-table-view';
 import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
-  filterPayments,
   getPaymentCurrencies,
   paymentStatusLabels,
   paymentStatusTone,
@@ -239,7 +238,7 @@ function ScopedReviewDrawer({ drawer, loadReceivablesForUnit, ...props }: Scoped
 export function PaymentsPage({ condominiumId, condominiumName, session }: Props) {
   const [data, setData] = useState<PaymentsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingMorePayments, setLoadingMorePayments] = useState(false);
+  const [movementsRevision, setMovementsRevision] = useState(0);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
@@ -385,7 +384,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     setReviewSearch('');
     setReviewFocus('all');
     setMessage('');
-    setLoadingMorePayments(false);
+    setMovementsRevision(0);
   }, [condominiumId]);
 
   const currencies = useMemo(
@@ -435,44 +434,8 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     [data?.methods],
   );
 
-  const visiblePayments = useMemo(() => {
-    if (!data) return [];
-    const matching = filterPayments(data.payments, data.methods, unitCodes, {
-      ...filters,
-      currencyCode: selectedCurrency,
-    });
-    const columnFiltered = filterPaymentTableColumns(
-      matching.filter((payment) => {
-        if (quickStatus === 'pending')
-          return ['submitted', 'under_review'].includes(payment.status);
-        if (quickStatus === 'approved') return payment.status === 'approved';
-        if (quickStatus === 'reversed') return payment.status === 'reversed';
-        if (quickStatus === 'attention')
-          return ['draft', 'correction_requested'].includes(payment.status);
-        return true;
-      }),
-      {
-        unitId: movementsUnitId,
-        dateFrom: movementsDateFrom,
-        dateTo: movementsDateTo,
-      },
-    );
-    return sortPaymentTableRows(columnFiltered, movementsSort, unitCodes, methodNames);
-  }, [
-    data,
-    filters,
-    quickStatus,
-    selectedCurrency,
-    unitCodes,
-    methodNames,
-    movementsUnitId,
-    movementsDateFrom,
-    movementsDateTo,
-    movementsSort,
-  ]);
-
-  // The server history is fetched in bounded batches; render a smaller, navigable page.
-  // Filters remain scoped to loaded records until additional history is requested.
+  // HAB-PAYMENTS-SERVER-QUERY-001: filter, count and sort the entire authorized
+  // payment history on the server *before* fetching this visible 10-row page.
   useEffect(() => {
     setMovementsPage(1);
   }, [
@@ -486,16 +449,34 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     movementsSort,
   ]);
 
-  const movementsPageCount = Math.max(
-    1,
-    Math.ceil(visiblePayments.length / MOVEMENTS_VIEW_PAGE_SIZE),
-  );
-  const visibleMovementsPage = Math.min(movementsPage, movementsPageCount);
+  const {
+    data: serverMovements,
+    error: movementsError,
+    loading: movementsLoading,
+  } = useServerPaymentHistory({
+    query: {
+      condominiumId,
+      currency: selectedCurrency,
+      page: movementsPage,
+      unitId: movementsUnitId,
+      dateFrom: movementsDateFrom,
+      dateTo: movementsDateTo,
+      status: filters.status,
+      statusGroup: quickStatus === 'all' ? '' : quickStatus,
+      methodId: filters.methodId,
+      search: filters.query,
+      sortField: movementsSort.field,
+      sortDirection: movementsSort.direction,
+    },
+    session,
+    enabled: activeTab === 'movements' && Boolean(data),
+    revision: movementsRevision,
+  });
+  const movementsPageCount = Math.max(1, serverMovements?.totalPages ?? 1);
+  const visibleMovementsPage = serverMovements?.page ?? movementsPage;
   const movementsPageStart = (visibleMovementsPage - 1) * MOVEMENTS_VIEW_PAGE_SIZE;
-  const pagedMovements = visiblePayments.slice(
-    movementsPageStart,
-    movementsPageStart + MOVEMENTS_VIEW_PAGE_SIZE,
-  );
+  const pagedMovements = serverMovements?.items ?? [];
+  const movementsTotal = serverMovements?.total ?? 0;
 
   const reviewQueueForCurrency = useMemo(
     () =>
@@ -589,43 +570,11 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     );
   }, [data, selectedCurrency, session.user.id]);
 
-  const loadMorePayments = useCallback(async () => {
-    if (!data?.paymentsPage.hasNextPage || loadingMorePayments) return;
-    setLoadingMorePayments(true);
-    setError('');
-    try {
-      const next = await apiRequest<PaginatedResponse<Payment>>(
-        financialPagePath(
-          `/v1/condominiums/${condominiumId}/payments`,
-          data.paymentsPage.page + 1,
-          data.paymentsPage.pageSize,
-        ),
-        session,
-      );
-      setData((current) =>
-        current
-          ? {
-              ...current,
-              payments: mergePageItems(current.payments, next.items),
-              paymentsPage: pageInfo(next),
-            }
-          : current,
-      );
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No se pudo cargar más historial de pagos.',
-      );
-    } finally {
-      setLoadingMorePayments(false);
-    }
-  }, [condominiumId, data?.paymentsPage, loadingMorePayments, session]);
-
   const onChanged = async (nextMessage: string) => {
     setMessage(nextMessage);
     setDrawer(null);
     await load(true);
+    setMovementsRevision((current) => current + 1);
   };
 
   const openPayment = async (payment: Payment) => {
@@ -1215,8 +1164,11 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                 </h2>
               </div>
               <span className="payments-result-count">
-                {visiblePayments.length} coinciden · {data.payments.length} de{' '}
-                {data.paymentsPage.total} cargados
+                {movementsLoading
+                  ? 'Consultando historial…'
+                  : movementsError
+                    ? 'Historial no disponible'
+                    : `${movementsTotal} pagos coinciden en el historial`}
               </span>
             </div>
             <div className="payments-quick-filters" aria-label="Accesos rápidos de estado">
@@ -1363,7 +1315,20 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
               </Button>
             </div>
 
-            {visiblePayments.length ? (
+            {movementsLoading ? (
+              <p role="status">Cargando página de movimientos…</p>
+            ) : movementsError ? (
+              <div role="alert">
+                <p>No se pudo consultar el historial completo: {movementsError}</p>
+                <Button
+                  onClick={() => setMovementsRevision((current) => current + 1)}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Reintentar
+                </Button>
+              </div>
+            ) : pagedMovements.length ? (
               <>
                 <div className="payments-table-wrap">
                   <table className="payments-table">
@@ -1506,12 +1471,12 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
               />
             )}
 
-            {visiblePayments.length > 0 ? (
+            {serverMovements && movementsTotal > 0 ? (
               <nav aria-label="Paginación de movimientos" className="payments-movements-pagination">
                 <span>
                   Mostrando {movementsPageStart + 1}–
-                  {Math.min(movementsPageStart + MOVEMENTS_VIEW_PAGE_SIZE, visiblePayments.length)}{' '}
-                  de {visiblePayments.length} coincidencias cargadas
+                  {Math.min(movementsPageStart + MOVEMENTS_VIEW_PAGE_SIZE, movementsTotal)} de{' '}
+                  {movementsTotal} coincidencias totales
                 </span>
                 <div>
                   <Button
@@ -1538,14 +1503,6 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                 </div>
               </nav>
             ) : null}
-
-            <FinancialPagination
-              itemLabel="pagos"
-              loaded={data.payments.length}
-              loading={loadingMorePayments}
-              onLoadMore={() => void loadMorePayments()}
-              total={data.paymentsPage.total}
-            />
           </Surface>
         </section>
       ) : null}

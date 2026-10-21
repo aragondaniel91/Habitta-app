@@ -11,8 +11,12 @@ describe('HAB-321 live financial pagination', () => {
 
     expect(page).toContain('const PAYMENTS_PAGE_SIZE = 50');
     expect(page).toContain('PaginatedResponse<Payment>');
-    expect(page).toContain('data.paymentsPage.page + 1');
-    expect(page).toContain('<FinancialPagination');
+    // Administrative movements are now globally filtered and paginated by the API
+    // in fixed 10-item pages; receivables still uses the shared load-more control.
+    expect(page).toContain('useServerPaymentHistory({');
+    expect(page).toContain('const MOVEMENTS_VIEW_PAGE_SIZE = 10');
+    expect(page).toContain('const movementsTotal = serverMovements?.total ?? 0');
+    expect(page).not.toContain('loadMorePayments');
     expect(page).toContain('collectAllPages((page) =>');
     expect(page).toContain('/payment-methods');
     expect(page).toContain('/receivables');
