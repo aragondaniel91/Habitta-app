@@ -78,7 +78,7 @@ test.describe('Pagos — paginación visible de movimientos', () => {
     await expect(tableRows).toHaveCount(10);
     expect(await tableRows.first().innerText()).not.toBe(firstRow);
     await prev.click();
-    await expect(tableRows.first()).toContainText(firstRow.split('\n')[0]);
+    await expect(tableRows.first()).toContainText(firstRow.split('\n')[0] ?? firstRow);
 
     await next.click();
     await page.getByRole('button', { name: 'Aprobados', exact: true }).click();
