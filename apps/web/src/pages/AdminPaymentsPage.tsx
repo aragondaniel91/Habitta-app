@@ -24,7 +24,6 @@ import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
   filterPayments,
   getPaymentCurrencies,
-  getPaymentSummary,
   paymentStatusLabels,
   paymentStatusTone,
   sortPayments,
@@ -36,7 +35,16 @@ import '../payments.css';
 type Unit = { id: string; code: string; building_id: string | null; status?: string };
 type Building = { id: string; name: string };
 
+type PaymentMetricRow = {
+  currency_code: string;
+  approved_amount: string;
+  reversed_amount: string;
+  pending_review_count: number;
+  own_attention_count: number;
+};
+
 type PaymentsData = {
+  paymentMetrics: PaymentMetricRow[] | null;
   units: Unit[];
   buildings: Building[];
   methods: PaymentMethod[];
@@ -286,23 +294,32 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
             session,
           ),
         ).catch(() => [] as ChargeConcept[]);
-        const [units, buildings, methods, concepts, paymentsPage, reviewQueueResult] =
-          await Promise.all([
-            apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-            apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-            methodsPromise,
-            conceptsPromise,
-            apiRequest<PaginatedResponse<Payment>>(
-              financialPagePath(
-                `/v1/condominiums/${condominiumId}/payments`,
-                1,
-                PAYMENTS_PAGE_SIZE,
-              ),
-              session,
-            ),
-            reviewQueuePromise,
-          ]);
+        const metricsPromise = apiRequest<PaymentMetricRow[]>(
+          '/v1/condominiums/' + condominiumId + '/payments/summary',
+          session,
+        ).catch(() => null);
+        const [
+          units,
+          buildings,
+          methods,
+          concepts,
+          paymentsPage,
+          reviewQueueResult,
+          paymentMetrics,
+        ] = await Promise.all([
+          apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
+          apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+          methodsPromise,
+          conceptsPromise,
+          apiRequest<PaginatedResponse<Payment>>(
+            financialPagePath(`/v1/condominiums/${condominiumId}/payments`, 1, PAYMENTS_PAGE_SIZE),
+            session,
+          ),
+          reviewQueuePromise,
+          metricsPromise,
+        ]);
         setData({
+          paymentMetrics,
           units,
           buildings,
           methods,
@@ -340,7 +357,15 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   }, [condominiumId]);
 
   const currencies = useMemo(
-    () => (data ? getPaymentCurrencies(data.payments, data.methods) : []),
+    () =>
+      data
+        ? [
+            ...new Set([
+              ...getPaymentCurrencies(data.payments, data.methods),
+              ...(data.paymentMetrics ?? []).map((row) => row.currency_code),
+            ]),
+          ].sort()
+        : [],
     [data],
   );
   const buildingNameById = useMemo(
@@ -547,7 +572,9 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
 
   if (!data) return null;
 
-  const summary = getPaymentSummary(data.payments, selectedCurrency);
+  // A server-side aggregate under the caller's RLS, independent of the loaded page.
+  const summary = data.paymentMetrics?.find((row) => row.currency_code === selectedCurrency);
+  const metricsAvailable = data.paymentMetrics !== null;
   const selectedCurrencyLabel = selectedCurrency || 'USD';
 
   return (
@@ -611,9 +638,9 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       ) : null}
       {activeTab === 'movements' && data.payments.length < data.paymentsPage.total ? (
         <div className="payments-inline-alert" role="status">
-          Indicadores, búsquedas y filtros usan {data.payments.length} de {data.paymentsPage.total}{' '}
-          pagos cargados. Usa “Cargar más” para ampliar el historial sin traerlo completo de una
-          vez.
+          Las búsquedas y filtros de movimientos usan {data.payments.length} de{' '}
+          {data.paymentsPage.total} pagos cargados. Los indicadores superiores se calculan con todo
+          el historial autorizado en el servidor.
         </div>
       ) : null}
 
@@ -639,7 +666,11 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           onClick={() => showMetricView('approved')}
           selected={activeTab === 'movements' && quickStatus === 'approved'}
           tone="green"
-          value={formatDashboardAmount(summary.approvedAmount, selectedCurrencyLabel)}
+          value={
+            metricsAvailable
+              ? formatDashboardAmount(summary?.approved_amount ?? '0', selectedCurrencyLabel)
+              : '—'
+          }
         />
         <MetricCard
           detail={
@@ -661,7 +692,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           onClick={() => showMetricView('attention')}
           selected={activeTab === 'review' && reviewFocus === 'actions'}
           tone="navy"
-          value={String(actionRequiredPayments.length)}
+          value={metricsAvailable ? String(summary?.own_attention_count ?? 0) : '—'}
         />
         <MetricCard
           detail="Consulta movimientos reversados con trazabilidad."
@@ -670,16 +701,19 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           onClick={() => showMetricView('reversed')}
           selected={activeTab === 'movements' && quickStatus === 'reversed'}
           tone="red"
-          value={formatDashboardAmount(summary.reversedAmount, selectedCurrencyLabel)}
+          value={
+            metricsAvailable
+              ? formatDashboardAmount(summary?.reversed_amount ?? '0', selectedCurrencyLabel)
+              : '—'
+          }
         />
       </section>
 
-      {data.payments.length < data.paymentsPage.total ? (
-        <p className="payments-metric-scope">
-          Los importes aprobados y reversados corresponden a los pagos cargados. La bandeja de
-          revisión incluye todos los pendientes consultados.
-        </p>
-      ) : null}
+      <p className="payments-metric-scope" role="status">
+        {metricsAvailable
+          ? 'Totales del historial autorizado para tu rol, separados por moneda y calculados en el servidor. El listado y las búsquedas de movimientos siguen paginados.'
+          : 'Indicadores completos no disponibles. No se muestran importes parciales como totales; actualiza para reintentar.'}
+      </p>
 
       {activeTab === 'review' ? (
         <section
