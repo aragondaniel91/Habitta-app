@@ -1268,6 +1268,15 @@ app.delete('/v1/condominiums/:id/payment-methods/:methodId', async (c) => {
   });
   return responseJson(c, r, 200, 409);
 });
+// Authoritative summaries use the requester's JWT/RLS; no service role, no full row download.
+app.get('/v1/condominiums/:id/payments/summary', async (c) => {
+  const condominiumId = uuidSchema.parse(c.req.param('id'));
+  const result = await rpc(c, 'get_payment_metrics', { target: condominiumId });
+  if (!result.ok) {
+    return c.json({ error: 'Payment indicators unavailable' }, result.status === 403 ? 403 : 502);
+  }
+  return c.json(await result.json());
+});
 app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
   const condominiumId = uuidSchema.parse(c.req.param('id'));
   const allowed = await rpc(c, 'can_review_payments', {

@@ -1438,7 +1438,8 @@
   color: var(--muted);
   text-align: center;
 }
-.payments-review-pagination {
+.payments-review-pagination,
+.payments-movements-pagination {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1450,17 +1451,20 @@
   color: var(--muted);
   font-size: 0.75rem;
 }
-.payments-review-pagination > div {
+.payments-review-pagination > div,
+.payments-movements-pagination > div {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
 @media (max-width: 540px) {
-  .payments-review-pagination {
+  .payments-review-pagination,
+  .payments-movements-pagination {
     align-items: stretch;
     flex-direction: column;
   }
-  .payments-review-pagination > div {
+  .payments-review-pagination > div,
+  .payments-movements-pagination > div {
     justify-content: space-between;
   }
 }
@@ -1710,5 +1714,111 @@
 @media (max-width: 700px) {
   .payments-review__submitted-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* HAB-PAYMENT-TABLE-COLUMNS-FILTERS-003 — shared, compact payment-table controls. */
+.payments-column-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
+  gap: 0.7rem;
+  align-items: end;
+  margin-bottom: 0.9rem;
+}
+.payments-column-filter {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.payments-column-filter--search {
+  grid-column: span 2;
+}
+.payments-column-filter > .input,
+.payments-column-filter > select {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+}
+.payments-column-filters__clear {
+  align-self: end;
+  justify-self: start;
+  min-height: 38px;
+}
+.payments-table__sort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  padding: 0.15rem 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.payments-table__sort:hover,
+.payments-table__sort[data-active='true'] {
+  color: var(--text-strong);
+}
+.payments-table__sort:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+.payments-table__sort span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.payments-review-table td:first-child {
+  display: table-cell;
+  min-width: 94px;
+}
+.payments-review-table td:nth-child(2) {
+  min-width: 150px;
+}
+.payments-review-table td:nth-child(2) small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+}
+.payments-review-list--priority {
+  display: none;
+}
+.payments-review-table-wrap {
+  display: block;
+}
+@media (max-width: 900px) and (min-width: 721px) {
+  .payments-review-table th:nth-child(2),
+  .payments-review-table td:nth-child(2) {
+    display: table-cell;
+  }
+}
+@media (max-width: 720px) {
+  .payments-column-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .payments-column-filter--search {
+    grid-column: 1 / -1;
+  }
+  .payments-review-table-wrap {
+    display: none;
+  }
+  .payments-review-list--priority {
+    display: grid;
+  }
+}
+@media (max-width: 359px) {
+  .payments-column-filters {
+    grid-template-columns: 1fr;
+  }
+  .payments-column-filter--search {
+    grid-column: auto;
   }
 }

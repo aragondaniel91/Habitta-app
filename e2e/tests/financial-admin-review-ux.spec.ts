@@ -107,7 +107,7 @@ test.describe('Pagos administrador — prioridad y revisión central', () => {
 
     await page.getByRole('tab', { name: /Revisión/ }).click();
     await expect(page.getByRole('tabpanel', { name: /Revisión/ })).toBeVisible();
-    const queue = review.locator('.payments-review-list--priority button');
+    const queue = review.locator('.payments-review-table tbody tr');
     const available = await queue.count();
     expect(available).toBeGreaterThan(0);
     expect(available).toBeLessThanOrEqual(10);
@@ -123,7 +123,7 @@ test.describe('Pagos administrador — prioridad y revisión central', () => {
       review.getByText('No hay pagos pendientes que coincidan con la búsqueda.'),
     ).toBeVisible();
     await review.getByLabel('Buscar pago pendiente').fill('');
-    await queue.first().click();
+    await queue.first().getByRole('button', { name: 'Revisar' }).click();
     const dialog = page.getByRole('dialog', { name: 'Revisar pago' });
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveClass(/payments-drawer--centered/);
