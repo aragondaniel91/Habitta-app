@@ -22,9 +22,24 @@ test.describe('HAB payment metrics — authoritative pending counts', () => {
     page,
   }) => {
     let queueIntercepted = false;
-    await page.route('**/payments/review-queue', (route) => {
+    await page.route('**/payments/review-queue?*', (route) => {
       queueIntercepted = true;
-      return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+      const url = new URL(route.request().url());
+      const currentPage = Number(url.searchParams.get('page') ?? '1');
+      const pageSize = Number(url.searchParams.get('pageSize') ?? '10');
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [],
+          page: currentPage,
+          pageSize,
+          total: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        }),
+      });
     });
     await signIn(page);
     const summaryPromise = page.waitForResponse(

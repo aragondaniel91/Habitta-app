@@ -19,7 +19,10 @@ export type MovementQuery = {
   sortDirection: 'asc' | 'desc';
 };
 
-export function paymentMovementPagePath(query: MovementQuery): string {
+export function paymentMovementPagePath(
+  query: MovementQuery,
+  kind: 'history' | 'review' = 'history',
+): string {
   const p = new URLSearchParams({
     page: String(query.page),
     pageSize: '10',
@@ -37,7 +40,8 @@ export function paymentMovementPagePath(query: MovementQuery): string {
     sortDir: query.sortDirection,
   };
   for (const [name, value] of Object.entries(params)) if (value) p.set(name, value);
-  return `/v1/condominiums/${query.condominiumId}/payments?${p.toString()}`;
+  const suffix = kind === 'review' ? '/review-queue' : '';
+  return `/v1/condominiums/${query.condominiumId}/payments${suffix}?${p.toString()}`;
 }
 
 export function useServerPaymentHistory({
@@ -45,15 +49,18 @@ export function useServerPaymentHistory({
   session,
   enabled,
   revision,
+  kind = 'history',
 }: {
   query: MovementQuery;
   session: Session;
   enabled: boolean;
   revision: number;
+  kind?: 'history' | 'review';
 }) {
   const path = useMemo(
-    () => paymentMovementPagePath(query),
+    () => paymentMovementPagePath(query, kind),
     [
+      kind,
       query.condominiumId,
       query.currency,
       query.page,

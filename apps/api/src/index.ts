@@ -53,6 +53,7 @@ import { tenancyRoutes } from './tenancy-routes';
 import { withinRateLimit } from './http-security';
 import { attachPaymentActorNames } from './payment-actor-names';
 import { attachPaymentChargeConceptNames } from './payment-charge-concepts';
+import { buildReviewQueueQuery } from './payment-review-query';
 import { registerPaymentAgreementRoutes } from './payment-agreement-routes';
 import { consumeNotificationQueue, runScheduled } from './notifications/worker';
 import type { NotificationBindings, NotificationQueueMessage } from './notifications/types';
@@ -1283,12 +1284,25 @@ app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
     target: condominiumId,
   });
   if (!allowed.ok || (await allowed.json()) !== true) return c.json({ error: 'Forbidden' }, 403);
+  // Legacy callers without pagination still receive an array. New clients use
+  // bounded, globally filtered pages with an RLS-scoped exact count.
+  const paginated = c.req.query('page') !== undefined || c.req.query('pageSize') !== undefined;
+  const query = paginated ? buildReviewQueueQuery(condominiumId, c.req.query()) : null;
+  if (query && !query.ok) return c.json({ error: query.error }, 400);
   const r = await rest(
     c,
-    `payments?condominium_id=eq.${condominiumId}&status=in.(submitted,under_review)&select=*&order=submitted_at.asc`,
+    query?.ok
+      ? query.path
+      : `payments?condominium_id=eq.${condominiumId}&status=in.(submitted,under_review)&select=*&order=submitted_at.asc`,
+    query?.ok ? { headers: { Prefer: 'count=exact' } } : {},
   );
-  if (!r.ok) return c.json(await r.json(), 403);
+  if (!r.ok) return c.json({ error: 'Review queue unavailable' }, r.status === 403 ? 403 : 502);
   const payments = (await r.json()) as Array<Record<string, unknown>>;
+  const matched = query?.ok ? r.headers.get('content-range')?.match(/\/(\d+)$/) : null;
+  const total = matched ? Number.parseInt(matched[1]!, 10) : null;
+  if (query?.ok && (total === null || !Array.isArray(payments))) {
+    return c.json({ error: 'Review queue pagination metadata unavailable' }, 502);
+  }
   const withApprovalCapability = await Promise.all(
     payments.map(async (payment) => {
       const capability = await rpc(c, 'can_approve_payment', {
@@ -1298,15 +1312,26 @@ app.get('/v1/condominiums/:id/payments/review-queue', async (c) => {
       return { ...payment, can_approve: capability.ok && (await capability.json()) === true };
     }),
   );
-  return c.json(
-    await attachPaymentChargeConceptNames(
-      condominiumId,
-      await attachPaymentActorNames(condominiumId, withApprovalCapability, (name, payload) =>
-        rpc(c, name, payload),
-      ),
-      (path) => rest(c, path),
+  const enriched = await attachPaymentChargeConceptNames(
+    condominiumId,
+    await attachPaymentActorNames(condominiumId, withApprovalCapability, (name, payload) =>
+      rpc(c, name, payload),
     ),
+    (path) => rest(c, path),
   );
+  if (!query?.ok) return c.json(enriched);
+  const { page, pageSize } = query;
+  const itemCount = total ?? 0;
+  const totalPages = itemCount === 0 ? 0 : Math.ceil(itemCount / pageSize);
+  return c.json({
+    items: enriched,
+    page,
+    pageSize,
+    total: itemCount,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  });
 });
 // NOTE (HAB-483 cleanup): the legacy `financeList`-backed payments GET was removed here too — see the
 // note above `charge-concepts`.
