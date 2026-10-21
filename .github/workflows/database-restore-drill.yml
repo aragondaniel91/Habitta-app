@@ -200,7 +200,13 @@ jobs:
           # may be omitted; any nonempty missing table fails the restore drill.
           # The original checksum-validated Auth dump is kept unchanged.
           psql "$RESTORE_URL" -X -qAt -v ON_ERROR_STOP=1 \
-            -c "select tablename from pg_tables where schemaname = 'auth' order by tablename;" \
+            -c "select c.relname || '|' || string_agg(a.attname, ',' order by a.attnum)
+                  from pg_class c
+                  join pg_namespace n on n.oid = c.relnamespace
+                  join pg_attribute a on a.attrelid = c.oid
+                 where n.nspname = 'auth' and c.relkind = 'r'
+                   and a.attnum > 0 and not a.attisdropped
+                 group by c.relname order by c.relname;" \
             > "$EXTRACTED/target-auth-tables.txt"
           node scripts/release/prepare-auth-restore.mjs \
             "$EXTRACTED/auth-data.sql" \

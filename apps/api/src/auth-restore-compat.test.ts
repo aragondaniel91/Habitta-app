@@ -19,7 +19,7 @@ function run(source: string, targets: string[]) {
   const output = join(dir, 'output.sql');
   try {
     writeFileSync(input, source);
-    writeFileSync(tables, targets.join('\n') + '\n');
+    writeFileSync(tables, targets.map((t) => (t.includes('|') ? t : `${t}|id`)).join('\n') + '\n');
     try {
       const stdout = execFileSync(process.execPath, [script, input, tables, output], {
         encoding: 'utf8',
@@ -41,7 +41,7 @@ describe('restore drill Auth managed-schema compatibility', () => {
     const result = run(source, ['users', 'sessions']);
     expect(result.error).toBe('');
     expect(result.content).toBe(source);
-    expect(result.stdout).toContain('0 missing empty managed table(s)');
+    expect(result.stdout).toContain('0 empty managed COPY block(s)');
   });
 
   it('omits only empty blocks for managed Auth tables absent in the local target', () => {
@@ -57,7 +57,7 @@ describe('restore drill Auth managed-schema compatibility', () => {
     expect(result.content).toContain('session-one');
     expect(result.content).not.toContain('mfa_recovery_code_sets');
     expect(result.content).not.toContain('webauthn_credentials');
-    expect(result.stdout).toContain('2 missing empty managed table(s)');
+    expect(result.stdout).toContain('2 empty managed COPY block(s)');
   });
 
   it('fails closed when a missing managed Auth table contains any data', () => {
@@ -66,6 +66,23 @@ describe('restore drill Auth managed-schema compatibility', () => {
     ]);
     expect(result.error).toContain('Cannot omit nonempty Auth COPY');
     expect(result.error).toContain('source has 1 rows');
+  });
+
+  it('skips an existing Auth table COPY only when a source-only column has no data', () => {
+    const empty = run('COPY auth.one_time_tokens (id, expires_at) FROM stdin;\n\\.\n', [
+      'users',
+      'one_time_tokens|id',
+    ]);
+    expect(empty.error).toBe('');
+    expect(empty.content).not.toContain('one_time_tokens');
+    expect(empty.stdout).toContain('missing columns: expires_at');
+
+    const populated = run(
+      'COPY auth.one_time_tokens (id, expires_at) FROM stdin;\n1\\t2026-12-01\n\\.\n',
+      ['users', 'one_time_tokens|id'],
+    );
+    expect(populated.error).toContain('Cannot omit nonempty Auth COPY');
+    expect(populated.error).toContain('expires_at');
   });
 
   it('fails closed when the target lacks auth.users', () => {
