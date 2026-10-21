@@ -23,11 +23,9 @@ import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import { collectAllPages, financialPagePath, pageInfo } from '../lib/pagination';
 import {
   defaultPaymentTableSort,
-  filterPaymentTableColumns,
   nextPaymentTableSort,
   paymentTableSortFromValue,
   paymentTableSortValue,
-  sortPaymentTableRows,
   type PaymentTableSort,
   type PaymentTableSortField,
 } from '../lib/payment-table-view';
@@ -239,6 +237,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   const [data, setData] = useState<PaymentsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [movementsRevision, setMovementsRevision] = useState(0);
+  const [reviewRevision, setReviewRevision] = useState(0);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
@@ -284,11 +283,11 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       if (!background) setLoading(true);
       setError('');
       try {
-        const reviewQueuePromise = apiRequest<Payment[]>(
-          `/v1/condominiums/${condominiumId}/payments/review-queue`,
+        const reviewQueuePromise = apiRequest<PaginatedResponse<Payment>>(
+          `/v1/condominiums/${condominiumId}/payments/review-queue?page=1&pageSize=1`,
           session,
         )
-          .then((items) => ({ items, available: true }))
+          .then((response) => ({ items: response.items, available: true }))
           .catch((requestError: unknown) => {
             if (requestError instanceof ApiRequestError && requestError.status === 403) {
               return { items: [], available: false };
@@ -385,6 +384,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     setReviewFocus('all');
     setMessage('');
     setMovementsRevision(0);
+    setReviewRevision(0);
   }, [condominiumId]);
 
   const currencies = useMemo(
@@ -478,53 +478,14 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   const pagedMovements = serverMovements?.items ?? [];
   const movementsTotal = serverMovements?.total ?? 0;
 
-  const reviewQueueForCurrency = useMemo(
-    () =>
-      (data?.reviewQueue ?? []).filter(
-        (payment) => !selectedCurrency || payment.original_currency_code === selectedCurrency,
-      ),
-    [data?.reviewQueue, selectedCurrency],
-  );
-
-  const filteredReviewQueue = useMemo(() => {
-    const term = reviewSearch.trim().toLocaleLowerCase('es');
-    const matching = reviewQueueForCurrency.filter(
-      (payment) =>
-        !term ||
-        [payment.payer_name, unitCodes.get(payment.unit_id), payment.reference].some((value) =>
-          (value ?? '').toLocaleLowerCase('es').includes(term),
-        ),
-    );
-    return sortPaymentTableRows(
-      filterPaymentTableColumns(matching, {
-        unitId: reviewUnitId,
-        dateFrom: reviewDateFrom,
-        dateTo: reviewDateTo,
-        status: reviewStatus,
-      }),
-      reviewSort,
-      unitCodes,
-      methodNames,
-    );
-  }, [
-    reviewQueueForCurrency,
-    reviewSearch,
-    reviewUnitId,
-    reviewDateFrom,
-    reviewDateTo,
-    reviewStatus,
-    reviewSort,
-    unitCodes,
-    methodNames,
-  ]);
-
+  // Only request a bounded, authorized page; never materialize the entire
+  // review queue or infer approval capabilities from client-side filtering.
   useEffect(() => {
     setReviewPage(1);
   }, [
     condominiumId,
     selectedCurrency,
     reviewSearch,
-    reviewQueueForCurrency.length,
     reviewUnitId,
     reviewDateFrom,
     reviewDateTo,
@@ -532,14 +493,39 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     reviewSort,
   ]);
 
-  const reviewPageCount = Math.max(1, Math.ceil(filteredReviewQueue.length / REVIEW_PAGE_SIZE));
-  const visibleReviewPage = Math.min(reviewPage, reviewPageCount);
+  const {
+    data: serverReview,
+    error: reviewError,
+    loading: reviewLoading,
+  } = useServerPaymentHistory({
+    query: {
+      condominiumId,
+      currency: selectedCurrency,
+      page: reviewPage,
+      unitId: reviewUnitId,
+      dateFrom: reviewDateFrom,
+      dateTo: reviewDateTo,
+      status: reviewStatus,
+      statusGroup: '',
+      methodId: '',
+      search: reviewSearch,
+      sortField: reviewSort.field,
+      sortDirection: reviewSort.direction,
+    },
+    kind: 'review',
+    session,
+    enabled:
+      activeTab === 'review' && reviewFocus !== 'actions' && data?.reviewQueueAvailable === true,
+    revision: reviewRevision,
+  });
+  const reviewTotal = serverReview?.total ?? 0;
+  const reviewPageCount = Math.max(1, serverReview?.totalPages ?? 1);
+  const visibleReviewPage = serverReview?.page ?? reviewPage;
   const reviewPageStart = (visibleReviewPage - 1) * REVIEW_PAGE_SIZE;
-  const pagedReviewQueue = filteredReviewQueue.slice(
-    reviewPageStart,
-    reviewPageStart + REVIEW_PAGE_SIZE,
+  const pagedReviewQueue = serverReview?.items ?? [];
+  const reviewHasActiveFilters = Boolean(
+    reviewSearch || reviewUnitId || reviewDateFrom || reviewDateTo || reviewStatus,
   );
-
   const changeMovementSort = (field: PaymentTableSortField) =>
     setMovementsSort((current) => nextPaymentTableSort(current, field));
   const changeReviewSort = (field: PaymentTableSortField) =>
@@ -575,6 +561,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     setDrawer(null);
     await load(true);
     setMovementsRevision((current) => current + 1);
+    setReviewRevision((current) => current + 1);
   };
 
   const openPayment = async (payment: Payment) => {
@@ -818,7 +805,10 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                       : 'Acceso restringido'}
                   </Badge>
                 </div>
-                {data.reviewQueueAvailable && reviewQueueForCurrency.length ? (
+                {data.reviewQueueAvailable &&
+                (pendingReviewCount === null ||
+                  pendingReviewCount > 0 ||
+                  reviewHasActiveFilters) ? (
                   <>
                     <div className="payments-column-filters" aria-label="Filtros de revisión">
                       <label className="payments-column-filter payments-column-filter--search">
@@ -912,7 +902,20 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                         Limpiar filtros
                       </Button>
                     </div>
-                    {pagedReviewQueue.length ? (
+                    {reviewLoading ? (
+                      <p role="status">Consultando pagos pendientes…</p>
+                    ) : reviewError ? (
+                      <div role="alert">
+                        <p>No se pudo consultar la bandeja: {reviewError}</p>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setReviewRevision((value) => value + 1)}
+                        >
+                          Reintentar
+                        </Button>
+                      </div>
+                    ) : pagedReviewQueue.length ? (
                       <>
                         <div className="payments-table-wrap payments-review-table-wrap">
                           <table className="payments-table payments-review-table">
@@ -1028,16 +1031,13 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                     )}
                     <div className="payments-review-pagination">
                       <span>
-                        {filteredReviewQueue.length
+                        {reviewTotal
                           ? 'Mostrando ' +
                             (reviewPageStart + 1) +
                             '–' +
-                            Math.min(
-                              reviewPageStart + REVIEW_PAGE_SIZE,
-                              filteredReviewQueue.length,
-                            ) +
+                            Math.min(reviewPageStart + REVIEW_PAGE_SIZE, reviewTotal) +
                             ' de ' +
-                            filteredReviewQueue.length
+                            reviewTotal
                           : '0 coincidencias'}
                         {reviewSearch
                           ? ' · ' +
