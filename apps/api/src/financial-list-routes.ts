@@ -4,6 +4,7 @@ import { uuidSchema } from '@habitta/validation';
 import type { NotificationBindings } from './notifications/types';
 import { attachPaymentActorNames } from './payment-actor-names';
 import { attachPaymentChargeConceptNames } from './payment-charge-concepts';
+import { buildPaymentHistoryFilters } from './payment-history-query';
 
 type Variables = { token: string; userId: string };
 type AppEnvironment = { Bindings: NotificationBindings; Variables: Variables };
@@ -57,6 +58,14 @@ const paginatedFinancialList =
       options.unitScoped && rawUnitId !== undefined ? uuidSchema.safeParse(rawUnitId) : null;
     if (unitId && !unitId.success) return c.json({ error: 'Invalid unitId' }, 400);
     const unitFilter = unitId?.success ? `&unit_id=eq.${unitId.data}` : '';
+    const paymentQuery =
+      table === 'payments'
+        ? buildPaymentHistoryFilters({ ...c.req.query(), unitId: undefined })
+        : null;
+    if (paymentQuery && !paymentQuery.ok) return c.json({ error: paymentQuery.error }, 400);
+    const filters = paymentQuery?.ok ? paymentQuery.filter : '';
+    const sortOrder = paymentQuery?.ok ? paymentQuery.order : order;
+    const selection = paymentQuery?.ok ? paymentQuery.select : '*';
 
     const explicitPagination =
       c.req.query('page') !== undefined || c.req.query('pageSize') !== undefined;
@@ -68,7 +77,7 @@ const paginatedFinancialList =
       for (let offset = 0; ; offset += COMPLETE_READ_PAGE_SIZE) {
         const response = await rest(
           c,
-          `${table}?condominium_id=eq.${id}${unitFilter}&select=*&order=${order}&limit=${COMPLETE_READ_PAGE_SIZE}&offset=${offset}`,
+          `${table}?condominium_id=eq.${id}${unitFilter}${filters}&select=${selection}&order=${sortOrder}&limit=${COMPLETE_READ_PAGE_SIZE}&offset=${offset}`,
           { headers: { Prefer: 'count=exact' } },
         );
         if (!response.ok) return listFailure(c, response);
@@ -126,7 +135,7 @@ const paginatedFinancialList =
     const offset = (page - 1) * pageSize;
     const response = await rest(
       c,
-      `${table}?condominium_id=eq.${id}${unitFilter}&select=*&order=${order}&limit=${pageSize}&offset=${offset}`,
+      `${table}?condominium_id=eq.${id}${unitFilter}${filters}&select=${selection}&order=${sortOrder}&limit=${pageSize}&offset=${offset}`,
       { headers: { Prefer: 'count=exact' } },
     );
     if (!response.ok) return listFailure(c, response);
