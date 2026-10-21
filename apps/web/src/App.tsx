@@ -10,6 +10,7 @@ import {
 } from './components/AuthExperience';
 import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
 import { ModuleLoading } from './components/ui';
+import { ModuleRecoveryBoundary } from './components/ModuleRecoveryBoundary';
 import { apiRequest } from './lib/api';
 import {
   directoryDetailHref,
@@ -618,9 +619,19 @@ export default function App() {
         {/* Each module is its own chunk, so the shell stays on screen while one arrives. A
             condominium switch must remount that module so local rows, drawers, filters and cursors
             from the previous tenant context cannot survive under the new shell context. */}
-        <Suspense key={selectedCondominiumId} fallback={<ModuleLoading />}>
-          {page}
-        </Suspense>
+        <ModuleRecoveryBoundary
+          key={selectedCondominiumId + ':' + activeRoute.key}
+          onBack={() => {
+            const fallbackRoute = visibleRoutes.find(
+              (route) => route.key === (activeRoute.key === 'units' ? 'dashboard' : 'units'),
+            );
+            navigate(fallbackRoute ?? safeFallback);
+          }}
+        >
+          <Suspense key={selectedCondominiumId} fallback={<ModuleLoading />}>
+            {page}
+          </Suspense>
+        </ModuleRecoveryBoundary>
       </AppShell>
     </RolesProvider>
   );

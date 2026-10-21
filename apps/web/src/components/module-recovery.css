@@ -1,0 +1,22 @@
+.module-recovery {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 42rem);
+  margin: 1.25rem auto;
+  padding: 1.25rem;
+  border: 1px solid var(--border-subtle, var(--border));
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.module-recovery__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .module-recovery__actions > * {
+    flex: 1 1 100%;
+  }
+}

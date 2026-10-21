@@ -54,4 +54,22 @@ test.describe('HAB-PILOT-004: navegación Unidades ↔ Personas', () => {
     await expect(page.locator('.people-v3-directory__item').first()).toBeVisible();
     await expect(page.locator('.people-v3-profile')).not.toContainText('Habitta E2E Payer');
   });
+
+  test('muestra recuperación en vez de pantalla blanca si el módulo Personas no puede descargarse', async ({
+    page,
+  }) => {
+    await login(page);
+    await page.route('**/src/pages/CommunityDirectoryPage.tsx*', (route) => route.abort('failed'));
+    await page.goto('/app/units');
+    const row = page.locator('.units-v3-row').filter({ hasText: 'E2E-A101' }).first();
+    await expect(row).toBeVisible();
+    await row.click();
+    await page.locator('.units-v3-detail a.units-v3-person-link').first().click();
+    await expect(page.locator('.module-recovery')).toContainText('No se pudo abrir este módulo');
+    await expect(page.getByRole('button', { name: 'Volver a Unidades' })).toBeVisible();
+    await page.getByRole('button', { name: 'Volver a Unidades' }).click();
+    await expect(
+      page.locator('.units-v3-row').filter({ hasText: 'E2E-A101' }).first(),
+    ).toBeVisible();
+  });
 });
