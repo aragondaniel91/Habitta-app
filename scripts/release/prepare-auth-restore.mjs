@@ -11,6 +11,8 @@
  * derived file is short-lived, inside the restore drill's cleanup directory.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export function prepareAuthRestore(sourceText, targetTables) {
   if (!targetTables.has('users')) throw new Error('Restore target is missing auth.users');
@@ -59,10 +61,7 @@ export function prepareAuthRestore(sourceText, targetTables) {
   return { content: output.join('\n'), omitted };
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`).href
-) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [sourceFile, targetTablesFile, outputFile] = process.argv.slice(2);
     if (!sourceFile || !targetTablesFile || !outputFile) {
