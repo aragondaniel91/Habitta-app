@@ -195,9 +195,20 @@ jobs:
             fi
           done
 
+          # Production Auth may have newer managed tables than the CLI's disposable
+          # local database. Only COPY blocks for *missing and empty* target tables
+          # may be omitted; any nonempty missing table fails the restore drill.
+          # The original checksum-validated Auth dump is kept unchanged.
+          psql "$RESTORE_URL" -X -qAt -v ON_ERROR_STOP=1 \
+            -c "select tablename from pg_tables where schemaname = 'auth' order by tablename;" \
+            > "$EXTRACTED/target-auth-tables.txt"
+          node scripts/release/prepare-auth-restore.mjs \
+            "$EXTRACTED/auth-data.sql" \
+            "$EXTRACTED/target-auth-tables.txt" \
+            "$EXTRACTED/auth-data-compatible.sql"
           {
             printf '%s\n' 'SET session_replication_role = replica;'
-            cat "$EXTRACTED/auth-data.sql"
+            cat "$EXTRACTED/auth-data-compatible.sql"
             printf '%s\n' 'SET session_replication_role = origin;'
           } | psql "$RESTORE_URL" -v ON_ERROR_STOP=1
           psql "$RESTORE_URL" -v ON_ERROR_STOP=1 -f "$EXTRACTED/schema.sql"
