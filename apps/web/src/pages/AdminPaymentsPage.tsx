@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CheckCircleIcon, FeesIcon, PaymentsIcon, ReportsIcon } from '../components/icons';
 import { FinancialPagination } from '../components/FinancialPagination';
+import { PaymentSortHeader } from '../components/PaymentSortHeader';
 import { Badge, Button, EmptyState, InfoHint, Select, Skeleton, Surface } from '../components/ui';
 import { PageChromeExtension, PageHeader } from '../components/PageHeader';
 import { paymentApi } from '../features/payments/api';
@@ -20,6 +21,16 @@ import { ApiRequestError, apiRequest } from '../lib/api';
 import { unitReferenceLabel } from '../lib/unit-domain';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
 import { collectAllPages, financialPagePath, mergePageItems, pageInfo } from '../lib/pagination';
+import {
+  defaultPaymentTableSort,
+  filterPaymentTableColumns,
+  nextPaymentTableSort,
+  paymentTableSortFromValue,
+  paymentTableSortValue,
+  sortPaymentTableRows,
+  type PaymentTableSort,
+  type PaymentTableSortField,
+} from '../lib/payment-table-view';
 import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
   filterPayments,
@@ -239,6 +250,15 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   >('all');
   const [reviewPage, setReviewPage] = useState(1);
   const [movementsPage, setMovementsPage] = useState(1);
+  const [movementsUnitId, setMovementsUnitId] = useState('');
+  const [movementsDateFrom, setMovementsDateFrom] = useState('');
+  const [movementsDateTo, setMovementsDateTo] = useState('');
+  const [movementsSort, setMovementsSort] = useState<PaymentTableSort>(defaultPaymentTableSort);
+  const [reviewUnitId, setReviewUnitId] = useState('');
+  const [reviewDateFrom, setReviewDateFrom] = useState('');
+  const [reviewDateTo, setReviewDateTo] = useState('');
+  const [reviewStatus, setReviewStatus] = useState('');
+  const [reviewSort, setReviewSort] = useState<PaymentTableSort>(defaultPaymentTableSort);
   const [reviewSearch, setReviewSearch] = useState('');
   const [reviewFocus, setReviewFocus] = useState<'all' | 'pending' | 'actions'>('all');
   const [drawer, setDrawer] = useState<PaymentsDrawerMode>(null);
@@ -353,6 +373,15 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     setActiveTab('review');
     setReviewPage(1);
     setMovementsPage(1);
+    setMovementsUnitId('');
+    setMovementsDateFrom('');
+    setMovementsDateTo('');
+    setMovementsSort(defaultPaymentTableSort);
+    setReviewUnitId('');
+    setReviewDateFrom('');
+    setReviewDateTo('');
+    setReviewStatus('');
+    setReviewSort(defaultPaymentTableSort);
     setReviewSearch('');
     setReviewFocus('all');
     setMessage('');
@@ -412,7 +441,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       ...filters,
       currencyCode: selectedCurrency,
     });
-    return sortPayments(
+    const columnFiltered = filterPaymentTableColumns(
       matching.filter((payment) => {
         if (quickStatus === 'pending')
           return ['submitted', 'under_review'].includes(payment.status);
@@ -422,14 +451,40 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           return ['draft', 'correction_requested'].includes(payment.status);
         return true;
       }),
+      {
+        unitId: movementsUnitId,
+        dateFrom: movementsDateFrom,
+        dateTo: movementsDateTo,
+      },
     );
-  }, [data, filters, quickStatus, selectedCurrency, unitCodes]);
+    return sortPaymentTableRows(columnFiltered, movementsSort, unitCodes, methodNames);
+  }, [
+    data,
+    filters,
+    quickStatus,
+    selectedCurrency,
+    unitCodes,
+    methodNames,
+    movementsUnitId,
+    movementsDateFrom,
+    movementsDateTo,
+    movementsSort,
+  ]);
 
   // The server history is fetched in bounded batches; render a smaller, navigable page.
   // Filters remain scoped to loaded records until additional history is requested.
   useEffect(() => {
     setMovementsPage(1);
-  }, [condominiumId, selectedCurrency, filters, quickStatus]);
+  }, [
+    condominiumId,
+    selectedCurrency,
+    filters,
+    quickStatus,
+    movementsUnitId,
+    movementsDateFrom,
+    movementsDateTo,
+    movementsSort,
+  ]);
 
   const movementsPageCount = Math.max(
     1,
@@ -452,20 +507,49 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
 
   const filteredReviewQueue = useMemo(() => {
     const term = reviewSearch.trim().toLocaleLowerCase('es');
-    return sortPayments(
-      reviewQueueForCurrency.filter(
-        (payment) =>
-          !term ||
-          [payment.payer_name, unitCodes.get(payment.unit_id), payment.reference].some((value) =>
-            (value ?? '').toLocaleLowerCase('es').includes(term),
-          ),
-      ),
+    const matching = reviewQueueForCurrency.filter(
+      (payment) =>
+        !term ||
+        [payment.payer_name, unitCodes.get(payment.unit_id), payment.reference].some((value) =>
+          (value ?? '').toLocaleLowerCase('es').includes(term),
+        ),
     );
-  }, [reviewQueueForCurrency, reviewSearch, unitCodes]);
+    return sortPaymentTableRows(
+      filterPaymentTableColumns(matching, {
+        unitId: reviewUnitId,
+        dateFrom: reviewDateFrom,
+        dateTo: reviewDateTo,
+        status: reviewStatus,
+      }),
+      reviewSort,
+      unitCodes,
+      methodNames,
+    );
+  }, [
+    reviewQueueForCurrency,
+    reviewSearch,
+    reviewUnitId,
+    reviewDateFrom,
+    reviewDateTo,
+    reviewStatus,
+    reviewSort,
+    unitCodes,
+    methodNames,
+  ]);
 
   useEffect(() => {
     setReviewPage(1);
-  }, [condominiumId, selectedCurrency, reviewSearch, reviewQueueForCurrency.length]);
+  }, [
+    condominiumId,
+    selectedCurrency,
+    reviewSearch,
+    reviewQueueForCurrency.length,
+    reviewUnitId,
+    reviewDateFrom,
+    reviewDateTo,
+    reviewStatus,
+    reviewSort,
+  ]);
 
   const reviewPageCount = Math.max(1, Math.ceil(filteredReviewQueue.length / REVIEW_PAGE_SIZE));
   const visibleReviewPage = Math.min(reviewPage, reviewPageCount);
@@ -474,6 +558,11 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     reviewPageStart,
     reviewPageStart + REVIEW_PAGE_SIZE,
   );
+
+  const changeMovementSort = (field: PaymentTableSortField) =>
+    setMovementsSort((current) => nextPaymentTableSort(current, field));
+  const changeReviewSort = (field: PaymentTableSortField) =>
+    setReviewSort((current) => nextPaymentTableSort(current, field));
 
   const showMetricView = (view: 'pending' | 'approved' | 'attention' | 'reversed') => {
     if (view === 'pending' || view === 'attention') {
@@ -782,46 +871,207 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                 </div>
                 {data.reviewQueueAvailable && reviewQueueForCurrency.length ? (
                   <>
-                    <div className="payments-review-tools">
-                      <label htmlFor="payments-review-search">Buscar pago pendiente</label>
-                      <input
-                        className="input payments-search"
-                        id="payments-review-search"
-                        onChange={(event) => setReviewSearch(event.target.value)}
-                        placeholder="Unidad, pagador o referencia"
-                        type="search"
-                        value={reviewSearch}
-                      />
+                    <div className="payments-column-filters" aria-label="Filtros de revisión">
+                      <label className="payments-column-filter payments-column-filter--search">
+                        Buscar pago pendiente
+                        <input
+                          className="input"
+                          onChange={(event) => setReviewSearch(event.target.value)}
+                          placeholder="Pagador o referencia"
+                          type="search"
+                          value={reviewSearch}
+                        />
+                      </label>
+                      <label className="payments-column-filter">
+                        Unidad
+                        <Select
+                          onChange={(event) => setReviewUnitId(event.target.value)}
+                          value={reviewUnitId}
+                        >
+                          <option value="">Todas las unidades</option>
+                          {data.units.map((unit) => (
+                            <option key={unit.id} value={unit.id}>
+                              {unit.code}
+                            </option>
+                          ))}
+                        </Select>
+                      </label>
+                      <label className="payments-column-filter">
+                        Desde
+                        <input
+                          className="input"
+                          onChange={(event) => setReviewDateFrom(event.target.value)}
+                          type="date"
+                          value={reviewDateFrom}
+                        />
+                      </label>
+                      <label className="payments-column-filter">
+                        Hasta
+                        <input
+                          className="input"
+                          min={reviewDateFrom || undefined}
+                          onChange={(event) => setReviewDateTo(event.target.value)}
+                          type="date"
+                          value={reviewDateTo}
+                        />
+                      </label>
+                      <label className="payments-column-filter">
+                        Estado
+                        <Select
+                          onChange={(event) => setReviewStatus(event.target.value)}
+                          value={reviewStatus}
+                        >
+                          <option value="">Todos</option>
+                          <option value="submitted">Enviado</option>
+                          <option value="under_review">En revisión</option>
+                        </Select>
+                      </label>
+                      <label className="payments-column-filter payments-column-filter--order">
+                        Orden
+                        <Select
+                          aria-label="Ordenar revisión"
+                          onChange={(event) =>
+                            setReviewSort(paymentTableSortFromValue(event.target.value))
+                          }
+                          value={paymentTableSortValue(reviewSort)}
+                        >
+                          <option value="date-desc">Más recientes</option>
+                          <option value="date-asc">Más antiguos</option>
+                          <option value="unit-asc">Unidad A–Z</option>
+                          <option value="unit-desc">Unidad Z–A</option>
+                          <option value="status-asc">Estado A–Z</option>
+                          <option value="status-desc">Estado Z–A</option>
+                          <option value="amount-desc">Mayor monto</option>
+                          <option value="amount-asc">Menor monto</option>
+                          <option value="payer-asc">Pagador A–Z</option>
+                          <option value="payer-desc">Pagador Z–A</option>
+                        </Select>
+                      </label>
+                      <Button
+                        className="payments-column-filters__clear"
+                        onClick={() => {
+                          setReviewSearch('');
+                          setReviewUnitId('');
+                          setReviewDateFrom('');
+                          setReviewDateTo('');
+                          setReviewStatus('');
+                          setReviewSort(defaultPaymentTableSort);
+                        }}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        Limpiar filtros
+                      </Button>
                     </div>
                     {pagedReviewQueue.length ? (
-                      <div className="payments-review-list payments-review-list--priority">
-                        {pagedReviewQueue.map((payment) => (
-                          <button
-                            key={payment.id}
-                            onClick={() => void openPayment(payment)}
-                            type="button"
-                          >
-                            <span>
-                              <PaymentsIcon size={18} />
-                            </span>
-                            <div>
-                              <strong>
-                                {unitCodes.get(payment.unit_id) ?? 'Unidad'} · {payment.payer_name}
-                              </strong>
-                              <small>
-                                {formatDashboardDate(payment.payment_date)} ·{' '}
-                                {paymentStatusLabels[payment.status] ?? payment.status}
-                              </small>
-                            </div>
-                            <b>
-                              {formatDashboardAmount(
-                                payment.original_amount,
-                                payment.original_currency_code,
-                              )}
-                            </b>
-                          </button>
-                        ))}
-                      </div>
+                      <>
+                        <div className="payments-table-wrap payments-review-table-wrap">
+                          <table className="payments-table payments-review-table">
+                            <thead>
+                              <tr>
+                                <PaymentSortHeader
+                                  field="unit"
+                                  label="Unidad"
+                                  onSort={changeReviewSort}
+                                  sort={reviewSort}
+                                />
+                                <PaymentSortHeader
+                                  field="payer"
+                                  label="Pagador"
+                                  onSort={changeReviewSort}
+                                  sort={reviewSort}
+                                />
+                                <PaymentSortHeader
+                                  field="date"
+                                  label="Fecha"
+                                  onSort={changeReviewSort}
+                                  sort={reviewSort}
+                                />
+                                <PaymentSortHeader
+                                  field="status"
+                                  label="Estado"
+                                  onSort={changeReviewSort}
+                                  sort={reviewSort}
+                                />
+                                <PaymentSortHeader
+                                  field="amount"
+                                  label="Monto"
+                                  onSort={changeReviewSort}
+                                  sort={reviewSort}
+                                />
+                                <th scope="col">Acción</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {pagedReviewQueue.map((payment) => (
+                                <tr key={payment.id}>
+                                  <td>
+                                    <strong>
+                                      {unitCodes.get(payment.unit_id) ?? 'Sin unidad'}
+                                    </strong>
+                                  </td>
+                                  <td>
+                                    <strong>{payment.payer_name}</strong>
+                                    {payment.reference ? <small>{payment.reference}</small> : null}
+                                  </td>
+                                  <td>{formatDashboardDate(payment.payment_date)}</td>
+                                  <td>
+                                    <Badge tone={paymentStatusTone(payment.status)}>
+                                      {paymentStatusLabels[payment.status] ?? payment.status}
+                                    </Badge>
+                                  </td>
+                                  <td>
+                                    <strong>
+                                      {formatDashboardAmount(
+                                        payment.original_amount,
+                                        payment.original_currency_code,
+                                      )}
+                                    </strong>
+                                  </td>
+                                  <td>
+                                    <Button
+                                      onClick={() => void openPayment(payment)}
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      Revisar
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="payments-review-list payments-review-list--priority">
+                          {pagedReviewQueue.map((payment) => (
+                            <button
+                              key={payment.id}
+                              onClick={() => void openPayment(payment)}
+                              type="button"
+                            >
+                              <span>
+                                <PaymentsIcon size={18} />
+                              </span>
+                              <div>
+                                <strong>
+                                  {unitCodes.get(payment.unit_id) ?? 'Unidad'} ·{' '}
+                                  {payment.payer_name}
+                                </strong>
+                                <small>
+                                  {formatDashboardDate(payment.payment_date)} ·{' '}
+                                  {paymentStatusLabels[payment.status] ?? payment.status}
+                                </small>
+                              </div>
+                              <b>
+                                {formatDashboardAmount(
+                                  payment.original_amount,
+                                  payment.original_currency_code,
+                                )}
+                              </b>
+                            </button>
+                          ))}
+                        </div>
+                      </>
                     ) : (
                       <p className="payments-review-no-results" role="status">
                         No hay pagos pendientes que coincidan con la búsqueda.
@@ -994,36 +1244,123 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                 </button>
               ))}
             </div>
-            <div className="payments-filters">
-              <input
-                className="input payments-search"
-                onChange={(event) => setFilters({ ...filters, query: event.target.value })}
-                placeholder="Buscar pago…"
-                type="search"
-                value={filters.query}
-              />
-              <Select
-                onChange={(event) => setFilters({ ...filters, status: event.target.value })}
-                value={filters.status}
+            <div className="payments-column-filters" aria-label="Filtros de movimientos">
+              <label className="payments-column-filter payments-column-filter--search">
+                Buscar
+                <input
+                  className="input payments-search"
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, query: event.target.value }))
+                  }
+                  placeholder="Pagador o referencia"
+                  type="search"
+                  value={filters.query}
+                />
+              </label>
+              <label className="payments-column-filter">
+                Unidad
+                <Select
+                  onChange={(event) => setMovementsUnitId(event.target.value)}
+                  value={movementsUnitId}
+                >
+                  <option value="">Todas las unidades</option>
+                  {data.units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.code}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="payments-column-filter">
+                Desde
+                <input
+                  className="input"
+                  onChange={(event) => setMovementsDateFrom(event.target.value)}
+                  type="date"
+                  value={movementsDateFrom}
+                />
+              </label>
+              <label className="payments-column-filter">
+                Hasta
+                <input
+                  className="input"
+                  min={movementsDateFrom || undefined}
+                  onChange={(event) => setMovementsDateTo(event.target.value)}
+                  type="date"
+                  value={movementsDateTo}
+                />
+              </label>
+              <label className="payments-column-filter">
+                Estado
+                <Select
+                  onChange={(event) => {
+                    setFilters((current) => ({ ...current, status: event.target.value }));
+                    setQuickStatus('all');
+                  }}
+                  value={filters.status}
+                >
+                  <option value="">Todos los estados</option>
+                  {Object.entries(paymentStatusLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="payments-column-filter">
+                Método
+                <Select
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, methodId: event.target.value }))
+                  }
+                  value={filters.methodId}
+                >
+                  <option value="">Todos los métodos</option>
+                  {data.methods.map((method) => (
+                    <option key={method.id} value={method.id}>
+                      {method.display_name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="payments-column-filter payments-column-filter--order">
+                Orden
+                <Select
+                  aria-label="Ordenar movimientos"
+                  onChange={(event) =>
+                    setMovementsSort(paymentTableSortFromValue(event.target.value))
+                  }
+                  value={paymentTableSortValue(movementsSort)}
+                >
+                  <option value="date-desc">Más recientes</option>
+                  <option value="date-asc">Más antiguos</option>
+                  <option value="unit-asc">Unidad A–Z</option>
+                  <option value="unit-desc">Unidad Z–A</option>
+                  <option value="status-asc">Estado A–Z</option>
+                  <option value="status-desc">Estado Z–A</option>
+                  <option value="amount-desc">Mayor monto</option>
+                  <option value="amount-asc">Menor monto</option>
+                  <option value="payer-asc">Pagador A–Z</option>
+                  <option value="payer-desc">Pagador Z–A</option>
+                  <option value="method-asc">Método A–Z</option>
+                  <option value="method-desc">Método Z–A</option>
+                </Select>
+              </label>
+              <Button
+                className="payments-column-filters__clear"
+                onClick={() => {
+                  setFilters(initialFilters);
+                  setQuickStatus('all');
+                  setMovementsUnitId('');
+                  setMovementsDateFrom('');
+                  setMovementsDateTo('');
+                  setMovementsSort(defaultPaymentTableSort);
+                }}
+                size="sm"
+                variant="ghost"
               >
-                <option value="">Todos los estados</option>
-                {Object.entries(paymentStatusLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                onChange={(event) => setFilters({ ...filters, methodId: event.target.value })}
-                value={filters.methodId}
-              >
-                <option value="">Todos los métodos</option>
-                {data.methods.map((method) => (
-                  <option key={method.id} value={method.id}>
-                    {method.display_name}
-                  </option>
-                ))}
-              </Select>
+                Limpiar filtros
+              </Button>
             </div>
 
             {visiblePayments.length ? (
@@ -1032,12 +1369,37 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                   <table className="payments-table">
                     <thead>
                       <tr>
-                        <th>Unidad, pagador y registro</th>
-                        <th>Método</th>
-                        <th>Fecha</th>
-                        <th>Monto</th>
-                        <th>Estado</th>
-                        <th />
+                        <PaymentSortHeader
+                          field="unit"
+                          label="Unidad / pagador"
+                          onSort={changeMovementSort}
+                          sort={movementsSort}
+                        />
+                        <PaymentSortHeader
+                          field="method"
+                          label="Método"
+                          onSort={changeMovementSort}
+                          sort={movementsSort}
+                        />
+                        <PaymentSortHeader
+                          field="date"
+                          label="Fecha"
+                          onSort={changeMovementSort}
+                          sort={movementsSort}
+                        />
+                        <PaymentSortHeader
+                          field="amount"
+                          label="Monto"
+                          onSort={changeMovementSort}
+                          sort={movementsSort}
+                        />
+                        <PaymentSortHeader
+                          field="status"
+                          label="Estado"
+                          onSort={changeMovementSort}
+                          sort={movementsSort}
+                        />
+                        <th scope="col">Acción</th>
                       </tr>
                     </thead>
                     <tbody>
