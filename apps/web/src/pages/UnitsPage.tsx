@@ -15,7 +15,9 @@ import { UnitEditor } from '../features/units/UnitEditor';
 import type { UnitEditorInput } from '../features/units/UnitEditor';
 import type { CondominiumProfile, DirectoryUnit, UnitsDirectory } from '../features/units/types';
 import { apiRequest } from '../lib/api';
-import { canManage, useCondominiumRoles } from '../lib/roles';
+import { canAccessRoute, canManage, useCondominiumRoles } from '../lib/roles';
+import { APP_ROUTES } from '../navigation';
+import { directoryRequestedId, findDirectoryTarget } from '../lib/directory-deep-links';
 import {
   supportsBuildingStructure,
   UNIT_TYPE_LABELS,
@@ -30,6 +32,7 @@ type Props = {
   condominiumName: string;
   session: Session;
   onConfigureStructure?: () => void;
+  onOpenPerson?: ((personId: string) => void) | undefined;
 };
 
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -67,8 +70,13 @@ export function UnitsPage({
   condominiumName,
   session,
   onConfigureStructure,
+  onOpenPerson,
 }: Props) {
-  const canMutate = canManage(useCondominiumRoles());
+  const roles = useCondominiumRoles();
+  const canMutate = canManage(roles);
+  const peopleRoute = APP_ROUTES.find((route) => route.key === 'people');
+  const canViewPeople = Boolean(peopleRoute && canAccessRoute(peopleRoute, roles));
+  const [requestedUnitId] = useState(() => directoryRequestedId('units', window.location.search));
   const [profile, setProfile] = useState<CondominiumProfile | null>(null);
   const [units, setUnits] = useState<DirectoryUnit[]>([]);
   const [configuredBuildings, setConfiguredBuildings] = useState<Building[]>([]);
@@ -103,6 +111,10 @@ export function UnitsPage({
         setProfile(profileRows[0] ?? null);
         setUnits(directory.units);
         setConfiguredBuildings(buildingItems);
+        if (requestedUnitId) {
+          // Open only a unit returned by this condominium's authorized directory.
+          setSelectedUnit(findDirectoryTarget(directory.units, requestedUnitId));
+        }
       })
       .catch((reason: unknown) => {
         if (!active) return;
@@ -116,7 +128,7 @@ export function UnitsPage({
     return () => {
       active = false;
     };
-  }, [condominiumId, reloadNonce, session]);
+  }, [condominiumId, reloadNonce, requestedUnitId, session]);
 
   useEffect(() => {
     setSelectedUnit(null);
@@ -501,6 +513,8 @@ export function UnitsPage({
       {selectedUnit ? (
         <UnitDetailDrawer
           canMutate={canMutate}
+          canViewPeople={canViewPeople}
+          onOpenPerson={onOpenPerson}
           condominiumId={condominiumId}
           onArchive={() =>
             selectedUnit.status === 'active'

@@ -246,12 +246,14 @@ function financialRoleLabel(role: PersonUnitRelationshipSummary['currentCommunic
 export function PersonUnitRelationshipCard({
   relationship,
   onManage,
+  onViewUnit,
   onInvite,
   onHistory,
   onClose,
 }: {
   relationship: PersonUnitRelationshipSummary;
   onManage: () => void;
+  onViewUnit?: (() => void) | undefined;
   onInvite?: (() => void) | undefined;
   onHistory?: () => void;
   onClose?: () => void;
@@ -357,6 +359,11 @@ export function PersonUnitRelationshipCard({
 
       <footer className="people-v3-unit-card__actions">
         <div>
+          {onViewUnit ? (
+            <Button onClick={onViewUnit} size="sm" variant="ghost">
+              Abrir unidad
+            </Button>
+          ) : null}
           {onHistory ? (
             <Button onClick={onHistory} size="sm" variant="ghost">
               Ver historial

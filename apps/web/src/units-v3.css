@@ -226,6 +226,23 @@
   gap: 0.7rem;
 }
 
+.units-v3-person-link {
+  color: var(--brand-blue, var(--blue));
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.units-v3-person-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.units-v3-person-link:focus-visible {
+  outline: 2px solid var(--brand-blue, var(--blue));
+  outline-offset: 3px;
+  border-radius: 0.15rem;
+}
+
 .units-v3-detail-relations > div {
   display: flex;
   min-width: 0;
