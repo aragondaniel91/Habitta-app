@@ -64,6 +64,7 @@ type Props = {
 const PAYMENTS_PAGE_SIZE = 50;
 const REFERENCE_PAGE_SIZE = 100;
 const REVIEW_PAGE_SIZE = 10;
+const MOVEMENTS_VIEW_PAGE_SIZE = 10;
 
 const initialFilters: PaymentFilters = {
   query: '',
@@ -237,6 +238,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     'all' | 'pending' | 'approved' | 'attention' | 'reversed'
   >('all');
   const [reviewPage, setReviewPage] = useState(1);
+  const [movementsPage, setMovementsPage] = useState(1);
   const [reviewSearch, setReviewSearch] = useState('');
   const [reviewFocus, setReviewFocus] = useState<'all' | 'pending' | 'actions'>('all');
   const [drawer, setDrawer] = useState<PaymentsDrawerMode>(null);
@@ -350,6 +352,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     setQuickStatus('all');
     setActiveTab('review');
     setReviewPage(1);
+    setMovementsPage(1);
     setReviewSearch('');
     setReviewFocus('all');
     setMessage('');
@@ -421,6 +424,23 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
       }),
     );
   }, [data, filters, quickStatus, selectedCurrency, unitCodes]);
+
+  // The server history is fetched in bounded batches; render a smaller, navigable page.
+  // Filters remain scoped to loaded records until additional history is requested.
+  useEffect(() => {
+    setMovementsPage(1);
+  }, [condominiumId, selectedCurrency, filters, quickStatus]);
+
+  const movementsPageCount = Math.max(
+    1,
+    Math.ceil(visiblePayments.length / MOVEMENTS_VIEW_PAGE_SIZE),
+  );
+  const visibleMovementsPage = Math.min(movementsPage, movementsPageCount);
+  const movementsPageStart = (visibleMovementsPage - 1) * MOVEMENTS_VIEW_PAGE_SIZE;
+  const pagedMovements = visiblePayments.slice(
+    movementsPageStart,
+    movementsPageStart + MOVEMENTS_VIEW_PAGE_SIZE,
+  );
 
   const reviewQueueForCurrency = useMemo(
     () =>
@@ -945,7 +965,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                 </h2>
               </div>
               <span className="payments-result-count">
-                {visiblePayments.length} visibles · {data.payments.length} de{' '}
+                {visiblePayments.length} coinciden · {data.payments.length} de{' '}
                 {data.paymentsPage.total} cargados
               </span>
             </div>
@@ -1021,7 +1041,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                       </tr>
                     </thead>
                     <tbody>
-                      {visiblePayments.map((payment) => (
+                      {pagedMovements.map((payment) => (
                         <tr key={payment.id}>
                           <td>
                             <strong>{unitCodes.get(payment.unit_id) ?? 'Sin unidad'}</strong>
@@ -1074,7 +1094,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                   </table>
                 </div>
                 <div className="payments-mobile-list">
-                  {visiblePayments.map((payment) => (
+                  {pagedMovements.map((payment) => (
                     <button
                       key={payment.id}
                       onClick={() => void openPayment(payment)}
@@ -1123,6 +1143,39 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                 title="No encontramos pagos"
               />
             )}
+
+            {visiblePayments.length > 0 ? (
+              <nav aria-label="Paginación de movimientos" className="payments-movements-pagination">
+                <span>
+                  Mostrando {movementsPageStart + 1}–
+                  {Math.min(movementsPageStart + MOVEMENTS_VIEW_PAGE_SIZE, visiblePayments.length)}{' '}
+                  de {visiblePayments.length} coincidencias cargadas
+                </span>
+                <div>
+                  <Button
+                    disabled={visibleMovementsPage === 1}
+                    onClick={() => setMovementsPage((current) => Math.max(1, current - 1))}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Anterior
+                  </Button>
+                  <span>
+                    Página {visibleMovementsPage} de {movementsPageCount}
+                  </span>
+                  <Button
+                    disabled={visibleMovementsPage >= movementsPageCount}
+                    onClick={() =>
+                      setMovementsPage((current) => Math.min(movementsPageCount, current + 1))
+                    }
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </nav>
+            ) : null}
 
             <FinancialPagination
               itemLabel="pagos"

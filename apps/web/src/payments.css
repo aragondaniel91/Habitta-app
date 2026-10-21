@@ -1438,7 +1438,8 @@
   color: var(--muted);
   text-align: center;
 }
-.payments-review-pagination {
+.payments-review-pagination,
+.payments-movements-pagination {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1450,17 +1451,20 @@
   color: var(--muted);
   font-size: 0.75rem;
 }
-.payments-review-pagination > div {
+.payments-review-pagination > div,
+.payments-movements-pagination > div {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
 @media (max-width: 540px) {
-  .payments-review-pagination {
+  .payments-review-pagination,
+  .payments-movements-pagination {
     align-items: stretch;
     flex-direction: column;
   }
-  .payments-review-pagination > div {
+  .payments-review-pagination > div,
+  .payments-movements-pagination > div {
     justify-content: space-between;
   }
 }
