@@ -40,15 +40,34 @@ for table in payments payment_allocations payment_receipts receivable_items rece
   }
 done
 
+# HAB-417: use the same restore-compatible allowlist as the scheduled backup.
+# Unrestricted data dumps include Supabase-managed schemas and can duplicate Auth
+# records or fail when the restore target has a different Storage schema version.
 supabase db dump --linked --role-only -f .backup-pre-release/plain/roles.sql
 supabase db dump --linked -f .backup-pre-release/plain/schema.sql
+
+OWNED_SCHEMAS="public"
+for schema in $(grep -oE '^CREATE SCHEMA (IF NOT EXISTS )?"[^"]+"' .backup-pre-release/plain/schema.sql \
+  | grep -oE '"[^"]+"$' | tr -d '"' | sort -u); do
+  OWNED_SCHEMAS="$OWNED_SCHEMAS,$schema"
+done
+printf 'Pre-release backup of owned schemas: %s\n' "$OWNED_SCHEMAS"
+
 supabase db dump --linked --data-only --use-copy \
-  -x 'storage.buckets_vectors' \
-  -x 'storage.vector_indexes' \
+  --schema "$OWNED_SCHEMAS" \
   -f .backup-pre-release/plain/data.sql
 supabase db dump --linked --schema auth --data-only --use-copy \
   -x 'auth.schema_migrations' \
   -f .backup-pre-release/plain/auth-data.sql
+
+# A managed schema in application data violates the disaster-recovery contract.
+# Fail before encryption/upload rather than keeping an un-restorable snapshot.
+for managed in auth storage supabase_functions vault graphql realtime; do
+  if grep -qE "^COPY \"$managed\"\\." .backup-pre-release/plain/data.sql; then
+    echo "Pre-release data.sql unexpectedly carries managed schema $managed" >&2
+    exit 1
+  fi
+done
 
 PGPASSWORD="$SUPABASE_DB_PASSWORD" psql "$POOLER_URL" -X -qAt -v ON_ERROR_STOP=1 <<'SQL' > .backup-pre-release/plain/source-metrics.tsv
 select 'auth_users' || E'\t' || count(*) from auth.users;
