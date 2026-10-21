@@ -10,7 +10,7 @@ const payments = Array.from({ length: 10 }, (_, i) => ({
 const env = { SUPABASE_URL: 'https://supabase.test', SUPABASE_ANON_KEY: 'anon' };
 
 function setup(allowed: boolean, includeContentRange = true) {
-  const calls: { url: string; authorization: string; body?: string }[] = [];
+  const calls: { url: string; authorization: string; body: string | undefined }[] = [];
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: string, init: RequestInit = {}) => {
