@@ -20,6 +20,11 @@ describe('HAB-321 live financial pagination', () => {
     expect(page).toContain('/payments/summary');
     expect(page).toContain('summary?.approved_amount');
     expect(page).toContain('summary?.reversed_amount');
+    expect(page).toContain('summary?.pending_review_count');
+    expect(page).toContain('detail: data.reviewQueueAvailable ? pendingReviewCount : null');
+    expect(page).not.toContain(
+      'value={data.reviewQueueAvailable ? String(reviewQueueForCurrency.length)',
+    );
     expect(page).not.toContain('getPaymentSummary(data.payments');
     expect(page).not.toContain(
       'apiRequest<Payment[]>(`/v1/condominiums/${condominiumId}/payments`, session)',

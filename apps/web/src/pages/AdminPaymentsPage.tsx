@@ -575,6 +575,8 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   // A server-side aggregate under the caller's RLS, independent of the loaded page.
   const summary = data.paymentMetrics?.find((row) => row.currency_code === selectedCurrency);
   const metricsAvailable = data.paymentMetrics !== null;
+  // Keep the reviewer indicator authoritative even if the loaded queue is incomplete.
+  const pendingReviewCount = metricsAvailable ? (summary?.pending_review_count ?? 0) : null;
   const selectedCurrencyLabel = selectedCurrency || 'USD';
 
   return (
@@ -587,7 +589,7 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                 {
                   id: 'review',
                   label: 'Revisión',
-                  detail: data.reviewQueueAvailable ? reviewQueueForCurrency.length : null,
+                  detail: data.reviewQueueAvailable ? pendingReviewCount : null,
                 },
                 { id: 'movements', label: 'Movimientos', detail: null },
                 { id: 'methods', label: 'Métodos de pago', detail: null },
@@ -683,7 +685,13 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
           onClick={() => showMetricView('pending')}
           selected={activeTab === 'review' && reviewFocus === 'pending'}
           tone="blue"
-          value={data.reviewQueueAvailable ? String(reviewQueueForCurrency.length) : 'Restringido'}
+          value={
+            !data.reviewQueueAvailable
+              ? 'Restringido'
+              : pendingReviewCount === null
+                ? '—'
+                : String(pendingReviewCount)
+          }
         />
         <MetricCard
           detail="Solo tus capturas sin enviar o devueltas para corregir."
@@ -736,9 +744,19 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                       </InfoHint>
                     </h2>
                   </div>
-                  <Badge tone={reviewQueueForCurrency.length ? 'warning' : 'success'}>
+                  <Badge
+                    tone={
+                      pendingReviewCount === null
+                        ? 'neutral'
+                        : pendingReviewCount > 0
+                          ? 'warning'
+                          : 'success'
+                    }
+                  >
                     {data.reviewQueueAvailable
-                      ? `${reviewQueueForCurrency.length} pendientes`
+                      ? pendingReviewCount === null
+                        ? 'Total no disponible'
+                        : `${pendingReviewCount} pendientes`
                       : 'Acceso restringido'}
                   </Badge>
                 </div>
@@ -803,7 +821,10 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                             filteredReviewQueue.length
                           : '0 coincidencias'}
                         {reviewSearch
-                          ? ' · ' + reviewQueueForCurrency.length + ' pendientes en total'
+                          ? ' · ' +
+                            (pendingReviewCount === null
+                              ? 'Total no disponible'
+                              : pendingReviewCount + ' pendientes en total')
                           : ''}
                       </span>
                       <div>
