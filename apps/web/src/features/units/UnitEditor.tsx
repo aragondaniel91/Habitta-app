@@ -155,6 +155,7 @@ export function UnitEditor({ mode, unit, topology, buildings, saving, onClose, o
           ? 'Registra la unidad dentro de la estructura declarada del condominio.'
           : 'Actualiza la información física sin alterar propietarios, ocupantes ni historial financiero.'
       }
+      closeDisabled={saving}
       eyebrow="Unidades"
       onClose={onClose}
       prefix="units-v3"

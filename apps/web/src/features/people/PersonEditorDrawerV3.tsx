@@ -266,6 +266,7 @@ export function PersonEditorDrawerV3({
           ? 'Actualiza la identidad y el contacto sin cambiar sus relaciones históricas.'
           : 'La identidad se registra una sola vez. Puedes asociarla a una unidad o responsabilidad ahora o completarlo más tarde.'
       }
+      closeDisabled={saving}
       eyebrow={editing ? 'Personas' : 'Nueva persona'}
       onClose={onClose}
       prefix="people-v3"
