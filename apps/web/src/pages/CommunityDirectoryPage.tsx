@@ -9,10 +9,17 @@ type Props = {
   condominiumId: string;
   condominiumName: string;
   mode: 'units' | 'people';
+  onOpenUnit?: ((unitId: string) => void) | undefined;
   session: Session;
 };
 
-export function CommunityDirectoryPage({ condominiumId, condominiumName, mode, session }: Props) {
+export function CommunityDirectoryPage({
+  condominiumId,
+  condominiumName,
+  mode,
+  onOpenUnit,
+  session,
+}: Props) {
   const [structureOpen, setStructureOpen] = useState(false);
 
   useEffect(() => {
@@ -24,6 +31,7 @@ export function CommunityDirectoryPage({ condominiumId, condominiumName, mode, s
       <PeoplePanelV3
         condominiumId={condominiumId}
         condominiumName={condominiumName}
+        onOpenUnit={onOpenUnit}
         session={session}
       />
     );

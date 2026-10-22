@@ -10,7 +10,13 @@ import {
 } from './components/AuthExperience';
 import { PasswordRecoveryGate, SignInGate } from './components/PasswordAuthExperience';
 import { ModuleLoading } from './components/ui';
+import { ModuleRecoveryBoundary } from './components/ModuleRecoveryBoundary';
 import { apiRequest } from './lib/api';
+import {
+  directoryDetailHref,
+  directoryRequestedCondominium,
+  type DirectoryDestination,
+} from './lib/directory-deep-links';
 import { platformAdminUrlForHost } from './lib/platform-handoff';
 import {
   allowedRoutes,
@@ -222,7 +228,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session && !passwordRecoveryMode && !adminInvitationToken) void loadWorkspace(session);
+    if (session && !passwordRecoveryMode && !adminInvitationToken) {
+      const route = getRouteFromPath(window.location.pathname);
+      const requested =
+        route.key === 'units' || route.key === 'people'
+          ? directoryRequestedCondominium(window.location.search)
+          : null;
+      // The loader honors this hint only when the user belongs to that condo.
+      void loadWorkspace(session, requested ?? '');
+    }
   }, [session, passwordRecoveryMode, adminInvitationToken, loadWorkspace]);
 
   useEffect(() => {
@@ -354,6 +368,17 @@ export default function App() {
   const safeFallback =
     visibleRoutes[0] ?? APP_ROUTES.find((route) => route.key === 'dashboard') ?? currentRoute;
   const activeRoute = canAccessRoute(currentRoute, roles) ? currentRoute : safeFallback;
+  const navigateDirectory = (destination: DirectoryDestination, id: string) => {
+    // Only offer navigation to a module this condominium membership can open.
+    const route = visibleRoutes.find((item) => item.key === destination);
+    if (!route) return;
+    navigate(route);
+    window.history.replaceState(
+      {},
+      '',
+      directoryDetailHref(destination, id, selectedCondominiumId),
+    );
+  };
   let page;
 
   if (addingCondominium) {
@@ -405,6 +430,7 @@ export default function App() {
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         session={session}
+        onOpenPerson={(personId) => navigateDirectory('people', personId)}
         onConfigureStructure={() => {
           window.history.pushState({}, '', '/app/units/structure');
           setUnitStructureView(true);
@@ -417,6 +443,7 @@ export default function App() {
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         mode="people"
+        onOpenUnit={(unitId) => navigateDirectory('units', unitId)}
         session={session}
       />
     );
@@ -592,9 +619,19 @@ export default function App() {
         {/* Each module is its own chunk, so the shell stays on screen while one arrives. A
             condominium switch must remount that module so local rows, drawers, filters and cursors
             from the previous tenant context cannot survive under the new shell context. */}
-        <Suspense key={selectedCondominiumId} fallback={<ModuleLoading />}>
-          {page}
-        </Suspense>
+        <ModuleRecoveryBoundary
+          key={selectedCondominiumId + ':' + activeRoute.key}
+          onBack={() => {
+            const fallbackRoute = visibleRoutes.find(
+              (route) => route.key === (activeRoute.key === 'units' ? 'dashboard' : 'units'),
+            );
+            navigate(fallbackRoute ?? safeFallback);
+          }}
+        >
+          <Suspense key={selectedCondominiumId} fallback={<ModuleLoading />}>
+            {page}
+          </Suspense>
+        </ModuleRecoveryBoundary>
       </AppShell>
     </RolesProvider>
   );

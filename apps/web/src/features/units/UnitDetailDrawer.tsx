@@ -10,6 +10,7 @@ import {
 import { CheckCircleIcon, HomeIcon, PeopleIcon, UnitsIcon } from '../../components/icons';
 import { Badge, Button, EmptyState, Skeleton } from '../../components/ui';
 import { apiRequest } from '../../lib/api';
+import { directoryDetailHref, isDirectoryIdentifier } from '../../lib/directory-deep-links';
 import { UNIT_TYPE_LABELS, unitReferenceLabel } from '../../lib/unit-domain';
 import type { DirectoryOccupancy, DirectoryOwner, DirectoryUnit } from './types';
 
@@ -61,9 +62,15 @@ const formatDate = (value: string) =>
 function RelationshipPeople({
   owners,
   occupancies,
+  canViewPeople,
+  condominiumId,
+  onOpenPerson,
 }: {
   owners: DirectoryOwner[];
   occupancies: DirectoryOccupancy[];
+  canViewPeople: boolean;
+  condominiumId: string;
+  onOpenPerson?: ((personId: string) => void) | undefined;
 }) {
   return (
     <div className="units-v3-detail-relations">
@@ -74,7 +81,29 @@ function RelationshipPeople({
         <div>
           <small>Propiedad actual</small>
           <strong>
-            {owners.length ? owners.map(personName).join(', ') : 'Sin propietarios activos'}
+            {owners.length
+              ? owners.map((person, index) => (
+                  <span key={person.assignmentId}>
+                    {index ? ', ' : ''}
+                    {canViewPeople && isDirectoryIdentifier(person.personId) ? (
+                      <a
+                        className="units-v3-person-link"
+                        href={directoryDetailHref('people', person.personId, condominiumId)}
+                        onClick={(event) => {
+                          if (onOpenPerson) {
+                            event.preventDefault();
+                            onOpenPerson(person.personId);
+                          }
+                        }}
+                      >
+                        {personName(person)}
+                      </a>
+                    ) : (
+                      personName(person)
+                    )}
+                  </span>
+                ))
+              : 'Sin propietarios activos'}
           </strong>
         </div>
       </div>
@@ -86,7 +115,27 @@ function RelationshipPeople({
           <small>Ocupación actual</small>
           <strong>
             {occupancies.length
-              ? occupancies.map((item) => personName(item)).join(', ')
+              ? occupancies.map((person, index) => (
+                  <span key={person.assignmentId}>
+                    {index ? ', ' : ''}
+                    {canViewPeople && isDirectoryIdentifier(person.personId) ? (
+                      <a
+                        className="units-v3-person-link"
+                        href={directoryDetailHref('people', person.personId, condominiumId)}
+                        onClick={(event) => {
+                          if (onOpenPerson) {
+                            event.preventDefault();
+                            onOpenPerson(person.personId);
+                          }
+                        }}
+                      >
+                        {personName(person)}
+                      </a>
+                    ) : (
+                      personName(person)
+                    )}
+                  </span>
+                ))
               : 'Sin ocupantes activos'}
           </strong>
         </div>
@@ -101,6 +150,8 @@ export function UnitDetailDrawer({
   unit,
   onClose,
   canMutate,
+  canViewPeople,
+  onOpenPerson,
   onEdit,
   onArchive,
 }: {
@@ -109,6 +160,8 @@ export function UnitDetailDrawer({
   unit: DirectoryUnit;
   onClose: () => void;
   canMutate: boolean;
+  canViewPeople: boolean;
+  onOpenPerson?: ((personId: string) => void) | undefined;
   onEdit: () => void;
   onArchive: () => void;
 }) {
@@ -212,7 +265,13 @@ export function UnitDetailDrawer({
         description="La vista agrupa las relaciones actuales sin fusionar sus historiales."
         title="Relaciones actuales"
       >
-        <RelationshipPeople owners={unit.owners} occupancies={unit.occupancies} />
+        <RelationshipPeople
+          owners={unit.owners}
+          occupancies={unit.occupancies}
+          canViewPeople={canViewPeople}
+          condominiumId={condominiumId}
+          onOpenPerson={onOpenPerson}
+        />
       </WorkspaceSection>
     </div>
   );

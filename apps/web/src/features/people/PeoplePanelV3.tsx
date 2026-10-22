@@ -24,6 +24,14 @@ import {
   type ResidentRole,
 } from '../../lib/residentAccess';
 import { peopleApi } from './api';
+import {
+  directoryDetailHref,
+  directoryRequestedId,
+  findDirectoryTarget,
+  isDirectoryIdentifier,
+} from '../../lib/directory-deep-links';
+import { canAccessRoute, useCondominiumRoles } from '../../lib/roles';
+import { APP_ROUTES } from '../../navigation';
 import { buildPersonUnitRelationships } from './person-unit-relationships';
 import type { PersonUnitRelationshipSummary } from './person-unit-relationships';
 import { PersonEditorDrawerV3 } from './PersonEditorDrawerV3';
@@ -67,6 +75,7 @@ type Props = {
   condominiumId: string;
   condominiumName: string;
   session: Session;
+  onOpenUnit?: ((unitId: string) => void) | undefined;
 };
 
 type PendingClose =
@@ -128,7 +137,15 @@ function deliveryTone(event?: ResidentInvitationDeliveryEvent) {
   return 'neutral' as const;
 }
 
-export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props) {
+export function PeoplePanelV3({ condominiumId, condominiumName, session, onOpenUnit }: Props) {
+  const roles = useCondominiumRoles();
+  const unitsRoute = APP_ROUTES.find((route) => route.key === 'units');
+  const canOpenUnits = Boolean(unitsRoute && canAccessRoute(unitsRoute, roles));
+  const [requestedPersonId] = useState(() =>
+    directoryRequestedId('people', window.location.search),
+  );
+  const autoPersonSelectionRef = useRef('');
+  const [directoryLoadedFor, setDirectoryLoadedFor] = useState('');
   const [people, setPeople] = useState<Person[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -426,6 +443,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
         ]);
         if (!ownsDirectoryRequest()) return null;
         setPeople(peopleItems);
+        setDirectoryLoadedFor(requestCondominiumId);
         setUnits(unitItems);
         setBuildings(buildingItems);
         setDirectoryLoadError('');
@@ -498,6 +516,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
   }, [loadDirectory]);
 
   useEffect(() => {
+    setDirectoryLoadedFor('');
     selectionVersionRef.current += 1;
     selectedPersonIdRef.current = null;
     profileLoadVersionRef.current += 1;
@@ -626,6 +645,19 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
       }
     }
   };
+
+  // A link is only a navigation hint. Select a profile *after* the current
+  // condominium's authorized directory is loaded and the ID is found in it.
+  // Do not re-select after the administrator manually chooses another person.
+  useEffect(() => {
+    if (!requestedPersonId || directoryLoadedFor !== condominiumId) return;
+    const scope = condominiumId + ':' + requestedPersonId;
+    if (autoPersonSelectionRef.current === scope) return;
+    const match = findDirectoryTarget(people, requestedPersonId);
+    if (!match) return;
+    autoPersonSelectionRef.current = scope;
+    void selectPerson(match, 'pointer');
+  }, [condominiumId, directoryLoadedFor, people, requestedPersonId, selectPerson]);
 
   const refreshSelected = async (
     personId: string,
@@ -1134,6 +1166,16 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
                     : undefined
                 }
                 onManage={() => setRelationTarget({ unitId: relationship.unitId })}
+                onViewUnit={
+                  canOpenUnits && isDirectoryIdentifier(relationship.unitId)
+                    ? () =>
+                        onOpenUnit
+                          ? onOpenUnit(relationship.unitId)
+                          : window.location.assign(
+                              directoryDetailHref('units', relationship.unitId, condominiumId),
+                            )
+                    : undefined
+                }
                 relationship={relationship}
               />
             ))}
@@ -1178,6 +1220,16 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session }: Props
                   : undefined
               }
               onManage={() => setRelationTarget({ unitId: relationship.unitId })}
+              onViewUnit={
+                canOpenUnits && isDirectoryIdentifier(relationship.unitId)
+                  ? () =>
+                      onOpenUnit
+                        ? onOpenUnit(relationship.unitId)
+                        : window.location.assign(
+                            directoryDetailHref('units', relationship.unitId, condominiumId),
+                          )
+                  : undefined
+              }
               relationship={relationship}
             />
           ))}
