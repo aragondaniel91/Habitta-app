@@ -215,6 +215,7 @@ export function PersonUnitRelationshipDrawerV3({
   return (
     <Drawer
       description="Administra una sola unidad a la vez. Propiedad, ocupación y comunicaciones conservan sus ciclos de vida independientes y auditables."
+      closeDisabled={Boolean(busy)}
       eyebrow="Relación con unidad"
       onClose={onClose}
       prefix="people-v3"
