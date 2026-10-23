@@ -16,6 +16,7 @@ import type { UnitEditorInput } from '../features/units/UnitEditor';
 import {
   paginateDirectoryUnits,
   sortDirectoryUnits,
+  unitDirectoryPageLinks,
   UNIT_DIRECTORY_PAGE_SIZES,
   type UnitDirectoryPageSize,
   type UnitDirectorySort,
@@ -401,7 +402,6 @@ export function UnitsPage({
       )}
 
       <WorkspaceSection
-        actions={<Badge tone="info">{filteredUnits.length}</Badge>}
         className="units-v3-directory"
         description="Selecciona una unidad para revisar su resumen e historial de propiedad y ocupación."
         title="Directorio de unidades"
@@ -471,47 +471,27 @@ export function UnitsPage({
 
         {!loadError && !loading && filteredUnits.length ? (
           <div className="units-v3-directory-controls">
-            <span aria-live="polite" className="units-v3-directory-controls__count">
-              {directoryPage.first}–{directoryPage.last} de {directoryPage.total}{' '}
-              {directoryPage.total === 1 ? 'unidad' : 'unidades'}
+            <span className="units-v3-directory-controls__count">
+              {filteredUnits.length} {filteredUnits.length === 1 ? 'resultado' : 'resultados'}
             </span>
-            <div className="units-v3-directory-controls__selectors">
-              <label>
-                Ordenar por
-                <Select
-                  aria-label="Ordenar unidades"
-                  onChange={(event) => {
-                    setDirectorySort(event.target.value as UnitDirectorySort);
-                    setRequestedPage(1);
-                  }}
-                  value={directorySort}
-                >
-                  <option value="unit-asc">Unidad · A–Z</option>
-                  <option value="unit-desc">Unidad · Z–A</option>
-                  <option value="updated-desc">Actualización · reciente</option>
-                  <option value="updated-asc">Actualización · antigua</option>
-                  <option value="aliquot-desc">Alícuota · mayor</option>
-                  <option value="aliquot-asc">Alícuota · menor</option>
-                </Select>
-              </label>
-              <label>
-                Por página
-                <Select
-                  aria-label="Unidades por página"
-                  onChange={(event) => {
-                    setPageSize(Number(event.target.value) as UnitDirectoryPageSize);
-                    setRequestedPage(1);
-                  }}
-                  value={String(pageSize)}
-                >
-                  {UNIT_DIRECTORY_PAGE_SIZES.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            </div>
+            <label className="units-v3-directory-controls__sort">
+              <span>Ordenar por</span>
+              <Select
+                aria-label="Ordenar unidades"
+                onChange={(event) => {
+                  setDirectorySort(event.target.value as UnitDirectorySort);
+                  setRequestedPage(1);
+                }}
+                value={directorySort}
+              >
+                <option value="unit-asc">Unidad · A–Z</option>
+                <option value="unit-desc">Unidad · Z–A</option>
+                <option value="updated-desc">Actualización · reciente</option>
+                <option value="updated-asc">Actualización · antigua</option>
+                <option value="aliquot-desc">Alícuota · mayor</option>
+                <option value="aliquot-asc">Alícuota · menor</option>
+              </Select>
+            </label>
           </div>
         ) : null}
 
@@ -612,30 +592,88 @@ export function UnitsPage({
             ))}
           </div>
         ) : null}
-        {!loadError && !loading && directoryPage.totalPages > 1 ? (
-          <nav aria-label="Paginación del directorio de unidades" className="units-v3-pagination">
-            <Button
-              disabled={directoryPage.page <= 1}
-              onClick={() => setRequestedPage(directoryPage.page - 1)}
-              size="sm"
-              type="button"
-              variant="secondary"
-            >
-              Anterior
-            </Button>
-            <span aria-live="polite">
-              Página {directoryPage.page} de {directoryPage.totalPages}
-            </span>
-            <Button
-              disabled={directoryPage.page >= directoryPage.totalPages}
-              onClick={() => setRequestedPage(directoryPage.page + 1)}
-              size="sm"
-              type="button"
-              variant="secondary"
-            >
-              Siguiente
-            </Button>
-          </nav>
+        {!loadError && !loading && filteredUnits.length ? (
+          <div className="units-v3-pagination">
+            <div className="units-v3-pagination__meta">
+              <span aria-live="polite" className="units-v3-pagination__range">
+                {directoryPage.first}–{directoryPage.last} de {directoryPage.total}{' '}
+                {directoryPage.total === 1 ? 'unidad' : 'unidades'}
+              </span>
+              {directoryPage.total > 10 ? (
+                <label className="units-v3-pagination__size">
+                  <span>Mostrar</span>
+                  <Select
+                    aria-label="Unidades por página"
+                    onChange={(event) => {
+                      setPageSize(Number(event.target.value) as UnitDirectoryPageSize);
+                      setRequestedPage(1);
+                    }}
+                    value={String(pageSize)}
+                  >
+                    {UNIT_DIRECTORY_PAGE_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </Select>
+                  <span>por página</span>
+                </label>
+              ) : null}
+            </div>
+            {directoryPage.totalPages > 1 ? (
+              <nav
+                aria-label="Paginación del directorio de unidades"
+                className="units-v3-pagination__nav"
+              >
+                <Button
+                  disabled={directoryPage.page <= 1}
+                  onClick={() => setRequestedPage(directoryPage.page - 1)}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  Anterior
+                </Button>
+                <div className="units-v3-pagination__numbers">
+                  {unitDirectoryPageLinks(directoryPage.page, directoryPage.totalPages).map(
+                    (page, index) =>
+                      page === null ? (
+                        <span
+                          aria-hidden="true"
+                          className="units-v3-pagination__ellipsis"
+                          key={`gap-${index}`}
+                        >
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          aria-current={page === directoryPage.page ? 'page' : undefined}
+                          aria-label={`Ir a la página ${page}`}
+                          className="units-v3-pagination__number"
+                          key={page}
+                          onClick={() => setRequestedPage(page)}
+                          type="button"
+                        >
+                          {page}
+                        </button>
+                      ),
+                  )}
+                </div>
+                <Button
+                  disabled={directoryPage.page >= directoryPage.totalPages}
+                  onClick={() => setRequestedPage(directoryPage.page + 1)}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  Siguiente
+                </Button>
+                <span aria-live="polite" className="units-v3-visually-hidden">
+                  Página {directoryPage.page} de {directoryPage.totalPages}
+                </span>
+              </nav>
+            ) : null}
+          </div>
         ) : null}
       </WorkspaceSection>
 

@@ -109,6 +109,28 @@ describe('Units directory pagination interactions', () => {
     expect(api).toHaveBeenCalledTimes(3);
   });
 
+  it('navigates directly by page number with one active, accessible page', async () => {
+    expect(host.querySelector('.units-v3-directory-controls')?.textContent).toContain(
+      '48 resultados',
+    );
+    const pageFive = host.querySelector<HTMLButtonElement>('button[aria-label="Ir a la página 5"]');
+    expect(pageFive).not.toBeNull();
+    await act(async () => pageFive!.click());
+    expect(displayedCodes()).toHaveLength(8);
+    expect(displayedCodes()[0]).toContain('A-41');
+    expect(host.textContent).toContain('41–48 de 48 unidades');
+    expect(pageFive!.getAttribute('aria-current')).toBe('page');
+    expect(host.querySelectorAll('.units-v3-pagination__number[aria-current="page"]')).toHaveLength(
+      1,
+    );
+
+    const pageOne = host.querySelector<HTMLButtonElement>('button[aria-label="Ir a la página 1"]');
+    await act(async () => pageOne!.click());
+    expect(displayedCodes()[0]).toContain('A-1');
+    expect(pageOne!.getAttribute('aria-current')).toBe('page');
+    expect(api).toHaveBeenCalledTimes(3);
+  });
+
   it('resets pagination on sort and filter, and renders the actual update date', async () => {
     await click('Siguiente');
     await select('Ordenar unidades', 'updated-desc');

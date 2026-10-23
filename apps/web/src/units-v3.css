@@ -35,47 +35,118 @@
   min-width: 0;
 }
 
-.units-v3-directory-controls,
+.units-v3-directory-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.units-v3-directory-controls__count {
+  color: var(--muted, var(--text-muted));
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.units-v3-directory-controls__sort {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted, var(--text-muted));
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.units-v3-directory-controls__sort .select {
+  min-width: 11rem;
+}
+
 .units-v3-pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.7rem;
+  gap: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border, var(--border-subtle));
 }
 
-.units-v3-directory-controls__count,
-.units-v3-pagination > span {
+.units-v3-pagination__meta,
+.units-v3-pagination__size,
+.units-v3-pagination__nav,
+.units-v3-pagination__numbers {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.units-v3-pagination__meta {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.units-v3-pagination__range,
+.units-v3-pagination__size {
   color: var(--muted, var(--text-muted));
   font-size: 0.75rem;
 }
 
-.units-v3-directory-controls__selectors {
-  display: flex;
-  align-items: end;
-  flex-wrap: wrap;
-  gap: 0.6rem;
+.units-v3-pagination__size .select {
+  width: 5rem;
+  min-width: 0;
 }
 
-.units-v3-directory-controls__selectors label {
-  display: grid;
-  gap: 0.25rem;
+.units-v3-pagination__numbers {
+  gap: 0.15rem;
+}
+
+.units-v3-pagination__number {
+  display: inline-grid;
+  min-width: 2rem;
+  min-height: 2rem;
+  place-items: center;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--text-strong, var(--text));
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.units-v3-pagination__number:hover {
+  background: var(--surface-subtle, var(--surface));
+}
+
+.units-v3-pagination__number:focus-visible {
+  outline: 2px solid var(--blue, var(--accent, #2563eb));
+  outline-offset: 2px;
+}
+
+.units-v3-pagination__number[aria-current='page'] {
+  border-color: var(--blue, var(--accent, #2563eb));
+  background: var(--blue-soft, var(--surface-subtle));
+  color: var(--blue, var(--accent, #2563eb));
+  font-weight: 750;
+}
+
+.units-v3-pagination__ellipsis {
+  min-width: 1.1rem;
   color: var(--muted, var(--text-muted));
-  font-size: 0.68rem;
-  font-weight: 600;
-}
-
-.units-v3-directory-controls__selectors .select {
-  min-width: 8rem;
-}
-
-.units-v3-pagination {
-  justify-content: flex-end;
-}
-
-.units-v3-pagination > span {
-  min-width: 6.5rem;
   text-align: center;
+}
+
+.units-v3-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .units-v3-list,
@@ -475,6 +546,14 @@
   }
 }
 
+@media (max-width: 410px) {
+  .units-v3-pagination__numbers {
+    order: -1;
+    justify-content: center;
+    flex-basis: 100%;
+  }
+}
+
 @media (max-width: 560px) {
   .units-v3-loading-metrics,
   .units-v3-filters,
@@ -487,17 +566,33 @@
     grid-column: auto;
   }
 
-  .units-v3-directory-controls__selectors,
-  .units-v3-directory-controls__selectors label {
-    width: 100%;
-  }
-
-  .units-v3-directory-controls__selectors .select {
-    width: 100%;
-  }
-
+  .units-v3-directory-controls,
   .units-v3-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .units-v3-directory-controls__sort {
     justify-content: space-between;
+  }
+
+  .units-v3-directory-controls__sort .select {
+    min-width: 0;
+    width: min(100%, 16rem);
+  }
+
+  .units-v3-pagination__meta,
+  .units-v3-pagination__nav {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .units-v3-pagination__numbers {
+    gap: 0.1rem;
+  }
+
+  .units-v3-pagination__number {
+    min-width: 1.8rem;
   }
 
   .units-v3-detail-facts > div:nth-child(n) {
