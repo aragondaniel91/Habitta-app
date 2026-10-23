@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ConfirmDialog } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
@@ -17,7 +17,11 @@ import type { CondominiumProfile, DirectoryUnit, UnitsDirectory } from '../featu
 import { apiRequest } from '../lib/api';
 import { canAccessRoute, canManage, useCondominiumRoles } from '../lib/roles';
 import { APP_ROUTES } from '../navigation';
-import { directoryRequestedId, findDirectoryTarget } from '../lib/directory-deep-links';
+import {
+  consumeDirectoryDetailHint,
+  directoryRequestedId,
+  findDirectoryTarget,
+} from '../lib/directory-deep-links';
 import {
   supportsBuildingStructure,
   UNIT_TYPE_LABELS,
@@ -76,7 +80,7 @@ export function UnitsPage({
   const canMutate = canManage(roles);
   const peopleRoute = APP_ROUTES.find((route) => route.key === 'people');
   const canViewPeople = Boolean(peopleRoute && canAccessRoute(peopleRoute, roles));
-  const [requestedUnitId] = useState(() => directoryRequestedId('units', window.location.search));
+  const pendingRequestedUnitIdRef = useRef(directoryRequestedId('units', window.location.search));
   const [profile, setProfile] = useState<CondominiumProfile | null>(null);
   const [units, setUnits] = useState<DirectoryUnit[]>([]);
   const [configuredBuildings, setConfiguredBuildings] = useState<Building[]>([]);
@@ -111,9 +115,13 @@ export function UnitsPage({
         setProfile(profileRows[0] ?? null);
         setUnits(directory.units);
         setConfiguredBuildings(buildingItems);
+        const requestedUnitId = pendingRequestedUnitIdRef.current;
         if (requestedUnitId) {
-          // Open only a unit returned by this condominium's authorized directory.
+          // Resolve the link only once, against the authorized directory. A later
+          // refresh must never reopen a drawer the administrator has dismissed.
+          pendingRequestedUnitIdRef.current = null;
           setSelectedUnit(findDirectoryTarget(directory.units, requestedUnitId));
+          consumeDirectoryDetailHint('units', requestedUnitId);
         }
       })
       .catch((reason: unknown) => {
@@ -128,7 +136,7 @@ export function UnitsPage({
     return () => {
       active = false;
     };
-  }, [condominiumId, reloadNonce, requestedUnitId, session]);
+  }, [condominiumId, reloadNonce, session]);
 
   useEffect(() => {
     setSelectedUnit(null);

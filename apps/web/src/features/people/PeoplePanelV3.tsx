@@ -25,6 +25,7 @@ import {
 } from '../../lib/residentAccess';
 import { peopleApi } from './api';
 import {
+  consumeDirectoryDetailHint,
   directoryDetailHref,
   directoryRequestedId,
   findDirectoryTarget,
@@ -656,6 +657,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session, onOpenU
     const match = findDirectoryTarget(people, requestedPersonId);
     if (!match) return;
     autoPersonSelectionRef.current = scope;
+    consumeDirectoryDetailHint('people', requestedPersonId);
     void selectPerson(match, 'pointer');
   }, [condominiumId, directoryLoadedFor, people, requestedPersonId, selectPerson]);
 
