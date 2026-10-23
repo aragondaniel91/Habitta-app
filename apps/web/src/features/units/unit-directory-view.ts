@@ -6,6 +6,26 @@ export type UnitDirectorySort =
 export const UNIT_DIRECTORY_PAGE_SIZES = [10, 25, 50] as const;
 export type UnitDirectoryPageSize = (typeof UNIT_DIRECTORY_PAGE_SIZES)[number];
 
+/** Compact page shortcuts; null is a decorative gap, not a selectable page. */
+export function unitDirectoryPageLinks(page: number, totalPages: number): Array<number | null> {
+  const last = Math.max(1, Math.trunc(totalPages));
+  if (last <= 5) return Array.from({ length: last }, (_, index) => index + 1);
+  const current = Number.isFinite(page) ? Math.min(last, Math.max(1, Math.trunc(page))) : 1;
+  const pages = [...new Set([1, last, current - 1, current, current + 1])]
+    .filter((item) => item >= 1 && item <= last)
+    .sort((a, b) => a - b);
+  const result: Array<number | null> = [];
+  pages.forEach((item, index) => {
+    const previous = pages[index - 1];
+    if (previous !== undefined && item - previous > 1) {
+      if (item - previous === 2) result.push(previous + 1);
+      else result.push(null);
+    }
+    result.push(item);
+  });
+  return result;
+}
+
 const collator = new Intl.Collator('es-VE', { numeric: true, sensitivity: 'base' });
 
 function aliquotValue(unit: DirectoryUnit): number | null {

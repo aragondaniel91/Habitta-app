@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { paginateDirectoryUnits, sortDirectoryUnits } from './unit-directory-view';
+import {
+  paginateDirectoryUnits,
+  sortDirectoryUnits,
+  unitDirectoryPageLinks,
+} from './unit-directory-view';
 import type { DirectoryUnit } from './types';
 
 function unit(
@@ -114,6 +118,16 @@ describe('Units directory presentation', () => {
       last: 48,
       totalPages: 1,
     });
+  });
+
+  it('offers direct navigation with at most two gaps for large directories', () => {
+    expect(unitDirectoryPageLinks(1, 5)).toEqual([1, 2, 3, 4, 5]);
+    expect(unitDirectoryPageLinks(1, 12)).toEqual([1, 2, null, 12]);
+    expect(unitDirectoryPageLinks(6, 12)).toEqual([1, null, 5, 6, 7, null, 12]);
+    expect(unitDirectoryPageLinks(11, 12)).toEqual([1, null, 10, 11, 12]);
+    expect(unitDirectoryPageLinks(99, 12)).toEqual([1, null, 11, 12]);
+    expect(unitDirectoryPageLinks(Number.NaN, 12)).toEqual([1, 2, null, 12]);
+    expect(unitDirectoryPageLinks(1, 1)).toEqual([1]);
   });
 
   it('clamps stale page selections when filtering shrinks the list', () => {
