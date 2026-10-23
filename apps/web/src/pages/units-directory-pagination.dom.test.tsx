@@ -17,7 +17,7 @@ function createUnit(index: number): DirectoryUnit {
   return {
     id: 'unit-' + index,
     condominiumId: 'condo-test',
-    buildingId: null,
+    buildingId: index <= 24 ? 'b1' : 'b2',
     code: 'A-' + index,
     floor: String(index),
     type: 'apartment',
@@ -25,7 +25,10 @@ function createUnit(index: number): DirectoryUnit {
     ownershipPercentage: index,
     createdAt: '2026-09-01',
     updatedAt: new Date(Date.UTC(2026, 8, index)).toISOString(),
-    building: null,
+    building: {
+      id: index <= 24 ? 'b1' : 'b2',
+      name: index <= 24 ? 'Torre A' : 'Torre B',
+    },
     owners: [],
     occupancies: [],
   };
@@ -64,8 +67,12 @@ describe('Units directory pagination interactions', () => {
     api.mockReset();
     api.mockImplementation((path: string) => {
       if (path.endsWith('/units-directory')) return Promise.resolve({ units });
-      if (path.endsWith('/buildings')) return Promise.resolve([]);
-      return Promise.resolve([{ id: 'condo-test', property_topology: 'house_community' }]);
+      if (path.endsWith('/buildings'))
+        return Promise.resolve([
+          { id: 'b1', condominium_id: 'condo-test', name: 'Torre A' },
+          { id: 'b2', condominium_id: 'condo-test', name: 'Torre B' },
+        ]);
+      return Promise.resolve([{ id: 'condo-test', property_topology: 'multi_building_complex' }]);
     });
     host = document.createElement('div');
     document.body.append(host);
@@ -112,5 +119,17 @@ describe('Units directory pagination interactions', () => {
     expect(displayedCodes()).toHaveLength(1);
     expect(displayedCodes()[0]).toContain('A-48');
     expect(host.textContent).toContain('1–1 de 1 unidad');
+  });
+
+  it('returns to page 1 when switching buildings from a later page', async () => {
+    await click('Siguiente');
+    await click('Siguiente');
+    expect(host.textContent).toContain('Página 3 de 5');
+    await select('Filtrar por edificio', 'b2');
+    expect(displayedCodes()).toHaveLength(10);
+    expect(displayedCodes()[0]).toContain('A-25');
+    expect(host.textContent).toContain('1–10 de 24 unidades');
+    expect(host.textContent).toContain('Página 1 de 3');
+    expect(api).toHaveBeenCalledTimes(3);
   });
 });

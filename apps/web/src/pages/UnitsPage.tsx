@@ -448,7 +448,10 @@ export function UnitsPage({
           {supportsBuildingStructure(topology) ? (
             <Select
               aria-label="Filtrar por edificio"
-              onChange={(event) => setBuilding(event.target.value)}
+              onChange={(event) => {
+                setBuilding(event.target.value);
+                setRequestedPage(1);
+              }}
               value={building}
             >
               <option value="all">Todos los edificios</option>
