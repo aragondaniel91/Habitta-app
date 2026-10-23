@@ -101,6 +101,9 @@ describe('Unidades minimal overview layout', () => {
     const banner = host.querySelector('.units-v3-structure-banner');
     expect(banner?.textContent).toContain('Estructura pendiente de definir');
     expect(banner?.textContent).toContain('Definir estructura');
+    expect(host.querySelector('.page-header__actions')?.textContent).not.toContain(
+      'Definir tipo de propiedad',
+    );
     const action = [...banner!.querySelectorAll('button')].find((button) =>
       button.textContent?.includes('Definir estructura'),
     );
@@ -111,6 +114,20 @@ describe('Unidades minimal overview layout', () => {
       ...host.querySelectorAll<HTMLButtonElement>('.page-header__actions button'),
     ].find((button) => button.textContent?.includes('Nueva unidad'));
     expect(newUnit?.disabled).toBe(true);
+    expect(api).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps structure configuration in the header only when no attention banner is required', async () => {
+    const configure = vi.fn();
+    await renderOverview('multi_building_complex', configure);
+    expect(host.querySelector('.units-v3-structure-banner')).toBeNull();
+    const actions = host.querySelector('.page-header__actions');
+    const button = [...actions!.querySelectorAll<HTMLButtonElement>('button')].find((item) =>
+      item.textContent?.includes('Configurar estructura'),
+    );
+    expect(button).toBeDefined();
+    await act(async () => button!.click());
+    expect(configure).toHaveBeenCalledTimes(1);
     expect(api).toHaveBeenCalledTimes(3);
   });
 
@@ -127,6 +144,9 @@ describe('Unidades minimal overview layout', () => {
     await renderOverview('single_building', configure);
     const banner = host.querySelector('.units-v3-structure-banner');
     expect(banner?.textContent).toContain('Edificio pendiente');
+    expect(host.querySelector('.page-header__actions')?.textContent).not.toContain(
+      'Configurar estructura',
+    );
     const button = banner?.querySelector('button');
     expect(button?.textContent).toContain('Configurar edificio');
     await act(async () => button!.click());
