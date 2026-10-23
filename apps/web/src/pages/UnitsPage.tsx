@@ -8,7 +8,13 @@ import {
   WorkspaceMetrics,
   WorkspaceSection,
 } from '../components/WorkspaceUi';
-import { CheckCircleIcon, HomeIcon, PeopleIcon, UnitsIcon } from '../components/icons';
+import {
+  ArrowRightIcon,
+  CheckCircleIcon,
+  HomeIcon,
+  PeopleIcon,
+  UnitsIcon,
+} from '../components/icons';
 import { Badge, Button, EmptyState, Select, Skeleton } from '../components/ui';
 import { UnitDetailDrawer } from '../features/units/UnitDetailDrawer';
 import { UnitEditor } from '../features/units/UnitEditor';
@@ -330,6 +336,9 @@ export function UnitsPage({
                   : undefined
               }
             >
+              <span aria-hidden="true" className="units-v3-create-icon">
+                +
+              </span>
               {topology === 'house_community' ? 'Nueva casa' : 'Nueva unidad'}
             </Button>
             {onConfigureStructure && supportsBuildingStructure(topology) ? (
@@ -345,15 +354,48 @@ export function UnitsPage({
       />
 
       {topologyGuidance[topology] ? (
-        <InlineNotice tone="info" title="Estructura pendiente de definir">
-          {topologyGuidance[topology]}
-        </InlineNotice>
+        <div className="units-v3-structure-banner">
+          <span aria-hidden="true" className="units-v3-structure-banner__icon">
+            i
+          </span>
+          <div className="units-v3-structure-banner__copy">
+            <strong>Estructura pendiente de definir</strong>
+            <p>{topologyGuidance[topology]}</p>
+          </div>
+          {onConfigureStructure ? (
+            <Button
+              className="units-v3-structure-banner__action"
+              onClick={onConfigureStructure}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Definir estructura <ArrowRightIcon size={16} />
+            </Button>
+          ) : null}
+        </div>
       ) : null}
       {topology === 'single_building' && !singleBuildingReady ? (
-        <InlineNotice tone="info" title="Edificio pendiente">
-          Un edificio residencial requiere exactamente un edificio configurado antes de crear
-          unidades.
-        </InlineNotice>
+        <div className="units-v3-structure-banner">
+          <span aria-hidden="true" className="units-v3-structure-banner__icon">
+            i
+          </span>
+          <div className="units-v3-structure-banner__copy">
+            <strong>Edificio pendiente</strong>
+            <p>Configura el edificio residencial antes de crear unidades.</p>
+          </div>
+          {onConfigureStructure ? (
+            <Button
+              className="units-v3-structure-banner__action"
+              onClick={onConfigureStructure}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Configurar edificio <ArrowRightIcon size={16} />
+            </Button>
+          ) : null}
+        </div>
       ) : null}
       {notice ? (
         <InlineNotice
@@ -371,7 +413,7 @@ export function UnitsPage({
           ))}
         </div>
       ) : (
-        <WorkspaceMetrics>
+        <WorkspaceMetrics className="units-v3-overview-metrics">
           <WorkspaceMetricCard
             icon={<UnitsIcon size={18} />}
             label="Unidades"
