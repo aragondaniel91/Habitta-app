@@ -223,6 +223,9 @@ export function UnitsPage({
   const canCreate = canMutate && topology !== 'unspecified' && singleBuildingReady;
   const structureNeedsAttention =
     Boolean(topologyGuidance[topology]) || (topology === 'single_building' && !singleBuildingReady);
+  const canOfferBuildingStructure = Boolean(
+    onConfigureStructure && supportsBuildingStructure(topology),
+  );
   const filtersActive = Boolean(
     search.trim() || status !== 'all' || type !== 'all' || building !== 'all',
   );
@@ -343,9 +346,7 @@ export function UnitsPage({
               </span>
               {topology === 'house_community' ? 'Nueva casa' : 'Nueva unidad'}
             </Button>
-            {onConfigureStructure &&
-            supportsBuildingStructure(topology) &&
-            !structureNeedsAttention ? (
+            {onConfigureStructure && canOfferBuildingStructure && !structureNeedsAttention ? (
               <Button onClick={onConfigureStructure} variant="secondary">
                 {topology === 'unspecified' ? 'Definir tipo de propiedad' : 'Configurar estructura'}
               </Button>
