@@ -50,7 +50,10 @@ describe('Directory deep links', () => {
     expect(app).toContain("onOpenPerson={(personId) => navigateDirectory('people', personId)}");
     expect(app).toContain("onOpenUnit={(unitId) => navigateDirectory('units', unitId)}");
     expect(unitsPage).toContain('findDirectoryTarget(directory.units, requestedUnitId)');
+    expect(unitsPage).toContain("consumeDirectoryDetailHint('units', requestedUnitId)");
+    expect(unitsPage).toContain('pendingRequestedUnitIdRef.current = null');
     expect(peoplePage).toContain('findDirectoryTarget(people, requestedPersonId)');
+    expect(peoplePage).toContain("consumeDirectoryDetailHint('people', requestedPersonId)");
     expect(peoplePage).toContain('directoryLoadedFor !== condominiumId');
     expect(unitDrawer).toContain('canViewPeople && isDirectoryIdentifier(person.personId)');
     expect(peoplePage).toContain('canOpenUnits && isDirectoryIdentifier(relationship.unitId)');

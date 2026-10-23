@@ -47,3 +47,26 @@ export function directoryRequestedId(
   // Duplicate or malformed query keys are not silently interpreted.
   return values.length === 1 && UUID.test(values[0] ?? '') ? values[0]! : null;
 }
+
+/**
+ * A directory detail link is an entry action, not a permanent "open this drawer"
+ * preference. Consume the hint after the authorized directory has resolved it so
+ * closing the detail and refreshing the list cannot resurrect a stale selection.
+ * Keep the condominium hint (and all unrelated parameters/hash) intact.
+ */
+export function consumeDirectoryDetailHint(
+  destination: DirectoryDestination,
+  requestedId: string,
+): boolean {
+  if (typeof window === 'undefined') return false;
+  const url = new URL(window.location.href);
+  if (
+    url.pathname !== `/app/${destination}` ||
+    directoryRequestedId(destination, url.search) !== requestedId
+  ) {
+    return false;
+  }
+  url.searchParams.delete(destination === 'units' ? 'unit' : 'person');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  return true;
+}
