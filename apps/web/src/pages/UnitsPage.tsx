@@ -13,6 +13,13 @@ import { Badge, Button, EmptyState, Select, Skeleton } from '../components/ui';
 import { UnitDetailDrawer } from '../features/units/UnitDetailDrawer';
 import { UnitEditor } from '../features/units/UnitEditor';
 import type { UnitEditorInput } from '../features/units/UnitEditor';
+import {
+  paginateDirectoryUnits,
+  sortDirectoryUnits,
+  UNIT_DIRECTORY_PAGE_SIZES,
+  type UnitDirectoryPageSize,
+  type UnitDirectorySort,
+} from '../features/units/unit-directory-view';
 import type { CondominiumProfile, DirectoryUnit, UnitsDirectory } from '../features/units/types';
 import { apiRequest } from '../lib/api';
 import { canAccessRoute, canManage, useCondominiumRoles } from '../lib/roles';
@@ -50,6 +57,15 @@ const personSummary = (people: Array<{ firstName: string; lastName: string }>) =
   return names.length > 2
     ? `${names.slice(0, 2).join(', ')} +${names.length - 2}`
     : names.join(', ');
+};
+
+const updatedSummary = (updatedAt: string) => {
+  const timestamp = Date.parse(updatedAt);
+  return Number.isFinite(timestamp)
+    ? new Intl.DateTimeFormat('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }).format(
+        timestamp,
+      )
+    : 'No registrada';
 };
 
 const aliquotSummary = (unit: DirectoryUnit) => {
@@ -91,6 +107,9 @@ export function UnitsPage({
   const [status, setStatus] = useState<StatusFilter>('all');
   const [type, setType] = useState<'all' | UnitType>('all');
   const [building, setBuilding] = useState<BuildingFilter>('all');
+  const [directorySort, setDirectorySort] = useState<UnitDirectorySort>('unit-asc');
+  const [pageSize, setPageSize] = useState<UnitDirectoryPageSize>(10);
+  const [requestedPage, setRequestedPage] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState<DirectoryUnit | null>(null);
   const [editor, setEditor] = useState<{
     mode: 'create' | 'edit';
@@ -146,6 +165,8 @@ export function UnitsPage({
     setStatus('all');
     setType('all');
     setBuilding('all');
+    setDirectorySort('unit-asc');
+    setRequestedPage(1);
   }, [condominiumId]);
 
   const topology = profile?.property_topology ?? 'unspecified';
@@ -178,6 +199,14 @@ export function UnitsPage({
       );
     });
   }, [building, search, status, type, units]);
+  const sortedUnits = useMemo(
+    () => sortDirectoryUnits(filteredUnits, directorySort),
+    [filteredUnits, directorySort],
+  );
+  const directoryPage = useMemo(
+    () => paginateDirectoryUnits(sortedUnits, requestedPage, pageSize),
+    [sortedUnits, requestedPage, pageSize],
+  );
 
   const activeUnits = units.filter((unit) => unit.status === 'active').length;
   const unitsWithOwners = units.filter((unit) => unit.owners.length > 0).length;
@@ -194,6 +223,7 @@ export function UnitsPage({
     setStatus('all');
     setType('all');
     setBuilding('all');
+    setRequestedPage(1);
   };
 
   const refreshDirectory = async () => {
@@ -380,14 +410,20 @@ export function UnitsPage({
           <input
             aria-label="Buscar unidades"
             className="input"
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setRequestedPage(1);
+            }}
             placeholder="Buscar unidad, edificio, piso o persona"
             type="search"
             value={search}
           />
           <Select
             aria-label="Filtrar por estado"
-            onChange={(event) => setStatus(event.target.value as StatusFilter)}
+            onChange={(event) => {
+              setStatus(event.target.value as StatusFilter);
+              setRequestedPage(1);
+            }}
             value={status}
           >
             <option value="all">Todos los estados</option>
@@ -396,7 +432,10 @@ export function UnitsPage({
           </Select>
           <Select
             aria-label="Filtrar por tipo"
-            onChange={(event) => setType(event.target.value as 'all' | UnitType)}
+            onChange={(event) => {
+              setType(event.target.value as 'all' | UnitType);
+              setRequestedPage(1);
+            }}
             value={type}
           >
             <option value="all">Todos los tipos</option>
@@ -426,6 +465,52 @@ export function UnitsPage({
             </Button>
           ) : null}
         </div>
+
+        {!loadError && !loading && filteredUnits.length ? (
+          <div className="units-v3-directory-controls">
+            <span aria-live="polite" className="units-v3-directory-controls__count">
+              {directoryPage.first}–{directoryPage.last} de {directoryPage.total}{' '}
+              {directoryPage.total === 1 ? 'unidad' : 'unidades'}
+            </span>
+            <div className="units-v3-directory-controls__selectors">
+              <label>
+                Ordenar por
+                <Select
+                  aria-label="Ordenar unidades"
+                  onChange={(event) => {
+                    setDirectorySort(event.target.value as UnitDirectorySort);
+                    setRequestedPage(1);
+                  }}
+                  value={directorySort}
+                >
+                  <option value="unit-asc">Unidad · A–Z</option>
+                  <option value="unit-desc">Unidad · Z–A</option>
+                  <option value="updated-desc">Actualización · reciente</option>
+                  <option value="updated-asc">Actualización · antigua</option>
+                  <option value="aliquot-desc">Alícuota · mayor</option>
+                  <option value="aliquot-asc">Alícuota · menor</option>
+                </Select>
+              </label>
+              <label>
+                Por página
+                <Select
+                  aria-label="Unidades por página"
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value) as UnitDirectoryPageSize);
+                    setRequestedPage(1);
+                  }}
+                  value={String(pageSize)}
+                >
+                  {UNIT_DIRECTORY_PAGE_SIZES.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            </div>
+          </div>
+        ) : null}
 
         {loadError ? (
           <EmptyState
@@ -470,8 +555,9 @@ export function UnitsPage({
               <span>Alícuota</span>
               <span>Ocupación</span>
               <span>Estado</span>
+              <span>Actualización</span>
             </div>
-            {filteredUnits.map((unit) => (
+            {directoryPage.rows.map((unit) => (
               <button
                 className="units-v3-row"
                 key={unit.id}
@@ -512,9 +598,41 @@ export function UnitsPage({
                     {unit.status === 'active' ? 'Activa' : 'Archivada'}
                   </Badge>
                 </span>
+                <span
+                  className="units-v3-row__fact units-v3-row__updated"
+                  data-label="Actualización"
+                >
+                  <small>Actualización</small>
+                  <strong>{updatedSummary(unit.updatedAt)}</strong>
+                </span>
               </button>
             ))}
           </div>
+        ) : null}
+        {!loadError && !loading && directoryPage.totalPages > 1 ? (
+          <nav aria-label="Paginación del directorio de unidades" className="units-v3-pagination">
+            <Button
+              disabled={directoryPage.page <= 1}
+              onClick={() => setRequestedPage(directoryPage.page - 1)}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Anterior
+            </Button>
+            <span aria-live="polite">
+              Página {directoryPage.page} de {directoryPage.totalPages}
+            </span>
+            <Button
+              disabled={directoryPage.page >= directoryPage.totalPages}
+              onClick={() => setRequestedPage(directoryPage.page + 1)}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Siguiente
+            </Button>
+          </nav>
         ) : null}
       </WorkspaceSection>
 
