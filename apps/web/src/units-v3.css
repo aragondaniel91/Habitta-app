@@ -631,56 +631,15 @@
 
 /* Approved Units overview — restrained header, contextual guidance, four equal KPIs.
    Scoped to this module so shared Payments/Expenses chrome stays untouched. */
+/* Preserve the shared PageHeader typography, button heights and top alignment
+   used by Gastos/Pagos, including shell-injected Importar datos and Ayuda. */
 .units-v3-page > .page-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 43rem);
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 46rem);
+  align-items: start;
   column-gap: 1rem;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.5rem;
   padding-bottom: 1rem;
-}
-
-.units-v3-page > .page-header .breadcrumbs {
-  margin-bottom: 0.3rem;
-}
-
-.units-v3-page > .page-header .page-header__eyebrow {
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-}
-
-.units-v3-page > .page-header h1 {
-  margin: 0.25rem 0 0.3rem;
-  font-size: clamp(2rem, 2.8vw, 2.7rem);
-}
-
-.units-v3-page > .page-header .page-header__copy p {
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.units-v3-page > .page-header .page-header__actions {
-  display: flex;
-  width: 100%;
-  flex: none;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.45rem;
-}
-
-.units-v3-page > .page-header .page-header__actions > .button {
-  min-width: 0;
-  min-height: 40px;
-  padding: 0 0.75rem;
-  border-radius: 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 650;
-  line-height: 1.2;
-}
-
-.units-v3-page > .page-header .page-header__actions > .button[data-variant='primary'] {
-  min-width: 0;
 }
 
 .units-v3-create-icon {
@@ -817,17 +776,6 @@
 }
 
 @media (max-width: 720px) {
-  .units-v3-page > .page-header .page-header__actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: stretch;
-  }
-
-  .units-v3-page > .page-header .page-header__actions > .button {
-    width: 100%;
-    white-space: normal;
-  }
-
   .units-v3-structure-banner {
     flex-wrap: wrap;
   }
@@ -859,10 +807,6 @@
   .units-v3-page .units-v3-overview-metrics,
   .units-v3-page .units-v3-loading-metrics {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .units-v3-page > .page-header .page-header__actions {
-    grid-template-columns: 1fr;
   }
 
   .units-v3-structure-banner__action {
