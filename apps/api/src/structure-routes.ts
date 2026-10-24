@@ -11,6 +11,12 @@ type PostgrestError = { code?: string; message?: string };
 const unitTypeSchema = z.enum(['apartment', 'house', 'commercial', 'parking', 'storage']);
 const unitStatusSchema = z.enum(['active', 'inactive']);
 
+const chargeScopeSelectionSchema = z
+  .object({
+    chargeScope: z.enum(['unit', 'building']),
+  })
+  .strict();
+
 const buildingUpdateSchema = buildingInputSchema
   .partial()
   .refine((value) => value.name !== undefined, {
@@ -62,6 +68,29 @@ const supabaseHeaders = (env: NotificationBindings, token: string, representatio
 const condominiumId = (raw: string) => uuidSchema.safeParse(raw);
 
 export const structureRoutes = new Hono<StructureEnvironment>();
+
+structureRoutes.patch('/:condominiumId/charge-scope', async (c) => {
+  const parsedId = condominiumId(c.req.param('condominiumId'));
+  if (!parsedId.success) return c.json({ error: 'Invalid condominium identifier' }, 400);
+  const parsed = await parseJsonBody(c.req.raw, chargeScopeSelectionSchema);
+  if (isValidationError(parsed)) return c.json({ error: parsed }, 400);
+
+  const response = await fetch(`${c.env.SUPABASE_URL}/rest/v1/rpc/set_condominium_charge_scope`, {
+    method: 'POST',
+    headers: supabaseHeaders(c.env, c.get('token')),
+    body: JSON.stringify({ target: parsedId.data, requested_scope: parsed.chargeScope }),
+  });
+  const result = (await response.json()) as PostgrestError;
+  if (response.ok) return c.json(result, 200);
+  if (result.code === '42501') return c.json({ error: 'Not authorized' }, 403);
+  if (result.code === '23514') {
+    return c.json({ error: 'charge_scope_locked' }, 409);
+  }
+  if (result.code === '22023') {
+    return c.json({ error: 'invalid_charge_scope' }, 400);
+  }
+  return c.json({ error: 'Unable to configure billing scope' }, 400);
+});
 
 structureRoutes.get('/:condominiumId/buildings', async (c) => {
   const parsedId = condominiumId(c.req.param('condominiumId'));
