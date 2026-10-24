@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Badge, Button, EmptyState, Field, Select, Surface } from '../../components/ui';
 import {
   BellIcon,
@@ -79,6 +79,23 @@ export function PeopleDirectoryView({
   const [pageSize, setPageSize] = useState<PeopleDirectoryPageSize>(10);
   const [requestedPage, setRequestedPage] = useState(1);
   const ordered = useMemo(() => orderPeopleDirectory(people, sort), [people, sort]);
+  const lastRevealedSelectionRef = useRef<string | null>(null);
+
+  // Auto-selected deep links must reveal the selected person in the paged list.
+  // Do this only for a new selection, not on user-driven sort/filter/page changes.
+  useEffect(() => {
+    if (!selectedId) {
+      lastRevealedSelectionRef.current = null;
+      return;
+    }
+    if (lastRevealedSelectionRef.current === selectedId) return;
+    const selectedIndex = ordered.findIndex((person) => person.id === selectedId);
+    if (selectedIndex < 0) return; // The directory may still be loading.
+    lastRevealedSelectionRef.current = selectedId;
+    setRequestedPage(Math.floor(selectedIndex / pageSize) + 1);
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [selectedId, ordered, pageSize]);
+
   const directoryPage = paginatePeopleDirectory(ordered, requestedPage, pageSize);
   const changePage = (page: number) => {
     setRequestedPage(page);

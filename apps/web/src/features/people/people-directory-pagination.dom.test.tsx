@@ -189,6 +189,43 @@ describe('minimal Personas directory pagination', () => {
     );
   });
 
+  it('reveals deep-linked people outside page one even if records arrive later', async () => {
+    const view = (entries: Person[], selectedId: string) => (
+      <PeopleDirectoryView
+        emptyState={{ title: 'Cargando', description: 'Directorio pendiente.' }}
+        onClearFilters={vi.fn()}
+        onQueryChange={vi.fn()}
+        onSelect={onSelect}
+        onStatusFilterChange={vi.fn()}
+        people={entries}
+        query=""
+        selectedId={selectedId}
+        statusFilter=""
+        totalPeople={48}
+      />
+    );
+
+    await act(async () => root.render(view([], 'resident-42')));
+    expect(host.querySelectorAll('.people-v3-directory__item')).toHaveLength(0);
+    await act(async () => root.render(view(people, 'resident-42')));
+    expect(visible()).toHaveLength(8);
+    expect(visible()[0]).toBe('Persona 41');
+    expect(host.textContent).toContain('41–48 de 48 personas');
+    expect(
+      host.querySelector('.people-v3-directory__item[aria-current="true"]')?.textContent,
+    ).toContain('Persona 42');
+
+    await act(async () => root.render(view(people, 'resident-2')));
+    expect(visible()[0]).toBe('Persona 1');
+    expect(
+      host.querySelector('.people-v3-directory__item[aria-current="true"]')?.textContent,
+    ).toContain('Persona 2');
+
+    await choose('Ordenar personas', 'name-desc');
+    expect(visible()[0]).toBe('Persona 48');
+    expect(host.textContent).toContain('1–10 de 48 personas');
+  });
+
   it('has a compact empty state and no phantom page navigation', async () => {
     await renderDirectory();
     await search('No existe');
