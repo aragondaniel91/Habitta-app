@@ -62,10 +62,14 @@ describe('production release workflow hardening', () => {
       'utf8',
     );
 
-    expect(workflow).toContain('if DEPLOY_OUTPUT=$(pnpm --filter @habitta/api exec wrangler pages deploy');
+    expect(workflow).toContain(
+      'if DEPLOY_OUTPUT=$(pnpm --filter @habitta/api exec wrangler pages deploy',
+    );
     expect(workflow).toContain('DEPLOY_EXIT=$?');
     expect(workflow).toContain('printf \'%s\\n\' "$DEPLOY_OUTPUT"');
-    expect(workflow).toContain('echo "::error::Cloudflare Pages deploy failed (exit $DEPLOY_EXIT)."');
+    expect(workflow).toContain(
+      'echo "::error::Cloudflare Pages deploy failed (exit $DEPLOY_EXIT)."',
+    );
     expect(workflow).toContain('exit "$DEPLOY_EXIT"');
     expect(workflow).toContain('PAGES_DEPLOYED=true');
     expect(workflow).toContain('Roll back production edge deploys on release failure');
