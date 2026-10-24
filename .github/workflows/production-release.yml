@@ -287,12 +287,20 @@ jobs:
         run: |
           set -euo pipefail
           SHA=$(git rev-parse HEAD)
-          DEPLOY_OUTPUT=$(pnpm --filter @habitta/api exec wrangler pages deploy ../web/dist \
+          # Never hide Wrangler's failure output: with set -e, a failing
+          # assignment would exit the step before the captured output is printed.
+          if DEPLOY_OUTPUT=$(pnpm --filter @habitta/api exec wrangler pages deploy ../web/dist \
             --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" \
             --branch main \
             --commit-hash "$SHA" \
-            --commit-message "production-$SHA" 2>&1)
-          printf '%s\n' "$DEPLOY_OUTPUT"
+            --commit-message "production-$SHA" 2>&1); then
+            printf '%s\n' "$DEPLOY_OUTPUT"
+          else
+            DEPLOY_EXIT=$?
+            printf '%s\n' "$DEPLOY_OUTPUT"
+            echo "::error::Cloudflare Pages deploy failed (exit $DEPLOY_EXIT)."
+            exit "$DEPLOY_EXIT"
+          fi
           PAGES_DEPLOYMENT_URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | grep -Eo 'https://[a-z0-9]+\.habitta-web-prod\.pages\.dev' | tail -1)
           test -n "$PAGES_DEPLOYMENT_URL"
           echo "PAGES_DEPLOYMENT_URL=$PAGES_DEPLOYMENT_URL" >> "$GITHUB_ENV"

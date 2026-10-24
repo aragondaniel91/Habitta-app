@@ -56,6 +56,25 @@ describe('production release workflow hardening', () => {
     expect(workflow).not.toContain('VERSION_LIST_FILE');
   });
 
+  it('surfaces Cloudflare Pages deployment errors without weakening the release fail-close', async () => {
+    const workflow = await readFile(
+      new URL('.github/workflows/production-release.yml', root),
+      'utf8',
+    );
+
+    expect(workflow).toContain(
+      'if DEPLOY_OUTPUT=$(pnpm --filter @habitta/api exec wrangler pages deploy',
+    );
+    expect(workflow).toContain('DEPLOY_EXIT=$?');
+    expect(workflow).toContain('printf \'%s\\n\' "$DEPLOY_OUTPUT"');
+    expect(workflow).toContain(
+      'echo "::error::Cloudflare Pages deploy failed (exit $DEPLOY_EXIT)."',
+    );
+    expect(workflow).toContain('exit "$DEPLOY_EXIT"');
+    expect(workflow).toContain('PAGES_DEPLOYED=true');
+    expect(workflow).toContain('Roll back production edge deploys on release failure');
+  });
+
   it('verifies static Pages releases without treating arbitrary edge failures as healthy', async () => {
     const workflow = await readFile(
       new URL('.github/workflows/static-sites-release.yml', root),
