@@ -46,13 +46,25 @@ describe('AccountStatementDrawer', () => {
                   effective_date: '2026-01-11',
                   description: 'Pago',
                   entry_type: 'payment_credit',
+                  receivable_item_id: 'charge-1',
                   debit: null,
                   credit: '25',
                   running_balance: '95',
                   currency_code: 'USD',
                 },
+                {
+                  ledger_entry_id: '3',
+                  effective_date: '2026-01-11',
+                  description: 'Unapplied payment credit',
+                  entry_type: 'payment_credit',
+                  receivable_item_id: null,
+                  debit: null,
+                  credit: '0.50',
+                  running_balance: '94.50',
+                  currency_code: 'USD',
+                },
               ],
-              closing_balances: [{ currency_code: 'USD', amount: '95' }],
+              closing_balances: [{ currency_code: 'USD', amount: '94.50' }],
             }),
           );
         }
@@ -102,6 +114,19 @@ describe('AccountStatementDrawer', () => {
     expect(element.textContent).toContain('Actividad del período');
     expect(element.textContent).toContain('Cargos');
     expect(element.textContent).toContain('Pagos aplicados');
+    expect(element.textContent).toContain('Créditos registrados sin aplicar');
+    expect(element.textContent).toContain('Crédito de pago sin asignar');
+    expect(element.textContent).toContain('Crédito sin aplicar');
+    expect(element.textContent).not.toContain('Unapplied payment credit');
+    const activityRows = [...element.querySelectorAll('.account-statement-period-summary dl div')];
+    const appliedRow = activityRows.find(
+      (row) => row.querySelector('dt')?.textContent === 'Pagos aplicados',
+    );
+    const unusedRow = activityRows.find(
+      (row) => row.querySelector('dt')?.textContent === 'Créditos registrados sin aplicar',
+    );
+    expect(appliedRow?.querySelector('dd')?.textContent).toMatch(/25[.,]00/);
+    expect(unusedRow?.querySelector('dd')?.textContent).toMatch(/0[.,]50/);
     expect(element.textContent!.indexOf('Saldo al cierre')).toBeLessThan(
       element.textContent!.indexOf('Solvencia al'),
     );
