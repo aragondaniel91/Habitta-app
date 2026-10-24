@@ -149,6 +149,12 @@ function amountAsNumber(amount: Amount | null) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// A payment credit with no receivable item is money recorded for the unit,
+// but it has not been allocated to any charge. Never present it as paid dues.
+function isUnappliedPaymentCredit(movement: StatementMovement) {
+  return movement.entry_type === 'payment_credit' && movement.receivable_item_id === null;
+}
+
 function movementLabel(movement: StatementMovement) {
   switch (movement.entry_type) {
     case 'charge':
@@ -162,7 +168,7 @@ function movementLabel(movement: StatementMovement) {
     case 'adjustment_credit':
       return 'Ajuste (crédito)';
     case 'payment_credit':
-      return 'Pago aplicado';
+      return isUnappliedPaymentCredit(movement) ? 'Crédito sin aplicar' : 'Pago aplicado';
     case 'late_fee_charge':
       return 'Recargo por mora';
     case 'reversal':
@@ -183,7 +189,9 @@ function movementSummaryCategory(movement: StatementMovement) {
     case 'adjustment_credit':
       return { key: movement.entry_type, label: movementLabel(movement) };
     case 'payment_credit':
-      return { key: 'payment_credit', label: 'Pagos aplicados' };
+      return isUnappliedPaymentCredit(movement)
+        ? { key: 'unapplied_payment_credit', label: 'Créditos registrados sin aplicar' }
+        : { key: 'payment_credit', label: 'Pagos aplicados' };
     case 'late_fee_charge':
       return { key: 'late_fee_charge', label: 'Recargos por mora' };
     case 'reversal':
@@ -518,7 +526,12 @@ export function AccountStatementDrawer({
                   {statement.movements.map((movement) => (
                     <article key={movement.ledger_entry_id}>
                       <div>
-                        <strong>{movement.description}</strong>
+                        <strong>
+                          {isUnappliedPaymentCredit(movement) &&
+                          movement.description === 'Unapplied payment credit'
+                            ? 'Crédito de pago sin asignar'
+                            : movement.description}
+                        </strong>
                         <span>
                           {formatDashboardDate(movement.effective_date)} · {movementLabel(movement)}
                         </span>
