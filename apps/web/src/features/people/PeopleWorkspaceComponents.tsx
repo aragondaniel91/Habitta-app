@@ -1,4 +1,4 @@
-import { useRef, type ReactNode, type Ref } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Badge, Button, EmptyState, Field, Select, Surface } from '../../components/ui';
 import {
   BellIcon,
@@ -14,6 +14,13 @@ import type { ResidentInvitation } from '../../lib/residentAccess';
 import type { PersonUnitRelationshipSummary } from './person-unit-relationships';
 import { occupancyLabels, residentInvitationStatusLabels } from './relationship-model';
 import type { Person } from './types';
+import {
+  orderPeopleDirectory,
+  paginatePeopleDirectory,
+  PEOPLE_DIRECTORY_PAGE_SIZES,
+  type PeopleDirectoryPageSize,
+  type PeopleDirectorySort,
+} from './people-directory-view';
 
 export type PeopleProfileTab =
   'summary' | 'units' | 'community-roles' | 'private-notes' | 'digital-access';
@@ -67,6 +74,37 @@ export function PeopleDirectoryView({
   onClearFilters: () => void;
 }) {
   const keyboardSelectionRef = useRef(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [sort, setSort] = useState<PeopleDirectorySort>('name-asc');
+  const [pageSize, setPageSize] = useState<PeopleDirectoryPageSize>(10);
+  const [requestedPage, setRequestedPage] = useState(1);
+  const ordered = useMemo(() => orderPeopleDirectory(people, sort), [people, sort]);
+  const lastRevealedSelectionRef = useRef<string | null>(null);
+
+  // Auto-selected deep links must reveal the selected person in the paged list.
+  // A normal click is already on the visible page; never snap its scroll position.
+  useEffect(() => {
+    if (!selectedId) {
+      lastRevealedSelectionRef.current = null;
+      return;
+    }
+    if (lastRevealedSelectionRef.current === selectedId) return;
+    const selectedIndex = ordered.findIndex((person) => person.id === selectedId);
+    if (selectedIndex < 0) return; // The directory may still be loading.
+    lastRevealedSelectionRef.current = selectedId;
+    const selectedPage = Math.floor(selectedIndex / pageSize) + 1;
+    const currentPage = paginatePeopleDirectory(ordered, requestedPage, pageSize).page;
+    if (selectedPage !== currentPage) {
+      setRequestedPage(selectedPage);
+      if (listRef.current) listRef.current.scrollTop = 0;
+    }
+  }, [selectedId, ordered, pageSize, requestedPage]);
+
+  const directoryPage = paginatePeopleDirectory(ordered, requestedPage, pageSize);
+  const changePage = (page: number) => {
+    setRequestedPage(page);
+    if (listRef.current) listRef.current.scrollTop = 0;
+  };
 
   return (
     <Surface className="people-v3-directory">
@@ -91,7 +129,10 @@ export function PeopleDirectoryView({
         <Field label="Buscar">
           <input
             className="input"
-            onChange={(event) => onQueryChange(event.target.value)}
+            onChange={(event) => {
+              changePage(1);
+              onQueryChange(event.target.value);
+            }}
             placeholder="Nombre, documento, correo o teléfono"
             type="search"
             value={query}
@@ -99,7 +140,11 @@ export function PeopleDirectoryView({
         </Field>
         <Field label="Estado">
           <Select
-            onChange={(event) => onStatusFilterChange(event.target.value)}
+            aria-label="Filtrar personas por estado"
+            onChange={(event) => {
+              changePage(1);
+              onStatusFilterChange(event.target.value);
+            }}
             value={statusFilter}
           >
             <option value="">Todos</option>
@@ -110,41 +155,70 @@ export function PeopleDirectoryView({
       </div>
 
       {people.length ? (
-        <div className="people-v3-directory__list">
-          {people.map((person) => (
-            <button
-              aria-current={selectedId === person.id ? 'true' : undefined}
-              className="people-v3-directory__item"
-              data-selected={selectedId === person.id || undefined}
-              key={person.id}
-              onClick={() => {
-                const interaction = keyboardSelectionRef.current ? 'keyboard' : 'pointer';
-                keyboardSelectionRef.current = false;
-                onSelect(person, interaction);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  keyboardSelectionRef.current = true;
-                }
-              }}
-              type="button"
-            >
-              <span className="people-v3-avatar">{personDisplayInitials(person)}</span>
-              <span className="people-v3-directory__identity">
-                <strong>{personDisplayName(person)}</strong>
-                <small>{personDocumentLabel(person)}</small>
-              </span>
-              <Badge tone={person.status === 'inactive' ? 'neutral' : 'success'}>
-                {person.status === 'inactive' ? 'Inactiva' : 'Activa'}
-              </Badge>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="people-v3-directory__toolbar">
+            <span>
+              {directoryPage.total} {directoryPage.total === 1 ? 'resultado' : 'resultados'}
+            </span>
+            <label>
+              <span>Ordenar</span>
+              <Select
+                aria-label="Ordenar personas"
+                onChange={(event) => {
+                  setSort(event.target.value as PeopleDirectorySort);
+                  changePage(1);
+                }}
+                value={sort}
+              >
+                <option value="name-asc">Nombre A–Z</option>
+                <option value="name-desc">Nombre Z–A</option>
+              </Select>
+            </label>
+          </div>
+          <div className="people-v3-directory__list" ref={listRef}>
+            {directoryPage.people.map((person) => (
+              <button
+                aria-current={selectedId === person.id ? 'true' : undefined}
+                className="people-v3-directory__item"
+                data-selected={selectedId === person.id || undefined}
+                key={person.id}
+                onClick={() => {
+                  const interaction = keyboardSelectionRef.current ? 'keyboard' : 'pointer';
+                  keyboardSelectionRef.current = false;
+                  onSelect(person, interaction);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    keyboardSelectionRef.current = true;
+                  }
+                }}
+                type="button"
+              >
+                <span className="people-v3-avatar">{personDisplayInitials(person)}</span>
+                <span className="people-v3-directory__identity">
+                  <strong>{personDisplayName(person)}</strong>
+                  <small>{personDocumentLabel(person)}</small>
+                </span>
+                <Badge tone={person.status === 'inactive' ? 'neutral' : 'success'}>
+                  {person.status === 'inactive' ? 'Inactiva' : 'Activa'}
+                </Badge>
+              </button>
+            ))}
+          </div>
+        </>
       ) : emptyState.tone === 'error' ? (
         <InlineNotice tone="error" title={emptyState.title}>
           {emptyState.description}
           {emptyState.actionLabel ? (
-            <Button onClick={onClearFilters} size="sm" type="button" variant="ghost">
+            <Button
+              onClick={() => {
+                changePage(1);
+                onClearFilters();
+              }}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
               {emptyState.actionLabel}
             </Button>
           ) : null}
@@ -154,15 +228,75 @@ export function PeopleDirectoryView({
           actionLabel={emptyState.actionLabel}
           description={emptyState.description}
           icon={<PeopleIcon size={26} />}
-          onAction={emptyState.actionLabel ? onClearFilters : undefined}
+          onAction={
+            emptyState.actionLabel
+              ? () => {
+                  changePage(1);
+                  onClearFilters();
+                }
+              : undefined
+          }
           title={emptyState.title}
         />
       )}
 
       <footer className="people-v3-directory__footer">
-        {countsUnavailable
-          ? 'Conteo no disponible'
-          : `Mostrando ${people.length} de ${totalPeople} ${totalPeople === 1 ? 'persona registrada' : 'personas registradas'}`}
+        <div className="people-v3-directory__range">
+          <span aria-live="polite">
+            {countsUnavailable
+              ? 'Conteo no disponible'
+              : totalPeople <= 10
+                ? `Mostrando ${people.length} de ${totalPeople} ${totalPeople === 1 ? 'persona registrada' : 'personas registradas'}`
+                : `${directoryPage.first}–${directoryPage.last} de ${directoryPage.total} ${directoryPage.total === 1 ? 'persona' : 'personas'}`}
+          </span>
+          {!countsUnavailable && totalPeople > 10 ? (
+            <label>
+              <span>Mostrar</span>
+              <Select
+                aria-label="Personas por página"
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value) as PeopleDirectoryPageSize);
+                  changePage(1);
+                }}
+                value={String(pageSize)}
+              >
+                {PEOPLE_DIRECTORY_PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : null}
+        </div>
+        {!countsUnavailable && directoryPage.totalPages > 1 ? (
+          <nav
+            aria-label="Paginación del directorio de personas"
+            className="people-v3-directory__pagination"
+          >
+            <Button
+              disabled={directoryPage.page === 1}
+              onClick={() => changePage(directoryPage.page - 1)}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Anterior
+            </Button>
+            <span aria-live="polite">
+              {directoryPage.page} / {directoryPage.totalPages}
+            </span>
+            <Button
+              disabled={directoryPage.page === directoryPage.totalPages}
+              onClick={() => changePage(directoryPage.page + 1)}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Siguiente
+            </Button>
+          </nav>
+        ) : null}
       </footer>
     </Surface>
   );
