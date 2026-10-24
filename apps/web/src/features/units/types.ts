@@ -3,6 +3,7 @@ import type { UnitType } from '../../lib/unit-domain';
 export type CondominiumProfile = {
   id: string;
   property_topology?: import('../../lib/unit-domain').PropertyTopology;
+  charge_scope?: import('../../lib/unit-domain').ChargeScope;
 };
 
 export type DirectoryPerson = {

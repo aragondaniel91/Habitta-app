@@ -19,6 +19,85 @@ const jsonResponse = (value: unknown, status = 200) =>
 
 afterEach(() => vi.unstubAllGlobals());
 
+describe('whole-building billing account endpoint', () => {
+  it('accepts a real building unit without inventing floor or aliquot', async () => {
+    const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        calls.push([input, init]);
+        if (String(input).endsWith('/auth/v1/user')) return jsonResponse({ id: userId });
+        if (String(input).endsWith('/rest/v1/units')) {
+          return jsonResponse(
+            [{ id: unitId, condominium_id: condominiumId, type: 'building' }],
+            201,
+          );
+        }
+        throw new Error('Unexpected backend URL');
+      }),
+    );
+    const response = await app.request(
+      `/v1/condominiums/${condominiumId}/units`,
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: 'Edificio 1',
+          type: 'building',
+          buildingId: unitId,
+          floor: null,
+          ownershipPercentage: null,
+          status: 'active',
+        }),
+      },
+      environment,
+    );
+    expect(response.status).toBe(201);
+    expect(JSON.parse(String(calls[1]?.[1]?.body))).toMatchObject({
+      condominium_id: condominiumId,
+      building_id: unitId,
+      code: 'Edificio 1',
+      type: 'building',
+      floor: null,
+      ownership_percentage: null,
+    });
+  });
+
+  it('returns a distinct 409 for an already billed physical building', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith('/auth/v1/user')) return jsonResponse({ id: userId });
+        if (String(input).endsWith('/rest/v1/units')) {
+          return jsonResponse(
+            {
+              code: '23505',
+              message:
+                'duplicate key value violates unique constraint "units_one_billable_account_per_building"',
+            },
+            409,
+          );
+        }
+        throw new Error('Unexpected backend URL');
+      }),
+    );
+    const response = await app.request(
+      `/v1/condominiums/${condominiumId}/units`,
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'Edificio 1', type: 'building', buildingId: unitId }),
+      },
+      environment,
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: 'building_billing_exists',
+      publicMessage: 'Este edificio ya tiene una cuenta facturable.',
+    });
+  });
+});
+
 describe('physical structure routes', () => {
   it('creates an independent unit without requiring a tower, floor or ownership percentage', async () => {
     const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = [];

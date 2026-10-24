@@ -8,7 +8,14 @@ type StructureEnvironment = { Bindings: NotificationBindings; Variables: Variabl
 type ValidationFailure = { formErrors: string[]; fieldErrors: Record<string, string[]> };
 type PostgrestError = { code?: string; message?: string };
 
-const unitTypeSchema = z.enum(['apartment', 'house', 'commercial', 'parking', 'storage']);
+const unitTypeSchema = z.enum([
+  'apartment',
+  'house',
+  'commercial',
+  'parking',
+  'storage',
+  'building',
+]);
 const unitStatusSchema = z.enum(['active', 'inactive']);
 
 const chargeScopeSelectionSchema = z
@@ -57,6 +64,10 @@ const isPostgrestError = (value: unknown): value is PostgrestError =>
   Boolean(value && typeof value === 'object');
 
 const isUnitCodeConflict = (value: unknown) => isPostgrestError(value) && value.code === '23505';
+const isBillableBuildingConflict = (value: unknown) =>
+  isPostgrestError(value) &&
+  value.code === '23505' &&
+  Boolean(value.message?.includes('units_one_billable_account_per_building'));
 
 const supabaseHeaders = (env: NotificationBindings, token: string, representation = false) => ({
   apikey: env.SUPABASE_ANON_KEY,
@@ -175,6 +186,15 @@ structureRoutes.post('/:condominiumId/units', async (c) => {
     }),
   });
   const result = await response.json();
+  if (isBillableBuildingConflict(result)) {
+    return c.json(
+      {
+        error: 'building_billing_exists',
+        publicMessage: 'Este edificio ya tiene una cuenta facturable.',
+      },
+      409,
+    );
+  }
   if (isUnitCodeConflict(result)) {
     return c.json(
       {
@@ -215,6 +235,15 @@ structureRoutes.patch('/:condominiumId/units/:unitId', async (c) => {
     },
   );
   const result = await response.json();
+  if (isBillableBuildingConflict(result)) {
+    return c.json(
+      {
+        error: 'building_billing_exists',
+        publicMessage: 'Este edificio ya tiene una cuenta facturable.',
+      },
+      409,
+    );
+  }
   if (isUnitCodeConflict(result)) {
     return c.json(
       {

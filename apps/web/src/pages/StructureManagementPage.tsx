@@ -4,10 +4,12 @@ import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogBody, DialogFooter } from '../components/Dialog';
 import { FormGrid } from '../components/FormLayout';
 import { CheckCircleIcon, SettingsIcon, UnitsIcon } from '../components/icons';
+import { BillingScopeSelector } from '../components/BillingScopeSelector';
 import { Badge, Button, EmptyState, Field, Select, Skeleton, Surface } from '../components/ui';
 import { PageHeader } from '../components/PageHeader';
 import { apiRequest } from '../lib/api';
 import { useCondominiumRoles } from '../lib/roles';
+import type { ChargeScope } from '../lib/unit-domain';
 import {
   defaultUnitType,
   type PropertyTopology,
@@ -20,6 +22,7 @@ import '../structure-management.css';
 type CondominiumProfile = {
   id: string;
   property_topology?: PropertyTopology;
+  charge_scope?: ChargeScope;
   declared_unit_count?: number | null;
   declared_building_count?: number | null;
 };
@@ -121,6 +124,9 @@ export function StructureManagementPage({
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [scopeDraft, setScopeDraft] = useState<ChargeScope>('unit');
+  const [scopeSaving, setScopeSaving] = useState(false);
+  const [scopeError, setScopeError] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState>(null);
   const [remediating, setRemediating] = useState(false);
   const [remediationTopology, setRemediationTopology] =
@@ -132,12 +138,23 @@ export function StructureManagementPage({
 
   const topology = profile?.property_topology ?? 'unspecified';
   const houseMode = topology === 'house_community';
-  const effectiveShowUnitManagement = showUnitManagement || houseMode;
   const singleBuildingMode = topology === 'single_building';
   const multiBuildingMode = topology === 'multi_building_complex';
+  const chargeScope: ChargeScope = profile?.charge_scope ?? 'unit';
+  const wholeBuildingBilling = multiBuildingMode && chargeScope === 'building';
+  const effectiveShowUnitManagement = showUnitManagement || houseMode || wholeBuildingBilling;
+  const billableBuildingIds = new Set(
+    units.filter((unit) => unit.type === 'building').map((unit) => unit.building_id),
+  );
+  const availableBillableBuildings = buildings.filter(
+    (building) => !billableBuildingIds.has(building.id),
+  );
   const showBuildings = !houseMode;
   const canCreateBuilding = showBuildings && (!singleBuildingMode || buildings.length === 0);
-  const availableUnitTypes = useMemo(() => unitTypeOptions(topology), [topology]);
+  const availableUnitTypes = useMemo(
+    () => unitTypeOptions(topology, chargeScope),
+    [topology, chargeScope],
+  );
   const canRemediate = roles.includes('condominium_admin');
 
   const loadStructure = useCallback(async () => {
@@ -150,6 +167,8 @@ export function StructureManagementPage({
         apiRequest<Unit[]>(`/v1/condominiums/${condominiumId}/units`, session),
       ]);
       setProfile(profileRows[0] ?? null);
+      setScopeDraft(profileRows[0]?.charge_scope ?? 'unit');
+      setScopeError(null);
       setBuildings(buildingItems);
       setUnits(unitItems);
     } catch (error) {
@@ -203,6 +222,28 @@ export function StructureManagementPage({
   const activeUnits = units.filter((unit) => unit.status === 'active').length;
   const unassignedUnits = units.filter((unit) => !unit.building_id).length;
 
+  async function saveChargeScope() {
+    if (!multiBuildingMode || units.length > 0 || !canRemediate || scopeDraft === chargeScope)
+      return;
+    setScopeSaving(true);
+    setScopeError(null);
+    try {
+      await apiRequest(`/v1/condominiums/${condominiumId}/charge-scope`, session, {
+        method: 'PATCH',
+        body: JSON.stringify({ chargeScope: scopeDraft }),
+      });
+      await loadStructure();
+      setMessage({
+        tone: 'success',
+        text: 'Modalidad de cobro configurada. Puedes registrar las unidades facturables.',
+      });
+    } catch (error) {
+      setScopeError(error instanceof Error ? error.message : 'No se pudo guardar la modalidad.');
+    } finally {
+      setScopeSaving(false);
+    }
+  }
+
   async function saveBuilding(event: FormEvent<HTMLFormElement>, building: Building | null) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -247,12 +288,27 @@ export function StructureManagementPage({
       : singleBuildingMode
         ? (buildings[0]?.id ?? null)
         : String(form.get('buildingId') ?? '') || null;
+    const billableBuilding = selectedBuildingId ? buildingById.get(selectedBuildingId) : null;
+    if (
+      wholeBuildingBilling &&
+      (!billableBuilding || (!unit && billableBuildingIds.has(billableBuilding.id)))
+    ) {
+      setMessage({
+        tone: 'error',
+        text: 'Selecciona un edificio sin cuenta facturable registrada.',
+      });
+      return;
+    }
     const payload = {
-      code: String(form.get('code') ?? '').trim(),
+      code: wholeBuildingBilling
+        ? (unit?.code ?? billableBuilding!.name)
+        : String(form.get('code') ?? '').trim(),
       buildingId: selectedBuildingId,
-      type: String(form.get('type') ?? defaultUnitType(topology)),
-      floor: String(form.get('floor') ?? '').trim() || null,
-      ownershipPercentage: percentage ? Number(percentage) : null,
+      type: wholeBuildingBilling
+        ? 'building'
+        : String(form.get('type') ?? defaultUnitType(topology)),
+      floor: wholeBuildingBilling ? null : String(form.get('floor') ?? '').trim() || null,
+      ownershipPercentage: wholeBuildingBilling ? null : percentage ? Number(percentage) : null,
       status: String(form.get('status') ?? 'active'),
     };
 
@@ -312,29 +368,39 @@ export function StructureManagementPage({
 
   if (loading && !units.length && !buildings.length) return <StructureSkeleton />;
 
-  const pageTitle = houseMode
-    ? 'Casas y unidades'
-    : singleBuildingMode
-      ? 'Apartamentos y unidades'
-      : 'Unidades, torres y edificios';
-  const newUnitLabel = houseMode ? 'Nueva casa' : 'Nueva unidad';
+  const pageTitle = wholeBuildingBilling
+    ? 'Edificios facturables'
+    : houseMode
+      ? 'Casas y unidades'
+      : singleBuildingMode
+        ? 'Apartamentos y unidades'
+        : 'Unidades, torres y edificios';
+  const newUnitLabel = wholeBuildingBilling
+    ? 'Vincular edificio para cobro'
+    : houseMode
+      ? 'Nueva casa'
+      : 'Nueva unidad';
   const declaredStructure =
     houseMode || singleBuildingMode
       ? profile?.declared_unit_count
       : profile?.declared_building_count;
-  const unitEmptyDescription = houseMode
-    ? 'Registra las casas, locales, depósitos o estacionamientos que forman parte de este condominio.'
-    : singleBuildingMode || multiBuildingMode
-      ? 'Registra apartamentos, locales, depósitos o estacionamientos de la estructura declarada.'
-      : 'Registra las unidades que forman parte de este condominio.';
+  const unitEmptyDescription = wholeBuildingBilling
+    ? 'Registra primero los edificios físicos. Después vincula cada uno como una única cuenta facturable; no se crearán apartamentos ficticios.'
+    : houseMode
+      ? 'Registra las casas, locales, depósitos o estacionamientos que forman parte de este condominio.'
+      : singleBuildingMode || multiBuildingMode
+        ? 'Registra apartamentos, locales, depósitos o estacionamientos de la estructura declarada.'
+        : 'Registra las unidades que forman parte de este condominio.';
 
   const editorTitle = editor
     ? editor.kind === 'unit'
       ? editor.unit
         ? `Editar ${editor.unit.code}`
-        : houseMode
-          ? 'Crear casa'
-          : 'Crear unidad'
+        : wholeBuildingBilling
+          ? 'Vincular edificio para cobro'
+          : houseMode
+            ? 'Crear casa'
+            : 'Crear unidad'
       : editor.building
         ? `Editar ${editor.building.name}`
         : 'Crear edificio'
@@ -355,7 +421,10 @@ export function StructureManagementPage({
             ) : null}
             {effectiveShowUnitManagement ? (
               <Button
-                disabled={singleBuildingMode && buildings.length !== 1}
+                disabled={
+                  (singleBuildingMode && buildings.length !== 1) ||
+                  (wholeBuildingBilling && availableBillableBuildings.length === 0)
+                }
                 onClick={() => setEditor({ kind: 'unit', unit: null })}
               >
                 {newUnitLabel}
@@ -410,9 +479,31 @@ export function StructureManagementPage({
         </div>
       ) : null}
 
+      {multiBuildingMode ? (
+        <BillingScopeSelector
+          configured={chargeScope}
+          draft={scopeDraft}
+          unitCount={units.length}
+          authorized={canRemediate}
+          saving={scopeSaving}
+          error={scopeError}
+          onChange={(next) => {
+            setScopeDraft(next);
+            setScopeError(null);
+          }}
+          onSave={() => void saveChargeScope()}
+        />
+      ) : null}
+
       <div className="structure-metrics">
         <Surface className="structure-metric">
-          <span>{houseMode ? 'Casas registradas' : 'Unidades registradas'}</span>
+          <span>
+            {wholeBuildingBilling
+              ? 'Edificios facturables'
+              : houseMode
+                ? 'Casas registradas'
+                : 'Unidades registradas'}
+          </span>
           <strong>{units.length}</strong>
           <small>{activeUnits} activas</small>
         </Surface>
@@ -428,20 +519,30 @@ export function StructureManagementPage({
           <small>{topologyLabels[topology]}</small>
         </Surface>
         <Surface className="structure-metric">
-          <span>{showBuildings ? 'Sin edificio asignado' : 'Pendientes de configurar'}</span>
+          <span>
+            {wholeBuildingBilling
+              ? 'Edificios sin cuenta'
+              : showBuildings
+                ? 'Sin edificio asignado'
+                : 'Pendientes de configurar'}
+          </span>
           <strong>
-            {showBuildings
-              ? unassignedUnits
-              : typeof profile?.declared_unit_count === 'number'
-                ? Math.max(profile.declared_unit_count - units.length, 0)
-                : '—'}
+            {wholeBuildingBilling
+              ? availableBillableBuildings.length
+              : showBuildings
+                ? unassignedUnits
+                : typeof profile?.declared_unit_count === 'number'
+                  ? Math.max(profile.declared_unit_count - units.length, 0)
+                  : '—'}
           </strong>
           <small>
-            {showBuildings
-              ? 'Áreas comunes o pendientes de ubicar'
-              : typeof profile?.declared_unit_count === 'number'
-                ? `${units.length} de ${profile.declared_unit_count} registradas`
-                : 'Cantidad declarada no disponible'}
+            {wholeBuildingBilling
+              ? 'Edificios físicos pendientes de registrar para cobro'
+              : showBuildings
+                ? 'Áreas comunes o pendientes de ubicar'
+                : typeof profile?.declared_unit_count === 'number'
+                  ? `${units.length} de ${profile.declared_unit_count} registradas`
+                  : 'Cantidad declarada no disponible'}
           </small>
         </Surface>
       </div>
@@ -457,7 +558,8 @@ export function StructureManagementPage({
                 role="tab"
                 type="button"
               >
-                {houseMode ? 'Casas' : 'Unidades'} <span>{units.length}</span>
+                {wholeBuildingBilling ? 'Cuentas por edificio' : houseMode ? 'Casas' : 'Unidades'}{' '}
+                <span>{units.length}</span>
               </button>
             ) : null}
             {showBuildings ? (
@@ -479,9 +581,11 @@ export function StructureManagementPage({
               onChange={(event) => setSearch(event.target.value)}
               placeholder={
                 activeView === 'units'
-                  ? houseMode
-                    ? 'Buscar casa o unidad'
-                    : 'Buscar unidad, piso o edificio'
+                  ? wholeBuildingBilling
+                    ? 'Buscar edificio facturable'
+                    : houseMode
+                      ? 'Buscar casa o unidad'
+                      : 'Buscar unidad, piso o edificio'
                   : 'Buscar torre o edificio'
               }
               type="search"
@@ -512,11 +616,13 @@ export function StructureManagementPage({
                       <div>
                         <strong>{unit.code}</strong>
                         <small>
-                          {houseMode
-                            ? 'Casa / unidad independiente'
-                            : unit.floor
-                              ? `Piso ${unit.floor}`
-                              : 'Piso no indicado'}
+                          {wholeBuildingBilling
+                            ? 'Edificio completo'
+                            : houseMode
+                              ? 'Casa / unidad independiente'
+                              : unit.floor
+                                ? `Piso ${unit.floor}`
+                                : 'Piso no indicado'}
                         </small>
                       </div>
                     </div>
@@ -534,9 +640,11 @@ export function StructureManagementPage({
                     </div>
                     <div data-label="Tipo">{UNIT_TYPE_LABELS[unit.type]}</div>
                     <div data-label="Alícuota">
-                      {unit.ownership_percentage === null
-                        ? 'No definida'
-                        : `${normalizePercentage(unit.ownership_percentage)}%`}
+                      {wholeBuildingBilling
+                        ? '—'
+                        : unit.ownership_percentage === null
+                          ? 'No definida'
+                          : `${normalizePercentage(unit.ownership_percentage)}%`}
                     </div>
                     <div data-label="Estado">
                       <Badge tone={unit.status === 'active' ? 'success' : 'neutral'}>
@@ -567,7 +675,9 @@ export function StructureManagementPage({
                   ? 'Sin coincidencias'
                   : houseMode
                     ? 'Aún no hay casas'
-                    : 'Aún no hay unidades'
+                    : wholeBuildingBilling
+                      ? 'Aún no hay edificios facturables'
+                      : 'Aún no hay unidades'
               }
             />
           )
@@ -678,99 +788,142 @@ export function StructureManagementPage({
           ) : (
             <form className="ux-form" onSubmit={(event) => void saveUnit(event, editor.unit)}>
               <DialogBody>
-                <FormGrid>
-                  <Field
-                    label={houseMode ? 'Código o número de casa' : 'Código o número de unidad'}
-                  >
-                    <input
-                      autoFocus
-                      defaultValue={editor.unit?.code ?? ''}
-                      maxLength={40}
-                      name="code"
-                      required
-                    />
-                  </Field>
+                {wholeBuildingBilling ? (
+                  <FormGrid>
+                    {editor.unit ? (
+                      <div className="structure-form-note" data-span="full">
+                        <input
+                          type="hidden"
+                          name="buildingId"
+                          value={editor.unit.building_id ?? ''}
+                        />
+                        Cuenta facturable: <strong>{editor.unit.code}</strong>. El edificio
+                        vinculado no puede cambiar.
+                      </div>
+                    ) : (
+                      <Field label="Edificio que recibirá los cargos" required>
+                        <Select defaultValue="" name="buildingId" required>
+                          <option value="">Seleccionar edificio</option>
+                          {availableBillableBuildings.map((building) => (
+                            <option key={building.id} value={building.id}>
+                              {building.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    )}
+                    <div className="structure-form-note" data-span="full">
+                      Una cuenta por edificio físico. No se generan apartamentos ni porcentajes de
+                      propiedad.
+                    </div>
+                    <Field label="Estado">
+                      <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
+                        <option value="active">Activa</option>
+                        <option value="inactive">Archivada</option>
+                      </Select>
+                    </Field>
+                  </FormGrid>
+                ) : (
+                  <FormGrid>
+                    <Field
+                      label={houseMode ? 'Código o número de casa' : 'Código o número de unidad'}
+                    >
+                      <input
+                        autoFocus
+                        defaultValue={editor.unit?.code ?? ''}
+                        maxLength={40}
+                        name="code"
+                        required
+                      />
+                    </Field>
 
-                  {!houseMode && !singleBuildingMode ? (
+                    {!houseMode && !singleBuildingMode ? (
+                      <Field
+                        hint={
+                          multiBuildingMode
+                            ? 'El mismo código puede existir en otra torre.'
+                            : undefined
+                        }
+                        label="Torre o edificio"
+                      >
+                        <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
+                          <option value="">Sin edificio / área común</option>
+                          {buildings.map((building) => (
+                            <option key={building.id} value={building.id}>
+                              {building.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    ) : null}
+
+                    {singleBuildingMode ? (
+                      <div className="structure-form-note" data-span="full">
+                        Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>
+                        . La unidad se asociará automáticamente y su código será único dentro de
+                        este edificio.
+                      </div>
+                    ) : null}
+
                     <Field
                       hint={
-                        multiBuildingMode
-                          ? 'El mismo código puede existir en otra torre.'
-                          : undefined
+                        houseMode
+                          ? 'Habitta oculta Apartamento porque este condominio fue definido como conjunto de casas.'
+                          : singleBuildingMode || multiBuildingMode
+                            ? 'Habitta oculta Casa porque la estructura fue definida por edificios.'
+                            : undefined
                       }
-                      label="Torre o edificio"
+                      label="Tipo"
                     >
-                      <Select defaultValue={editor.unit?.building_id ?? ''} name="buildingId">
-                        <option value="">Sin edificio / área común</option>
-                        {buildings.map((building) => (
-                          <option key={building.id} value={building.id}>
-                            {building.name}
+                      <Select
+                        defaultValue={editor.unit?.type ?? defaultUnitType(topology)}
+                        name="type"
+                      >
+                        {availableUnitTypes.map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
                           </option>
                         ))}
                       </Select>
                     </Field>
-                  ) : null}
 
-                  {singleBuildingMode ? (
-                    <div className="structure-form-note" data-span="full">
-                      Edificio: <strong>{buildings[0]?.name ?? 'Pendiente de configurar'}</strong>.
-                      La unidad se asociará automáticamente y su código será único dentro de este
-                      edificio.
-                    </div>
-                  ) : null}
+                    {!houseMode ? (
+                      <Field
+                        hint="Puede ser un número, PB, PH o nivel descriptivo."
+                        label="Piso o nivel"
+                      >
+                        <input
+                          defaultValue={editor.unit?.floor ?? ''}
+                          maxLength={20}
+                          name="floor"
+                        />
+                      </Field>
+                    ) : null}
 
-                  <Field
-                    hint={
-                      houseMode
-                        ? 'Habitta oculta Apartamento porque este condominio fue definido como conjunto de casas.'
-                        : singleBuildingMode || multiBuildingMode
-                          ? 'Habitta oculta Casa porque la estructura fue definida por edificios.'
-                          : undefined
-                    }
-                    label="Tipo"
-                  >
-                    <Select
-                      defaultValue={editor.unit?.type ?? defaultUnitType(topology)}
-                      name="type"
-                    >
-                      {availableUnitTypes.map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-
-                  {!houseMode ? (
-                    <Field
-                      hint="Puede ser un número, PB, PH o nivel descriptivo."
-                      label="Piso o nivel"
-                    >
-                      <input defaultValue={editor.unit?.floor ?? ''} maxLength={20} name="floor" />
+                    <Field hint="Porcentaje de alícuota entre 0 y 100." label="Alícuota (%)">
+                      <input
+                        defaultValue={normalizePercentage(
+                          editor.unit?.ownership_percentage ?? null,
+                        )}
+                        max="100"
+                        min="0.0001"
+                        name="ownershipPercentage"
+                        step="0.0001"
+                        type="number"
+                      />
                     </Field>
-                  ) : null}
 
-                  <Field hint="Porcentaje de alícuota entre 0 y 100." label="Alícuota (%)">
-                    <input
-                      defaultValue={normalizePercentage(editor.unit?.ownership_percentage ?? null)}
-                      max="100"
-                      min="0.0001"
-                      name="ownershipPercentage"
-                      step="0.0001"
-                      type="number"
-                    />
-                  </Field>
-
-                  <Field
-                    hint="Archivada conserva pagos, cuotas, propietarios y ocupaciones históricas."
-                    label="Estado"
-                  >
-                    <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
-                      <option value="active">Activa</option>
-                      <option value="inactive">Archivada</option>
-                    </Select>
-                  </Field>
-                </FormGrid>
+                    <Field
+                      hint="Archivada conserva pagos, cuotas, propietarios y ocupaciones históricas."
+                      label="Estado"
+                    >
+                      <Select defaultValue={editor.unit?.status ?? 'active'} name="status">
+                        <option value="active">Activa</option>
+                        <option value="inactive">Archivada</option>
+                      </Select>
+                    </Field>
+                  </FormGrid>
+                )}
               </DialogBody>
               <DialogFooter>
                 <Button
