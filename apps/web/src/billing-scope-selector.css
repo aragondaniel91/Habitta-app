@@ -1,0 +1,104 @@
+.structure-billing {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+.structure-billing__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.structure-billing__eyebrow {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+.structure-billing__heading h2 {
+  margin: 5px 0 6px;
+  color: var(--text-strong);
+  font-size: 18px;
+  letter-spacing: -0.025em;
+}
+.structure-billing__heading p,
+.structure-billing__footer p,
+.structure-billing__choice small,
+.structure-billing__locked span {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.structure-billing__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.structure-billing__choice {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-content: start;
+  gap: 5px 11px;
+  min-height: 110px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.structure-billing__choice:hover {
+  border-color: var(--border-strong);
+}
+.structure-billing__choice[data-selected='true'] {
+  border-color: var(--blue);
+  background: var(--surface-subtle);
+}
+.structure-billing__indicator {
+  grid-row: span 2;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 50%;
+}
+.structure-billing__choice[data-selected='true'] .structure-billing__indicator {
+  border: 5px solid var(--blue);
+}
+.structure-billing__choice strong {
+  font-size: 13px;
+}
+.structure-billing__choice small {
+  grid-column: 2;
+}
+.structure-billing__choice:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+.structure-billing__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.structure-billing__locked {
+  display: grid;
+  gap: 5px;
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+.structure-billing__locked strong {
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .structure-billing__options {
+    grid-template-columns: 1fr;
+  }
+  .structure-billing__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

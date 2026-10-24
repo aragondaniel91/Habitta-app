@@ -28,7 +28,7 @@ describe('physical structure management workspace', () => {
     expect(source).toContain('showUnitManagement = true');
     expect(source).toContain('Volver a Unidades');
     expect(source).toContain(
-      'const effectiveShowUnitManagement = showUnitManagement || houseMode;',
+      'const effectiveShowUnitManagement = showUnitManagement || houseMode || wholeBuildingBilling;',
     );
     expect(source).toContain('effectiveShowUnitManagement ? (');
     expect(source).toContain("{effectiveShowUnitManagement && activeView === 'units'");
@@ -40,7 +40,7 @@ describe('physical structure management workspace', () => {
 
     expect(source).toContain("const houseMode = topology === 'house_community'");
     expect(source).toContain("const singleBuildingMode = topology === 'single_building'");
-    expect(source).toContain('unitTypeOptions(topology)');
+    expect(source).toContain('unitTypeOptions(topology, chargeScope)');
     expect(source).toContain('defaultUnitType(topology)');
     expect(defaultUnitType('house_community')).toBe('house');
     expect(allowedUnitTypes('single_building')).not.toContain('house');

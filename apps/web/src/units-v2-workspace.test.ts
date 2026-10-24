@@ -26,7 +26,7 @@ describe('Units V2 workspace', () => {
       readFile(drawerUrl, 'utf8'),
     ]);
     expect(page).toContain('supportsBuildingStructure(topology)');
-    expect(page).toContain('unitTypeOptions(topology)');
+    expect(page).toContain('unitTypeOptions(topology, chargeScope)');
     expect(page).toContain('unitReferenceLabel');
     expect(drawer).toContain('unitReferenceLabel');
     expect(allowedUnitTypes('house_community')).toContain('house');

@@ -14,7 +14,7 @@ describe('HAB-507 house-community structure UX', () => {
 
   it('keeps a direct structure deep link on house/unit management instead of buildings', () => {
     expect(structurePage).toContain(
-      'const effectiveShowUnitManagement = showUnitManagement || houseMode;',
+      'const effectiveShowUnitManagement = showUnitManagement || houseMode || wholeBuildingBilling;',
     );
     expect(structurePage).toContain("effectiveShowUnitManagement && activeView === 'units'");
     expect(structurePage).toContain(
