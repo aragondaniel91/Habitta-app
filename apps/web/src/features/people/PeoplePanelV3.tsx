@@ -1712,7 +1712,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session, onOpenU
               </Button>
             </div>
           }
-          description="Una identidad por persona, con vínculos y acceso a la comunidad en un solo lugar."
+          description="Una identidad por persona. Propiedad, ocupación, comunicaciones y acceso permanecen auditables y se presentan por unidad."
           eyebrow={`Comunidad · ${condominiumName}`}
           title="Personas"
         />
