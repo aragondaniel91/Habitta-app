@@ -1712,7 +1712,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session, onOpenU
               </Button>
             </div>
           }
-          description="Una identidad por persona. Propiedad, ocupación, comunicaciones y acceso permanecen auditables y se presentan por unidad."
+          description="Una identidad por persona, con vínculos y acceso a la comunidad en un solo lugar."
           eyebrow={`Comunidad · ${condominiumName}`}
           title="Personas"
         />
@@ -1764,7 +1764,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session, onOpenU
           </InlineNotice>
         ) : null}
 
-        <WorkspaceMetrics>
+        <WorkspaceMetrics className="people-v3-overview-metrics">
           <WorkspaceMetricCard
             icon={<PeopleIcon size={18} />}
             label="Personas"
@@ -1789,6 +1789,7 @@ export function PeoplePanelV3({ condominiumId, condominiumName, session, onOpenU
 
         <div className="people-v3-layout">
           <PeopleDirectoryView
+            key={condominiumId}
             countsUnavailable={Boolean(directoryLoadError && people.length === 0)}
             onClearFilters={() => {
               if (directoryLoadError && people.length === 0) {
