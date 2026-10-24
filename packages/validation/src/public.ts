@@ -40,3 +40,4 @@ export const notificationPreferencesSchema = z.object({
 });
 
 export * from './index';
+export * from './billing-target-model';
