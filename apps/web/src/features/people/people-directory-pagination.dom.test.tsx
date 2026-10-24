@@ -224,6 +224,17 @@ describe('minimal Personas directory pagination', () => {
     await choose('Ordenar personas', 'name-desc');
     expect(visible()[0]).toBe('Persona 48');
     expect(host.textContent).toContain('1–10 de 48 personas');
+
+    // A normal selection within a scrolled 25-person page must not jump to the top.
+    await choose('Personas por página', '25');
+    const list = host.querySelector<HTMLDivElement>('.people-v3-directory__list');
+    expect(list).not.toBeNull();
+    list!.scrollTop = 154;
+    await act(async () => root.render(view(people, 'resident-40')));
+    expect(list!.scrollTop).toBe(154);
+    expect(
+      host.querySelector('.people-v3-directory__item[aria-current="true"]')?.textContent,
+    ).toContain('Persona 40');
   });
 
   it('has a compact empty state and no phantom page navigation', async () => {

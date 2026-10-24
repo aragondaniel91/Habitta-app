@@ -82,7 +82,7 @@ export function PeopleDirectoryView({
   const lastRevealedSelectionRef = useRef<string | null>(null);
 
   // Auto-selected deep links must reveal the selected person in the paged list.
-  // Do this only for a new selection, not on user-driven sort/filter/page changes.
+  // A normal click is already on the visible page; never snap its scroll position.
   useEffect(() => {
     if (!selectedId) {
       lastRevealedSelectionRef.current = null;
@@ -92,9 +92,13 @@ export function PeopleDirectoryView({
     const selectedIndex = ordered.findIndex((person) => person.id === selectedId);
     if (selectedIndex < 0) return; // The directory may still be loading.
     lastRevealedSelectionRef.current = selectedId;
-    setRequestedPage(Math.floor(selectedIndex / pageSize) + 1);
-    if (listRef.current) listRef.current.scrollTop = 0;
-  }, [selectedId, ordered, pageSize]);
+    const selectedPage = Math.floor(selectedIndex / pageSize) + 1;
+    const currentPage = paginatePeopleDirectory(ordered, requestedPage, pageSize).page;
+    if (selectedPage !== currentPage) {
+      setRequestedPage(selectedPage);
+      if (listRef.current) listRef.current.scrollTop = 0;
+    }
+  }, [selectedId, ordered, pageSize, requestedPage]);
 
   const directoryPage = paginatePeopleDirectory(ordered, requestedPage, pageSize);
   const changePage = (page: number) => {
