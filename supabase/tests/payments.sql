@@ -1,5 +1,5 @@
 begin;
-select plan(133);
+select plan(162);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('80000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@pay.test','x',now(),now()),
@@ -278,6 +278,48 @@ select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000001'
 select throws_ok($$select public.delete_payment_method('81100000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000001')$$,'P0001','payment method in use','a payment method referenced by payments cannot be deleted');
 select lives_ok($$select public.delete_payment_method('81100000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000009')$$,'an unused payment method can be deleted');
 select is((select count(*) from public.condominium_payment_methods where id in ('81130000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000009')),1::bigint,'only the unused payment method was deleted');
+
+-- HAB-FINANCIAL-TRUTH-001: deterministic pilot examples; all changes roll back.
+-- Only the ledger is authoritative; drafts and submitted payments must never change it.
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000001',true);
+select public.create_receivable_item('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81140000-0000-0000-0000-000000000001','FT charge 12',12.00,'USD',current_date,null);
+select public.create_receivable_item('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81140000-0000-0000-0000-000000000001','FT charge 4.50',4.50,'USD',current_date,null);
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004',true);
+select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,5.00,'USD','Owner','FT-PARTIAL',null,'ft-partial')$$,'FT: draft $5 against $12');
+select is((select sum(case direction when 'debit' then amount else -amount end) from public.receivable_ledger_entries where receivable_item_id=(select id from public.receivable_items where description='FT charge 12')),12.00::numeric,'FT: draft has not reduced $12 balance');
+select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='ft-partial')),0::bigint,'FT: draft has no ledger writes');
+select lives_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='ft-partial'))$$,'FT: submit partial payment');
+select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='ft-partial')),0::bigint,'FT: submitted payment has no ledger writes');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
+select lives_ok($$select public.approve_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='ft-partial'),jsonb_build_array(jsonb_build_object('receivable_item_id',(select id from public.receivable_items where description='FT charge 12'),'payment_amount','5.00','receivable_amount','5.00','payment_currency_code','USD','receivable_currency_code','USD')))$$,'FT: apply approved $5 to charge $12');
+select is((select sum(case direction when 'debit' then amount else -amount end) from public.receivable_ledger_entries where receivable_item_id=(select id from public.receivable_items where description='FT charge 12')),7.00::numeric,'FT: $12 - $5 = $7 authoritative outstanding');
+select is((select original_amount from public.receivable_items where description='FT charge 12'),12.00::numeric,'FT: original charge stays $12');
+select is((select outstanding_amount from public.receivable_balances where description='FT charge 12'),'7.00','FT: RLS-scoped receivables view agrees with ledger on $7');
+select is((select status from public.receivable_balances where description='FT charge 12'),'partially_settled','FT: receivable read model shows partial settlement');
+select is((select count(*) from public.get_unit_statement('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001') where entry_type='payment_credit' and credit='5.00'),1::bigint,'FT: unit statement exposes approved $5 credit once');
+select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='ft-partial') and receivable_item_id is null),0::bigint,'FT: partial payment creates no phantom credit');
+select lives_ok($$select public.approve_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='ft-partial'),'[]'::jsonb)$$,'FT: repeated approval is idempotent');
+select is((select count(*) from public.payment_allocations where payment_id=(select id from public.payments where idempotency_key='ft-partial')),1::bigint,'FT: retry does not duplicate partial allocation');
+
+-- Current resident wizard caps the amount at outstanding. This credit fixture
+-- verifies the existing DATABASE contract; it does not claim that the UI can reuse credit.
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004',true);
+select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,5.00,'USD','Owner','FT-CREDIT',null,'ft-credit')$$,'FT: draft $5 for $4.50 obligation');
+select lives_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='ft-credit'))$$,'FT: submit $5 payment for approval');
+select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
+select lives_ok($$select public.approve_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='ft-credit'),jsonb_build_array(jsonb_build_object('receivable_item_id',(select id from public.receivable_items where description='FT charge 4.50'),'payment_amount','4.50','receivable_amount','4.50','payment_currency_code','USD','receivable_currency_code','USD')))$$,'FT: approve only $4.50 allocation');
+select is((select sum(case direction when 'debit' then amount else -amount end) from public.receivable_ledger_entries where receivable_item_id=(select id from public.receivable_items where description='FT charge 4.50')),0.00::numeric,'FT: $4.50 obligation is paid exactly');
+select is((select sum(payment_amount) from public.payment_allocations where payment_id=(select id from public.payments where idempotency_key='ft-credit')),4.50::numeric,'FT: allocated amount never exceeds charge');
+select is((select outstanding_amount from public.receivable_balances where description='FT charge 4.50'),'0.00','FT: CxC read model shows the $4.50 charge settled');
+select is((select amount from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='ft-credit') and receivable_item_id is null and entry_type='payment_credit'),0.50::numeric,'FT: excess $0.50 is separately credited');
+select is((select snapshot->'approval'->>'unapplied_credit' from public.payment_receipts where payment_id=(select id from public.payments where idempotency_key='ft-credit')),'0.50','FT: receipt freezes $0.50 unapplied credit');
+select lives_ok($$select public.approve_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='ft-credit'),'[]'::jsonb)$$,'FT: repeated credit approval is idempotent');
+select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='ft-credit') and entry_type='payment_credit'),2::bigint,'FT: no duplicate credit on retry');
+select lives_ok($$select public.reverse_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='ft-credit'),'FT refund correction')$$,'FT: reverse payment through compensation');
+select is((select sum(case direction when 'debit' then amount else -amount end) from public.receivable_ledger_entries where receivable_item_id=(select id from public.receivable_items where description='FT charge 4.50')),4.50::numeric,'FT: reversing payment restores charge outstanding');
+select is((select sum(case direction when 'credit' then amount else -amount end) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='ft-credit') and receivable_item_id is null),0.00::numeric,'FT: reversal cancels unapplied credit exactly');
+select is((select outstanding_amount from public.receivable_balances where description='FT charge 4.50'),'4.50','FT: CxC read model restores $4.50 after reversal');
+select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='ft-credit') and entry_type='reversal'),2::bigint,'FT: reversal creates exactly two counterentries');
 
 select * from finish();
 rollback;
