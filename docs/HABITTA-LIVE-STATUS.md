@@ -78,6 +78,12 @@ Mantener `units.id` como clave financiera y `buildings` como entidad física. Nu
 - [#483](https://github.com/aragondaniel91/Habitta-app/issues/483): onboarding comercial / Platform Admin.
 - [#528](https://github.com/aragondaniel91/Habitta-app/issues/528): Supabase 30/10, GRANT/RLS y aislamiento.
 
+## Nueva entrega de documentación — PR #547
+
+- **Fecha:** 2026-10-24. **Estado:** REVIEW, aún sin merge. **SHA:** `0b9384636a72f882aab04b8cdb862448a75b9b3e` (confirmar HEAD después de actualizar este tracker).
+- Corrige el contrato de arquitectura para distinguir la situación histórica de la implementación candidata en PR #545. **No incorpora nuevas funciones ni concede permisos**, no cambia contabilidad ni producción.
+- **Próximo paso:** comprobar CI del SHA exacto, integrar PR documental si la protección lo permite y volver a la certificación técnica de #545.
+
 ## Protocolo de actualización continua SDP — OBLIGATORIO
 
 **DISCOVER:** al abrir cualquier chat, leer este documento en `main`, verificar último estado vivo de #545, #515 y branches/CI/deploy. No asumir que este checkpoint sigue siendo HEAD.
