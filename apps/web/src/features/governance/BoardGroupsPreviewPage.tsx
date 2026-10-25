@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Dialog, DialogBody, DialogFooter } from '../../components/Dialog';
+import { Button } from '../../components/ui';
 import './BoardGroupsPreviewPage.css';
 
 type Mode = 'autonomo' | 'hibrido' | 'centralizado';
@@ -67,7 +69,7 @@ export function BoardGroupsPreviewPage() {
     setPage(1);
   };
   return (
-    <main className="hab-board-preview">
+    <div className="hab-board-preview">
       <header className="hab-board-preview__head">
         <div>
           <p className="hab-board-preview__eyebrow">Organización / Juntas y equipos</p>
@@ -78,10 +80,10 @@ export function BoardGroupsPreviewPage() {
         </div>
         <span className="hab-board-preview__tag">VISTA DEMOSTRATIVA</span>
       </header>
-      <div role="status" className="hab-board-preview__notice">
+      <aside className="hab-board-preview__notice">
         Datos de ejemplo: esta pantalla no consulta ni modifica juntas, pagos, cuotas o permisos
         reales. Las configuraciones se pierden al salir.
-      </div>
+      </aside>
       <section className="hab-board-preview__stats" aria-label="Resumen demostrativo">
         <div>
           <span>Edificios</span>
@@ -115,6 +117,9 @@ export function BoardGroupsPreviewPage() {
               setStateFilter('all');
               setPage(1);
               setSelected(null);
+              setSort('building');
+              setDescending(false);
+              setContext('general');
             }}
           >
             Restablecer demo
@@ -234,24 +239,8 @@ export function BoardGroupsPreviewPage() {
         </footer>
       </section>
       {detail && (
-        <div
-          className="hab-board-preview__overlay"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setSelected(null);
-          }}
-        >
-          <section
-            className="hab-board-preview__dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Detalle de ${detail.group}`}
-          >
-            <header>
-              <h2>{detail.group}</h2>
-              <button type="button" onClick={() => setSelected(null)} aria-label="Cerrar">
-                ✕
-              </button>
-            </header>
+        <Dialog title={detail.group} onClose={() => setSelected(null)} size="md">
+          <DialogBody>
             <p>
               Grupo de ejemplo del {detail.building}. Los cargos de la residencia general siguen
               perteneciendo a la cuenta cobrable del edificio.
@@ -289,12 +278,14 @@ export function BoardGroupsPreviewPage() {
               Finanzas internas de apartamentos y permisos por edificio: pendientes de arquitectura,
               RLS y autorización.
             </p>
-            <button type="button" onClick={() => setSelected(null)}>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setSelected(null)}>
               Cerrar detalle
-            </button>
-          </section>
-        </div>
+            </Button>
+          </DialogFooter>
+        </Dialog>
       )}
-    </main>
+    </div>
   );
 }
