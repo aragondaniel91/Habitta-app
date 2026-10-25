@@ -81,6 +81,11 @@ const GovernancePage = lazy(() =>
     default: module.GovernanceWorkspacePage,
   })),
 );
+const BoardGroupsPreviewPage = lazy(() =>
+  import('./features/governance/BoardGroupsPreviewPage').then((module) => ({
+    default: module.BoardGroupsPreviewPage,
+  })),
+);
 const MaintenancePage = lazy(() =>
   import('./pages/MaintenancePage').then((module) => ({ default: module.MaintenancePage })),
 );
@@ -563,6 +568,8 @@ export default function App() {
         session={session}
       />
     );
+  } else if (activeRoute.key === 'board-groups-preview') {
+    page = <BoardGroupsPreviewPage />;
   } else if (activeRoute.key === 'team') {
     page = (
       <TeamAccessPage

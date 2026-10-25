@@ -34,6 +34,7 @@ export type AppRoute = {
     | 'community'
     | 'documents'
     | 'governance'
+    | 'board-groups-preview'
     | 'requests'
     | 'announcements'
     | 'team'
@@ -271,6 +272,18 @@ export const APP_ROUTES = [
       'owner',
       'tenant',
     ],
+  },
+  {
+    key: 'board-groups-preview',
+    path: '/app/board-groups-preview',
+    label: 'Juntas y equipos · Demo',
+    shortLabel: 'Juntas Demo',
+    title: 'Juntas y equipos · Prototipo',
+    description: 'Explora de forma visual los modelos de autonomía y la gestión de juntas. Datos ficticios.',
+    section: 'comunidad',
+    icon: VoteIcon,
+    scope: ['Prototipo visual', 'Sin permisos ni operaciones reales'],
+    roles: ['condominium_admin'],
   },
   {
     key: 'requests',
