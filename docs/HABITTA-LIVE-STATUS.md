@@ -80,9 +80,28 @@ Mantener `units.id` como clave financiera y `buildings` como entidad física. Nu
 
 ## Nueva entrega de documentación — PR #547
 
-- **Fecha:** 2026-10-24. **Estado:** REVIEW, aún sin merge. **SHA:** `0b9384636a72f882aab04b8cdb862448a75b9b3e` (confirmar HEAD después de actualizar este tracker).
+- **Fecha:** 2026-10-24. **Estado:** MERGED en `main` (merge `64ae537e728803cca29474470f4f480a22749169`; verificado previamente).
 - Corrige el contrato de arquitectura para distinguir la situación histórica de la implementación candidata en PR #545. **No incorpora nuevas funciones ni concede permisos**, no cambia contabilidad ni producción.
-- **Próximo paso:** comprobar CI del SHA exacto, integrar PR documental si la protección lo permite y volver a la certificación técnica de #545.
+- **Próximo paso:** continuar la certificación técnica de #545.
+
+## Política obligatoria de ingreso y priorización de solicitudes nuevas
+
+**La expresión del Founder “agrega”, “mejora”, “falta”, “necesitamos” o la descripción de un bug/feature inicia un intake**, incluso si se intercala en otro trabajo. El agente debe:
+
+1. Buscar duplicados, implementaciones existentes e issues relacionados; conservar intacta la numeración de los 30 puntos originales.
+2. Evaluar con SDP impacto en seguridad/integridad financiera, desbloqueo del piloto, ingreso comercial, UX, complejidad, dependencias y esfuerzo. Prioridades: **P0** seguridad/datos/finanzas/bloqueo grave; **P1** crítico para clientes/lanzamiento/ingresos; **P2** UX u operación importante; **P3** complementario.
+3. Crear un issue nuevo o ampliar uno existente con criterios de aceptación y pruebas por rol/topología. No crear duplicados; dar ID estable a nuevos requerimientos.
+4. Registrar cada solicitud en una sección `Nuevas solicitudes (después de los 30)` de este archivo con **ID/issue, prioridad, estado, responsable, dependencia, próxima acción y evidencia**. Si GitHub no está accesible, marcar explícitamente “pendiente de registrar” y no fingir persistencia.
+5. Repriorizar respetando dependencias y trabajo activo; una idea nueva no desplaza una entrega segura por defecto. No pasar de backlog a implementación o producción sin los gates correspondientes.
+6. Actualizar este documento mediante un PR protegido **en la misma entrega** (o PR documental vinculado), y comunicar al Founder la prioridad asignada.
+
+**Estados:** BACKLOG, READY, IN_PROGRESS, BLOCKED, IN_REVIEW, DONE (con evidencia real de merge/release cuando corresponda). El estado DONE no puede inferirse de que hay código o de que un agente afirmó éxito.
+
+### Nuevas solicitudes (después de los 30)
+
+| ID | Feature/corrección | Prioridad | Estado | Issue / PR | Dependencias y próxima acción |
+| --- | --- | --- | --- | --- | --- |
+| — | Sin solicitudes adicionales registradas en este documento al corte del 2026-10-24 | — | — | — | Agregar aquí cada nuevo requerimiento; no sobrescribir los 30 originales |
 
 ## Protocolo de actualización continua SDP — OBLIGATORIO
 
@@ -104,6 +123,7 @@ Mantener `units.id` como clave financiera y `buildings` como entidad física. Nu
 | --- | --- | --- |
 | 2026-10-24 | Recuperación después de chat interrumpido | Identificado PR #545 y 4 workflows verdes para `39e385c`; checkpoint SDP registrado. Próximo: Junta/delegados, planes, onboarding y E2E; sin prueba de aceptación final. |
 | 2026-10-24 | Crear tracking canónico | Documento inicial de 30 puntos; completar con cada entrega futura. |
+| 2026-10-24 | Gobierno de nuevos requerimientos | Regla SDP para registrar y priorizar cada nueva solicitud; PR documental en preparación. |
 
 ### Plantilla para añadir al registro
 
