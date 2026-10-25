@@ -279,7 +279,8 @@ export const APP_ROUTES = [
     label: 'Juntas y equipos · Demo',
     shortLabel: 'Juntas Demo',
     title: 'Juntas y equipos · Prototipo',
-    description: 'Explora de forma visual los modelos de autonomía y la gestión de juntas. Datos ficticios.',
+    description:
+      'Explora de forma visual los modelos de autonomía y la gestión de juntas. Datos ficticios.',
     section: 'comunidad',
     icon: VoteIcon,
     scope: ['Prototipo visual', 'Sin permisos ni operaciones reales'],
