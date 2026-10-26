@@ -34,6 +34,7 @@ type Props = { condominiumId?: string | null; session?: Session | null };
 
 export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
   const [registered, setRegistered] = useState<RegisteredBuilding[]>([]);
+  const [registeredSearch, setRegisteredSearch] = useState('');
   const [registeredError, setRegisteredError] = useState<string | null>(null);
   const [registeredLoading, setRegisteredLoading] = useState(false);
   useEffect(() => {
@@ -64,6 +65,17 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
       active = false;
     };
   }, [condominiumId, session]);
+  const visibleRegistered = useMemo(
+    () =>
+      registered
+        .filter((building) =>
+          building.name
+            .toLocaleLowerCase('es')
+            .includes(registeredSearch.trim().toLocaleLowerCase('es')),
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true })),
+    [registered, registeredSearch],
+  );
   const [rows, setRows] = useState<Board[]>(seed);
   const [search, setSearch] = useState('');
   const [modeFilter, setModeFilter] = useState('all');
@@ -126,15 +138,27 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
           <p className="hab-board-preview__sub">
             Información real de estructura. Las juntas y modalidades de abajo son ilustrativas.
           </p>
+          {!registeredLoading && !registeredError && registered.length > 0 && (
+            <label>
+              Buscar edificio registrado ({registered.length})
+              <input
+                value={registeredSearch}
+                onChange={(event) => setRegisteredSearch(event.target.value)}
+                placeholder="Nombre del edificio registrado"
+              />
+            </label>
+          )}
           {registeredLoading ? (
             <p role="status">Cargando edificios…</p>
           ) : registeredError ? (
             <p role="alert">{registeredError}</p>
           ) : registered.length === 0 ? (
             <p>No hay edificios registrados en este condominio.</p>
+          ) : visibleRegistered.length === 0 ? (
+            <p>No hay edificios que coincidan con la búsqueda.</p>
           ) : (
             <ul>
-              {registered.map((building) => (
+              {visibleRegistered.map((building) => (
                 <li key={building.id}>{building.name}</li>
               ))}
             </ul>

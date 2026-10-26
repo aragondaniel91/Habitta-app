@@ -103,3 +103,36 @@ describe('loss of selected condominium', () => {
     expect(apiRequest).toHaveBeenCalledWith('/v1/condominiums/condo-b/buildings', session);
   });
 });
+
+describe('registered directory usability', () => {
+  it('searches real building names and sorts them numerically', async () => {
+    apiRequest.mockResolvedValue([
+      { id: '10', name: 'Edificio 10' },
+      { id: '2', name: 'Edificio 2' },
+      { id: '1', name: 'Edificio 1' },
+    ]);
+    const view = await render('condo-a');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const list = view.querySelector('[aria-label="Edificios registrados"] ul');
+    expect(Array.from(list?.querySelectorAll('li') ?? []).map((item) => item.textContent)).toEqual([
+      'Edificio 1',
+      'Edificio 2',
+      'Edificio 10',
+    ]);
+    const search = view.querySelector<HTMLInputElement>(
+      'input[placeholder="Nombre del edificio registrado"]',
+    );
+    expect(search).not.toBeNull();
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(search, 'Edificio 10');
+      search?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(Array.from(list?.querySelectorAll('li') ?? []).map((item) => item.textContent)).toEqual([
+      'Edificio 10',
+    ]);
+    expect(apiRequest).toHaveBeenCalledTimes(1);
+  });
+});
