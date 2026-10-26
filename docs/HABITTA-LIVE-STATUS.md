@@ -15,8 +15,16 @@
 
 - **Claude independiente** re-revisó solo-lectura `0b19dc2..6bc23cb` desde Daragon-PC; veredicto **CHANGES REQUIRED**: el control por feature flag y las etiquetas de demo quedaron correctos; detectó riesgos de typecheck al indexar `matrixLabels[route.key]` y E2E sin flag. Informó otros pendientes de baja prioridad sobre data minimization, help y paridad.
 - **Correcciones posteriores:** commit `6179a2e` normaliza Prettier tras fallo real en quality; commit `29029b8de370ea1ee03484f8f801a034784cc815` corrige indexado tipado en test y habilita flag en Playwright local solo al disponer de credenciales del test de juntas. El código original del PR sigue fuera de producción.
-- **Nuevo HEAD y gates:** SHA `29029b8de370ea1ee03484f8f801a034784cc815`; los cuatro workflows **IN_PROGRESS** a la hora de esta lectura, no afirmar PASS. Revisión Claude del HEAD completo posterior a las correcciones **PENDIENTE**. PR #559 en **DRAFT**.
+- **Nuevo HEAD y gates:** SHA `29029b8de370ea1ee03484f8f801a034784cc815`; los cuatro workflows **PASS** al verificarse el SHA `812fbbc9` (la nueva actualización documental requiere revalidación de HEAD), no afirmar PASS. Revisión Claude del HEAD completo posterior a las correcciones **PENDIENTE**. PR #559 en **DRAFT**.
 - **Limitaciones de aceptación:** pruebas reales con credenciales del directorio, control de acceso mismo-condominio para no-admins, minimización de columnas sin romper endpoint compartido, scripts de fixtures y justificación del registry CI requieren seguimiento. #528 GRANT/RLS efectivo y preflight de migraciones siguen bloqueando liberación automática; no hubo merge ni despliegue.
+
+### SDP #559 — Revisión independiente final (2026-10-26)
+
+- **SHA revisado:** `812fbbc9f2268d02ecd437e36ccc43d9f4d6eaae`. Claude Code revisó el diff desde main en worktree independiente, **solo lectura**. **Veredicto: apto para MERGE con `VITE_ENABLE_BOARD_GROUPS_PREVIEW` apagado; NO apto para habilitar el demo en producción**. Sin cambio de permisos/ledger; no se desplegó.
+- **GitHub CI en ese SHA:** quality PASS, pgTAP PASS, Financial E2E PASS, public-browser PASS. Claude validó estáticamente flag por defecto desactivado, fallback de URL directa, avisos de datos ficticios, texto contable neutro, parsing seguro, correcciones TypeScript y configuración E2E local.
+- **No confundir aprobación de integración con liberación de demo:** para habilitar flag hacen falta E2E autenticado real sin mocks, prueba de acceso denegado a no-admin del mismo condominio, minimización segura de columnas del endpoint compartido, validación visual y gate Supabase #528.
+- **Deuda no bloqueante para merge:** actualizar matriz de paridad para lectura autenticada de edificios, ajustar ayuda que sugiere una confirmación inexistente, documentar registry Docker Hub CI. No declarar lo anterior DONE.
+- **Próxima acción:** merge protegido del PR #559 solo con bandera apagada si los gates de su nuevo SHA siguen verdes; registrar SHA de merge y después realizar release preflight separado. `main` no equivale a producción.
 
 ## Resumen / continuidad inmediata
 
