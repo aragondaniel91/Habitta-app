@@ -26,6 +26,12 @@
 
 **Nueva política de solicitudes del Founder:** petición general de disciplina de intake, deduplicación, prioridad, issue, estado y PR protegido recibida el 2026-10-26. Es una reiteración del contrato ya versionado por PR #548, por lo que **no se crea feature duplicada**. Se ejecutará sobre cada solicitud funcional futura.
 
+### Solicitud explícita de producción — 2026-10-26
+
+**Founder autoriza avanzar y liberar únicamente lo listo. Estado: BLOCKED para deploy; autorización de intención NO sustituye gates.** Se verificó `.github/workflows/production-release.yml`: workflow_dispatch requiere confirmación y proyecto Supabase, valida que el SHA esté en main, hace backup cifrado antes de migraciones, aplica `supabase db push` y publica Worker/Pages. Esta ruta modifica base de datos de producción: no ejecutar hasta verificar riesgos y aprobación pertinente por artefacto. No existe prueba verificada de que main `7e42d1e` esté activo en producción.
+
+**Plan de release:** (1) revisión independiente del #559 SHA `0b19dc2` y SDP 4/4 con evidencia, resolver bloqueos, (2) auditoría y pruebas #528 de GRANT/RLS antes de migraciones, (3) merge protegido de #559 y este PR documental, revalidar SHA de main y alcance, (4) preflight de diferencias de migraciones, backup/rollback, (5) disparar workflow protegido solo con confirmaciones y aprobaciones correspondientes, (6) verificar /health, web y evidencia SHA desplegado; actualizar este documento mediante PR con run/SHA/hora. No presentar juntas ilustrativas como funcionalidad operativa.
+
 ## Resumen / continuidad inmediata
 
 | Elemento | Estado |
