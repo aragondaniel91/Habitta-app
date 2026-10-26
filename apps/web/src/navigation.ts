@@ -16,6 +16,7 @@ import {
 } from './components/icons';
 import type { IconProps } from './components/icons';
 import type { CondominiumRole } from './lib/roles';
+import { BOARD_GROUPS_PREVIEW_ENABLED } from './lib/feature-flags';
 
 export type RouteSection = 'principal' | 'finanzas' | 'comunidad' | 'sistema';
 
@@ -34,6 +35,7 @@ export type AppRoute = {
     | 'community'
     | 'documents'
     | 'governance'
+    | 'board-groups-preview'
     | 'requests'
     | 'announcements'
     | 'team'
@@ -56,6 +58,20 @@ export const ROUTE_SECTION_LABELS: Record<RouteSection, string> = {
   finanzas: 'Finanzas',
   comunidad: 'Comunidad',
   sistema: 'Sistema',
+};
+
+const BOARD_GROUPS_PREVIEW_ROUTE: AppRoute = {
+  key: 'board-groups-preview',
+  path: '/app/board-groups-preview',
+  label: 'Juntas y equipos · Demo',
+  shortLabel: 'Juntas Demo',
+  title: 'Juntas y equipos · Prototipo',
+  description:
+    'Explora de forma visual los modelos de autonomía y la gestión de juntas. Datos ficticios.',
+  section: 'comunidad',
+  icon: VoteIcon,
+  scope: ['Prototipo visual', 'Sin permisos ni operaciones reales'],
+  roles: ['condominium_admin'],
 };
 
 export const APP_ROUTES = [
@@ -272,6 +288,7 @@ export const APP_ROUTES = [
       'tenant',
     ],
   },
+  ...(BOARD_GROUPS_PREVIEW_ENABLED ? [BOARD_GROUPS_PREVIEW_ROUTE] : []),
   {
     key: 'requests',
     path: '/app/requests',

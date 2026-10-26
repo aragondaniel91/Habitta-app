@@ -3,6 +3,29 @@
 **Revisado manualmente:** 2026-10-24. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
+## SDP — correcciones tras revisión Claude del PR #559 (2026-10-26)
+
+- **Issue/PR:** #518/#553, [PR #559](https://github.com/aragondaniel91/Habitta-app/pull/559); rama `hab-557-main-integration`; builder Codex CLI desde worktree aislado `C:\Development\Reviews\Habitta-PR559`; commit `6bc23cb` (confirmar SHA completo en PR).
+- **Estado:** **IN_REVIEW / DRAFT**. Claude Code revisó de forma independiente HEAD anterior `0b19dc2` y emitió **CHANGES REQUIRED**, documentado en [comentario](https://github.com/aragondaniel91/Habitta-app/pull/559#issuecomment-6429296463). Las correcciones presentes aún **no tienen revisión Claude nueva**.
+- **Cambios verificables:** `VITE_ENABLE_BOARD_GROUPS_PREVIEW` controla la ruta de demostración, **deshabilitada por defecto**; etiquetas explícitas para indicadores, listas, perfiles y juntas ficticias; texto neutral sobre facturación dependiente de modalidad; defensa ante respuesta API no-lista; corrección del texto de ayuda; pruebas unitarias focalizadas. No hay cambio en schema, RLS o ledger. La vista autenticada del directorio real sigue siendo parte de la propuesta, pero el preview queda oculto por defecto.
+- **Verificación:** `git diff --check` PASS en checkout local; pruebas ejecutables locales **NO EJECUTADAS** (sin node_modules en worktree aislado); cuatro CI obligatorios sobre nuevo HEAD **PENDIENTES**. Auditoría parcial #528 todavía no constituye cierre del gate de producción.
+- **Pendientes:** validar CI exacto y pruebas focalizadas, re-review Claude de `6bc23cb`, resolver hallazgos restantes (end-to-end autenticado, minimización de datos de endpoint compartido, fixture visual y workaround registry), confirmar visual Founder cuando se habilite demo, control #528 de cambios de BD y preflight de release. **NO MERGE / NO PRODUCTION** sin gates SDP.
+
+### SDP #559 — Segunda revisión Claude y correcciones incrementales (2026-10-26)
+
+- **Claude independiente** re-revisó solo-lectura `0b19dc2..6bc23cb` desde Daragon-PC; veredicto **CHANGES REQUIRED**: el control por feature flag y las etiquetas de demo quedaron correctos; detectó riesgos de typecheck al indexar `matrixLabels[route.key]` y E2E sin flag. Informó otros pendientes de baja prioridad sobre data minimization, help y paridad.
+- **Correcciones posteriores:** commit `6179a2e` normaliza Prettier tras fallo real en quality; commit `29029b8de370ea1ee03484f8f801a034784cc815` corrige indexado tipado en test y habilita flag en Playwright local solo al disponer de credenciales del test de juntas. El código original del PR sigue fuera de producción.
+- **Nuevo HEAD y gates:** SHA `29029b8de370ea1ee03484f8f801a034784cc815`; los cuatro workflows **PASS** al verificarse el SHA `812fbbc9` (la nueva actualización documental requiere revalidación de HEAD), no afirmar PASS. Revisión Claude del HEAD completo posterior a las correcciones **PENDIENTE**. PR #559 en **DRAFT**.
+- **Limitaciones de aceptación:** pruebas reales con credenciales del directorio, control de acceso mismo-condominio para no-admins, minimización de columnas sin romper endpoint compartido, scripts de fixtures y justificación del registry CI requieren seguimiento. #528 GRANT/RLS efectivo y preflight de migraciones siguen bloqueando liberación automática; no hubo merge ni despliegue.
+
+### SDP #559 — Revisión independiente final (2026-10-26)
+
+- **SHA revisado:** `812fbbc9f2268d02ecd437e36ccc43d9f4d6eaae`. Claude Code revisó el diff desde main en worktree independiente, **solo lectura**. **Veredicto: apto para MERGE con `VITE_ENABLE_BOARD_GROUPS_PREVIEW` apagado; NO apto para habilitar el demo en producción**. Sin cambio de permisos/ledger; no se desplegó.
+- **GitHub CI en ese SHA:** quality PASS, pgTAP PASS, Financial E2E PASS, public-browser PASS. Claude validó estáticamente flag por defecto desactivado, fallback de URL directa, avisos de datos ficticios, texto contable neutro, parsing seguro, correcciones TypeScript y configuración E2E local.
+- **No confundir aprobación de integración con liberación de demo:** para habilitar flag hacen falta E2E autenticado real sin mocks, prueba de acceso denegado a no-admin del mismo condominio, minimización segura de columnas del endpoint compartido, validación visual y gate Supabase #528.
+- **Deuda no bloqueante para merge:** actualizar matriz de paridad para lectura autenticada de edificios, ajustar ayuda que sugiere una confirmación inexistente, documentar registry Docker Hub CI. No declarar lo anterior DONE.
+- **Próxima acción:** merge protegido del PR #559 solo con bandera apagada si los gates de su nuevo SHA siguen verdes; registrar SHA de merge y después realizar release preflight separado. `main` no equivale a producción.
+
 ## Resumen / continuidad inmediata
 
 | Elemento | Estado |
