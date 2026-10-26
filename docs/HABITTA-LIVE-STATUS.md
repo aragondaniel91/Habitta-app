@@ -11,6 +11,13 @@
 - **Verificación:** `git diff --check` PASS en checkout local; pruebas ejecutables locales **NO EJECUTADAS** (sin node_modules en worktree aislado); cuatro CI obligatorios sobre nuevo HEAD **PENDIENTES**. Auditoría parcial #528 todavía no constituye cierre del gate de producción.
 - **Pendientes:** validar CI exacto y pruebas focalizadas, re-review Claude de `6bc23cb`, resolver hallazgos restantes (end-to-end autenticado, minimización de datos de endpoint compartido, fixture visual y workaround registry), confirmar visual Founder cuando se habilite demo, control #528 de cambios de BD y preflight de release. **NO MERGE / NO PRODUCTION** sin gates SDP.
 
+### SDP #559 — Segunda revisión Claude y correcciones incrementales (2026-10-26)
+
+- **Claude independiente** re-revisó solo-lectura `0b19dc2..6bc23cb` desde Daragon-PC; veredicto **CHANGES REQUIRED**: el control por feature flag y las etiquetas de demo quedaron correctos; detectó riesgos de typecheck al indexar `matrixLabels[route.key]` y E2E sin flag. Informó otros pendientes de baja prioridad sobre data minimization, help y paridad.
+- **Correcciones posteriores:** commit `6179a2e` normaliza Prettier tras fallo real en quality; commit `29029b8de370ea1ee03484f8f801a034784cc815` corrige indexado tipado en test y habilita flag en Playwright local solo al disponer de credenciales del test de juntas. El código original del PR sigue fuera de producción.
+- **Nuevo HEAD y gates:** SHA `29029b8de370ea1ee03484f8f801a034784cc815`; los cuatro workflows **IN_PROGRESS** a la hora de esta lectura, no afirmar PASS. Revisión Claude del HEAD completo posterior a las correcciones **PENDIENTE**. PR #559 en **DRAFT**.
+- **Limitaciones de aceptación:** pruebas reales con credenciales del directorio, control de acceso mismo-condominio para no-admins, minimización de columnas sin romper endpoint compartido, scripts de fixtures y justificación del registry CI requieren seguimiento. #528 GRANT/RLS efectivo y preflight de migraciones siguen bloqueando liberación automática; no hubo merge ni despliegue.
+
 ## Resumen / continuidad inmediata
 
 | Elemento | Estado |
