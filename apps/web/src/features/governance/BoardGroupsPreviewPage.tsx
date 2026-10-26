@@ -62,10 +62,7 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
     setRegistered([]);
     setRegisteredSearch('');
     setRegisteredPage(1);
-    void apiRequest<unknown>(
-      '/v1/condominiums/' + condominiumId + '/buildings',
-      session,
-    )
+    void apiRequest<unknown>('/v1/condominiums/' + condominiumId + '/buildings', session)
       .then((response) => {
         const items = parseRegisteredBuildings(response);
         if (!items) throw new Error('Unexpected buildings response');
@@ -153,8 +150,8 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
       </header>
       <aside className="hab-board-preview__notice">
         <strong>DATOS DE DEMOSTRACIÓN:</strong> los edificios registrados se consultan en modo
-        lectura. Las juntas, sus integrantes, indicadores y modalidades son ejemplos; no se
-        guardan ni modifican permisos, pagos o cuotas reales.
+        lectura. Las juntas, sus integrantes, indicadores y modalidades son ejemplos; no se guardan
+        ni modifican permisos, pagos o cuotas reales.
       </aside>
       {condominiumId && session && (
         <section className="hab-board-preview__panel" aria-label="Edificios registrados">
@@ -383,9 +380,8 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
         <Dialog title={`EJEMPLO — ${detail.group}`} onClose={() => setSelected(null)} size="md">
           <DialogBody>
             <p>
-              Grupo de ejemplo del {detail.building}. Esta demostración no determina cómo se
-              asignan los cargos: la facturación depende de la configuración aplicable de cada
-              condominio.
+              Grupo de ejemplo del {detail.building}. Esta demostración no determina cómo se asignan
+              los cargos: la facturación depende de la configuración aplicable de cada condominio.
             </p>
             <label>
               Modelo administrativo (solo demo)
