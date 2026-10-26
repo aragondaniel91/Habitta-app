@@ -32,6 +32,12 @@
 
 **Plan de release:** (1) revisión independiente del #559 SHA `0b19dc2` y SDP 4/4 con evidencia, resolver bloqueos, (2) auditoría y pruebas #528 de GRANT/RLS antes de migraciones, (3) merge protegido de #559 y este PR documental, revalidar SHA de main y alcance, (4) preflight de diferencias de migraciones, backup/rollback, (5) disparar workflow protegido solo con confirmaciones y aprobaciones correspondientes, (6) verificar /health, web y evidencia SHA desplegado; actualizar este documento mediante PR con run/SHA/hora. No presentar juntas ilustrativas como funcionalidad operativa.
 
+### Avance adicional de validación — 2026-10-26
+
+- **PR #560:** cuatro checks GitHub exitosos en `974ffe1b0c5553338be69145009bc7e5693f766a` (quality, pgTAP, Financial E2E, public-browser), marcado **READY FOR REVIEW**; revisión independiente aún pendiente. Para un PR solo documental, pgTAP puede pasar sin ejecutar la suite SQL por la condición de `supabase-tests.yml`; no utilizar esta señal como certificación Supabase.
+- **#528 auditoría inicial (sin mutaciones):** inventario de 192 archivos en `supabase/migrations/`; muestreo de cuatro migraciones recientes: RPC de charge scope con GRANT/REVOKE explícito, guardias `SECURITY DEFINER` con REVOKE y revocación de ejecución `anon` en RPC financieras. Evidencia parcial, **NO** auditoría completa ni validación de permisos efectivos. Registrado en comentario del issue [#528](https://github.com/aragondaniel91/Habitta-app/issues/528#issuecomment-6425296070).
+- **Próxima acción ejecutable:** validar permisos efectivos tras clean reset, ampliar tests automatizados de grants/RLS, review independiente del #559 y #560, merge protegido y preflight de migrations antes de cualquier workflow de producción. Estado de release: **BLOCKED**.
+
 ## Resumen / continuidad inmediata
 
 | Elemento | Estado |
