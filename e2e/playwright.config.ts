@@ -16,6 +16,11 @@ const startLocalWorker =
 
 const localWebEnvironment: Record<string, string> = {
   VITE_APP_ENV: 'e2e',
+  // The board demo is opt-in; enable only for an authenticated local board run.
+  VITE_ENABLE_BOARD_GROUPS_PREVIEW:
+    process.env.HABITTA_LOCAL_BOARD_EMAIL && process.env.HABITTA_LOCAL_BOARD_PASSWORD
+      ? 'true'
+      : 'false',
   VITE_API_URL: workerBaseUrl,
   ...(startLocalWorker
     ? {

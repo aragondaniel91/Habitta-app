@@ -62,8 +62,8 @@ describe('HAB-307 final administrator premium sweep', () => {
     expect(Object.keys(matrixLabels)).toHaveLength(18);
 
     for (const route of APP_ROUTES) {
-      expect(matrixLabels[route.key], route.key).toBeDefined();
-      expect(matrix).toContain(`| ${matrixLabels[route.key]} |`);
+      expect(matrixLabels[route.key as keyof typeof matrixLabels], route.key).toBeDefined();
+      expect(matrix).toContain(`| ${matrixLabels[route.key as keyof typeof matrixLabels]} |`);
     }
   });
 
