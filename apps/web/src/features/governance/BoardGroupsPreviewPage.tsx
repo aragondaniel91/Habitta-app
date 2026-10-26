@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { apiRequest } from '../../lib/api';
 import { Dialog, DialogBody, DialogFooter } from '../../components/Dialog';
 import { Button } from '../../components/ui';
 import './BoardGroupsPreviewPage.css';
@@ -27,7 +29,36 @@ const modes: Record<Mode, string> = {
 };
 type Sort = 'building' | 'group' | 'mode' | 'members' | 'state';
 
-export function BoardGroupsPreviewPage() {
+type RegisteredBuilding = { id: string; name: string };
+type Props = { condominiumId?: string | null; session?: Session | null };
+
+export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
+  const [registered, setRegistered] = useState<RegisteredBuilding[]>([]);
+  const [registeredError, setRegisteredError] = useState<string | null>(null);
+  const [registeredLoading, setRegisteredLoading] = useState(false);
+  useEffect(() => {
+    if (!condominiumId || !session) return;
+    let active = true;
+    setRegisteredLoading(true);
+    setRegisteredError(null);
+    setRegistered([]);
+    void apiRequest<RegisteredBuilding[]>(
+      '/v1/condominiums/' + condominiumId + '/buildings',
+      session,
+    )
+      .then((items) => {
+        if (active) setRegistered(items);
+      })
+      .catch(() => {
+        if (active) setRegisteredError('No se pudieron cargar los edificios registrados.');
+      })
+      .finally(() => {
+        if (active) setRegisteredLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [condominiumId, session]);
   const [rows, setRows] = useState<Board[]>(seed);
   const [search, setSearch] = useState('');
   const [modeFilter, setModeFilter] = useState('all');
@@ -84,6 +115,27 @@ export function BoardGroupsPreviewPage() {
         Datos de ejemplo: esta pantalla no consulta ni modifica juntas, pagos, cuotas o permisos
         reales. Las configuraciones se pierden al salir.
       </aside>
+      {condominiumId && session && (
+        <section className="hab-board-preview__panel" aria-label="Edificios registrados">
+          <h2>Edificios registrados</h2>
+          <p className="hab-board-preview__sub">
+            Información real de estructura. Las juntas y modalidades de abajo son ilustrativas.
+          </p>
+          {registeredLoading ? (
+            <p role="status">Cargando edificios…</p>
+          ) : registeredError ? (
+            <p role="alert">{registeredError}</p>
+          ) : registered.length === 0 ? (
+            <p>No hay edificios registrados en este condominio.</p>
+          ) : (
+            <ul>
+              {registered.map((building) => (
+                <li key={building.id}>{building.name}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       <section className="hab-board-preview__stats" aria-label="Resumen demostrativo">
         <div>
           <span>Edificios</span>

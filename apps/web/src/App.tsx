@@ -569,7 +569,7 @@ export default function App() {
       />
     );
   } else if (activeRoute.key === 'board-groups-preview') {
-    page = <BoardGroupsPreviewPage />;
+    page = <BoardGroupsPreviewPage condominiumId={selectedCondominiumId} session={session} />;
   } else if (activeRoute.key === 'team') {
     page = (
       <TeamAccessPage
