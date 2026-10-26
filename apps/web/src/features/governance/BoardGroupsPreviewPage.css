@@ -1,0 +1,199 @@
+.hab-board-preview {
+  max-width: 1340px;
+  margin: auto;
+  padding: 26px 14px;
+  color: var(--text);
+}
+.hab-board-preview__head,
+.hab-board-preview__panelhead,
+.hab-board-preview__pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.hab-board-preview h1 {
+  font-size: 28px;
+  letter-spacing: -0.6px;
+  margin: 4px 0;
+}
+.hab-board-preview h2 {
+  font-size: 18px;
+  margin: 0 0 7px;
+}
+.hab-board-preview__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.hab-board-preview__sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+.hab-board-preview__tag,
+.hab-board-preview__mode,
+.hab-board-preview__demo-label {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 6px 11px;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 700;
+}
+.hab-board-preview__demo-label {
+  display: inline-block;
+  margin-left: 8px;
+  background: var(--surface-subtle);
+  color: var(--text);
+  font-size: 10px;
+  vertical-align: middle;
+}
+.hab-board-preview__role-selector {
+  padding: 10px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+  font-weight: 700;
+}
+.hab-board-preview__notice,
+.hab-board-preview__warning {
+  padding: 12px 16px;
+  background: var(--surface-subtle);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  margin: 19px 0;
+}
+.hab-board-preview__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+.hab-board-preview__stats > div,
+.hab-board-preview__panel {
+  padding: 19px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+}
+.hab-board-preview__stats span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+.hab-board-preview__stats strong {
+  display: block;
+  font-size: 27px;
+  margin-top: 12px;
+}
+.hab-board-preview__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0;
+}
+.hab-board-preview label {
+  display: grid;
+  gap: 7px;
+  color: var(--text);
+  font-size: 13px;
+}
+.hab-board-preview select,
+.hab-board-preview input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 160px;
+}
+.hab-board-preview__panel button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.hab-board-preview button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.hab-board-preview button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.hab-board-preview__scroll {
+  overflow-x: auto;
+}
+.hab-board-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 630px;
+  text-align: left;
+  font-size: 13px;
+}
+.hab-board-preview caption {
+  padding: 9px;
+  background: var(--surface-subtle);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+.hab-board-preview th {
+  padding: 12px 9px;
+  color: var(--text);
+  font-weight: 600;
+  background: var(--surface-subtle);
+}
+.hab-board-preview th button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.hab-board-preview td {
+  border-bottom: 1px solid var(--border);
+  padding: 13px 9px;
+}
+.hab-board-preview__pager {
+  padding-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.hab-board-preview__pager > div {
+  display: flex;
+  gap: 8px;
+}
+.hab-board-preview__empty {
+  text-align: center;
+  padding: 25px;
+  color: var(--muted);
+}
+.hab-board-preview .app-dialog p {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.hab-board-preview .app-dialog select {
+  width: 100%;
+}
+@media (max-width: 740px) {
+  .hab-board-preview__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hab-board-preview__filters > label {
+    flex: 1;
+    min-width: 140px;
+  }
+  .hab-board-preview select,
+  .hab-board-preview input {
+    width: 100%;
+    min-width: 0;
+  }
+}

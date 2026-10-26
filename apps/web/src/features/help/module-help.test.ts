@@ -3,8 +3,9 @@ import { APP_ROUTES } from '../../navigation';
 import { MODULE_HELP, MODULE_HELP_CONTENT_VERSION } from './module-help';
 
 describe('contextual module help', () => {
-  it('covers every application route', () => {
-    expect(Object.keys(MODULE_HELP).sort()).toEqual(APP_ROUTES.map((route) => route.key).sort());
+  it('covers every enabled application route and retains guidance for the default-disabled demo', () => {
+    expect(APP_ROUTES.every((route) => route.key in MODULE_HELP)).toBe(true);
+    expect(MODULE_HELP['board-groups-preview'].permissions).toContain('deshabilitada por defecto');
   });
 
   it('assigns each route one stable canonical topic and the current content version', () => {

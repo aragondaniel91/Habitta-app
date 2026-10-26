@@ -27,6 +27,39 @@ type ModuleHelpByRoute = {
 };
 
 export const MODULE_HELP: ModuleHelpByRoute = {
+  'board-groups-preview': {
+    topicId: 'module-help.board-groups-preview',
+    contentVersion: MODULE_HELP_CONTENT_VERSION,
+    purpose:
+      'Explora una demostración visual de futuros grupos de junta, filtrados por edificio y modelo de autonomía, sin crear datos operativos.',
+    actions: [
+      'Filtrar el directorio por nombre, modalidad o estado.',
+      'Ordenar columnas y revisar los resultados paginados.',
+      'Abrir un detalle etiquetado como ejemplo y cambiar su modalidad solo en la memoria de la demo.',
+    ],
+    steps: [
+      'Cuando el indicador experimental esté habilitado explícitamente, abre Juntas y equipos Demo desde Comunidad.',
+      'Confirma el aviso de datos simulados antes de iniciar.',
+      'Filtra el directorio usando los campos superiores.',
+      'Ordena las columnas y utiliza la paginación.',
+      'Abre el detalle de un edificio y prueba el selector de modalidad.',
+      'Restablece la demo para regresar a los datos iniciales.',
+    ],
+    beforeConfirm: [
+      'La lista de edificios registrados se consulta solo en modo lectura; las juntas y sus miembros son datos de demostración.',
+      'La modalidad demostrativa no modifica permisos, cuentas, cargos ni pagos.',
+    ],
+    result: [
+      'Las tablas y el detalle se actualizan localmente.',
+      'No se produce ninguna modificación en Supabase ni en la configuración de edificios.',
+    ],
+    tips: [
+      'Úsalo para validar el diseño antes de habilitar gestión real.',
+      'La contabilidad interna por apartamento aún requiere diseño y aprobación separados.',
+    ],
+    permissions:
+      'Ruta de demostración deshabilitada por defecto; cuando se habilita explícitamente, solo la ven administradores de condominio. No concede permisos financieros.',
+  },
   dashboard: {
     topicId: 'module-help.dashboard',
     contentVersion: MODULE_HELP_CONTENT_VERSION,

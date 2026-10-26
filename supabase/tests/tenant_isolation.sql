@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(14);
 -- Requires the local Supabase test database: supabase test db.
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at)
 values ('00000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-000000000000','authenticated','authenticated','a@test.local','x',now(),now()),
@@ -28,9 +28,11 @@ insert into public.unit_owners(unit_id,person_id,created_by) values
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-0000000000a1',true);
 select is((select count(*) from public.condominiums),1::bigint,'A reads condominium A only');
+select is((select count(*) from public.buildings where condominium_id='22000000-0000-0000-0000-000000000002'),0::bigint,'A cannot read B physical buildings');
 select throws_ok($$insert into public.buildings(condominium_id,name,created_by) values ('22000000-0000-0000-0000-000000000002','No','00000000-0000-0000-0000-0000000000a1')$$,'42501',null,'A cannot manage structure in B');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-0000000000b1',true);
 select is((select count(*) from public.condominiums),1::bigint,'owner reads authorized condominium');
+select is((select count(*) from public.buildings where condominium_id='11000000-0000-0000-0000-000000000001'),0::bigint,'B cannot read A physical buildings');
 select throws_ok($$insert into public.buildings(condominium_id,name,created_by) values ('22000000-0000-0000-0000-000000000002','No','00000000-0000-0000-0000-0000000000b1')$$,'42501',null,'owner cannot manage structure');
 select is((select count(*) from public.units where condominium_id='22000000-0000-0000-0000-000000000002'),1::bigint,'owner reads only their own unit, not every unit in the condominium');
 select is((select id from public.units where condominium_id='22000000-0000-0000-0000-000000000002'),'b0000000-0000-0000-0000-000000000001'::uuid,'the unit the owner reads is the one they actually own');

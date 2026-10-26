@@ -46,7 +46,7 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
-          supabase db start --debug 2>&1 | tee supabase-db-start.log
+          SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io supabase db start --debug 2>&1 | tee supabase-db-start.log
 
       - name: Run pgTAP tests
         if: steps.scope.outputs.relevant == 'true'

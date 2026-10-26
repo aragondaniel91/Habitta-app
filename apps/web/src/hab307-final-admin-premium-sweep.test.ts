@@ -57,13 +57,13 @@ const dangerZoneDeletedData = [
 ] as const;
 
 describe('HAB-307 final administrator premium sweep', () => {
-  it('certifies every one of the 18 administrator routes in the parity matrix', () => {
+  it('certifies the 18 established routes; the isolated demo is disabled by default', () => {
     expect(APP_ROUTES).toHaveLength(18);
     expect(Object.keys(matrixLabels)).toHaveLength(18);
 
     for (const route of APP_ROUTES) {
-      expect(matrixLabels[route.key], route.key).toBeDefined();
-      expect(matrix).toContain(`| ${matrixLabels[route.key]} |`);
+      expect(matrixLabels[route.key as keyof typeof matrixLabels], route.key).toBeDefined();
+      expect(matrix).toContain(`| ${matrixLabels[route.key as keyof typeof matrixLabels]} |`);
     }
   });
 

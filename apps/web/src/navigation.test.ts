@@ -16,4 +16,9 @@ describe('application navigation', () => {
   it('accepts a trailing slash on known routes', () => {
     expect(getRouteFromPath('/app/payments/').key).toBe('payments');
   });
+
+  it('does not register the mock admin route unless its feature flag is explicitly enabled', () => {
+    expect(APP_ROUTES.some((route) => route.key === 'board-groups-preview')).toBe(false);
+    expect(getRouteFromPath('/app/board-groups-preview')).toBe(DEFAULT_ROUTE);
+  });
 });
