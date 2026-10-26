@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(21);
 
 select has_type('public','condominium_charge_scope','charge scope enum exists');
 select has_column('public','condominiums','charge_scope','condominium stores explicit billing target');
@@ -28,7 +28,7 @@ insert into public.condominiums (
 ) values
  ('50400000-0000-4000-8000-000000000010','50400000-0000-4000-8000-000000000001',
  'La Muchachera General','VE','Caracas','America/Caracas','USD',
- 'multi_building_complex',null,2,'building','00000000-0000-0000-0000-000000000504'),
+ 'multi_building_complex',null,10,'building','00000000-0000-0000-0000-000000000504'),
  ('50400000-0000-4000-8000-000000000020','50400000-0000-4000-8000-000000000001',
  'Legacy Apartments','VE','Caracas','America/Caracas','USD',
  'multi_building_complex',20,2,'unit','00000000-0000-0000-0000-000000000504'),
@@ -154,6 +154,27 @@ select is(
   '50400000-0000-4000-8000-000000000030',
   '50400000-0000-4000-8000-000000000040')),
  3::bigint,'existing apartment and house account types remain unaffected'
+);
+
+-- Ten physical buildings must produce exactly ten distinct, unshared billable accounts.
+insert into public.buildings(id,condominium_id,name,created_by)
+select format('50400000-0000-4000-8000-%s',lpad(n::text,12,'0'))::uuid,
+ '50400000-0000-4000-8000-000000000010',format('Edificio %s',n),
+ '00000000-0000-0000-0000-000000000504'::uuid
+from generate_series(103,110) as n;
+insert into public.units(condominium_id,building_id,code,type,created_by)
+select '50400000-0000-4000-8000-000000000010'::uuid,
+ id, name, 'building', '00000000-0000-0000-0000-000000000504'::uuid
+from public.buildings where condominium_id='50400000-0000-4000-8000-000000000010'
+ and id not in ('50400000-0000-4000-8000-000000000101','50400000-0000-4000-8000-000000000102');
+select is(
+ (select count(*) from public.units where condominium_id='50400000-0000-4000-8000-000000000010'),
+ 10::bigint,'ten physical buildings have ten billable units'
+);
+select is(
+ (select count(distinct building_id) from public.units
+  where condominium_id='50400000-0000-4000-8000-000000000010' and type='building'),
+ 10::bigint,'ten billable accounts each link to a distinct physical building'
 );
 
 select * from finish();

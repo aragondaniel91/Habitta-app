@@ -42,7 +42,7 @@ import {
   unitReferenceLabel,
   unitTypeOptions,
 } from '../lib/unit-domain';
-import type { PropertyTopology, UnitType } from '../lib/unit-domain';
+import type { ChargeScope, PropertyTopology, UnitType } from '../lib/unit-domain';
 import '../units-v3.css';
 
 type Props = {
@@ -76,6 +76,7 @@ const updatedSummary = (updatedAt: string) => {
 };
 
 const aliquotSummary = (unit: DirectoryUnit) => {
+  if (unit.type === 'building') return 'No aplica';
   if (unit.ownershipPercentage == null) return 'No definida';
   const value = Number(unit.ownershipPercentage);
   return Number.isFinite(value)
@@ -177,6 +178,14 @@ export function UnitsPage({
   }, [condominiumId]);
 
   const topology = profile?.property_topology ?? 'unspecified';
+  const chargeScope: ChargeScope = profile?.charge_scope ?? 'unit';
+  const buildingBilling = topology === 'multi_building_complex' && chargeScope === 'building';
+  const occupiedBuildingIds = new Set(
+    units.filter((item) => item.type === 'building').map((item) => item.buildingId),
+  );
+  const availableBuildings = configuredBuildings.filter(
+    (item) => !occupiedBuildingIds.has(item.id),
+  );
   const buildingOptions = configuredBuildings.map(({ id, name }) => [id, name] as const);
   const filteredUnits = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('es-VE');
@@ -220,7 +229,11 @@ export function UnitsPage({
   const occupiedUnits = units.filter((unit) => unit.occupancies.length > 0).length;
   const buildings = configuredBuildings.map(({ id, name }) => ({ id, name }));
   const singleBuildingReady = topology !== 'single_building' || buildings.length === 1;
-  const canCreate = canMutate && topology !== 'unspecified' && singleBuildingReady;
+  const canCreate =
+    canMutate &&
+    topology !== 'unspecified' &&
+    singleBuildingReady &&
+    (!buildingBilling || availableBuildings.length > 0);
   const structureNeedsAttention =
     Boolean(topologyGuidance[topology]) || (topology === 'single_building' && !singleBuildingReady);
   const canOfferBuildingStructure = Boolean(
@@ -344,7 +357,11 @@ export function UnitsPage({
               <span aria-hidden="true" className="units-v3-create-icon">
                 +
               </span>
-              {topology === 'house_community' ? 'Nueva casa' : 'Nueva unidad'}
+              {buildingBilling
+                ? 'Vincular edificio para cobro'
+                : topology === 'house_community'
+                  ? 'Nueva casa'
+                  : 'Nueva unidad'}
             </Button>
             {onConfigureStructure && canOfferBuildingStructure && !structureNeedsAttention ? (
               <Button onClick={onConfigureStructure} variant="secondary">
@@ -486,7 +503,7 @@ export function UnitsPage({
             value={type}
           >
             <option value="all">Todos los tipos</option>
-            {unitTypeOptions(topology).map(([value, label]) => (
+            {unitTypeOptions(topology, chargeScope).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
@@ -564,7 +581,9 @@ export function UnitsPage({
             description={
               filtersActive
                 ? 'Prueba con otra búsqueda o muestra todos los estados.'
-                : 'Aún no hay unidades registradas en este condominio.'
+                : buildingBilling
+                  ? 'Registra los edificios físicos desde Estructura y vincula cada uno como una cuenta facturable.'
+                  : 'Aún no hay unidades registradas en este condominio.'
             }
             icon={<UnitsIcon size={26} />}
             onAction={
@@ -750,6 +769,11 @@ export function UnitsPage({
           onSave={saveUnit}
           saving={saving}
           topology={topology}
+          chargeScope={chargeScope}
+          usedBuildingIds={units
+            .filter((item) => item.type === 'building' && item.id !== editor.unit?.id)
+            .map((item) => item.buildingId)
+            .filter((id): id is string => Boolean(id))}
           unit={editor.unit}
         />
       ) : null}

@@ -29,7 +29,7 @@ describe('HAB-262 Units UX redesign', () => {
     expect(page).toContain('personSummary(unit.occupancies)');
     expect(page).toContain('unitReferenceLabel');
     expect(page).toContain('supportsBuildingStructure(topology)');
-    expect(page).toContain('unitTypeOptions(topology)');
+    expect(page).toContain('unitTypeOptions(topology, chargeScope)');
   });
 
   it('keeps detail history auditable with the existing unit owner and occupancy APIs', async () => {

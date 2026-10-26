@@ -34,7 +34,7 @@ type UnitsDirectoryUnit = {
   condominiumId: string;
   buildingId: string | null;
   code: string;
-  type: 'apartment' | 'house' | 'commercial' | 'parking' | 'storage';
+  type: 'apartment' | 'house' | 'commercial' | 'parking' | 'storage' | 'building';
   floor: string | null;
   ownershipPercentage: number | string | null;
   status: 'active' | 'inactive';

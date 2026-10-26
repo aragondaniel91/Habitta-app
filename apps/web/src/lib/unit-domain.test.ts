@@ -37,6 +37,24 @@ describe('HAB-209 topology-aware unit domain', () => {
     expect(unitTypeOptions('mixed').map(([value]) => value)).toContain('house');
   });
 
+  it('models the whole-building charge account without inventing apartments', () => {
+    expect(allowedUnitTypes('multi_building_complex', 'building')).toEqual(['building']);
+    expect(defaultUnitType('multi_building_complex', 'building')).toBe('building');
+    expect(unitTypeOptions('multi_building_complex', 'building')).toEqual([
+      ['building', 'Edificio completo'],
+    ]);
+    expect(isUnitTypeAllowed('multi_building_complex', 'apartment', 'building')).toBe(false);
+    expect(isUnitTypeAllowed('house_community', 'building', 'building')).toBe(false);
+    expect(allowedUnitTypes('house_community', 'building')).toEqual([]);
+  });
+
+  it('keeps existing apartments and houses as the default billing identity', () => {
+    expect(allowedUnitTypes('multi_building_complex')).toContain('apartment');
+    expect(allowedUnitTypes('multi_building_complex')).not.toContain('building');
+    expect(defaultUnitType('house_community')).toBe('house');
+    expect(defaultUnitType('single_building')).toBe('apartment');
+  });
+
   it('only hides building structure for house communities', () => {
     expect(supportsBuildingStructure('house_community')).toBe(false);
     expect(supportsBuildingStructure('unspecified')).toBe(true);
