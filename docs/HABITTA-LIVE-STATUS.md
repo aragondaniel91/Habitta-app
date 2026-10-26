@@ -3,6 +3,13 @@
 **Revisado manualmente:** 2026-10-24. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
+## SDP follow-up — HAB-528 effective RPC GRANT regression (2026-10-26)
+
+- **Security P0 release gate, issue [#528](https://github.com/aragondaniel91/Habitta-app/issues/528).** This isolated branch adds `supabase/tests/hab528_charge_scope_grants.sql` only (no migrations, no production privilege changes), for the existing `set_condominium_charge_scope` RPC added by #545.
+- **SPECIFY/BUILD:** six assertions: function exists, `anon` EXECUTE denied, `authenticated` and `service_role` EXECUTE retained, no PUBLIC default EXECUTE, and real `anon` call rejected at SQL permission boundary. Tests use effective PostgreSQL ACLs rather than assuming `REVOKE FROM PUBLIC` removes direct role grants.
+- **VERIFY:** CI/pgTAP on the exact new head **PENDING**. Independent Claude reviewer **PENDING**. This is not an audit of all 192 migrations or other tables/RLS; #528 remains open and production blocked.
+- **Next:** require green database workflow (actually runs tests because `supabase/tests/` changed), review results and independent SDP review. Merge with protected rules only after gates; then continue effective GRANT/RLS inventory and migration preflight before production.
+
 ## Resumen / continuidad inmediata
 
 | Elemento | Estado |
