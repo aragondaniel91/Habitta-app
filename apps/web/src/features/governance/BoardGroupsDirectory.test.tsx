@@ -136,3 +136,28 @@ describe('registered directory usability', () => {
     expect(apiRequest).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('registered directory pagination', () => {
+  it('shows ten per page and navigates without another API call', async () => {
+    apiRequest.mockResolvedValue(
+      Array.from({ length: 23 }, (_, i) => ({ id: String(i + 1), name: 'Edificio ' + (i + 1) })),
+    );
+    const view = await render('condo-a');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const section = view.querySelector('[aria-label="Edificios registrados"]');
+    expect(section?.querySelectorAll('li')).toHaveLength(10);
+    expect(section?.textContent).toContain('Página 1 de 3');
+    const next = Array.from(section?.querySelectorAll('button') ?? []).find(
+      (x) => x.textContent === 'Siguiente',
+    );
+    await act(async () => next?.click());
+    expect(section?.querySelectorAll('li')).toHaveLength(10);
+    expect(section?.textContent).toContain('Página 2 de 3');
+    await act(async () => next?.click());
+    expect(section?.querySelectorAll('li')).toHaveLength(3);
+    expect(section?.textContent).toContain('Página 3 de 3');
+    expect(apiRequest).toHaveBeenCalledTimes(1);
+  });
+});

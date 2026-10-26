@@ -35,6 +35,7 @@ type Props = { condominiumId?: string | null; session?: Session | null };
 export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
   const [registered, setRegistered] = useState<RegisteredBuilding[]>([]);
   const [registeredSearch, setRegisteredSearch] = useState('');
+  const [registeredPage, setRegisteredPage] = useState(1);
   const [registeredError, setRegisteredError] = useState<string | null>(null);
   const [registeredLoading, setRegisteredLoading] = useState(false);
   useEffect(() => {
@@ -48,6 +49,8 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
     setRegisteredLoading(true);
     setRegisteredError(null);
     setRegistered([]);
+    setRegisteredSearch('');
+    setRegisteredPage(1);
     void apiRequest<RegisteredBuilding[]>(
       '/v1/condominiums/' + condominiumId + '/buildings',
       session,
@@ -75,6 +78,13 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
         )
         .sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true })),
     [registered, registeredSearch],
+  );
+  const registeredPageSize = 10;
+  const registeredPageCount = Math.max(1, Math.ceil(visibleRegistered.length / registeredPageSize));
+  const currentRegisteredPage = Math.min(registeredPage, registeredPageCount);
+  const paginatedRegistered = visibleRegistered.slice(
+    (currentRegisteredPage - 1) * registeredPageSize,
+    currentRegisteredPage * registeredPageSize,
   );
   const [rows, setRows] = useState<Board[]>(seed);
   const [search, setSearch] = useState('');
@@ -143,7 +153,10 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
               Buscar edificio registrado ({registered.length})
               <input
                 value={registeredSearch}
-                onChange={(event) => setRegisteredSearch(event.target.value)}
+                onChange={(event) => {
+                  setRegisteredSearch(event.target.value);
+                  setRegisteredPage(1);
+                }}
                 placeholder="Nombre del edificio registrado"
               />
             </label>
@@ -157,11 +170,38 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
           ) : visibleRegistered.length === 0 ? (
             <p>No hay edificios que coincidan con la búsqueda.</p>
           ) : (
-            <ul>
-              {visibleRegistered.map((building) => (
-                <li key={building.id}>{building.name}</li>
-              ))}
-            </ul>
+            <>
+              <ul>
+                {paginatedRegistered.map((building) => (
+                  <li key={building.id}>{building.name}</li>
+                ))}
+              </ul>
+              <div
+                className="hab-board-preview__pager"
+                aria-label="Paginación de edificios registrados"
+              >
+                <span>
+                  {visibleRegistered.length} edificios · Página {currentRegisteredPage} de{' '}
+                  {registeredPageCount}
+                </span>
+                <div>
+                  <button
+                    type="button"
+                    disabled={currentRegisteredPage <= 1}
+                    onClick={() => setRegisteredPage(currentRegisteredPage - 1)}
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    disabled={currentRegisteredPage >= registeredPageCount}
+                    onClick={() => setRegisteredPage(currentRegisteredPage + 1)}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </section>
       )}
