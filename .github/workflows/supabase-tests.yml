@@ -46,8 +46,6 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
-          # Allow the CLI registry fallback instead of pinning to a throttled mirror.
-          unset SUPABASE_INTERNAL_IMAGE_REGISTRY
           supabase db start --debug 2>&1 | tee supabase-db-start.log
 
       - name: Run pgTAP tests
