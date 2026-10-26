@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BoardGroupsPreviewPage } from './BoardGroupsPreviewPage';
+import { BoardGroupsPreviewPage, parseRegisteredBuildings } from './BoardGroupsPreviewPage';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -42,7 +42,7 @@ describe('board groups demo safety and behavior', () => {
     expect(wrapper.querySelectorAll('tbody tr')).toHaveLength(5);
     await click('Siguiente');
     expect(wrapper.textContent).toContain('Página 2 de 2');
-    await click('Ver detalle');
+    await click('Ver ejemplo');
     expect(document.body.textContent).toContain('Grupo de ejemplo del Edificio 6');
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -62,7 +62,7 @@ describe('board groups demo safety and behavior', () => {
       search.dispatchEvent(new Event('input', { bubbles: true }));
     });
     expect(wrapper.querySelectorAll('tbody tr')).toHaveLength(1);
-    await click('Ver detalle');
+    await click('Ver ejemplo');
     const dialogSelect = document.querySelector<HTMLSelectElement>('[role="dialog"] select');
     expect(dialogSelect).not.toBeNull();
     await act(async () => {
@@ -75,5 +75,19 @@ describe('board groups demo safety and behavior', () => {
     expect(wrapper.querySelectorAll('tbody tr')).toHaveLength(5);
     expect(wrapper.textContent).toContain('10 resultados');
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('labels seeded records and the role selector as demonstration-only', async () => {
+    const wrapper = await renderDemo();
+    expect(wrapper.textContent).toContain('DATOS DE DEMOSTRACIÓN');
+    expect(wrapper.textContent).toContain('Vista de rol — SOLO DEMOSTRACIÓN');
+  });
+
+  it('accepts only an array response for the registered-building directory', () => {
+    expect(parseRegisteredBuildings({ data: [] })).toBeNull();
+    expect(parseRegisteredBuildings(null)).toBeNull();
+    expect(parseRegisteredBuildings([{ id: 'a', name: 'Torre Norte' }, { id: 2 }])).toEqual([
+      { id: 'a', name: 'Torre Norte' },
+    ]);
   });
 });

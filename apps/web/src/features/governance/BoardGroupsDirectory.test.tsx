@@ -59,6 +59,16 @@ describe('authenticated building directory (read-only)', () => {
     expect(view.textContent).not.toContain('private detail');
   });
 
+  it('shows the safe error state when the buildings endpoint does not return an array', async () => {
+    apiRequest.mockResolvedValue({ data: [{ id: 'a', name: 'Torre Norte' }] });
+    const view = await render('condo-a');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(view.querySelector('[role="alert"]')?.textContent).toContain('No se pudieron cargar');
+    expect(view.textContent).not.toContain('Torre Norte');
+  });
+
   it('ignores a stale response after changing condominium', async () => {
     let resolveOld!: (v: unknown) => void;
     apiRequest

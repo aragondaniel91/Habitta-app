@@ -35,10 +35,10 @@ export const MODULE_HELP: ModuleHelpByRoute = {
     actions: [
       'Filtrar el directorio por nombre, modalidad o estado.',
       'Ordenar columnas y revisar los resultados paginados.',
-      'Abrir un detalle de ejemplo y cambiar su modalidad solo en la memoria de la demo.',
+      'Abrir un detalle etiquetado como ejemplo y cambiar su modalidad solo en la memoria de la demo.',
     ],
     steps: [
-      'Abre Juntas y equipos Demo desde Comunidad.',
+      'Cuando el indicador experimental esté habilitado explícitamente, abre Juntas y equipos Demo desde Comunidad.',
       'Confirma el aviso de datos simulados antes de iniciar.',
       'Filtra el directorio usando los campos superiores.',
       'Ordena las columnas y utiliza la paginación.',
@@ -46,7 +46,7 @@ export const MODULE_HELP: ModuleHelpByRoute = {
       'Restablece la demo para regresar a los datos iniciales.',
     ],
     beforeConfirm: [
-      'Esta pantalla no consulta ni guarda registros reales de juntas o miembros.',
+      'La lista de edificios registrados se consulta solo en modo lectura; las juntas y sus miembros son datos de demostración.',
       'La modalidad demostrativa no modifica permisos, cuentas, cargos ni pagos.',
     ],
     result: [
@@ -58,7 +58,7 @@ export const MODULE_HELP: ModuleHelpByRoute = {
       'La contabilidad interna por apartamento aún requiere diseño y aprobación separados.',
     ],
     permissions:
-      'Ruta de demostración visible solo para administradores de condominio. No concede permisos financieros.',
+      'Ruta de demostración deshabilitada por defecto; cuando se habilita explícitamente, solo la ven administradores de condominio. No concede permisos financieros.',
   },
   dashboard: {
     topicId: 'module-help.dashboard',

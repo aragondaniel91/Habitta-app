@@ -31,7 +31,6 @@ const matrixLabels = {
   community: 'Comunidad',
   documents: 'Documentos',
   governance: 'Gobernanza',
-  'board-groups-preview': 'Juntas y equipos Demo',
   requests: 'Solicitudes',
   announcements: 'Anuncios',
   team: 'Equipo y accesos',
@@ -58,9 +57,9 @@ const dangerZoneDeletedData = [
 ] as const;
 
 describe('HAB-307 final administrator premium sweep', () => {
-  it('certifies the 18 established routes plus the isolated governance demo', () => {
-    expect(APP_ROUTES).toHaveLength(19);
-    expect(Object.keys(matrixLabels)).toHaveLength(19);
+  it('certifies the 18 established routes; the isolated demo is disabled by default', () => {
+    expect(APP_ROUTES).toHaveLength(18);
+    expect(Object.keys(matrixLabels)).toHaveLength(18);
 
     for (const route of APP_ROUTES) {
       expect(matrixLabels[route.key], route.key).toBeDefined();

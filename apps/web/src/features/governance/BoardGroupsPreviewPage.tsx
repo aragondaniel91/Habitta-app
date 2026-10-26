@@ -32,6 +32,17 @@ type Sort = 'building' | 'group' | 'mode' | 'members' | 'state';
 type RegisteredBuilding = { id: string; name: string };
 type Props = { condominiumId?: string | null; session?: Session | null };
 
+export function parseRegisteredBuildings(response: unknown): RegisteredBuilding[] | null {
+  if (!Array.isArray(response)) return null;
+  return response.filter(
+    (item): item is RegisteredBuilding =>
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as RegisteredBuilding).id === 'string' &&
+      typeof (item as RegisteredBuilding).name === 'string',
+  );
+}
+
 export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
   const [registered, setRegistered] = useState<RegisteredBuilding[]>([]);
   const [registeredSearch, setRegisteredSearch] = useState('');
@@ -51,11 +62,13 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
     setRegistered([]);
     setRegisteredSearch('');
     setRegisteredPage(1);
-    void apiRequest<RegisteredBuilding[]>(
+    void apiRequest<unknown>(
       '/v1/condominiums/' + condominiumId + '/buildings',
       session,
     )
-      .then((items) => {
+      .then((response) => {
+        const items = parseRegisteredBuildings(response);
+        if (!items) throw new Error('Unexpected buildings response');
         if (active) setRegistered(items);
       })
       .catch(() => {
@@ -133,14 +146,15 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
           <p className="hab-board-preview__eyebrow">Organización / Juntas y equipos</p>
           <h1>Juntas y equipos</h1>
           <p className="hab-board-preview__sub">
-            Explora el modelo de administración por edificio.
+            Explora un modelo administrativo de ejemplo por edificio.
           </p>
         </div>
         <span className="hab-board-preview__tag">VISTA DEMOSTRATIVA</span>
       </header>
       <aside className="hab-board-preview__notice">
-        Los edificios registrados se consultan en modo lectura. Las juntas, sus integrantes y
-        modalidades son ejemplos: no se guardan ni modifican permisos, pagos o cuotas reales.
+        <strong>DATOS DE DEMOSTRACIÓN:</strong> los edificios registrados se consultan en modo
+        lectura. Las juntas, sus integrantes, indicadores y modalidades son ejemplos; no se
+        guardan ni modifican permisos, pagos o cuotas reales.
       </aside>
       {condominiumId && session && (
         <section className="hab-board-preview__panel" aria-label="Edificios registrados">
@@ -205,29 +219,34 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
           )}
         </section>
       )}
-      <section className="hab-board-preview__stats" aria-label="Resumen demostrativo">
+      <section className="hab-board-preview__stats" aria-label="Resumen de datos de demostración">
         <div>
-          <span>Edificios</span>
+          <span>Edificios (demo)</span>
           <strong>{rows.length}</strong>
         </div>
         <div>
-          <span>Juntas activas</span>
+          <span>Juntas activas (demo)</span>
           <strong>{rows.filter((x) => x.state === 'Activa').length}</strong>
         </div>
         <div>
-          <span>Autónomos</span>
+          <span>Autónomos (demo)</span>
           <strong>{rows.filter((x) => x.mode === 'autonomo').length}</strong>
         </div>
         <div>
-          <span>Modalidades disponibles</span>
+          <span>Modalidades de demo</span>
           <strong>3</strong>
         </div>
       </section>
       <section className="hab-board-preview__panel">
         <div className="hab-board-preview__panelhead">
           <div>
-            <h2>Directorio de juntas</h2>
-            <p className="hab-board-preview__sub">Búsqueda, filtros, orden y paginación</p>
+            <h2>
+              Directorio de juntas{' '}
+              <span className="hab-board-preview__demo-label">DATOS DE DEMOSTRACIÓN</span>
+            </h2>
+            <p className="hab-board-preview__sub">
+              Ejemplos ficticios: búsqueda, filtros, orden y paginación
+            </p>
           </div>
           <button
             type="button"
@@ -287,8 +306,8 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
               <option value="Pendiente">Pendiente</option>
             </select>
           </label>
-          <label>
-            Contexto
+          <label className="hab-board-preview__role-selector">
+            Vista de rol — SOLO DEMOSTRACIÓN (no cambia permisos)
             <select value={context} onChange={(e) => setContext(e.target.value)}>
               <option value="general">Administración general</option>
               <option value="board">Junta de edificio</option>
@@ -298,6 +317,7 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
         </div>
         <div className="hab-board-preview__scroll">
           <table>
+            <caption>DATOS DE DEMOSTRACIÓN — directorio ficticio de juntas</caption>
             <thead>
               <tr>
                 {(
@@ -334,7 +354,7 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
                   <td>{row.state}</td>
                   <td>
                     <button type="button" onClick={() => setSelected(row.id)}>
-                      Ver detalle
+                      Ver ejemplo
                     </button>
                   </td>
                 </tr>
@@ -360,11 +380,12 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
         </footer>
       </section>
       {detail && (
-        <Dialog title={detail.group} onClose={() => setSelected(null)} size="md">
+        <Dialog title={`EJEMPLO — ${detail.group}`} onClose={() => setSelected(null)} size="md">
           <DialogBody>
             <p>
-              Grupo de ejemplo del {detail.building}. Los cargos de la residencia general siguen
-              perteneciendo a la cuenta cobrable del edificio.
+              Grupo de ejemplo del {detail.building}. Esta demostración no determina cómo se
+              asignan los cargos: la facturación depende de la configuración aplicable de cada
+              condominio.
             </p>
             <label>
               Modelo administrativo (solo demo)
@@ -388,7 +409,7 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
               representan usuarios reales.
             </p>
             <p>
-              <strong>Contexto seleccionado:</strong>{' '}
+              <strong>Vista de rol de demostración:</strong>{' '}
               {context === 'general'
                 ? 'Administración general'
                 : context === 'board'
