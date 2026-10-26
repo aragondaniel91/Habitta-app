@@ -41,13 +41,16 @@ select is(
 );
 
 select is(
-  has_function_privilege(
-    'PUBLIC',
-    'public.set_condominium_charge_scope(uuid, public.condominium_charge_scope)',
-    'EXECUTE'
+  (
+    select count(*)
+    from pg_proc p,
+      aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+    where p.oid = 'public.set_condominium_charge_scope(uuid, public.condominium_charge_scope)'::regprocedure
+      and acl.grantee = 0
+      and acl.privilege_type = 'EXECUTE'
   ),
-  false,
-  'the PUBLIC pseudo-role does not hold EXECUTE'
+  0::bigint,
+  'no EXECUTE grant remains for PUBLIC'
 );
 
 set local role anon;
