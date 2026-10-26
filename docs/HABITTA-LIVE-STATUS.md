@@ -3,6 +3,29 @@
 **Revisado manualmente:** 2026-10-24. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
+## Checkpoint SDP verificado — 2026-10-26 (sesión de continuidad)
+
+**Fuente de verdad: GitHub, lectura de 2026-10-26.** Este checkpoint sustituye el resumen histórico anterior cuando difieran; NO presupone despliegue de producción ni aceptación de cambios funcionales.
+
+| Elemento | Estado real y evidencia |
+| --- | --- |
+| `main` | HEAD `7e42d1e097a162a10cee67f0dfb1cf18b248dfa8` — merge PR [#545](https://github.com/aragondaniel91/Habitta-app/pull/545), 2026-10-26 |
+| Topología / cobro por edificio #545 | **MERGED en main**, NO equivale a release verificado ni a flujo comercial extremo a extremo |
+| Siguiente PR activo | [#559](https://github.com/aragondaniel91/Habitta-app/pull/559), OPEN, no draft, head `0b19dc2477346fb114f48217c57396b212750897` |
+| #559 calidad | **PASS en SHA exacto**: CI run `40379661278`, pgTAP `40379661386`, Playwright `40379661489`, Financial E2E `40379661204` |
+| #559 review SDP | **IN_REVIEW** — revisiones formales de GitHub: ninguna al consultar; Claude independiente NO certificado en esta sesión; aprobación visual Founder indicada en descripción del PR (2026-10-26) |
+| #559 alcance | Directorio físico autenticado **solo lectura** + juntas/modos **ilustrativos**; NO juntas persistentes, delegaciones financieras ni release |
+| PR anterior | [#557](https://github.com/aragondaniel91/Habitta-app/pull/557) OPEN DRAFT, superseded por #559; no duplicar integración |
+| Seguridad transversal | [#528](https://github.com/aragondaniel91/Habitta-app/issues/528) OPEN, **P0 de control de release** previo al cambio Supabase 2026-10-30: inventario GRANT/RLS, pruebas de roles/tenancy, migración reproducible y despliegue seguro. Su etiqueta histórica P1 no equivale a cierre |
+| SDP operativo | [#549](https://github.com/aragondaniel91/Habitta-app/issues/549) OPEN / BLOCKED: ejecución real Codex + revisión Claude no certificada; no atribuirles trabajo no ejecutado |
+| Administración mixta | [#553](https://github.com/aragondaniel91/Habitta-app/issues/553) OPEN, P1 / BACKLOG; fases de autonomía financiera requieren contratos, decisión Founder y pruebas separadas |
+| Producción | **NO VERIFICADA / NO AUTORIZADA** para #559 y nuevas capacidades |
+| Próxima acción | Conseguir revisión independiente real del diff #559; validar SDP 4/4 y permisos, resolver comentarios; solo entonces considerar merge protegido. En paralelo priorizar #528 con pruebas concretas; después #553/#552 (juntas y permisos), planes y onboarding |
+
+**Decisión de priorización SDP:** cerrar de forma segura el PR de integración #559 antes de introducir cambios funcionales adicionales; #528 tiene urgencia de seguridad por fecha y bloquea nuevas migraciones/release hasta validar GRANT/RLS. La aprobación visual no autoriza producción. Conservar los 30 requerimientos sin marcarlos DONE por inferencia.
+
+**Nueva política de solicitudes del Founder:** petición general de disciplina de intake, deduplicación, prioridad, issue, estado y PR protegido recibida el 2026-10-26. Es una reiteración del contrato ya versionado por PR #548, por lo que **no se crea feature duplicada**. Se ejecutará sobre cada solicitud funcional futura.
+
 ## Resumen / continuidad inmediata
 
 | Elemento | Estado |
@@ -118,6 +141,8 @@ Mantener `units.id` como clave financiera y `buildings` como entidad física. Nu
 **RECORD:** actualizar esta tabla y «Resumen», anotando SHA, issue/PR, estado y fecha. **Ningún PR funcional debe considerarse finalizado sin actualizar este archivo** en el mismo PR o PR documental asociado. Evitar escribir sobre `main` directamente: mantener branch protection.
 
 ### Registro de entregas
+
+| 2026-10-26 | Recuperación SDP desde GitHub | #545 merged a main `7e42d1e`; #559 OPEN `0b19dc2` con 4 workflows exitosos; revisión Claude independiente no certificada. Próxima: reviewer #559, SDP gate, #528 Supabase, sin deploy. |
 
 | Fecha | Tarea | Resultado y siguiente acción |
 | --- | --- | --- |
