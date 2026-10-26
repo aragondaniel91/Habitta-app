@@ -139,8 +139,8 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
         <span className="hab-board-preview__tag">VISTA DEMOSTRATIVA</span>
       </header>
       <aside className="hab-board-preview__notice">
-        Datos de ejemplo: esta pantalla no consulta ni modifica juntas, pagos, cuotas o permisos
-        reales. Las configuraciones se pierden al salir.
+        Los edificios registrados se consultan en modo lectura. Las juntas, sus integrantes y
+        modalidades son ejemplos: no se guardan ni modifican permisos, pagos o cuotas reales.
       </aside>
       {condominiumId && session && (
         <section className="hab-board-preview__panel" aria-label="Edificios registrados">
