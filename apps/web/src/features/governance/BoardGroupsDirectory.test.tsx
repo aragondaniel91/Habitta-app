@@ -83,3 +83,23 @@ describe('authenticated building directory (read-only)', () => {
     expect(view.textContent).toContain('Torre Nueva');
   });
 });
+
+describe('loss of selected condominium', () => {
+  it('clears the previous building list when the session context disappears', async () => {
+    apiRequest.mockResolvedValue([{ id: 'old', name: 'Torre Privada' }]);
+    const view = await render('condo-a');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(view.textContent).toContain('Torre Privada');
+    await act(async () => {
+      root?.render(<BoardGroupsPreviewPage condominiumId={null} session={null} />);
+    });
+    expect(view.textContent).not.toContain('Torre Privada');
+    await render('condo-b');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(apiRequest).toHaveBeenCalledWith('/v1/condominiums/condo-b/buildings', session);
+  });
+});

@@ -37,7 +37,12 @@ export function BoardGroupsPreviewPage({ condominiumId, session }: Props) {
   const [registeredError, setRegisteredError] = useState<string | null>(null);
   const [registeredLoading, setRegisteredLoading] = useState(false);
   useEffect(() => {
-    if (!condominiumId || !session) return;
+    if (!condominiumId || !session) {
+      setRegistered([]);
+      setRegisteredError(null);
+      setRegisteredLoading(false);
+      return;
+    }
     let active = true;
     setRegisteredLoading(true);
     setRegisteredError(null);
