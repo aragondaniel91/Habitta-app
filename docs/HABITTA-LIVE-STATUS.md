@@ -38,6 +38,12 @@
 - **#528 auditoría inicial (sin mutaciones):** inventario de 192 archivos en `supabase/migrations/`; muestreo de cuatro migraciones recientes: RPC de charge scope con GRANT/REVOKE explícito, guardias `SECURITY DEFINER` con REVOKE y revocación de ejecución `anon` en RPC financieras. Evidencia parcial, **NO** auditoría completa ni validación de permisos efectivos. Registrado en comentario del issue [#528](https://github.com/aragondaniel91/Habitta-app/issues/528#issuecomment-6425296070).
 - **Próxima acción ejecutable:** validar permisos efectivos tras clean reset, ampliar tests automatizados de grants/RLS, review independiente del #559 y #560, merge protegido y preflight de migrations antes de cualquier workflow de producción. Estado de release: **BLOCKED**.
 
+### Revisión independiente real — #559 (2026-10-26)
+
+- **Revisor:** Claude Code 2.1.280, ejecución local en Daragon-PC en worktree aislado `C:\Development\Reviews\Habitta-PR559`; se revisó el SHA exacto `0b19dc2477346fb114f48217c57396b212750897` sin modificar código. Evidencia detallada: [comentario de revisión en #559](https://github.com/aragondaniel91/Habitta-app/pull/559#issuecomment-6429296463).
+- **Resultado:** **CHANGES REQUIRED / BLOCKED PARA RELEASE**, aunque los cuatro workflows estaban PASS en el SHA. Hallazgos: demo visible sin flag, confusión de 10 edificios ficticios con directorio real, texto de facturación incondicional, minimización de datos del endpoint, E2E con API simulada, manejo de respuesta inválida y aclaraciones UX/CI.
+- **Próxima acción:** Codex builder corrige en rama segura, nuevo HEAD con 4 gates, Claude re-review independiente y aceptación Founder para cambios visuales; #528 continúa bloqueando migraciones/release no auditadas. No hacer merge o deploy solo por CI verde.
+
 ## Resumen / continuidad inmediata
 
 | Elemento | Estado |
