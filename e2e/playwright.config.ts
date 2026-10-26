@@ -89,6 +89,11 @@ export default defineConfig({
   ...(webServers.length ? { webServer: webServers } : {}),
   projects: [
     {
+      name: 'local-board',
+      testMatch: /local-board-.*\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
       name: 'public-chromium',
       testMatch: /public-.*\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
