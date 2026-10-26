@@ -3,6 +3,14 @@
 **Revisado manualmente:** 2026-10-24. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
+## SDP — correcciones tras revisión Claude del PR #559 (2026-10-26)
+
+- **Issue/PR:** #518/#553, [PR #559](https://github.com/aragondaniel91/Habitta-app/pull/559); rama `hab-557-main-integration`; builder Codex CLI desde worktree aislado `C:\Development\Reviews\Habitta-PR559`; commit `6bc23cb` (confirmar SHA completo en PR).
+- **Estado:** **IN_REVIEW / DRAFT**. Claude Code revisó de forma independiente HEAD anterior `0b19dc2` y emitió **CHANGES REQUIRED**, documentado en [comentario](https://github.com/aragondaniel91/Habitta-app/pull/559#issuecomment-6429296463). Las correcciones presentes aún **no tienen revisión Claude nueva**.
+- **Cambios verificables:** `VITE_ENABLE_BOARD_GROUPS_PREVIEW` controla la ruta de demostración, **deshabilitada por defecto**; etiquetas explícitas para indicadores, listas, perfiles y juntas ficticias; texto neutral sobre facturación dependiente de modalidad; defensa ante respuesta API no-lista; corrección del texto de ayuda; pruebas unitarias focalizadas. No hay cambio en schema, RLS o ledger. La vista autenticada del directorio real sigue siendo parte de la propuesta, pero el preview queda oculto por defecto.
+- **Verificación:** `git diff --check` PASS en checkout local; pruebas ejecutables locales **NO EJECUTADAS** (sin node_modules en worktree aislado); cuatro CI obligatorios sobre nuevo HEAD **PENDIENTES**. Auditoría parcial #528 todavía no constituye cierre del gate de producción.
+- **Pendientes:** validar CI exacto y pruebas focalizadas, re-review Claude de `6bc23cb`, resolver hallazgos restantes (end-to-end autenticado, minimización de datos de endpoint compartido, fixture visual y workaround registry), confirmar visual Founder cuando se habilite demo, control #528 de cambios de BD y preflight de release. **NO MERGE / NO PRODUCTION** sin gates SDP.
+
 ## Resumen / continuidad inmediata
 
 | Elemento | Estado |
