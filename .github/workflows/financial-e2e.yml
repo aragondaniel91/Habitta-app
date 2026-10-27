@@ -73,7 +73,23 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
-          supabase start --debug 2>&1 | tee supabase-start.log
+          # The full local stack pulls multiple containers. Retry ONLY transient
+          # image-registry throttling, never migration/schema/application failures.
+          for attempt in 1 2 3; do
+            if supabase start --debug 2>&1 | tee supabase-start.log; then
+              exit 0
+            fi
+            if ! grep -Eiq 'toomanyrequests|429 Too Many Requests|rate limit.*(pull|registry)' supabase-start.log; then
+              echo 'Non-registry Supabase start failure; not retrying.' >&2
+              exit 1
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo 'Container-registry throttling persisted across bounded retries.' >&2
+              exit 1
+            fi
+            supabase stop --no-backup || true
+            sleep $((attempt * 45))
+          done
 
       - name: Export local Supabase credentials
         if: steps.scope.outputs.relevant == 'true'
@@ -125,7 +141,6 @@ jobs:
           name: financial-e2e-diagnostics
           path: |
             supabase-start.log
-            supabase.env
             e2e/playwright-report
             e2e/test-results
           if-no-files-found: ignore
