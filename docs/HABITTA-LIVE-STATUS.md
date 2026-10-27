@@ -57,19 +57,19 @@ Mantener `units.id` como clave financiera y `buildings` como entidad física. Nu
 
 **Corrección importante al indicador '0/30 released':** el inventario de los 30 requisitos registra **cero cierres formalmente certificados por ítem**, no significa que no existan funcionalidades publicadas. No debe usarse '0/30' como porcentaje de producto disponible. Requiere conciliación por comportamiento observable y aceptación de cada punto.
 
-**Baseline pública confirmada:** Production Worker `/health` responde `status=ok`, commit `9ae959d77f702f27cfa8ee52c6c095ad83744677` del 2026-10-24. En ese commit ya existen páginas operativas de `ResidentPaymentsPage.tsx` (incluye referencias a estados draft/correction_requested), `UnitsPage.tsx`, `ReceivablesPage.tsx` y `TreasuryPage.tsx`. Esto verifica **presencia del código de las superficies en la versión desplegada del backend** y su existencia en el árbol Git de esa versión, pero **no** demuestra funcionamiento por rol, UX completa, permiso RLS, ni que el bundle frontend servido se haya verificado en navegador en este checkpoint.
+**Baseline pública confirmada:** Production Worker `/health` responde `status=ok`, commit `9ae959d77f702f27cfa8ee52c6c095ad83744677` del 2026-10-24. En el árbol Git de ese commit existen archivos frontend `ResidentPaymentsPage.tsx` (con referencias a draft/correction_requested), `UnitsPage.tsx`, `ReceivablesPage.tsx` y `TreasuryPage.tsx`. El SHA de `/health` acredita únicamente el **Worker backend**; aún NO se verificó el SHA publicado de Cloudflare Pages/frontend. La existencia de esos archivos **no** demuestra que las páginas estén publicadas, operativas o aceptadas por rol, ni que las políticas RLS sean correctas.
 
-**Main vs producción:** `9748dfb44f2d294004fa4ac14494503d31eaa971` tiene 20 commits posteriores; hay cambios funcionales en unidades, estructura y vista de juntas, además de pruebas. No marcar novedades de main como publicadas sin evidencia del SHA de Worker/Pages correspondiente. Preview de juntas apagado por defecto.
+**Main vs Worker productivo:** `main` (`9748dfb44f2d294004fa4ac14494503d31eaa971`) está 20 commits por delante del SHA `9ae959d77f702f27cfa8ee52c6c095ad83744677` desplegado el 2026-10-24. Hay cambios funcionales en unidades, estructura y vista de juntas, además de pruebas. No marcar novedades de main como publicadas sin evidencia independiente de SHA de Worker y de Pages. En main, el preview de juntas está apagado por defecto.
 
 **Nuevo método obligatorio por cada uno de los 30 puntos:**
-- `DEPLOYED_BASE`: se identificó una funcionalidad parcial/relacionada en commit desplegado, **sin afirmar aceptación completa**.
+- `DEPLOYED_BASE`: se comprobó el SHA de despliegue del componente correspondiente (Worker para backend y Pages para frontend) y el código relacionado, **sin afirmar aceptación completa**.
 - `IMPLEMENTED_MAIN`: existe funcionalidad no certificada como desplegada.
 - `TESTED`: pruebas relevantes documentadas, incluyendo casos negativos según riesgo.
 - `ACCEPTED`: criterio específico validado visual/funcionalmente por Founder o piloto.
 - `RELEASED_VERIFIED`: comportamiento completo probado en URL productiva, con evidencia por rol y SHA.
 - `NOT_VERIFIED`: no hay evidencia suficiente; no equivale a 'sin código'.
 
-La primera conciliación debe revisar en producción con usuarios de prueba permitidos: dashboard (1-3), pagos (4-13), unidades/personas (14-17, 19-23), tesorería/CxC (25, 29, 30) y AI (18,28); anotar por número evidencias, capturas o pruebas, SHA, brecha concreta y decisión de aceptación. Evitar declaraciones agregadas inventadas de 0 o 30 puntos implementados. El issue #515 es el epic funcional; #573 sigue el release incremental; #571 la seguridad.
+Los estados anteriores son **etiquetas de evidencia acumulativas**, no niveles exclusivos: un punto puede tener `IMPLEMENTED_MAIN` y `TESTED` sin `ACCEPTED` ni `RELEASED_VERIFIED`. El vocabulario histórico de la tabla se conserva como síntesis: `POR VERIFICAR` equivale a `NOT_VERIFIED`, `PARCIAL` y `EN CURSO` implican evidencia aún incompleta, y `RELEASED` solo se asigna si existe `RELEASED_VERIFIED` con SHA y comportamiento productivo probado. La primera conciliación debe cubrir **los 30 puntos sin excepciones**: dashboard (1-3), pagos (4-13), unidades/personas (14-17, 19-23), IA (18,28), UX transversal (24,26,27), tesorería/CxC (25,29,30); anotar por número evidencias, capturas o pruebas, SHA, brecha concreta y decisión de aceptación. Evitar declaraciones agregadas inventadas de 0 o 30 puntos implementados. El issue #515 es el epic funcional; #573 sigue el release incremental; #571 la seguridad.
 
 ## Backlog maestro: 30 puntos del piloto
 
