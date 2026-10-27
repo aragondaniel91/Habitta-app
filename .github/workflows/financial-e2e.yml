@@ -147,8 +147,9 @@ jobs:
           name: financial-e2e-diagnostics
           path: |
             supabase-start.log
-            e2e/playwright-report
-            e2e/test-results
+            # Authenticated Playwright traces/reports can contain cookies,
+            # session tokens, signed URLs or financial fixture content.
+            # Keep them on the ephemeral runner; never upload by default.
           if-no-files-found: ignore
           retention-days: 14
 
