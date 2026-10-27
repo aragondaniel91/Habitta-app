@@ -73,7 +73,27 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
-          supabase start --debug 2>&1 | tee supabase-start.log
+          # Use the same registry selection as the pgTAP job, which has
+          # repeatedly pulled the same Supabase Postgres major version successfully.
+          # Do not replace image tags or bypass integrity checks.
+          export SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io
+          # The full local stack pulls multiple containers. Retry ONLY transient
+          # image-registry throttling, never migration/schema/application failures.
+          for attempt in 1 2 3; do
+            if supabase start --debug 2>&1 | tee supabase-start.log; then
+              exit 0
+            fi
+            if ! grep -Eiq 'toomanyrequests|429 Too Many Requests|rate limit.*(pull|registry)' supabase-start.log; then
+              echo 'Non-registry Supabase start failure; not retrying.' >&2
+              exit 1
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo 'Container-registry throttling persisted across bounded retries.' >&2
+              exit 1
+            fi
+            supabase stop --no-backup || true
+            sleep $((attempt * 45))
+          done
 
       - name: Export local Supabase credentials
         if: steps.scope.outputs.relevant == 'true'
@@ -84,6 +104,8 @@ jobs:
           set +a
           test -n "$ANON_KEY"
           test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
           echo "E2E_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
 
@@ -125,7 +147,6 @@ jobs:
           name: financial-e2e-diagnostics
           path: |
             supabase-start.log
-            supabase.env
             e2e/playwright-report
             e2e/test-results
           if-no-files-found: ignore
