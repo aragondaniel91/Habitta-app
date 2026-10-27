@@ -140,18 +140,10 @@ jobs:
         continue-on-error: true
         run: npm --prefix e2e run fixture:reset
 
-      - name: Upload financial E2E diagnostics
-        if: always() && steps.scope.outputs.relevant == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: financial-e2e-diagnostics
-          path: |
-            supabase-start.log
-            # Authenticated Playwright traces/reports can contain cookies,
-            # session tokens, signed URLs or financial fixture content.
-            # Keep them on the ephemeral runner; never upload by default.
-          if-no-files-found: ignore
-          retention-days: 14
+      # HAB-528: Do not upload raw Supabase --debug logs or authenticated
+      # Playwright reports/traces as workflow artifacts. Local diagnostics
+      # remain on the ephemeral runner for troubleshooting during this job.
+      # Any future diagnostic artifact must be explicitly sanitized and reviewed.
 
       - name: Stop local Supabase services
         if: always() && steps.scope.outputs.relevant == 'true'
