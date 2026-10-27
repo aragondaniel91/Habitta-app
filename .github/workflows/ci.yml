@@ -16,7 +16,12 @@ jobs:
           set -euo pipefail
           # Financial E2E runs authenticated tests. Never add an artifact
           # uploader here without separate security assessment of its scope.
-          if grep -Eq '^[[:space:]]*uses:[[:space:]]*actions/upload-artifact@' .github/workflows/financial-e2e.yml; then
+          test -f .github/workflows/financial-e2e.yml || {
+            echo 'Missing financial E2E workflow; artifact guard fails closed.' >&2
+            exit 1
+          }
+          # Catch both "- uses:" and "uses:", quoted/unquoted and case variants.
+          if grep -Eiq '^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]*.*upload-artifact' .github/workflows/financial-e2e.yml; then
             echo 'Financial E2E must not upload authenticated traces or debug logs as artifacts.' >&2
             exit 1
           fi
