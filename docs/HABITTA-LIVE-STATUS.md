@@ -53,6 +53,24 @@
 
 Mantener `units.id` como clave financiera y `buildings` como entidad física. Nunca replicar una obligación del edificio a sus apartamentos, ni cambiar automáticamente la granularidad contable de clientes existentes. Rechazar duplicados/cross-tenant en BD y probar RLS. Véase [modelo detallado](architecture/HAB-PILOT-004-billable-entity-model.md).
 
+## Conciliación funcional: producción ≠ cierre formal del piloto (2026-10-27)
+
+**Corrección importante al indicador '0/30 released':** el inventario de los 30 requisitos registra **cero cierres formalmente certificados por ítem**, no significa que no existan funcionalidades publicadas. No debe usarse '0/30' como porcentaje de producto disponible. Requiere conciliación por comportamiento observable y aceptación de cada punto.
+
+**Baseline pública confirmada:** Production Worker `/health` responde `status=ok`, commit `9ae959d77f702f27cfa8ee52c6c095ad83744677` del 2026-10-24. En ese commit ya existen páginas operativas de `ResidentPaymentsPage.tsx` (incluye referencias a estados draft/correction_requested), `UnitsPage.tsx`, `ReceivablesPage.tsx` y `TreasuryPage.tsx`. Esto verifica **presencia del código de las superficies en la versión desplegada del backend** y su existencia en el árbol Git de esa versión, pero **no** demuestra funcionamiento por rol, UX completa, permiso RLS, ni que el bundle frontend servido se haya verificado en navegador en este checkpoint.
+
+**Main vs producción:** `9748dfb44f2d294004fa4ac14494503d31eaa971` tiene 20 commits posteriores; hay cambios funcionales en unidades, estructura y vista de juntas, además de pruebas. No marcar novedades de main como publicadas sin evidencia del SHA de Worker/Pages correspondiente. Preview de juntas apagado por defecto.
+
+**Nuevo método obligatorio por cada uno de los 30 puntos:**
+- `DEPLOYED_BASE`: se identificó una funcionalidad parcial/relacionada en commit desplegado, **sin afirmar aceptación completa**.
+- `IMPLEMENTED_MAIN`: existe funcionalidad no certificada como desplegada.
+- `TESTED`: pruebas relevantes documentadas, incluyendo casos negativos según riesgo.
+- `ACCEPTED`: criterio específico validado visual/funcionalmente por Founder o piloto.
+- `RELEASED_VERIFIED`: comportamiento completo probado en URL productiva, con evidencia por rol y SHA.
+- `NOT_VERIFIED`: no hay evidencia suficiente; no equivale a 'sin código'.
+
+La primera conciliación debe revisar en producción con usuarios de prueba permitidos: dashboard (1-3), pagos (4-13), unidades/personas (14-17, 19-23), tesorería/CxC (25, 29, 30) y AI (18,28); anotar por número evidencias, capturas o pruebas, SHA, brecha concreta y decisión de aceptación. Evitar declaraciones agregadas inventadas de 0 o 30 puntos implementados. El issue #515 es el epic funcional; #573 sigue el release incremental; #571 la seguridad.
+
 ## Backlog maestro: 30 puntos del piloto
 
 **Interpretación de estados:** `POR VERIFICAR` indica que no se demostró cierre, no necesariamente ausencia de código. `PARCIAL` indica evidencia técnica o desarrollo sin aceptación integral. `EN CURSO` es trabajo activo. Solo `RELEASED` con SHA y evidencia de producción permite cerrar el ítem.
