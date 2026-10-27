@@ -10,6 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Prevent financial E2E diagnostic artifact exposure
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Financial E2E runs authenticated tests. Never add an artifact
+          # uploader here without separate security assessment of its scope.
+          if grep -Eq '^[[:space:]]*uses:[[:space:]]*actions/upload-artifact@' .github/workflows/financial-e2e.yml; then
+            echo 'Financial E2E must not upload authenticated traces or debug logs as artifacts.' >&2
+            exit 1
+          fi
       - uses: pnpm/action-setup@v4
         with: { version: 10.12.1 }
       - uses: actions/setup-node@v4
