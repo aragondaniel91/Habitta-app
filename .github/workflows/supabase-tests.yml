@@ -52,7 +52,7 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         run: |
           set -o pipefail
-          supabase test db 2>&1 | tee supabase-test-db.log
+          SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io supabase test db 2>&1 | tee supabase-test-db.log
 
       - name: Run HAB-322 cross-tenant concurrency regression
         if: steps.scope.outputs.relevant == 'true'
