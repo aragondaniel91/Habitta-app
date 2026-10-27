@@ -32,12 +32,36 @@
 - No production promotion if critical/high findings are unresolved unless Founder explicitly accepts a bounded residual risk in a recorded decision; active exploitable cross-tenant/financial vulnerabilities must be fixed before release.
 - Independently approve production migration preflight, grants/default privileges, rollback readiness and release gates.
 
+## Release decision and accountability
+
+- **Non-waivable STOP:** demonstrated cross-tenant unauthorized read/write, unauthorized financial state transition, an active compromised/leaked secret, or an unclassified anonymous-executable privileged mutation. Such exposure must be contained and fixed before any production release; a Founder signature cannot waive these release-blocking conditions.
+- Other critical/high risks require remediation before release by default. Any bounded exception requires documented business justification, residual-risk owner, independent security-review approval, compensating controls, expiration date and linked tracking issue. Founder alone may accept business residual risk but may not self-certify security controls.
+- Assign severity using CVSS v4.0 plus exploitability, tenant scope, sensitivity and financial impact. Critical: stop release and incident-triage immediately; high: stop release until remediation; medium: owner and dated remediation plan; low: backlog with owner. A missing tested restore path or monitoring for core financial events is a release STOP, irrespective of CVSS.
+- Each gate **PASSES** only with linked per-release evidence, owner, independently verified test result and no blocking finding. Missing evidence = NOT VERIFIED, never PASS. Maintain a restricted evidence register with retention policy and minimum access. Record scope, SHA, test environment and assumptions.
+- Gate owners: engineering implements; security reviewer independently validates; release engineer validates CI/rollback; Founder accepts bounded business risk and final commercial launch decision. A major release or a new trust boundary requires a new full adversarial assessment; each routine SHA receives a risk-based delta review; comprehensive assessment at least annually.
+- Never expose vulnerability reproduction secrets or sensitive production ACL inventories in public issues. Maintain responsible disclosure contact / security.txt, incident owner, recovery point objective (RPO) and recovery time objective (RTO), and regulatory/privacy breach-notification escalation.
+
+## Additional critical attack surfaces
+
+- **Platform-admin across tenants:** enforce operator authorization, impersonation audit, least privilege, tenant overrides and emergency access expiry.
+- **Stripe payment and webhooks:** signed-event verification, event replay prevention, idempotent processing, PCI responsibility and settlement reconciliation.
+- **Auth:** redirect allowlists, OTP/magic-link rate limiting, enumeration resistance, leaked-password checks, refresh/session revocation after role removal.
+- **Cloudflare Worker and Supabase service-role credentials:** secrets custody/rotation, blast-radius review, per-environment separation, endpoint abuse limits before login.
+- **Storage and exports:** bucket RLS, signed URL expiry, file type/size/content validation and malware handling, spreadsheet formula injection, PDF injection and sensitive export authorization.
+- **Web delivery:** CSP and headers, HTTPS transport, cookie flags, domain takeover controls for custom domain binding, SPF/DKIM/DMARC.
+- **Supply chain:** GitHub Actions pinned to immutable SHA when practical, pull_request_target controls, restricted environment secrets, SBOM/advisory scanning and artifact provenance.
+- **Operations and regulations:** encrypted backup passphrase custody, tested restoration/RPO/RTO, incident runbooks, vendor data processing and applicable privacy requirements.
+
 ## Present baseline (not signoff)
 
-- PRs #559, #561, #562, #563 and #564 were merged into main.
-- Production read-only audit found 127 public tables with RLS and two views with security_invoker. Inventory reported 202 anon-executable SECURITY DEFINER functions and 27 mutable search_path warnings; these are **not individually cleared**.
+- Verified GitHub merges: #559 is a functional board-directory change (not security certification); #561–#564 introduce security regression tests and audit methodology. PR #560 closed without merge.
+- Read-only production audit recorded in GitHub security issue #528 on 2026-10-26: 127 public tables with RLS, two views with security_invoker, 202 anon-executable and 306 authenticated-executable SECURITY DEFINER warnings, 27 mutable search_path warnings, 13 policyless RLS tables (informational), and a leaked-password-protection warning. None are automatically vulnerabilities or individually cleared.
 - Existing pgTAP guards cover table/view baseline, charge-scope ACL and several privileged RPCs; no comprehensive exposed-RPC allowlist or authenticated cross-tenant red-team E2E evidence has been established here.
 - Security issue #528 remains open and production promotion blocked.
+
+## Existing evidence and tracked gaps
+
+Review `supabase/tests/hab_sec_008_cross_tenant_recipients.sql`, `supabase/tests/hab_sec_009_rls_bypass_class.sql`, `supabase/tests/hab528_privileged_rpc_overload_grants.sql`, `.github/workflows/database-restore-drill.yml`, `.github/workflows/financial-e2e.yml`, and `docs/security/HAB-528-PRIVILEGED-RPC-TRIAGE.md`. Evidence exists in parts; comprehensive coverage, including platform-admin and authenticated nonmock attack tests, remains unverified.
 
 ## Immediate delivery backlog
 
