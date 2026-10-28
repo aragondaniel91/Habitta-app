@@ -31,6 +31,17 @@
           "name": "Apartamento B-201"
         }
       ]
+    },
+    {
+      "key": "crossOrganization",
+      "name": "Residencias Habitta External Organization E2E",
+      "currencyCode": "USD",
+      "units": [
+        {
+          "code": "E2E-C301",
+          "name": "Apartamento C-301"
+        }
+      ]
     }
   ],
   "users": [
@@ -85,6 +96,12 @@
       "email": "habitta-e2e-isolation@example.invalid",
       "role": "administrator",
       "condominium": "isolation"
+    },
+    {
+      "key": "crossOrganizationUser",
+      "email": "habitta-e2e-cross-org@example.invalid",
+      "role": "administrator",
+      "condominium": "crossOrganization"
     }
   ],
   "financial": {
