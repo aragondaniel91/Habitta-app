@@ -1,15 +1,23 @@
 # HABITTA — Estado vivo del proyecto / SDP
 
-**Revisado manualmente:** 2026-10-24. **Repositorio:** `aragondaniel91/Habitta-app`.
+**Revisado manualmente:** 2026-10-28. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
+
+## Integración consolidada sprint #585 — 2026-10-28 (último merge #591)
+
+- **Main luego de #591:** `5a5c0297d9b2556b8b49ff5ad1a9836af1a06b03` (squash; incluye #592 `afc304c6f9a5b04b433777c497119875caee3d4a`, #590 `d44002ec1ad8ee312a01db29e02510f613e55275`, #589 `961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb`). Reconsultar HEAD al retomar.
+- **#592 dashboard #2/#3**, PR HEAD `106dc5919355bee8be2b9b72dc03725cf951c617`: CI 40770809733, Supabase DB 40770809827, Playwright 40770809598 y Financial E2E 40770809772 SUCCESS. 19/19 pruebas locales. Revisión independiente corrigió privacidad de pagos del residente y aprobación independiente `can_approve`. **IMPLEMENTED_MAIN / TESTED parcial**, pendiente Founder Accept por rol.
+- **#591 convenios #26**, PR HEAD `6b74359af1dabf0d3324a8b6b6a75aae95c74db9`: CI 40770880345, Supabase DB 40770880317, Playwright 40770880361, Financial E2E 40770880362 SUCCESS. SQL `SECURITY INVOKER` con RLS, REVOKE/GRANT explícitos, paginación/count en BD y `numeric` exacto. Test local API 516 / web 1057, 8/8 pgTAP local, re-revisión independiente sin hallazgos introducidos por la reparación. **IMPLEMENTED_MAIN / TESTED parcial**, pendiente verificación visual/operacional y producción.
+- **No se ha desplegado ni autorizado release** de estos merges. Última API productiva verificada `9ae959d77f702f27cfa8ee52c6c095ad83744677` (2026-10-24), Pages SHA aún sin comprobar. No sustituir aprobación humana #571 ni preflight #573.
+- **Matriz 28 no-IA:** la integración de una parte funcional no es aceptación integral del ítem; siguen 28 pendientes de cierre individual RELEASED_VERIFIED. Puntos IA #18 y #28 pospuestos al próximo ciclo.
 
 ## Sprint #585 — checkpoint de integración verificado (2026-10-28)
 
-### PR #592 — dashboard de acciones (candidato de desarrollo, no desplegado)
+### PR #592 — dashboard de acciones (integrado a main, no desplegado)
 
 - Puntos piloto #2/#3: tarjetas financieras residentes y administrativas con monto, concepto, unidad y estado comprensibles, separando correcciones propias de revisión administrativa.
 - Revisión SDP halló privacidad transversal en lista de movimientos recientes y falsa señal de aprobación propia. Se corrigió filtrando los movimientos recientes del residente por autor y computando aprobaciones administrativas exclusivamente con `can_approve === true`; los pagos bloqueados por independencia se muestran como pendientes de otro revisor.
-- Pruebas focales locales 17/17 PASS y web typecheck PASS en el candidato corregido. Aún requiere cuatro pipelines GREEN del nuevo HEAD, revisión y merge. #571/#573 no autorizan producción.
+- Pruebas focales locales 19/19 PASS, typecheck PASS; 4 workflows GREEN sobre `106dc5919355bee8be2b9b72dc03725cf951c617`; merge `afc304c6f9a5b04b433777c497119875caee3d4a`. #571/#573 siguen bloqueando producción.
 
 
 - **Main HEAD luego de PR #589:** `961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb` ([merge #589](https://github.com/aragondaniel91/Habitta-app/pull/589)); incluye #586 (archivado auditado), #587 (crédito a favor visible) y #588 (KPI y vínculos contextuales). Se debe volver a consultar GitHub al retomar.
