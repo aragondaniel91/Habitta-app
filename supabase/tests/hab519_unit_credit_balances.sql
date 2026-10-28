@@ -1,12 +1,13 @@
 begin;
-select plan(17);
+select plan(18);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('85000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@hab519.test','x',now(),now()),
 ('85000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','accountant@hab519.test','x',now(),now()),
 ('85000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ownerx@hab519.test','x',now(),now()),
 ('85000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ownery@hab519.test','x',now(),now()),
-('85000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000000','authenticated','authenticated','outsider@hab519.test','x',now(),now());
+('85000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000000','authenticated','authenticated','outsider@hab519.test','x',now(),now()),
+('85000000-0000-0000-0000-000000000006','00000000-0000-0000-0000-000000000000','authenticated','authenticated','board@hab519.test','x',now(),now());
 
 insert into public.organizations(id,name,created_by) values
 ('85100000-0000-0000-0000-000000000001','HAB519 Org A','85000000-0000-0000-0000-000000000001'),
@@ -19,7 +20,8 @@ insert into public.condominium_memberships(condominium_id,user_id,role) values
 ('85200000-0000-0000-0000-000000000001','85000000-0000-0000-0000-000000000002','accountant'),
 ('85200000-0000-0000-0000-000000000001','85000000-0000-0000-0000-000000000003','owner'),
 ('85200000-0000-0000-0000-000000000001','85000000-0000-0000-0000-000000000004','owner'),
-('85200000-0000-0000-0000-000000000002','85000000-0000-0000-0000-000000000005','condominium_admin');
+('85200000-0000-0000-0000-000000000002','85000000-0000-0000-0000-000000000005','condominium_admin'),
+('85200000-0000-0000-0000-000000000001','85000000-0000-0000-0000-000000000006','board_member');
 
 insert into public.units(id,condominium_id,code,type,created_by) values
 ('85300000-0000-0000-0000-000000000001','85200000-0000-0000-0000-000000000001','X-1','apartment','85000000-0000-0000-0000-000000000001'),
@@ -95,8 +97,8 @@ select is(
 select is(
   (select credit_entry_count from public.get_unit_credit_balances('85200000-0000-0000-0000-000000000001')
    where unit_id='85300000-0000-0000-0000-000000000001' and currency_code='USD'),
-  1::bigint,
-  'the reversed entry no longer counts toward the credit-granting total');
+  2::bigint,
+  'historic number of credit-originating movements remains two despite one reversal');
 
 -- Role boundary: the owner of unit Y has no relation to unit X and is not board/admin, so the
 -- RPC returns nothing for them even though unit X carries a real credit balance.
@@ -113,6 +115,15 @@ select is(
    where unit_id='85300000-0000-0000-0000-000000000001' and currency_code='USD'),
   '5.00',
   'owner X can read their own unit credit balance');
+
+-- Board members are allowed condominium-wide financial aggregates, not individual
+-- resident credit details. This is an important narrower authorization contract.
+select set_config('request.jwt.claim.sub','85000000-0000-0000-0000-000000000006',true);
+select is(
+  (select count(*) from public.get_unit_credit_balances('85200000-0000-0000-0000-000000000001')),
+  0::bigint,
+  'board aggregate role cannot enumerate private unit credit balances'
+);
 
 -- Tenant isolation: an admin of a completely different condominium gets nothing back for condo A.
 select set_config('request.jwt.claim.sub','85000000-0000-0000-0000-000000000005',true);
