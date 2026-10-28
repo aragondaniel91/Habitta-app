@@ -3,6 +3,14 @@
 **Revisado manualmente:** 2026-10-24. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
+## Sprint #585 — checkpoint de integración verificado (2026-10-28)
+
+- **Main HEAD luego de PR #589:** `961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb` ([merge #589](https://github.com/aragondaniel91/Habitta-app/pull/589)); incluye #586 (archivado auditado), #587 (crédito a favor visible) y #588 (KPI y vínculos contextuales). Se debe volver a consultar GitHub al retomar.
+- **#589:** código SQL/UX y pruebas corregidas para que un comprobante enviado (`submitted`/`under_review`) sea inmutable; reemplazo únicamente en `draft`/`correction_requested`. HEAD `cf40bcef0c63be88d141b785647c771218bf0e74` con CI run 40766261988 SUCCESS, Supabase DB run 40766262234 SUCCESS, Playwright run 40766261949 SUCCESS y Financial E2E run 40766262013 SUCCESS. Revisión estática adicional en worktree separado; esto **NO** reemplaza auditoría humana #571.
+- **Evidencia por ítem**: #1/#29 reciben navegación parcial (#588); #5/#9 endurecimiento del comprobante (#589); #13/#30 visualización de crédito parcial (#587); #14 auditoría de archivado parcial (#586). No declarar ninguno `ACCEPTED` o `RELEASED_VERIFIED` sin pruebas/aceptación individual.
+- **Objetivo del sprint:** 28 puntos sin IA para el 2026-10-30 (#585). #18/#28 pospuestos. Estado de la tarea y pendientes en [#585](https://github.com/aragondaniel91/Habitta-app/issues/585); `main` y producción son entidades distintas.
+- **Release:** #571 (revisión humana de ciberseguridad) y #573 (preflight/release) abiertos; último Worker productivo comprobado sigue `9ae959d77f702f27cfa8ee52c6c095ad83744677` del 2026-10-24; SHA de Pages no confirmado. **NO desplegado** por estas integraciones.
+
 ## SDP — correcciones tras revisión Claude del PR #559 (2026-10-26)
 
 - **Issue/PR:** #518/#553, [PR #559](https://github.com/aragondaniel91/Habitta-app/pull/559); rama `hab-557-main-integration`; builder Codex CLI desde worktree aislado `C:\Development\Reviews\Habitta-PR559`; commit `6bc23cb` (confirmar SHA completo en PR).
