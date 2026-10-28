@@ -304,7 +304,9 @@ describe('units directory aggregate', () => {
       if (url.includes('/auth/v1/user')) return json({ id: personA });
       if (url.includes('/rest/v1/units?')) return json([unit(unitA, condominiumA, 'Torre A')]);
       if (url.includes('/rest/v1/unit_owners?')) return json([owner]);
-      if (url.includes('/rest/v1/unit_occupancies?')) return json([{ ...occupancy, unit_id: unitB }]);
+      if (url.includes('/rest/v1/unit_occupancies?')) {
+        return json([{ ...occupancy, unit_id: unitB }]);
+      }
       throw new Error('Unexpected fetch in occupancy isolation regression');
     });
     try {
@@ -313,7 +315,11 @@ describe('units directory aggregate', () => {
         { headers: { Authorization: 'Bearer caller-token' } },
         environment,
       );
-      expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/rest/v1/unit_occupancies?'))).toBe(true);
+      expect(
+        fetchMock.mock.calls.some(([input]) =>
+          String(input).includes('/rest/v1/unit_occupancies?'),
+        ),
+      ).toBe(true);
       expect(response.status).toBe(502);
       await expect(response.json()).resolves.toEqual({ error: 'Units directory is unavailable' });
     } finally {
