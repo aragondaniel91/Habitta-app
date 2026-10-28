@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogBody } from '../components/Dialog';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
@@ -38,6 +38,8 @@ import {
 } from '../lib/payments';
 import type { PaymentFilters } from '../lib/payments';
 import { PaymentMethodsView, PaymentsDrawerHost, type PaymentsDrawerMode } from './PaymentsDrawers';
+import { consumeDeepLinkParams, readPaymentsDeepLink } from '../lib/dashboard-deep-links';
+import { isDirectoryIdentifier } from '../lib/directory-deep-links';
 import '../payments.css';
 
 type Unit = { id: string; code: string; building_id: string | null; status?: string };
@@ -66,6 +68,8 @@ type PaymentsData = {
 type Props = {
   condominiumId: string;
   condominiumName: string;
+  onOpenPerson?: ((personId: string) => void) | undefined;
+  onOpenUnit?: ((unitId: string) => void) | undefined;
   session: Session;
 };
 
@@ -80,6 +84,41 @@ const initialFilters: PaymentFilters = {
   currencyCode: '',
   methodId: '',
 };
+
+function PaymentUnitLink({
+  label,
+  onOpenUnit,
+  unitId,
+}: {
+  label: string;
+  onOpenUnit?: ((unitId: string) => void) | undefined;
+  unitId: string;
+}) {
+  if (!onOpenUnit || !isDirectoryIdentifier(unitId)) return <strong>{label}</strong>;
+  return (
+    <button className="payments-unit-link" onClick={() => onOpenUnit(unitId)} type="button">
+      {label}
+    </button>
+  );
+}
+
+function PaymentPayerLink({
+  onOpenPerson,
+  payment,
+}: {
+  onOpenPerson?: ((personId: string) => void) | undefined;
+  payment: Pick<Payment, 'payer_name' | 'submitted_for_person_id'>;
+}) {
+  const personId = payment.submitted_for_person_id;
+  if (!onOpenPerson || !personId || !isDirectoryIdentifier(personId)) {
+    return <strong>{payment.payer_name}</strong>;
+  }
+  return (
+    <button className="payments-unit-link" onClick={() => onOpenPerson(personId)} type="button">
+      {payment.payer_name}
+    </button>
+  );
+}
 
 function MetricCard({
   icon,
@@ -233,19 +272,32 @@ function ScopedReviewDrawer({ drawer, loadReceivablesForUnit, ...props }: Scoped
   );
 }
 
-export function PaymentsPage({ condominiumId, condominiumName, session }: Props) {
+export function PaymentsPage({
+  condominiumId,
+  condominiumName,
+  onOpenPerson,
+  onOpenUnit,
+  session,
+}: Props) {
+  // A dashboard KPI deep link (status/currency) is read once on first mount; the
+  // reset-on-condominium-change effect below must not stomp it before it has been applied.
+  const deepLinkRef = useRef(readPaymentsDeepLink(window.location.search));
+  const isInitialFiltersMount = useRef(true);
+  const deepLinkStatus = deepLinkRef.current.status;
   const [data, setData] = useState<PaymentsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [movementsRevision, setMovementsRevision] = useState(0);
   const [reviewRevision, setReviewRevision] = useState(0);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [selectedCurrency, setSelectedCurrency] = useState('');
-  const [activeTab, setActiveTab] = useState<'review' | 'movements' | 'methods'>('review');
+  const [selectedCurrency, setSelectedCurrency] = useState(deepLinkRef.current.currencyCode ?? '');
+  const [activeTab, setActiveTab] = useState<'review' | 'movements' | 'methods'>(
+    deepLinkStatus === 'approved' ? 'movements' : 'review',
+  );
   const [filters, setFilters] = useState<PaymentFilters>(initialFilters);
   const [quickStatus, setQuickStatus] = useState<
     'all' | 'pending' | 'approved' | 'attention' | 'reversed'
-  >('all');
+  >(deepLinkStatus === 'approved' ? 'approved' : 'all');
   const [reviewPage, setReviewPage] = useState(1);
   const [movementsPage, setMovementsPage] = useState(1);
   const [movementsUnitId, setMovementsUnitId] = useState('');
@@ -255,10 +307,14 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   const [reviewUnitId, setReviewUnitId] = useState('');
   const [reviewDateFrom, setReviewDateFrom] = useState('');
   const [reviewDateTo, setReviewDateTo] = useState('');
-  const [reviewStatus, setReviewStatus] = useState('');
+  const [reviewStatus, setReviewStatus] = useState(
+    deepLinkStatus === 'submitted' || deepLinkStatus === 'under_review' ? deepLinkStatus : '',
+  );
   const [reviewSort, setReviewSort] = useState<PaymentTableSort>(defaultPaymentTableSort);
   const [reviewSearch, setReviewSearch] = useState('');
-  const [reviewFocus, setReviewFocus] = useState<'all' | 'pending' | 'actions'>('all');
+  const [reviewFocus, setReviewFocus] = useState<'all' | 'pending' | 'actions'>(
+    deepLinkStatus === 'submitted' || deepLinkStatus === 'under_review' ? 'pending' : 'all',
+  );
   const [drawer, setDrawer] = useState<PaymentsDrawerMode>(null);
 
   // The payments screen does not need every charge across the condominium.
@@ -366,9 +422,16 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
 
   useEffect(() => {
     setDrawer(null);
-    setFilters(initialFilters);
-    setQuickStatus('all');
-    setActiveTab('review');
+    // The first run applies the deep link seeded above; only a later condominium switch clears it.
+    if (isInitialFiltersMount.current) {
+      isInitialFiltersMount.current = false;
+    } else {
+      setFilters(initialFilters);
+      setQuickStatus('all');
+      setActiveTab('review');
+      setReviewStatus('');
+      setReviewFocus('all');
+    }
     setReviewPage(1);
     setMovementsPage(1);
     setMovementsUnitId('');
@@ -378,14 +441,19 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
     setReviewUnitId('');
     setReviewDateFrom('');
     setReviewDateTo('');
-    setReviewStatus('');
     setReviewSort(defaultPaymentTableSort);
     setReviewSearch('');
-    setReviewFocus('all');
     setMessage('');
     setMovementsRevision(0);
     setReviewRevision(0);
   }, [condominiumId]);
+
+  useEffect(() => {
+    const deepLink = deepLinkRef.current;
+    if (!deepLink.status && !deepLink.currencyCode) return;
+    deepLinkRef.current = {};
+    consumeDeepLinkParams(['status', 'currency']);
+  }, []);
 
   const currencies = useMemo(
     () =>
@@ -419,9 +487,11 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
   );
 
   useEffect(() => {
-    const nextCurrency = currencies[0] ?? '';
+    // Before the first load resolves, currencies is empty — don't clobber a deep-linked
+    // currency selection while waiting for the data that will validate it.
+    if (!currencies.length) return;
     if (!selectedCurrency || !currencies.includes(selectedCurrency)) {
-      setSelectedCurrency(nextCurrency);
+      setSelectedCurrency(currencies[0] ?? '');
     }
   }, [currencies, selectedCurrency]);
 
@@ -958,12 +1028,17 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                               {pagedReviewQueue.map((payment) => (
                                 <tr key={payment.id}>
                                   <td>
-                                    <strong>
-                                      {unitCodes.get(payment.unit_id) ?? 'Sin unidad'}
-                                    </strong>
+                                    <PaymentUnitLink
+                                      label={unitCodes.get(payment.unit_id) ?? 'Sin unidad'}
+                                      onOpenUnit={onOpenUnit}
+                                      unitId={payment.unit_id}
+                                    />
                                   </td>
                                   <td>
-                                    <strong>{payment.payer_name}</strong>
+                                    <PaymentPayerLink
+                                      onOpenPerson={onOpenPerson}
+                                      payment={payment}
+                                    />
                                     {payment.reference ? <small>{payment.reference}</small> : null}
                                   </td>
                                   <td>{formatDashboardDate(payment.payment_date)}</td>
@@ -1371,9 +1446,14 @@ export function PaymentsPage({ condominiumId, condominiumName, session }: Props)
                       {pagedMovements.map((payment) => (
                         <tr key={payment.id}>
                           <td>
-                            <strong>{unitCodes.get(payment.unit_id) ?? 'Sin unidad'}</strong>
+                            <PaymentUnitLink
+                              label={unitCodes.get(payment.unit_id) ?? 'Sin unidad'}
+                              onOpenUnit={onOpenUnit}
+                              unitId={payment.unit_id}
+                            />
                             <span>
-                              Pagador: {payment.payer_name}
+                              Pagador:{' '}
+                              <PaymentPayerLink onOpenPerson={onOpenPerson} payment={payment} />
                               {payment.reference ? ` · ${payment.reference}` : ''}
                             </span>
                             <span>

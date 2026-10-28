@@ -166,7 +166,9 @@ export function UnitDetailDrawer({
   onClose,
   canMutate,
   canViewPeople,
+  canViewReceivables,
   onOpenPerson,
+  onOpenReceivables,
   onEdit,
   onArchive,
 }: {
@@ -176,7 +178,9 @@ export function UnitDetailDrawer({
   onClose: () => void;
   canMutate: boolean;
   canViewPeople: boolean;
+  canViewReceivables?: boolean;
   onOpenPerson?: ((personId: string) => void) | undefined;
+  onOpenReceivables?: ((unitId: string) => void) | undefined;
   onEdit: () => void;
   onArchive: () => void;
 }) {
@@ -453,6 +457,13 @@ export function UnitDetailDrawer({
     <Drawer
       description={`${UNIT_TYPE_LABELS[unit.type]} · ${unit.building?.name ?? 'Sin edificio asignado'}`}
       eyebrow="Unidad"
+      headerActions={
+        canViewReceivables && onOpenReceivables ? (
+          <Button onClick={() => onOpenReceivables(unit.id)} size="sm" variant="secondary">
+            Ver cuentas por cobrar
+          </Button>
+        ) : undefined
+      }
       onClose={onClose}
       prefix="units-v3"
       presentation="workspace"

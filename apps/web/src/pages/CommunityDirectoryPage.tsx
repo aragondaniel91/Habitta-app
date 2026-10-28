@@ -10,6 +10,7 @@ type Props = {
   condominiumName: string;
   mode: 'units' | 'people';
   onOpenUnit?: ((unitId: string) => void) | undefined;
+  onOpenReceivables?: ((unitId: string) => void) | undefined;
   session: Session;
 };
 
@@ -18,6 +19,7 @@ export function CommunityDirectoryPage({
   condominiumName,
   mode,
   onOpenUnit,
+  onOpenReceivables,
   session,
 }: Props) {
   const [structureOpen, setStructureOpen] = useState(false);
@@ -54,6 +56,7 @@ export function CommunityDirectoryPage({
       condominiumId={condominiumId}
       condominiumName={condominiumName}
       onConfigureStructure={() => setStructureOpen(true)}
+      onOpenReceivables={onOpenReceivables}
       session={session}
     />
   );

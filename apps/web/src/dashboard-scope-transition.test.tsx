@@ -146,6 +146,7 @@ describe('dashboard request ownership across condominium changes', () => {
           condominiumId="a"
           condominiumName="Condominio A"
           onNavigate={() => {}}
+          onNavigateFiltered={() => {}}
           session={session}
         />,
       );
@@ -156,6 +157,7 @@ describe('dashboard request ownership across condominium changes', () => {
           condominiumId="b"
           condominiumName="Condominio B"
           onNavigate={() => {}}
+          onNavigateFiltered={() => {}}
           session={session}
         />,
       );

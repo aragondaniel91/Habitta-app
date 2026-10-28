@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { ArrowRightIcon, CheckCircleIcon, FeesIcon, ReportsIcon } from '../components/icons';
@@ -35,6 +35,7 @@ import type {
   ReceivableUnit,
 } from '../lib/receivables';
 import { ReceivablesDrawerHost, type ReceivablesDrawerMode } from './ReceivablesDrawers';
+import { consumeDeepLinkParams, readReceivablesDeepLink } from '../lib/dashboard-deep-links';
 import { ChargeCreationChooser } from '../features/receivables/ChargeCreationChooser';
 import { ChargeInstallmentPlanDrawer } from '../features/receivables/ChargeInstallmentPlanDrawer';
 import { LateFeeSettingsDrawer } from '../features/receivables/LateFeeSettingsDrawer';
@@ -61,6 +62,7 @@ type Building = { id: string; name: string };
 type Props = {
   condominiumId: string;
   condominiumName: string;
+  onOpenUnit?: ((unitId: string) => void) | undefined;
   session: Session;
 };
 
@@ -153,15 +155,24 @@ function ReceivablesLoading() {
   );
 }
 
-export function ReceivablesPage({ condominiumId, condominiumName, session }: Props) {
+export function ReceivablesPage({ condominiumId, condominiumName, onOpenUnit, session }: Props) {
   const roles = useCondominiumRoles();
   const manage = canManage(roles);
+  // A dashboard KPI deep link (currency/status/due/unit) is read once on first mount; the
+  // reset-on-condominium-change effect below must not stomp it before it has been applied.
+  const deepLinkRef = useRef(readReceivablesDeepLink(window.location.search));
+  const isInitialFiltersMount = useRef(true);
   const [data, setData] = useState<ReceivablesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMoreItems, setLoadingMoreItems] = useState(false);
   const [error, setError] = useState('');
-  const [selectedCurrency, setSelectedCurrency] = useState('');
-  const [filters, setFilters] = useState<ReceivableFilters>(initialFilters);
+  const [selectedCurrency, setSelectedCurrency] = useState(deepLinkRef.current.currencyCode ?? '');
+  const [filters, setFilters] = useState<ReceivableFilters>(() => ({
+    ...initialFilters,
+    status: deepLinkRef.current.status ?? '',
+    due: deepLinkRef.current.due ?? '',
+    unitId: deepLinkRef.current.unitId ?? '',
+  }));
   const [drawer, setDrawer] = useState<ReceivablesDrawerMode>(null);
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
   const [statementUnitId, setStatementUnitId] = useState('');
@@ -240,13 +251,25 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
 
   useEffect(() => {
     setDrawer(null);
-    setFilters(initialFilters);
+    // The first run applies the deep link seeded above; only a later condominium switch clears it.
+    if (isInitialFiltersMount.current) {
+      isInitialFiltersMount.current = false;
+    } else {
+      setFilters(initialFilters);
+    }
     setSelectedReceivableId('');
     setStatementUnitId('');
     setCreditQuery('');
     setChargeChooserOpen(false);
     setLoadingMoreItems(false);
   }, [condominiumId]);
+
+  useEffect(() => {
+    const deepLink = deepLinkRef.current;
+    if (!deepLink.status && !deepLink.currencyCode && !deepLink.due && !deepLink.unitId) return;
+    deepLinkRef.current = {};
+    consumeDeepLinkParams(['status', 'currency', 'due', 'unit']);
+  }, []);
 
   const currencies = useMemo(
     () => (data ? getReceivableCurrencies(data.summaries, data.aging, data.items) : []),
@@ -271,9 +294,11 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
   );
 
   useEffect(() => {
-    const nextCurrency = currencies[0] ?? '';
+    // Before the first load resolves, currencies is empty — don't clobber a deep-linked
+    // currency selection while waiting for the data that will validate it.
+    if (!currencies.length) return;
     if (!selectedCurrency || !currencies.includes(selectedCurrency)) {
-      setSelectedCurrency(nextCurrency);
+      setSelectedCurrency(currencies[0] ?? '');
     }
   }, [currencies, selectedCurrency]);
 
@@ -810,7 +835,17 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
                         </div>
                       </td>
                       <td data-label="Unidad">
-                        <strong>{unitLabel(item.unit_id)}</strong>
+                        {onOpenUnit ? (
+                          <button
+                            className="receivables-unit-link"
+                            onClick={() => onOpenUnit(item.unit_id)}
+                            type="button"
+                          >
+                            {unitLabel(item.unit_id)}
+                          </button>
+                        ) : (
+                          <strong>{unitLabel(item.unit_id)}</strong>
+                        )}
                       </td>
                       <td data-label="Emisión">
                         {item.issue_date ? formatDashboardDate(item.issue_date) : '—'}
