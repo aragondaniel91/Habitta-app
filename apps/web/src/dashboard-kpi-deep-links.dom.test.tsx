@@ -35,7 +35,21 @@ function installFetch() {
       if (path.endsWith('/receivables/aging')) return Promise.resolve(jsonResponse([]));
       if (path.endsWith('/receivables')) return Promise.resolve(jsonResponse([]));
       if (path.endsWith('/payments')) return Promise.resolve(jsonResponse([]));
-      if (path.endsWith('/payments/review-queue')) return Promise.resolve(jsonResponse([]));
+      if (path.endsWith('/payments/review-queue'))
+        return Promise.resolve(
+          jsonResponse([
+            {
+              id: 'reviewable-payment-1',
+              unit_id: 'unit-1',
+              status: 'submitted',
+              can_approve: true,
+              payer_name: 'Residente Demo',
+              original_amount: '12.00',
+              original_currency_code: 'USD',
+              payment_date: '2026-10-28',
+            },
+          ]),
+        );
       if (path.endsWith('/requests')) return Promise.resolve(jsonResponse([]));
       return Promise.resolve(jsonResponse([]));
     }),
