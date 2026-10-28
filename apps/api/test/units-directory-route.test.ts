@@ -209,6 +209,30 @@ describe('units directory aggregate', () => {
     }
   });
 
+  it('normalizes malformed JSON from an upstream success into a generic 502', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/auth/v1/user')) return json({ id: personA });
+      if (url.includes('/rest/v1/units?')) return json([unit(unitA, condominiumA, 'Torre A')]);
+      if (url.includes('/rest/v1/unit_owners?')) {
+        return new Response('not-json', { status: 200 });
+      }
+      if (url.includes('/rest/v1/unit_occupancies?')) return json([occupancy]);
+      return json({ error: 'Unexpected request' }, 404);
+    });
+    try {
+      const response = await app.request(
+        `/v1/condominiums/${condominiumA}/units-directory`,
+        { headers: { Authorization: 'Bearer caller-token' } },
+        environment,
+      );
+      expect(response.status).toBe(502);
+      await expect(response.json()).resolves.toEqual({ error: 'Units directory is unavailable' });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   it('requires active, tenant-scoped joins and does not request private fields', async () => {
     const source = await readFile(
       new URL('../src/units-directory-routes.ts', import.meta.url),

@@ -146,11 +146,18 @@ unitsDirectoryRoutes.get('/:id/units-directory', async (c) => {
     return c.json({ error: 'Units directory is unavailable' }, status);
   }
 
-  const [units, owners, occupancies] = await Promise.all([
-    unitsResponse.json() as Promise<UnitRow[]>,
-    ownersResponse.json() as Promise<OwnerRow[]>,
-    occupanciesResponse.json() as Promise<OccupancyRow[]>,
-  ]);
+  let units: UnitRow[];
+  let owners: OwnerRow[];
+  let occupancies: OccupancyRow[];
+  try {
+    [units, owners, occupancies] = await Promise.all([
+      unitsResponse.json() as Promise<UnitRow[]>,
+      ownersResponse.json() as Promise<OwnerRow[]>,
+      occupanciesResponse.json() as Promise<OccupancyRow[]>,
+    ]);
+  } catch {
+    return c.json({ error: 'Units directory is unavailable' }, 502);
+  }
   // A successful HTTP response is not proof that every upstream payload is a directory rowset.
   // Fail closed: never serve a partial directory or leak an upstream failure shape.
   if (!Array.isArray(units) || !Array.isArray(owners) || !Array.isArray(occupancies)) {
