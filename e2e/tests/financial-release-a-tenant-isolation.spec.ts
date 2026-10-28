@@ -232,6 +232,7 @@ test.describe('Release A - real authenticated tenant boundaries (isolated local)
     const [a, c] = sessions;
     const originalC = 'E2E-C301';
     let restoreC = false;
+    let originalFailure: unknown = null;
     try {
       const originalA = await requireOwnUnits(a, ids.a, ids.unitA);
       const originalCrossOrg = await requireOwnUnits(c, ids.c, ids.unitC);
@@ -269,12 +270,41 @@ test.describe('Release A - real authenticated tenant boundaries (isolated local)
       expect(finalC.find((unit) => unit.id === ids.unitC)?.code).toBe(
         'E2E-C301-AUTHORIZED-CONTROL',
       );
+    } catch (error) {
+      originalFailure = error;
+      throw error;
     } finally {
-      if (restoreC) {
-        const restored = await api(c, unitPath(ids.c, ids.unitC), 'PATCH', { code: originalC });
-        expect(restored.status(), 'Cross-organization fixture restoration is mandatory').toBe(200);
+      const cleanupFailures: unknown[] = [];
+      // Restore A if an IDOR regression unexpectedly modified the original tenant.
+      try {
+        const response = await api(a, unitsPath(ids.a));
+        expect(response.status()).toBe(200);
+        const units = (await response.json()) as Unit[];
+        if (units.find((unit) => unit.id === ids.unitA)?.code !== 'E2E-A101') {
+          const restored = await api(a, unitPath(ids.a, ids.unitA), 'PATCH', {
+            code: 'E2E-A101',
+          });
+          expect(restored.status(), 'Original organization fixture must be restored').toBe(200);
+        }
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
+      try {
+        if (restoreC) {
+          const restored = await api(c, unitPath(ids.c, ids.unitC), 'PATCH', {
+            code: originalC,
+          });
+          expect(restored.status(), 'Cross-organization fixture restoration is mandatory').toBe(200);
+        }
+      } catch (error) {
+        cleanupFailures.push(error);
       }
       await Promise.all(sessions.map((session) => session.context.dispose()));
+      if (cleanupFailures.length > 0) {
+        if (originalFailure === null) throw cleanupFailures[0];
+        // Preserve the original authorization failure without logging any token or fixture data.
+        console.warn('Cross-organization fixture cleanup also failed');
+      }
     }
   });
 });
