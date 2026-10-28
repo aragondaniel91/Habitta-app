@@ -792,6 +792,15 @@ app.get('/v1/condominiums/:id/receivables/aging', async (c) => {
   });
   return c.json(await r.json(), r.ok ? 200 : 403);
 });
+// HAB-519: authorized/unapplied credit available per unit and currency, so the collections
+// workspace can list it without the caller already knowing which unit to open a statement for.
+app.get('/v1/condominiums/:id/receivables/credit-balances', async (c) => {
+  const r = await rest(c, 'rpc/get_unit_credit_balances', {
+    method: 'POST',
+    body: JSON.stringify({ target: uuidSchema.parse(c.req.param('id')) }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
 app.get('/v1/condominiums/:id/receivables/:receivableId', async (c) => {
   const r = await rest(
     c,

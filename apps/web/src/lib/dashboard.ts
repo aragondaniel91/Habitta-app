@@ -33,6 +33,15 @@ export type ReceivableAging = {
   over_90: string;
 };
 
+export type UnitCreditBalance = {
+  unit_id: string;
+  currency_code: string;
+  credit_balance: string;
+  credit_entry_count: number;
+  oldest_credit_date: string | null;
+  latest_credit_date: string | null;
+};
+
 export type DashboardReceivable = {
   id: string;
   unit_id: string;
