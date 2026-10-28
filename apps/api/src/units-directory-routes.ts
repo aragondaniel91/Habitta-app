@@ -163,6 +163,16 @@ unitsDirectoryRoutes.get('/:id/units-directory', async (c) => {
   if (!Array.isArray(units) || !Array.isArray(owners) || !Array.isArray(occupancies)) {
     return c.json({ error: 'Units directory is unavailable' }, 502);
   }
+  // Defense in depth: never serialize a row outside the requested condominium, even if
+  // an upstream filter or policy is misconfigured. Reject partial/ambiguous directories.
+  const allowedUnitIds = new Set(units.map((unit) => unit.id));
+  if (
+    units.some((unit) => unit.condominium_id !== condominiumId) ||
+    owners.some((row) => !allowedUnitIds.has(row.unit_id)) ||
+    occupancies.some((row) => !allowedUnitIds.has(row.unit_id))
+  ) {
+    return c.json({ error: 'Units directory is unavailable' }, 502);
+  }
   const ownersByUnit = indexByUnit(owners);
   const occupanciesByUnit = indexByUnit(occupancies);
   const response: UnitsDirectoryUnit[] = units.map((unit) => ({
