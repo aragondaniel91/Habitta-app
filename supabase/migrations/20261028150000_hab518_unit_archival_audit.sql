@@ -29,13 +29,14 @@ alter table public.structure_events enable row level security;
 -- below, which bypasses RLS as the function owner. Direct client writes to this
 -- table are always denied, both by the missing grant and by the absence of any
 -- insert/update/delete policy.
-revoke all on table public.structure_events from anon;
-revoke all on table public.structure_events from authenticated;
-grant select on table public.structure_events to authenticated;
+revoke all on table public.structure_events from anon, authenticated, service_role;
+grant select on table public.structure_events to authenticated, service_role;
 
+-- Archival events contain actors and internal metadata: only audit-authorized staff
+-- may read them. Condominium membership alone is NOT sufficient.
 create policy structure_events_read on public.structure_events
 for select
-using (public.can_read_condominium(structure_events.condominium_id));
+using (public.can_read_admin_audit_log(structure_events.condominium_id));
 
 create function public.record_unit_structure_event()
 returns trigger
