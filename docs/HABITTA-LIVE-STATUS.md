@@ -158,6 +158,14 @@ Los estados anteriores son **etiquetas de evidencia acumulativas**, no niveles e
 
 **RECORD:** actualizar esta tabla y «Resumen», anotando SHA, issue/PR, estado y fecha. **Ningún PR funcional debe considerarse finalizado sin actualizar este archivo** en el mismo PR o PR documental asociado. Evitar escribir sobre `main` directamente: mantener branch protection.
 
+### Checkpoint verificado — Entrega A (2026-10-28)
+
+- **GitHub main**: `1cc806672a8236f114b618fe80a71ed6c0839dbd` (PR #579 merged); workflows de CI, Supabase Database Tests, Financial E2E y Playwright **SUCCESS** sobre ese mismo SHA.
+- **Hardening integrado**: PR #575 (rechazo de payload no-array del directorio), #576 (JSON malformado → 502), #577 (pgTAP de UPDATE cross-tenant denegado), #578 (rechazo de filas de otro condominio / asignaciones ajenas), #579 (pruebas de ocupantes ajenos e identidad de condominio faltante). Estos merges NO equivalen a despliegue productivo ni a aceptación de los 30 puntos.
+- **Producción**: último workflow `Production Release` exitoso apunta a `9ae959d77f702f27cfa8ee52c6c095ad83744677` (2026-10-24). No se verificó un release posterior.
+- **P0 BLOCKED**: issue #571 abierto; requiere pruebas adversariales autenticadas de rol/tenant en staging autorizado con datos sintéticos y aprobación de profesional humano independiente; PR #569 de inventario privileged RPC sigue draft y no debe utilizarse como si estuviera aprobado.
+- **Próximo trabajo real**: clasificar controles aún sin evidencia, ejecutar los negativos autenticados entre tenant A/B en entorno aislado y cerrar hallazgos con PR independientes. Promoción protegida sólo con gates y signoff completos. No etiquetar ningún ítem de #515 como RELEASED sin evidencia de producción.
+
 ### Registro de entregas
 
 | Fecha | Tarea | Resultado y siguiente acción |
