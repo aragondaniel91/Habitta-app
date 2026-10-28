@@ -102,12 +102,13 @@ describe('HAB-417 the resident dashboard says whose home this is', () => {
   it('distinguishes a resident action from a payment awaiting review without inventing a charge', () => {
     expect(dashboard).toContain("['draft', 'correction_requested']");
     expect(dashboard).toContain("['submitted', 'under_review']");
-    expect(dashboard).toContain('Acción pendiente');
-    expect(dashboard).toContain('En espera de revisión');
+    expect(dashboard).toContain('Requiere tu acción');
+    expect(dashboard).toContain('Validación administrativa pendiente');
     expect(dashboard).not.toContain('AcciÃ³n pendiente');
     expect(dashboard).not.toContain('En espera de revisiÃ³n');
     expect(dashboard).toContain('formatDashboardAmount(');
     expect(dashboard).toContain('charge_concept_name');
+    expect(dashboard).toContain('submitted_by_user_id === session.user.id');
     expect(dashboard).toContain('onNavigate(paymentsRoute)');
     expect(dashboard).not.toContain('/payments/review-queue');
   });
