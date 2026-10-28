@@ -44,6 +44,7 @@ describe('administrator audit route contract', () => {
       'maintenance',
       'governance',
       'assemblies',
+      'structure',
     ]) {
       expect(source).toContain(`'${module}'`);
     }

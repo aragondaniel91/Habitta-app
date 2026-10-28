@@ -43,6 +43,21 @@ type OccupancyHistoryRow = {
   ends_at: string | null;
 };
 
+type StructureAuditRow = {
+  event_id: string;
+  occurred_at: string;
+  actor_user_id: string | null;
+  entity_type: string;
+  entity_id: string;
+  action: 'created' | 'archived' | 'reactivated';
+};
+
+const archivalActionLabels: Record<StructureAuditRow['action'], string> = {
+  created: 'Unidad creada',
+  archived: 'Unidad archivada',
+  reactivated: 'Unidad reactivada',
+};
+
 const occupancyLabels: Record<DirectoryOccupancy['occupancyType'], string> = {
   owner_occupant: 'Propietario residente',
   tenant: 'Inquilino',
@@ -169,6 +184,7 @@ export function UnitDetailDrawer({
   const [ownersHistory, setOwnersHistory] = useState<OwnerHistoryRow[]>([]);
   const [occupanciesHistory, setOccupanciesHistory] = useState<OccupancyHistoryRow[]>([]);
   const [people, setPeople] = useState<PersonRow[]>([]);
+  const [archivalHistory, setArchivalHistory] = useState<StructureAuditRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState('');
 
@@ -187,8 +203,12 @@ export function UnitDetailDrawer({
         session,
       ),
       apiRequest<PersonRow[]>(`/v1/condominiums/${condominiumId}/people`, session),
+      apiRequest<StructureAuditRow[]>(
+        `/v1/condominiums/${condominiumId}/audit-events?module=structure&entityType=unit&limit=100`,
+        session,
+      ),
     ])
-      .then(([ownerRows, occupancyRows, peopleRows]) => {
+      .then(([ownerRows, occupancyRows, peopleRows, auditRows]) => {
         if (!active) return;
         setOwnersHistory(
           [...ownerRows].sort((left, right) => right.starts_at.localeCompare(left.starts_at)),
@@ -197,6 +217,7 @@ export function UnitDetailDrawer({
           [...occupancyRows].sort((left, right) => right.starts_at.localeCompare(left.starts_at)),
         );
         setPeople(peopleRows);
+        setArchivalHistory(auditRows.filter((row) => row.entity_id === unit.id));
       })
       .catch((reason: unknown) => {
         if (!active) return;
@@ -392,6 +413,34 @@ export function UnitDetailDrawer({
         >
           {unit.status === 'active' ? 'Archivar unidad' : 'Reactivar unidad'}
         </Button>
+      </WorkspaceSection>
+      <WorkspaceSection
+        description="Quién y cuándo creó, archivó o reactivó esta unidad. El registro no puede editarse ni borrarse."
+        title="Historial de archivado"
+      >
+        {historyLoading ? renderHistoryLoading() : null}
+        {!historyLoading && historyError ? (
+          <InlineNotice tone="error">{historyError}</InlineNotice>
+        ) : null}
+        {!historyLoading && !historyError && archivalHistory.length ? (
+          <div className="units-v3-history-list">
+            {archivalHistory.map((event) => (
+              <article key={event.event_id}>
+                <div>
+                  <strong>{archivalActionLabels[event.action]}</strong>
+                  <small>{formatDate(event.occurred_at)}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+        {!historyLoading && !historyError && !archivalHistory.length ? (
+          <EmptyState
+            description="Esta unidad todavía no tiene cambios de estado registrados."
+            icon={<CheckCircleIcon size={26} />}
+            title="Sin historial de archivado"
+          />
+        ) : null}
       </WorkspaceSection>
       <InlineNotice tone="info">
         Los cambios de propietario u ocupante se realizan desde Personas para conservar una sola
