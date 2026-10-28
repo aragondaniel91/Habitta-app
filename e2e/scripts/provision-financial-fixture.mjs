@@ -141,7 +141,7 @@ await insert('organizations', {
   created_by: crossOrganizationUserId,
 });
 
-await insert('condominiums', [
+const createdCondominiums = await insert('condominiums', [
   {
     id: ids.primaryCondominium,
     organization_id: organizationForCondominium('primary'),
@@ -161,6 +161,19 @@ await insert('condominiums', [
     created_by: crossOrganizationUserId,
   },
 ]);
+
+const storedOrganizations = new Map(
+  createdCondominiums.map(({ id, organization_id }) => [id, organization_id]),
+);
+if (
+  storedOrganizations.get(ids.primaryCondominium) !== ids.organization ||
+  storedOrganizations.get(ids.isolationCondominium) !== ids.organization ||
+  storedOrganizations.get(ids.crossOrganizationCondominium) !== ids.crossOrganization ||
+  storedOrganizations.get(ids.primaryCondominium) ===
+    storedOrganizations.get(ids.crossOrganizationCondominium)
+) {
+  fail('Cross-organization fixture must persist distinct organization_id values');
+}
 
 await insert('condominium_memberships', [
   { condominium_id: ids.primaryCondominium, user_id: adminId, role: 'condominium_admin' },
