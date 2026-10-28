@@ -48,6 +48,13 @@ const ids = {
   receivableEntry: '99999999-9999-4999-8999-999999999991',
 };
 
+const organizationForCondominium = (key) => {
+  const organization = fixture.condominiums.find((condominium) => condominium.key === key)?.organization;
+  if (organization === 'primary') return ids.organization;
+  if (organization === 'external') return ids.crossOrganization;
+  fail(`Unknown E2E organization for condominium ${key}`);
+};
+
 const apiHeaders = {
   apikey: serviceRoleKey,
   Authorization: `Bearer ${serviceRoleKey}`,
@@ -137,19 +144,19 @@ await insert('organizations', {
 await insert('condominiums', [
   {
     id: ids.primaryCondominium,
-    organization_id: ids.organization,
+    organization_id: organizationForCondominium('primary'),
     name: fixture.condominiums.find(({ key }) => key === 'primary').name,
     created_by: adminId,
   },
   {
     id: ids.isolationCondominium,
-    organization_id: ids.organization,
+    organization_id: organizationForCondominium('isolation'),
     name: fixture.condominiums.find(({ key }) => key === 'isolation').name,
     created_by: isolationUserId,
   },
   {
     id: ids.crossOrganizationCondominium,
-    organization_id: ids.crossOrganization,
+    organization_id: organizationForCondominium('crossOrganization'),
     name: fixture.condominiums.find(({ key }) => key === 'crossOrganization').name,
     created_by: crossOrganizationUserId,
   },
