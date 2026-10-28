@@ -91,7 +91,7 @@ select is(
   'an admin from a different organization cannot read another condominium''s archival audit trail'
 );
 select throws_ok(
-  $$query$select * from public.list_admin_audit_events('51810000-0000-0000-0000-000000000001', 'structure')$query$$,
+  $$query'select * from public.list_admin_audit_events(''51810000-0000-0000-0000-000000000001'', ''structure'')'query$$,
   'P0001',
   'not authorized to read administrator audit log',
   'the unified audit feed also fails closed for an admin outside the condominium'
