@@ -499,6 +499,20 @@
   gap: 0.12rem;
 }
 
+.receivables-unit-link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--blue);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+.receivables-unit-link:hover {
+  text-decoration: underline;
+}
+
 .receivables-due {
   font-size: 0.7rem;
   font-weight: 650;

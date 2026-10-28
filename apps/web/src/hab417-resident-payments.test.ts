@@ -14,7 +14,7 @@ describe('HAB-417 resident payments stay simple without weakening financial boun
   it('routes resident-only sessions away from the administrative treasury workspace', () => {
     expect(paymentsRouter).toContain('usesResidentDashboard(roles)');
     expect(paymentsRouter).toContain('<ResidentPaymentsPage {...props} />');
-    expect(paymentsRouter).toContain('<AdminPaymentsPage {...props} />');
+    expect(paymentsRouter).toContain('<AdminPaymentsPage onOpenPerson={onOpenPerson}');
 
     expect(adminPayments).toContain('eyebrow="Tesorería y validación"');
     expect(adminPayments).toContain('Bandeja de revisión');
@@ -115,8 +115,13 @@ describe('HAB-417 the resident dashboard says whose home this is', () => {
   it('keeps the administrative queue split by real review state and amount', () => {
     expect(adminDashboard).toContain("payment.status === 'submitted'");
     expect(adminDashboard).toContain("payment.status === 'under_review'");
-    expect(adminDashboard).toMatch(/pagos esperan revisi\u00f3n/);
-    expect(adminDashboard).toMatch(/acciones de revisi\u00f3n pendientes/);
+    // Submitted ("Acci\u00f3n requerida") and under_review ("En revisi\u00f3n administrativa") are kept
+    // as explicit, differently-toned states instead of near-identical "esperan revisi\u00f3n" copy,
+    // and each deep-links into Payments pre-filtered to its own status (pilot item #3 + #1).
+    expect(adminDashboard).toContain('Acci\u00f3n requerida');
+    expect(adminDashboard).toContain('En revisi\u00f3n administrativa');
+    expect(adminDashboard).toContain("paymentsDeepLinkSearch({ status: 'submitted' })");
+    expect(adminDashboard).toContain("paymentsDeepLinkSearch({ status: 'under_review' })");
     expect(adminDashboard).toContain('original_amount');
     expect(adminDashboard).toContain('charge_concept_name');
   });

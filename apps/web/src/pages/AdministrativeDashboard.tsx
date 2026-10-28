@@ -44,6 +44,7 @@ import type {
 import { APP_ROUTES } from '../navigation';
 import type { AppRoute } from '../navigation';
 import { buildDashboardSourceWarning, settleDashboardSource } from '../lib/dashboard-sources';
+import { paymentsDeepLinkSearch, receivablesDeepLinkSearch } from '../lib/dashboard-deep-links';
 import '../dashboard.css';
 import '../dashboard-mobile.css';
 
@@ -76,6 +77,8 @@ type Props = {
   condominiumName: string;
   session: Session;
   onNavigate: (route: AppRoute) => void;
+  /** Opens a module with filter context preserved (status, currency) instead of a blank list. */
+  onNavigateFiltered: (route: AppRoute, search: string) => void;
 };
 
 type MetricIcon = (props: IconProps) => ReactNode;
@@ -151,21 +154,40 @@ function MetricCard({
   tone,
   children,
   footer,
+  onClick,
 }: {
   label: string;
   icon: MetricIcon;
   tone: 'blue' | 'green' | 'red' | 'navy';
   children: ReactNode;
   footer: string;
+  onClick?: (() => void) | undefined;
 }) {
-  return (
-    <Surface className="dashboard-metric-card" data-tone={tone}>
+  const content = (
+    <>
       <div className="dashboard-metric-card__top">
         <span className="dashboard-metric-card__icon">{icon({ size: 20 })}</span>
         <span>{label}</span>
       </div>
       <div className="dashboard-metric-card__value">{children}</div>
       <small>{footer}</small>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        className="surface dashboard-metric-card dashboard-metric-card--interactive"
+        data-tone={tone}
+        onClick={onClick}
+        type="button"
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <Surface className="dashboard-metric-card" data-tone={tone}>
+      {content}
     </Surface>
   );
 }
@@ -348,6 +370,7 @@ export function AdministrativeDashboard({
   condominiumName,
   session,
   onNavigate,
+  onNavigateFiltered,
 }: Props) {
   // The scope deliberately excludes the access token. A token refresh for the same person may
   // retain the last useful view; a condominium or user change may never render it.
@@ -618,17 +641,38 @@ export function AdministrativeDashboard({
 
       <section className="dashboard-kpi-grid" aria-label="Indicadores principales">
         <MetricCard
-          footer="Obligaciones abiertas, separadas por moneda."
+          footer="Obligaciones abiertas, separadas por moneda. Clic para ver el detalle en Cuotas."
           icon={(props) => <FeesIcon {...props} />}
           label="Saldo total pendiente"
+          onClick={
+            feesRoute
+              ? () =>
+                  onNavigateFiltered(
+                    feesRoute,
+                    receivablesDeepLinkSearch({ currencyCode: selectedCurrency || undefined }),
+                  )
+              : undefined
+          }
           tone="blue"
         >
           <CurrencyValues emptyLabel="Sin saldos" rows={pendingRows} />
         </MetricCard>
         <MetricCard
-          footer="Solo pagos aprobados durante el mes actual."
+          footer="Solo pagos aprobados durante el mes actual. Clic para ver los pagos aprobados."
           icon={(props) => <PaymentsIcon {...props} />}
           label="Cobrado este mes"
+          onClick={
+            paymentsRoute
+              ? () =>
+                  onNavigateFiltered(
+                    paymentsRoute,
+                    paymentsDeepLinkSearch({
+                      status: 'approved',
+                      currencyCode: selectedCurrency || undefined,
+                    }),
+                  )
+              : undefined
+          }
           tone="green"
         >
           <CurrencyValues emptyLabel="Sin cobros" rows={collectionRows} />
@@ -642,9 +686,21 @@ export function AdministrativeDashboard({
           <strong className="dashboard-single-value">{activeUnits}</strong>
         </MetricCard>
         <MetricCard
-          footer="Porcentaje vencido respecto a la cartera total."
+          footer="Porcentaje vencido respecto a la cartera total. Clic para ver la cartera vencida."
           icon={(props) => <ExpensesIcon {...props} />}
           label="Morosidad"
+          onClick={
+            feesRoute
+              ? () =>
+                  onNavigateFiltered(
+                    feesRoute,
+                    receivablesDeepLinkSearch({
+                      currencyCode: selectedCurrency || undefined,
+                      due: 'overdue',
+                    }),
+                  )
+              : undefined
+          }
           tone="red"
         >
           {delinquencyRows.length ? (
@@ -791,22 +847,33 @@ export function AdministrativeDashboard({
               <>
                 <button
                   disabled={!paymentsRoute}
-                  onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
+                  onClick={() =>
+                    paymentsRoute &&
+                    onNavigateFiltered(
+                      paymentsRoute,
+                      paymentsDeepLinkSearch({ status: 'submitted' }),
+                    )
+                  }
                   type="button"
                 >
                   <span data-tone={paymentsAwaitingReview.length ? 'warning' : 'success'}>
                     <PaymentsIcon size={19} />
                   </span>
                   <div>
+                    <div className="dashboard-priority-state">
+                      <Badge tone={paymentsAwaitingReview.length ? 'warning' : 'success'}>
+                        Acción requerida
+                      </Badge>
+                    </div>
                     <strong>
                       {paymentsAwaitingReview.length
-                        ? `${paymentsAwaitingReview.length} pagos esperan revisión`
-                        : 'Sin pagos esperando revisión'}
+                        ? `${paymentsAwaitingReview.length} pagos esperan tu aprobación`
+                        : 'Sin pagos esperando aprobación'}
                     </strong>
                     <small>
                       {paymentsAwaitingReview[0]
                         ? `${formatDashboardAmount(paymentsAwaitingReview[0].original_amount, paymentsAwaitingReview[0].original_currency_code)} · ${paymentsAwaitingReview[0].payer_name}`
-                        : 'Los pagos enviados aparecerán aquí.'}
+                        : 'Los pagos recién enviados por residentes aparecerán aquí.'}
                     </small>
                     {paymentsAwaitingReview[0]?.charge_concept_name ? (
                       <small>Cargo aplicado: {paymentsAwaitingReview[0].charge_concept_name}</small>
@@ -816,22 +883,31 @@ export function AdministrativeDashboard({
                 </button>
                 <button
                   disabled={!paymentsRoute}
-                  onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
+                  onClick={() =>
+                    paymentsRoute &&
+                    onNavigateFiltered(
+                      paymentsRoute,
+                      paymentsDeepLinkSearch({ status: 'under_review' }),
+                    )
+                  }
                   type="button"
                 >
-                  <span data-tone={paymentsInReview.length ? 'warning' : 'success'}>
+                  <span data-tone="info">
                     <PaymentsIcon size={19} />
                   </span>
                   <div>
+                    <div className="dashboard-priority-state">
+                      <Badge tone="info">En revisión administrativa</Badge>
+                    </div>
                     <strong>
                       {paymentsInReview.length
-                        ? `${paymentsInReview.length} acciones de revisión pendientes`
-                        : 'Sin acciones de revisión pendientes'}
+                        ? `${paymentsInReview.length} pagos en revisión activa`
+                        : 'Sin pagos en revisión activa'}
                     </strong>
                     <small>
                       {paymentsInReview[0]
                         ? `${formatDashboardAmount(paymentsInReview[0].original_amount, paymentsInReview[0].original_currency_code)} · ${paymentsInReview[0].payer_name}`
-                        : 'Los pagos en revisión aparecerán aquí.'}
+                        : 'Pagos que ya tomó un revisor, sin acción pendiente del administrador.'}
                     </small>
                     {paymentsInReview[0]?.charge_concept_name ? (
                       <small>Cargo aplicado: {paymentsInReview[0].charge_concept_name}</small>
@@ -863,7 +939,16 @@ export function AdministrativeDashboard({
             ) : null}
             <button
               disabled={!feesRoute}
-              onClick={() => feesRoute && onNavigate(feesRoute)}
+              onClick={() =>
+                feesRoute &&
+                onNavigateFiltered(
+                  feesRoute,
+                  receivablesDeepLinkSearch({
+                    currencyCode: selectedCurrency || undefined,
+                    due: 'overdue',
+                  }),
+                )
+              }
               type="button"
             >
               <span data-tone={delinquencyRows.some((row) => row.rate > 0) ? 'warning' : 'success'}>

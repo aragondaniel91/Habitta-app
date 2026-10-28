@@ -51,6 +51,7 @@ type Props = {
   session: Session;
   onConfigureStructure?: () => void;
   onOpenPerson?: ((personId: string) => void) | undefined;
+  onOpenReceivables?: ((unitId: string) => void) | undefined;
 };
 
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -99,11 +100,14 @@ export function UnitsPage({
   session,
   onConfigureStructure,
   onOpenPerson,
+  onOpenReceivables,
 }: Props) {
   const roles = useCondominiumRoles();
   const canMutate = canManage(roles);
   const peopleRoute = APP_ROUTES.find((route) => route.key === 'people');
   const canViewPeople = Boolean(peopleRoute && canAccessRoute(peopleRoute, roles));
+  const feesRoute = APP_ROUTES.find((route) => route.key === 'fees');
+  const canViewReceivables = Boolean(feesRoute && canAccessRoute(feesRoute, roles));
   const pendingRequestedUnitIdRef = useRef(directoryRequestedId('units', window.location.search));
   const [profile, setProfile] = useState<CondominiumProfile | null>(null);
   const [units, setUnits] = useState<DirectoryUnit[]>([]);
@@ -747,7 +751,9 @@ export function UnitsPage({
         <UnitDetailDrawer
           canMutate={canMutate}
           canViewPeople={canViewPeople}
+          canViewReceivables={canViewReceivables}
           onOpenPerson={onOpenPerson}
+          onOpenReceivables={onOpenReceivables}
           condominiumId={condominiumId}
           onArchive={() =>
             selectedUnit.status === 'active'

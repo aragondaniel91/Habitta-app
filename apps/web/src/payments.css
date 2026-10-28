@@ -1393,6 +1393,20 @@
 }
 
 /* HABITTA admin payments: clickable overview metrics and genuinely navigable review queue. */
+.payments-unit-link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--blue);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.payments-unit-link:hover {
+  text-decoration: underline;
+}
+
 .payments-metric--interactive {
   width: 100%;
   text-align: left;

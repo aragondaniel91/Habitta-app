@@ -17,6 +17,7 @@ import {
   directoryRequestedCondominium,
   type DirectoryDestination,
 } from './lib/directory-deep-links';
+import { receivablesDeepLinkSearch } from './lib/dashboard-deep-links';
 import { platformAdminUrlForHost } from './lib/platform-handoff';
 import {
   allowedRoutes,
@@ -271,6 +272,12 @@ export default function App() {
     setCurrentRoute(route);
     setUnitStructureView(false);
   };
+  // A KPI deep link carries filter context (status, currency, unit) as a navigation hint;
+  // the destination page re-applies it as a normal client-side filter, never a trust boundary.
+  const navigateWithFilters = (route: AppRoute, search: string) => {
+    navigate(route);
+    if (search) window.history.replaceState({}, '', `${route.path}?${search}`);
+  };
   const signOut = () => void supabase?.auth.signOut();
 
   // A denied deep link must be denied in both places the user can observe it: rendered content and
@@ -384,6 +391,11 @@ export default function App() {
       directoryDetailHref(destination, id, selectedCondominiumId),
     );
   };
+  const navigateToReceivablesForUnit = (unitId: string) => {
+    const route = visibleRoutes.find((item) => item.key === 'fees');
+    if (!route) return;
+    navigateWithFilters(route, receivablesDeepLinkSearch({ unitId }));
+  };
   let page;
 
   if (addingCondominium) {
@@ -415,6 +427,7 @@ export default function App() {
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
         onNavigate={navigate}
+        onNavigateFiltered={navigateWithFilters}
         session={session}
       />
     );
@@ -436,6 +449,7 @@ export default function App() {
         condominiumName={condominiumName}
         session={session}
         onOpenPerson={(personId) => navigateDirectory('people', personId)}
+        onOpenReceivables={navigateToReceivablesForUnit}
         onConfigureStructure={() => {
           window.history.pushState({}, '', '/app/units/structure');
           setUnitStructureView(true);
@@ -465,6 +479,7 @@ export default function App() {
       <ReceivablesPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
+        onOpenUnit={(unitId) => navigateDirectory('units', unitId)}
         session={session}
       />
     );
@@ -473,6 +488,8 @@ export default function App() {
       <PaymentsPage
         condominiumId={selectedCondominiumId}
         condominiumName={condominiumName}
+        onOpenPerson={(personId) => navigateDirectory('people', personId)}
+        onOpenUnit={(unitId) => navigateDirectory('units', unitId)}
         session={session}
       />
     );
