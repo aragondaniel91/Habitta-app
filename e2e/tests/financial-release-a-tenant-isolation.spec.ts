@@ -1,7 +1,8 @@
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { expect, request as requestFactory, test, type APIRequestContext } from '@playwright/test';
 
-// Executes against the existing disposable financial fixture: two condominiums and real
-// Supabase Auth sessions, behind the local Worker. Never run against a remote project.
+// Exercise actual local Supabase Auth + Worker using the disposable financial E2E fixture.
+// This file refuses a remote Worker/database and never uploads authenticated traces.
+test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 const required = ['E2E_SUPABASE_URL', 'E2E_SUPABASE_ANON_KEY', 'E2E_FIXTURE_PASSWORD'];
 const missing = required.filter((key) => !process.env[key]);
 const supabaseUrl = process.env.E2E_SUPABASE_URL ?? '';
@@ -12,142 +13,193 @@ const workerUrl = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:8787';
 if (supabaseUrl) {
   const url = new URL(supabaseUrl);
   if (!['127.0.0.1', 'localhost'].includes(url.hostname) || url.port !== '54321') {
-    throw new Error('Authenticated tenant isolation E2E requires disposable local Supabase');
+    throw new Error('Tenant isolation E2E requires disposable local Supabase');
   }
 }
-if (!['127.0.0.1', 'localhost'].includes(new URL(workerUrl).hostname)) {
-  throw new Error('Authenticated tenant isolation E2E requires a local Worker');
+const workerTarget = new URL(workerUrl);
+if (!['127.0.0.1', 'localhost'].includes(workerTarget.hostname) || workerTarget.port !== '8787') {
+  throw new Error('Tenant isolation E2E requires local Worker at port 8787');
 }
 
 const ids = {
-  condominiumA: '22222222-2222-4222-8222-222222222221',
-  condominiumB: '22222222-2222-4222-8222-222222222222',
+  a: '22222222-2222-4222-8222-222222222221',
+  b: '22222222-2222-4222-8222-222222222222',
   unitA: '33333333-3333-4333-8333-333333333331',
   unitB: '33333333-3333-4333-8333-333333333333',
 };
-const email = {
-  adminA: 'habitta-e2e-admin@example.invalid',
-  adminB: 'habitta-e2e-isolation@example.invalid',
-  familyA: 'habitta-e2e-family@example.invalid',
+const emails = {
+  a: 'habitta-e2e-admin@example.invalid',
+  b: 'habitta-e2e-isolation@example.invalid',
+  family: 'habitta-e2e-family@example.invalid',
 };
-
 type Unit = { id: string; code: string; condominium_id: string };
-type Directory = { units: Array<{ id: string; code: string; condominiumId: string }> };
+type Directory = { units: Array<{ id: string; condominiumId: string }> };
+type Session = { context: APIRequestContext; token: string };
 
-const authenticate = async (request: APIRequestContext, address: string) => {
-  const response = await request.post(supabaseUrl + '/auth/v1/token?grant_type=password', {
+const openSession = async (email: string): Promise<Session> => {
+  // Separate cookie jars and no inherited service-role/default client headers.
+  const context = await requestFactory.newContext({ extraHTTPHeaders: {} });
+  const auth = await context.post(supabaseUrl + '/auth/v1/token?grant_type=password', {
     headers: { apikey: anonKey, 'Content-Type': 'application/json' },
-    data: { email: address, password },
+    data: { email, password },
   });
-  expect(response.status(), 'Local fixture user must authenticate').toBe(200);
-  return ((await response.json()) as { access_token: string }).access_token;
+  expect(auth.status(), 'The local fixture user must authenticate').toBe(200);
+  const credentials = (await auth.json()) as { access_token?: string };
+  expect(typeof credentials.access_token).toBe('string');
+  expect(credentials.access_token?.length).toBeGreaterThan(30);
+  return { context, token: credentials.access_token! };
 };
 
-const callWorker = (
-  request: APIRequestContext,
-  token: string,
+const api = (
+  session: Session,
   path: string,
-  options: { method?: string; data?: Record<string, unknown> } = {},
+  method = 'GET',
+  data?: Record<string, unknown>,
 ) =>
-  request.fetch(workerUrl + path, {
-    method: options.method ?? 'GET',
-    headers: {
-      Authorization: 'Bearer ' + token,
-      'Content-Type': 'application/json',
-    },
-    ...(options.data ? { data: options.data } : {}),
+  session.context.fetch(workerUrl + path, {
+    method,
+    headers: { Authorization: 'Bearer ' + session.token, 'Content-Type': 'application/json' },
+    ...(data ? { data } : {}),
+  });
+const unitsPath = (c: string) => '/v1/condominiums/' + c + '/units';
+const directoryPath = (c: string) => '/v1/condominiums/' + c + '/units-directory';
+const unitPath = (c: string, u: string) => unitsPath(c) + '/' + u;
+const requireOwnUnits = async (s: Session, condo: string, unitId: string) => {
+  const response = await api(s, unitsPath(condo));
+  expect(response.status()).toBe(200);
+  const units = (await response.json()) as Unit[];
+  expect(units.some((unit) => unit.id === unitId)).toBe(true);
+  expect(units.every((unit) => unit.condominium_id === condo)).toBe(true);
+  return units;
+};
+const assertOtherTenantInvisible = async (response: Awaited<ReturnType<typeof api>>, key: 'units' | 'list') => {
+  // A deliberate RLS empty-result is 200; the API may also hide the target with 403/404.
+  // Never accept 400/401/500/502: those could reflect invalid input or broken infrastructure.
+  if (response.status() === 200) {
+    if (key === 'units') {
+      expect(await response.json()).toEqual([]);
+    } else {
+      expect((await response.json()) as Directory).toEqual({ units: [] });
+    }
+  } else {
+    expect([403, 404]).toContain(response.status());
+  }
+};
+
+test.describe('Release A - real authenticated tenant boundaries (isolated local)', () => {
+  test.describe.configure({ mode: 'serial' });
+  test.skip(!process.env.CI && missing.length > 0, 'Disposable local fixture not configured');
+  test.beforeAll(() => {
+    // Never let a mandatory CI security test report success because all cases were skipped.
+    if (process.env.CI && missing.length > 0) {
+      throw new Error('Mandatory authenticated tenant tests missing: ' + missing.join(', '));
+    }
   });
 
-const unitsPath = (condominiumId: string) => '/v1/condominiums/' + condominiumId + '/units';
-const directoryPath = (condominiumId: string) =>
-  '/v1/condominiums/' + condominiumId + '/units-directory';
-
-test.describe('Release A: authenticated tenant isolation through real local Worker + Supabase', () => {
-  test.skip(missing.length > 0, 'Disposable local Supabase fixture required: ' + missing.join(', '));
-
-  test('administrators can read their own directory but not the other condominium directory', async ({
-    request,
-  }) => {
-    const adminA = await authenticate(request, email.adminA);
-    const adminB = await authenticate(request, email.adminB);
-
-    for (const [token, ownCondo, ownUnit, foreignCondo, foreignUnit] of [
-      [adminA, ids.condominiumA, ids.unitA, ids.condominiumB, ids.unitB],
-      [adminB, ids.condominiumB, ids.unitB, ids.condominiumA, ids.unitA],
-    ] as const) {
-      const own = await callWorker(request, token, directoryPath(ownCondo));
-      expect(own.status(), 'Owner should be able to read their condominium directory').toBe(200);
-      const ownData = (await own.json()) as Directory;
-      expect(ownData.units.some((unit) => unit.id === ownUnit)).toBe(true);
-      expect(ownData.units.some((unit) => unit.id === foreignUnit)).toBe(false);
-
-      const foreign = await callWorker(request, token, directoryPath(foreignCondo));
-      if (foreign.ok()) {
-        const foreignData = (await foreign.json()) as Directory;
-        expect(foreignData.units, 'Cross-condominium directory must never disclose rows').toEqual([]);
-      } else {
-        expect([401, 403, 404, 502]).toContain(foreign.status());
+  test('admin A and B: own directory visible; foreign directory hidden', async () => {
+    const sessions = await Promise.all([openSession(emails.a), openSession(emails.b)]);
+    try {
+      const cases = [
+        { me: sessions[0], own: ids.a, unit: ids.unitA, foreign: ids.b },
+        { me: sessions[1], own: ids.b, unit: ids.unitB, foreign: ids.a },
+      ];
+      for (const item of cases) {
+        const ownResponse = await api(item.me, directoryPath(item.own));
+        expect(ownResponse.status()).toBe(200);
+        const own = (await ownResponse.json()) as Directory;
+        expect(own.units.some((unit) => unit.id === item.unit)).toBe(true);
+        expect(own.units.every((unit) => unit.condominiumId === item.own)).toBe(true);
+        const foreign = await api(item.me, directoryPath(item.foreign));
+        await assertOtherTenantInvisible(foreign, 'list');
       }
+    } finally {
+      await Promise.all(sessions.map((s) => s.context.dispose()));
     }
   });
 
-  test('authenticated unit list cannot reveal a foreign condominium', async ({ request }) => {
-    const adminA = await authenticate(request, email.adminA);
-    const adminB = await authenticate(request, email.adminB);
-    for (const [token, ownCondo, ownUnit, foreignCondo, foreignUnit] of [
-      [adminA, ids.condominiumA, ids.unitA, ids.condominiumB, ids.unitB],
-      [adminB, ids.condominiumB, ids.unitB, ids.condominiumA, ids.unitA],
-    ] as const) {
-      const own = await callWorker(request, token, unitsPath(ownCondo));
-      expect(own.status()).toBe(200);
-      const ownUnits = (await own.json()) as Unit[];
-      expect(ownUnits.some((unit) => unit.id === ownUnit)).toBe(true);
-
-      const foreign = await callWorker(request, token, unitsPath(foreignCondo));
-      if (foreign.ok()) {
-        expect(await foreign.json()).toEqual([]);
-      } else {
-        expect([400, 401, 403, 404]).toContain(foreign.status());
+  test('admin A and B: raw units endpoint also isolates both directions', async () => {
+    const sessions = await Promise.all([openSession(emails.a), openSession(emails.b)]);
+    try {
+      const cases = [
+        { me: sessions[0], own: ids.a, unit: ids.unitA, foreign: ids.b },
+        { me: sessions[1], own: ids.b, unit: ids.unitB, foreign: ids.a },
+      ];
+      for (const item of cases) {
+        await requireOwnUnits(item.me, item.own, item.unit);
+        await assertOtherTenantInvisible(await api(item.me, unitsPath(item.foreign)), 'units');
       }
-      expect(ownUnits.some((unit) => unit.id === foreignUnit)).toBe(false);
+    } finally {
+      await Promise.all(sessions.map((s) => s.context.dispose()));
     }
   });
 
-  test('foreign admin and restricted resident cannot mutate another unit', async ({ request }) => {
-    const adminA = await authenticate(request, email.adminA);
-    const adminB = await authenticate(request, email.adminB);
-    const familyA = await authenticate(request, email.familyA);
+  test('authorized PATCH control, then foreign-IDOR and resident PATCH denied with no mutation', async () => {
+    const sessions = await Promise.all([
+      openSession(emails.a),
+      openSession(emails.b),
+      openSession(emails.family),
+    ]);
+    const [a, b, family] = sessions;
+    const originalA = 'E2E-A101';
+    const originalB = 'E2E-B201';
+    let bWasChanged = false;
+    try {
+      const initialA = await requireOwnUnits(a, ids.a, ids.unitA);
+      const initialB = await requireOwnUnits(b, ids.b, ids.unitB);
+      expect(initialA.find((unit) => unit.id === ids.unitA)?.code).toBe(originalA);
+      expect(initialB.find((unit) => unit.id === ids.unitB)?.code).toBe(originalB);
 
-    const initialA = await callWorker(request, adminA, unitsPath(ids.condominiumA));
-    const initialB = await callWorker(request, adminB, unitsPath(ids.condominiumB));
-    expect(initialA.status()).toBe(200);
-    expect(initialB.status()).toBe(200);
-    const codeA = ((await initialA.json()) as Unit[]).find((row) => row.id === ids.unitA)?.code;
-    const codeB = ((await initialB.json()) as Unit[]).find((row) => row.id === ids.unitB)?.code;
-    expect(codeA).toBe('E2E-A101');
-    expect(codeB).toBe('E2E-B201');
+      // Positive control proves PATCH route, schema and caller-token permissions work.
+      const authorized = await api(b, unitPath(ids.b, ids.unitB), 'PATCH', {
+        code: 'E2E-B201-PATCH-CONTROL',
+      });
+      expect(authorized.status(), 'Owning admin PATCH must work as positive control').toBe(200);
+      bWasChanged = true;
+      const patched = await requireOwnUnits(b, ids.b, ids.unitB);
+      expect(patched.find((unit) => unit.id === ids.unitB)?.code).toBe(
+        'E2E-B201-PATCH-CONTROL',
+      );
 
-    for (const [token, condominiumId, unitId] of [
-      [adminA, ids.condominiumB, ids.unitB],
-      [adminB, ids.condominiumA, ids.unitA],
-      [familyA, ids.condominiumA, ids.unitA],
-    ] as const) {
-      const rejected = await callWorker(
-        request,
-        token,
-        unitsPath(condominiumId) + '/' + unitId,
-        { method: 'PATCH', data: { code: 'E2E-UNAUTHORIZED-CHANGE' } },
+      const denied = [
+        { actor: a, condo: ids.b, unit: ids.unitB }, // A targets B as if B were selected
+        { actor: b, condo: ids.a, unit: ids.unitA }, // B targets A
+        { actor: family, condo: ids.a, unit: ids.unitA }, // restricted resident
+        { actor: a, condo: ids.a, unit: ids.unitB }, // IDOR mismatch: A scope, B unit
+        { actor: b, condo: ids.b, unit: ids.unitA }, // IDOR mismatch: B scope, A unit
+      ];
+      for (const item of denied) {
+        const response = await api(item.actor, unitPath(item.condo, item.unit), 'PATCH', {
+          code: 'E2E-UNAUTHORIZED-CHANGE',
+        });
+        expect([403, 404], 'Unauthorized PATCH should not update any row').toContain(
+          response.status(),
+        );
+      }
+      const checkedA = await requireOwnUnits(a, ids.a, ids.unitA);
+      const checkedB = await requireOwnUnits(b, ids.b, ids.unitB);
+      expect(checkedA.find((unit) => unit.id === ids.unitA)?.code).toBe(originalA);
+      expect(checkedB.find((unit) => unit.id === ids.unitB)?.code).toBe(
+        'E2E-B201-PATCH-CONTROL',
       );
-      expect([400, 401, 403, 404], 'Unauthorized unit mutation must not succeed').toContain(
-        rejected.status(),
-      );
+    } finally {
+      if (bWasChanged) {
+        const restored = await api(b, unitPath(ids.b, ids.unitB), 'PATCH', {
+          code: originalB,
+        });
+        expect(restored.status(), 'Fixture must be restored after the test').toBe(200);
+      }
+      await Promise.all(sessions.map((s) => s.context.dispose()));
     }
-
-    const finalA = await callWorker(request, adminA, unitsPath(ids.condominiumA));
-    const finalB = await callWorker(request, adminB, unitsPath(ids.condominiumB));
-    expect(finalA.status()).toBe(200);
-    expect(finalB.status()).toBe(200);
-    expect(((await finalA.json()) as Unit[]).find((row) => row.id === ids.unitA)?.code).toBe(codeA);
-    expect(((await finalB.json()) as Unit[]).find((row) => row.id === ids.unitB)?.code).toBe(codeB);
+    const aAfter = await openSession(emails.a);
+    const bAfter = await openSession(emails.b);
+    try {
+      const aUnits = await requireOwnUnits(aAfter, ids.a, ids.unitA);
+      const bUnits = await requireOwnUnits(bAfter, ids.b, ids.unitB);
+      expect(aUnits.find((unit) => unit.id === ids.unitA)?.code).toBe(originalA);
+      expect(bUnits.find((unit) => unit.id === ids.unitB)?.code).toBe(originalB);
+    } finally {
+      await aAfter.context.dispose();
+      await bAfter.context.dispose();
+    }
   });
 });
