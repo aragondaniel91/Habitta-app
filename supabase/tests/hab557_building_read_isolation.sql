@@ -28,7 +28,7 @@ with denied_write as (
 select is((select count(*) from denied_write),0::bigint,'A cannot update B physical building');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-0000000000d1',true);
 select is((select count(*) from public.buildings where condominium_id='44000000-0000-4000-8000-000000000022'),1::bigint,'B can read own physical building');
-select is((select name from public.buildings where id='44000000-0000-4000-8000-000000000202'),'B Torre'::text,'B building unchanged after A cross-tenant update attempt');
+select is((select name::text from public.buildings where id='44000000-0000-4000-8000-000000000202'),'B Torre'::text,'B building unchanged after A cross-tenant update attempt');
 select is((select count(*) from public.buildings where condominium_id='33000000-0000-4000-8000-000000000011'),0::bigint,'B cannot read A physical building');
 reset role;
 select * from finish();
