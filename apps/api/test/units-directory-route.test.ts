@@ -299,6 +299,7 @@ describe('units directory aggregate', () => {
   });
 
   it('fails closed if an occupancy references a unit outside the requested directory', async () => {
+    const unexpected: string[] = [];
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
       if (url.includes('/auth/v1/user')) return json({ id: personA });
@@ -307,7 +308,8 @@ describe('units directory aggregate', () => {
       if (url.includes('/rest/v1/unit_occupancies?')) {
         return json([{ ...occupancy, unit_id: unitB }]);
       }
-      throw new Error('Unexpected fetch in occupancy isolation regression');
+      unexpected.push(url);
+      throw new Error('Unexpected fetch in tenant isolation regression');
     });
     try {
       const response = await app.request(
@@ -320,6 +322,8 @@ describe('units directory aggregate', () => {
           String(input).includes('/rest/v1/unit_occupancies?'),
         ),
       ).toBe(true);
+      expect(unexpected).toEqual([]);
+      expect(fetchMock.mock.calls).toHaveLength(4);
       expect(response.status).toBe(502);
       await expect(response.json()).resolves.toEqual({ error: 'Units directory is unavailable' });
     } finally {
@@ -328,6 +332,7 @@ describe('units directory aggregate', () => {
   });
 
   it('fails closed if an upstream unit omits its condominium identity', async () => {
+    const unexpected: string[] = [];
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
       if (url.includes('/auth/v1/user')) return json({ id: personA });
@@ -336,7 +341,8 @@ describe('units directory aggregate', () => {
       }
       if (url.includes('/rest/v1/unit_owners?')) return json([]);
       if (url.includes('/rest/v1/unit_occupancies?')) return json([]);
-      throw new Error('Unexpected fetch in missing tenant identity regression');
+      unexpected.push(url);
+      throw new Error('Unexpected fetch in tenant isolation regression');
     });
     try {
       const response = await app.request(
@@ -344,6 +350,11 @@ describe('units directory aggregate', () => {
         { headers: { Authorization: 'Bearer caller-token' } },
         environment,
       );
+      expect(
+        fetchMock.mock.calls.some(([input]) => String(input).includes('/rest/v1/units?')),
+      ).toBe(true);
+      expect(unexpected).toEqual([]);
+      expect(fetchMock.mock.calls).toHaveLength(4);
       expect(response.status).toBe(502);
       await expect(response.json()).resolves.toEqual({ error: 'Units directory is unavailable' });
     } finally {
