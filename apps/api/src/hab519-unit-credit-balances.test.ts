@@ -15,15 +15,15 @@ describe('HAB-519 unit credit balances (pilot point #30 authorized credit)', () 
     expect(migration).toContain('e.receivable_item_id is null');
   });
 
-  it('reuses the existing receivables read predicates instead of a new authorization rule', () => {
-    expect(migration).toContain('can_read_board_aggregates(target)');
-    expect(migration).toContain('can_read_financial_unit(e.unit_id)');
+  it('restricts unit credit detail to unit-level financial authorization', () => {
+    expect(migration).toContain('public.can_read_financial_unit(e.unit_id)');
+    expect(migration).not.toContain('public.can_read_board_aggregates(target)');
     expect(migration).toContain('set row_security = off');
   });
 
   it('never widens who may execute the RPC', () => {
     expect(migration).toMatch(
-      /revoke all on function public\.get_unit_credit_balances\(uuid\) from public;/,
+      /revoke all on function public\.get_unit_credit_balances\(uuid\) from public, anon, authenticated, service_role;/,
     );
     expect(migration).not.toMatch(/grant [^;]*to anon/);
   });
