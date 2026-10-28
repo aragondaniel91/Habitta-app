@@ -50,12 +50,7 @@ const openSession = async (email: string): Promise<Session> => {
   return { context, token: credentials.access_token! };
 };
 
-const api = (
-  session: Session,
-  path: string,
-  method = 'GET',
-  data?: Record<string, unknown>,
-) =>
+const api = (session: Session, path: string, method = 'GET', data?: Record<string, unknown>) =>
   session.context.fetch(workerUrl + path, {
     method,
     headers: { Authorization: 'Bearer ' + session.token, 'Content-Type': 'application/json' },
@@ -72,7 +67,10 @@ const requireOwnUnits = async (s: Session, condo: string, unitId: string) => {
   expect(units.every((unit) => unit.condominium_id === condo)).toBe(true);
   return units;
 };
-const assertOtherTenantInvisible = async (response: Awaited<ReturnType<typeof api>>, key: 'units' | 'list') => {
+const assertOtherTenantInvisible = async (
+  response: Awaited<ReturnType<typeof api>>,
+  key: 'units' | 'list',
+) => {
   // A deliberate RLS empty-result is 200; the API may also hide the target with 403/404.
   // Never accept 400/401/500/502: those could reflect invalid input or broken infrastructure.
   if (response.status() === 200) {
@@ -156,9 +154,7 @@ test.describe('Release A - real authenticated tenant boundaries (isolated local)
       expect(authorized.status(), 'Owning admin PATCH must work as positive control').toBe(200);
       bWasChanged = true;
       const patched = await requireOwnUnits(b, ids.b, ids.unitB);
-      expect(patched.find((unit) => unit.id === ids.unitB)?.code).toBe(
-        'E2E-B201-PATCH-CONTROL',
-      );
+      expect(patched.find((unit) => unit.id === ids.unitB)?.code).toBe('E2E-B201-PATCH-CONTROL');
 
       const denied = [
         { actor: a, condo: ids.b, unit: ids.unitB }, // A targets B as if B were selected
@@ -178,9 +174,7 @@ test.describe('Release A - real authenticated tenant boundaries (isolated local)
       const checkedA = await requireOwnUnits(a, ids.a, ids.unitA);
       const checkedB = await requireOwnUnits(b, ids.b, ids.unitB);
       expect(checkedA.find((unit) => unit.id === ids.unitA)?.code).toBe(originalA);
-      expect(checkedB.find((unit) => unit.id === ids.unitB)?.code).toBe(
-        'E2E-B201-PATCH-CONTROL',
-      );
+      expect(checkedB.find((unit) => unit.id === ids.unitB)?.code).toBe('E2E-B201-PATCH-CONTROL');
     } finally {
       if (bWasChanged) {
         const restored = await api(b, unitPath(ids.b, ids.unitB), 'PATCH', {
