@@ -26,6 +26,15 @@ if (
   fail('primary, isolation and crossOrganization condominiums are required');
 }
 
+const condominiumByKey = new Map(condominiums.map((condominium) => [condominium.key, condominium]));
+if (
+  condominiumByKey.get('primary')?.organization !== 'primary' ||
+  condominiumByKey.get('isolation')?.organization !== 'primary' ||
+  condominiumByKey.get('crossOrganization')?.organization !== 'external'
+) {
+  fail('E2E fixture must contain two same-organization condominiums and one external organization');
+}
+
 const unitCodes = condominiums.flatMap(({ units = [] }) => units.map(({ code }) => code));
 if (new Set(unitCodes).size !== unitCodes.length) fail('unit codes must be unique');
 if (unitCodes.some((code) => !code?.startsWith('E2E-'))) {
