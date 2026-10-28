@@ -629,7 +629,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
                 <tr>
                   <th>Unidad</th>
                   <th>Crédito disponible</th>
-                  <th>Movimientos</th>
+                  <th>Entradas de crédito</th>
                   <th>Desde</th>
                   <th aria-label="Acciones" />
                 </tr>
@@ -645,7 +645,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
                         {formatDashboardAmount(row.credit_balance, row.currency_code)}
                       </strong>
                     </td>
-                    <td data-label="Movimientos">{row.credit_entry_count}</td>
+                    <td data-label="Entradas de crédito">{row.credit_entry_count}</td>
                     <td data-label="Desde">
                       {row.oldest_credit_date ? formatDashboardDate(row.oldest_credit_date) : '—'}
                     </td>
