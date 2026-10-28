@@ -180,6 +180,10 @@ Los estados anteriores son **etiquetas de evidencia acumulativas**, no niveles e
 - **Seguridad operacional**: exclusivamente Supabase y Worker locales, identidades ficticias; reset de fixture local al final del workflow; sin secrets de producción y sin artifacts de trazas autenticadas. No se crean migraciones ni se modifican grants/RLS de producción.
 - **Estado**: IN_REVIEW / NO ACEPTADO hasta éxito real de pruebas, cuatro checks, revisión independiente y merge. La revisión humana integral #571 y PR #569 sobre funciones privilegiadas siguen bloqueando producción; cobertura E2E no los sustituye.
 
+### Matriz de los 30 puntos del piloto — 2026-10-28
+
+La conciliación individual con estados de evidencia (base parcial, candidato aislado, pendiente, investigación, planificado), decisiones Founder y pendientes de publicación está en [`docs/HABITTA-PILOT-30-STATUS.md`](./HABITTA-PILOT-30-STATUS.md), ligada a [#515](https://github.com/aragondaniel91/Habitta-app/issues/515). **Ninguno de los 30 puntos tiene constancia individual RELEASED_VERIFIED en el epic al corte**, aunque hay productos y módulos base ya existentes. `main` integra #583 SHA `8a9c7044b4602e516fb41a5ba1b2c5eee9ee5cc8` con los cuatro workflows SUCCESS, pero la API productiva permanece en `9ae959d77f702f27cfa8ee52c6c095ad83744677` y el gate de seguridad humana #571 continúa bloqueando Release A. No solicitar revisión visual de candidatas R6/P1 sin pgTAP autenticado, revisión y entregable navegable.
+
 ### Registro de entregas
 
 | Fecha | Tarea | Resultado y siguiente acción |
