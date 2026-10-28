@@ -26,11 +26,14 @@ const ids = {
   b: '22222222-2222-4222-8222-222222222222',
   unitA: '33333333-3333-4333-8333-333333333331',
   unitB: '33333333-3333-4333-8333-333333333333',
+  c: '22222222-2222-4222-8222-222222222223',
+  unitC: '33333333-3333-4333-8333-333333333334',
 };
 const emails = {
   a: 'habitta-e2e-admin@example.invalid',
   b: 'habitta-e2e-isolation@example.invalid',
   family: 'habitta-e2e-family@example.invalid',
+  c: 'habitta-e2e-cross-org@example.invalid',
 };
 type Unit = { id: string; code: string; condominium_id: string };
 type Directory = { units: Array<{ id: string; condominiumId: string }> };
@@ -194,6 +197,116 @@ test.describe('Release A - real authenticated tenant boundaries (isolated local)
     } finally {
       await aAfter.context.dispose();
       await bAfter.context.dispose();
+    }
+  });
+
+  test('administrators from separate organizations cannot read each other via the Worker', async () => {
+    const sessions = await Promise.all([openSession(emails.a), openSession(emails.c)]);
+    try {
+      const [a, c] = sessions;
+      for (const item of [
+        { actor: a, own: ids.a, ownUnit: ids.unitA, foreign: ids.c, foreignUnit: ids.unitC },
+        { actor: c, own: ids.c, ownUnit: ids.unitC, foreign: ids.a, foreignUnit: ids.unitA },
+      ]) {
+        const own = await requireOwnUnits(item.actor, item.own, item.ownUnit);
+        expect(own.some((unit) => unit.id === item.foreignUnit)).toBe(false);
+        const directory = await api(item.actor, directoryPath(item.own));
+        expect(directory.status()).toBe(200);
+        const ownDirectory = (await directory.json()) as Directory;
+        expect(ownDirectory.units.some((unit) => unit.id === item.ownUnit)).toBe(true);
+        expect(ownDirectory.units.every((unit) => unit.condominiumId === item.own)).toBe(true);
+
+        await assertOtherTenantInvisible(await api(item.actor, unitsPath(item.foreign)), 'units');
+        await assertOtherTenantInvisible(
+          await api(item.actor, directoryPath(item.foreign)),
+          'list',
+        );
+      }
+    } finally {
+      await Promise.all(sessions.map((session) => session.context.dispose()));
+    }
+  });
+
+  test('cross-organization PATCH and mismatched condominium/unit IDOR cannot modify data', async () => {
+    const sessions = await Promise.all([openSession(emails.a), openSession(emails.c)]);
+    const [a, c] = sessions;
+    const originalC = 'E2E-C301';
+    let restoreC = false;
+    let originalFailure: unknown = null;
+    try {
+      const originalA = await requireOwnUnits(a, ids.a, ids.unitA);
+      const originalCrossOrg = await requireOwnUnits(c, ids.c, ids.unitC);
+      expect(originalA.find((unit) => unit.id === ids.unitA)?.code).toBe('E2E-A101');
+      expect(originalCrossOrg.find((unit) => unit.id === ids.unitC)?.code).toBe(originalC);
+
+      // A successful positive control makes a misleading all-404 test impossible.
+      restoreC = true;
+      const control = await api(c, unitPath(ids.c, ids.unitC), 'PATCH', {
+        code: 'E2E-C301-AUTHORIZED-CONTROL',
+      });
+      expect(control.status(), 'Organization C administrator PATCH must work').toBe(200);
+      const changed = await requireOwnUnits(c, ids.c, ids.unitC);
+      expect(changed.find((unit) => unit.id === ids.unitC)?.code).toBe(
+        'E2E-C301-AUTHORIZED-CONTROL',
+      );
+
+      for (const item of [
+        { actor: a, condominium: ids.c, unit: ids.unitC },
+        { actor: c, condominium: ids.a, unit: ids.unitA },
+        { actor: a, condominium: ids.a, unit: ids.unitC }, // foreign ID within own URL scope
+        { actor: c, condominium: ids.c, unit: ids.unitA },
+      ]) {
+        const denied = await api(item.actor, unitPath(item.condominium, item.unit), 'PATCH', {
+          code: 'E2E-CROSS-ORG-FORBIDDEN',
+        });
+        expect([403, 404], 'Cross-organization unit PATCH must be rejected').toContain(
+          denied.status(),
+        );
+      }
+
+      const finalA = await requireOwnUnits(a, ids.a, ids.unitA);
+      const finalC = await requireOwnUnits(c, ids.c, ids.unitC);
+      expect(finalA.find((unit) => unit.id === ids.unitA)?.code).toBe('E2E-A101');
+      expect(finalC.find((unit) => unit.id === ids.unitC)?.code).toBe(
+        'E2E-C301-AUTHORIZED-CONTROL',
+      );
+    } catch (error) {
+      originalFailure = error;
+      throw error;
+    } finally {
+      const cleanupFailures: unknown[] = [];
+      // Restore A if an IDOR regression unexpectedly modified the original tenant.
+      try {
+        const response = await api(a, unitsPath(ids.a));
+        expect(response.status()).toBe(200);
+        const units = (await response.json()) as Unit[];
+        if (units.find((unit) => unit.id === ids.unitA)?.code !== 'E2E-A101') {
+          const restored = await api(a, unitPath(ids.a, ids.unitA), 'PATCH', {
+            code: 'E2E-A101',
+          });
+          expect(restored.status(), 'Original organization fixture must be restored').toBe(200);
+        }
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
+      try {
+        if (restoreC) {
+          const restored = await api(c, unitPath(ids.c, ids.unitC), 'PATCH', {
+            code: originalC,
+          });
+          expect(restored.status(), 'Cross-organization fixture restoration is mandatory').toBe(
+            200,
+          );
+        }
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
+      await Promise.all(sessions.map((session) => session.context.dispose()));
+      if (cleanupFailures.length > 0) {
+        if (originalFailure === null) throw cleanupFailures[0];
+        // Preserve the original authorization failure without logging any token or fixture data.
+        console.warn('Cross-organization fixture cleanup also failed');
+      }
     }
   });
 });

@@ -18,8 +18,21 @@ if (condominiums.length < 2) fail('at least two condominiums are required for is
 
 const condominiumKeys = new Set(condominiums.map(({ key }) => key));
 if (condominiumKeys.size !== condominiums.length) fail('condominium keys must be unique');
-if (!condominiumKeys.has('primary') || !condominiumKeys.has('isolation')) {
-  fail('primary and isolation condominiums are required');
+if (
+  !condominiumKeys.has('primary') ||
+  !condominiumKeys.has('isolation') ||
+  !condominiumKeys.has('crossOrganization')
+) {
+  fail('primary, isolation and crossOrganization condominiums are required');
+}
+
+const condominiumByKey = new Map(condominiums.map((condominium) => [condominium.key, condominium]));
+if (
+  condominiumByKey.get('primary')?.organization !== 'primary' ||
+  condominiumByKey.get('isolation')?.organization !== 'primary' ||
+  condominiumByKey.get('crossOrganization')?.organization !== 'external'
+) {
+  fail('E2E fixture must contain two same-organization condominiums and one external organization');
 }
 
 const unitCodes = condominiums.flatMap(({ units = [] }) => units.map(({ code }) => code));
@@ -36,6 +49,7 @@ const requiredUsers = new Set([
   'familyResident',
   'authorizedResident',
   'isolationUser',
+  'crossOrganizationUser',
 ]);
 for (const user of users) {
   requiredUsers.delete(user.key);

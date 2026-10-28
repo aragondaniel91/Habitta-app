@@ -173,6 +173,13 @@ Los estados anteriores son **etiquetas de evidencia acumulativas**, no niveles e
 - **Estado**: IN_REVIEW / NO APROBADO hasta que el run realmente ejecute los nuevos casos, pase los cuatro controles, revisión independiente y merge; registrar evidencia exacta en #571/#573.
 - **Alcance no cubierto**: ambos condominios son de la misma organización; faltan cruces entre organizaciones, storage/documentos, otros roles y pruebas adversariales externas. Auditoría humana independiente #571 y revisión de RPC #569 siguen bloqueando producción. Un CI verde no cambia estos estados por sí solo.
 
+### Release A — extensión de pruebas entre organizaciones (28-oct-2026)
+
+- **Evidencia previa confirmada**: PR #582 MERGED, commit `3013718f6ad31b3a07e4365923f98eca26703427`; pipeline Financial E2E del HEAD `a64f689b90a1bbeb8935d322ffcc38be61641511` SUCCESS, 31 passed/20 skipped para toda la suite. Los casos nuevos con auth real fueron obligatorios en CI y el PR obtuvo cuatro checks SUCCESS. Esto comprueba dos condominios de la misma organización, no organizaciones distintas.
+- **Nueva cobertura propuesta**: mantener A/B dentro de la organización principal; agregar **organización C independiente**, condominio C, unidad C-301 y usuario administrador C con Supabase Auth local. Probar GET de unidades y directorio entre A/C en ambos sentidos; PATCH autorizado positivo de C, PATCH ajeno y combinaciones de URL de condominio propio + ID de unidad de otra organización, con verificación de estado y restauración.
+- **Seguridad operacional**: exclusivamente Supabase y Worker locales, identidades ficticias; reset de fixture local al final del workflow; sin secrets de producción y sin artifacts de trazas autenticadas. No se crean migraciones ni se modifican grants/RLS de producción.
+- **Estado**: IN_REVIEW / NO ACEPTADO hasta éxito real de pruebas, cuatro checks, revisión independiente y merge. La revisión humana integral #571 y PR #569 sobre funciones privilegiadas siguen bloqueando producción; cobertura E2E no los sustituye.
+
 ### Registro de entregas
 
 | Fecha | Tarea | Resultado y siguiente acción |

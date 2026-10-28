@@ -19,7 +19,8 @@
           "code": "E2E-A102",
           "name": "Apartamento A-102"
         }
-      ]
+      ],
+      "organization": "primary"
     },
     {
       "key": "isolation",
@@ -30,7 +31,20 @@
           "code": "E2E-B201",
           "name": "Apartamento B-201"
         }
-      ]
+      ],
+      "organization": "primary"
+    },
+    {
+      "key": "crossOrganization",
+      "name": "Residencias Habitta External Organization E2E",
+      "currencyCode": "USD",
+      "units": [
+        {
+          "code": "E2E-C301",
+          "name": "Apartamento C-301"
+        }
+      ],
+      "organization": "external"
     }
   ],
   "users": [
@@ -85,6 +99,12 @@
       "email": "habitta-e2e-isolation@example.invalid",
       "role": "administrator",
       "condominium": "isolation"
+    },
+    {
+      "key": "crossOrganizationUser",
+      "email": "habitta-e2e-cross-org@example.invalid",
+      "role": "administrator",
+      "condominium": "crossOrganization"
     }
   ],
   "financial": {

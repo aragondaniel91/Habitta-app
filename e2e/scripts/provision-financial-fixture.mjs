@@ -27,11 +27,14 @@ if (!localHosts.has(target.hostname) || target.port !== '54321') {
 
 const ids = {
   organization: '11111111-1111-4111-8111-111111111111',
+  crossOrganization: '11111111-1111-4111-8111-111111111112',
   primaryCondominium: '22222222-2222-4222-8222-222222222221',
   isolationCondominium: '22222222-2222-4222-8222-222222222222',
+  crossOrganizationCondominium: '22222222-2222-4222-8222-222222222223',
   primaryUnitA101: '33333333-3333-4333-8333-333333333331',
   primaryUnitA102: '33333333-3333-4333-8333-333333333332',
   isolationUnitB201: '33333333-3333-4333-8333-333333333333',
+  crossOrganizationUnitC301: '33333333-3333-4333-8333-333333333334',
   payerPerson: '44444444-4444-4444-8444-444444444441',
   additionalRecipientPerson: '44444444-4444-4444-8444-444444444442',
   unrelatedRecipientPerson: '44444444-4444-4444-8444-444444444443',
@@ -43,6 +46,15 @@ const ids = {
   paymentMethod: '77777777-7777-4777-8777-777777777771',
   receivableItem: '88888888-8888-4888-8888-888888888881',
   receivableEntry: '99999999-9999-4999-8999-999999999991',
+};
+
+const organizationForCondominium = (key) => {
+  const organization = fixture.condominiums.find(
+    (condominium) => condominium.key === key,
+  )?.organization;
+  if (organization === 'primary') return ids.organization;
+  if (organization === 'external') return ids.crossOrganization;
+  fail(`Unknown E2E organization for condominium ${key}`);
 };
 
 const apiHeaders = {
@@ -102,6 +114,7 @@ const unrelatedRecipientId = usersByKey.get('unrelatedRecipient')?.id;
 const familyResidentId = usersByKey.get('familyResident')?.id;
 const authorizedResidentId = usersByKey.get('authorizedResident')?.id;
 const isolationUserId = usersByKey.get('isolationUser')?.id;
+const crossOrganizationUserId = usersByKey.get('crossOrganizationUser')?.id;
 if (
   ![
     adminId,
@@ -112,6 +125,7 @@ if (
     familyResidentId,
     authorizedResidentId,
     isolationUserId,
+    crossOrganizationUserId,
   ].every(Boolean)
 ) {
   fail('Supabase did not return every required auth user id');
@@ -123,20 +137,45 @@ await insert('organizations', {
   created_by: adminId,
 });
 
-await insert('condominiums', [
+await insert('organizations', {
+  id: ids.crossOrganization,
+  name: `Habitta Cross Organization E2E [${fixture.fixtureId}]`,
+  created_by: crossOrganizationUserId,
+});
+
+const createdCondominiums = await insert('condominiums', [
   {
     id: ids.primaryCondominium,
-    organization_id: ids.organization,
+    organization_id: organizationForCondominium('primary'),
     name: fixture.condominiums.find(({ key }) => key === 'primary').name,
     created_by: adminId,
   },
   {
     id: ids.isolationCondominium,
-    organization_id: ids.organization,
+    organization_id: organizationForCondominium('isolation'),
     name: fixture.condominiums.find(({ key }) => key === 'isolation').name,
     created_by: isolationUserId,
   },
+  {
+    id: ids.crossOrganizationCondominium,
+    organization_id: organizationForCondominium('crossOrganization'),
+    name: fixture.condominiums.find(({ key }) => key === 'crossOrganization').name,
+    created_by: crossOrganizationUserId,
+  },
 ]);
+
+const storedOrganizations = new Map(
+  createdCondominiums.map(({ id, organization_id }) => [id, organization_id]),
+);
+if (
+  storedOrganizations.get(ids.primaryCondominium) !== ids.organization ||
+  storedOrganizations.get(ids.isolationCondominium) !== ids.organization ||
+  storedOrganizations.get(ids.crossOrganizationCondominium) !== ids.crossOrganization ||
+  storedOrganizations.get(ids.primaryCondominium) ===
+    storedOrganizations.get(ids.crossOrganizationCondominium)
+) {
+  fail('Cross-organization fixture must persist distinct organization_id values');
+}
 
 await insert('condominium_memberships', [
   { condominium_id: ids.primaryCondominium, user_id: adminId, role: 'condominium_admin' },
@@ -153,6 +192,11 @@ await insert('condominium_memberships', [
   {
     condominium_id: ids.isolationCondominium,
     user_id: isolationUserId,
+    role: 'condominium_admin',
+  },
+  {
+    condominium_id: ids.crossOrganizationCondominium,
+    user_id: crossOrganizationUserId,
     role: 'condominium_admin',
   },
 ]);
@@ -178,6 +222,13 @@ await insert('units', [
     code: 'E2E-B201',
     type: 'apartment',
     created_by: isolationUserId,
+  },
+  {
+    id: ids.crossOrganizationUnitC301,
+    condominium_id: ids.crossOrganizationCondominium,
+    code: 'E2E-C301',
+    type: 'apartment',
+    created_by: crossOrganizationUserId,
   },
 ]);
 
