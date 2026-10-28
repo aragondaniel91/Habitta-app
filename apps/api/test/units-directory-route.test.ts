@@ -214,8 +214,9 @@ describe('units directory aggregate', () => {
       const url = String(input);
       if (url.includes('/auth/v1/user')) return json({ id: personA });
       if (url.includes('/rest/v1/units?')) return json([unit(unitA, condominiumA, 'Torre A')]);
-      if (url.includes('/rest/v1/unit_owners?'))
+      if (url.includes('/rest/v1/unit_owners?')) {
         return new Response('not-json', { status: 200 });
+      }
       if (url.includes('/rest/v1/unit_occupancies?')) return json([occupancy]);
       return json({ error: 'Unexpected request' }, 404);
     });
