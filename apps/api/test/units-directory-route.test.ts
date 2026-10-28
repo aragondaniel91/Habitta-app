@@ -324,8 +324,7 @@ describe('units directory aggregate', () => {
       const url = String(input);
       if (url.includes('/auth/v1/user')) return json({ id: personA });
       if (url.includes('/rest/v1/units?')) {
-        const { condominium_id: _missing, ...missingIdentity } = unit(unitA, condominiumA, 'Torre A');
-        return json([missingIdentity]);
+        return json([{ ...unit(unitA, condominiumA, 'Torre A'), condominium_id: undefined }]);
       }
       return json([]);
     });
