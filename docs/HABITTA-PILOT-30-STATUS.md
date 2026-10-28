@@ -1,5 +1,5 @@
 # HABITTA — Matriz verificable del piloto (30 puntos)
-**Fecha de corte:** 2026-10-28 · **Epic:** [#515](https://github.com/aragondaniel91/Habitta-app/issues/515) · **Fuente de verdad:** issues, PRs, main, pipelines y despliegues.
+**Fecha de corte:** 2026-10-28 (conciliación tras PR #589) · **Epic:** [#515](https://github.com/aragondaniel91/Habitta-app/issues/515) · **Fuente de verdad:** issues, PRs, main, pipelines y despliegues.
 
 ## Regla de estado
 - **Base parcial**: ya existe infraestructura o UX relacionada, pero **NO** equivale a aceptación del punto completo.
@@ -11,11 +11,11 @@
 
 | Nº | Entregable original del piloto | Estado comprobable / brecha inmediata |
 | --- | --- | --- |
-| 1 | KPIs del dashboard con navegación a listados filtrados | Base parcial; no hay cierre de enlaces/filtros/retorno para este punto. |
+| 1 | KPIs del dashboard con navegación a listados filtrados | **IMPLEMENTED_MAIN parcial:** PR #588 integra enlaces KPI y filtros contextuales; falta recorrido/aceptación por rol y verificación productiva. |
 | 2 | Dashboard: monto, concepto, sujeto y estado visible | Base parcial; pendiente aceptación específica de detalle contextual. |
 | 3 | Diferenciar “requiere tu acción” de revisión administrativa | Base parcial; pendiente evaluación por roles en pantalla y contenido. |
 | 4 | Borradores residentes privados de admin hasta enviar | **Candidato aislado R6** [#522](https://github.com/aragondaniel91/Habitta-app/issues/522). SQL/RLS de pagos y eventos de auditoría, pgTAP y visual no certificados ni publicados como entrega del piloto. |
-| 5 | Detalle inmutable de pago enviado, soporte/estado/comprobante | Detalle residente de enviados descrito en **R6 local** [#522](https://github.com/aragondaniel91/Habitta-app/issues/522); visibilidad del desglose administrativo sigue en candidato de pago [#516](https://github.com/aragondaniel91/Habitta-app/issues/516). Sin aceptación final de ambos. |
+| 5 | Detalle inmutable de pago enviado, soporte/estado/comprobante | **IMPLEMENTED_MAIN / TESTED parcial:** PR #589 MERGED en `961f2f5`, comprobante inmutable tras envío, tests DB/Browser/Financial E2E GREEN; falta aceptación integral del detalle por rol y producción. |
 | 6 | Rendimiento Pagos/Cuotas/Gastos p75/p95 y waterfall | Pendiente de medición reproducible y mejora cuantificada. |
 | 7 | Referencia de operación vs descripción opcional | Base parcial de formularios; falta conformidad del nuevo flujo y validación por método. |
 | 8 | “Informacional” que no ve el administrador | **Investigación abierta** [#521](https://github.com/aragondaniel91/Habitta-app/issues/521); falta objeto, pantalla, rol y caso reproducible. |
@@ -23,8 +23,8 @@
 | 10 | Modales centrados, páginas para flujos largos y tabs | Base parcial de UX; pendiente revisión global de Finanzas/Personas. |
 | 11 | Operación de cuotas mensuales con estética Gastos | Pendiente de rediseño integral y verificación financiera. |
 | 12 | Saldo por obligación calculado del ledger (12–5=7) | Base financiera existente, pero **falta caso piloto E2E/aceptación específica**. |
-| 13 | Sobrepago 5–4.50 y crédito 0.50 aplicado bajo reglas | La auditoría inicial del [epic #515](https://github.com/aragondaniel91/Habitta-app/issues/515) reporta soporte existente para crédito no aplicado. **No se ha certificado aquí** exposición UX, política de aplicación futura ni el escenario de $0.50; #516 confirma que el primer wizard no lo resuelve. |
-| 14 | CRUD de unidades, desactivar/archivar con historial/auditoría | Base parcial observable en [rutas de estructura de main](https://github.com/aragondaniel91/Habitta-app/blob/8a9c7044b4602e516fb41a5ba1b2c5eee9ee5cc8/apps/api/src/structure-routes.ts), con alta y edición; archivado seguro y auditoría completa del punto no certificados. |
+| 13 | Sobrepago 5–4.50 y crédito 0.50 aplicado bajo reglas | **IMPLEMENTED_MAIN parcial:** #587 integra consulta de créditos a favor autorizados por unidad/moneda; sin aplicación futura, E2E del caso 5–4.50 ni aceptación final. |
+| 14 | CRUD de unidades, desactivar/archivar con historial/auditoría | **IMPLEMENTED_MAIN parcial:** PR #586 incorpora creación/archivado/reactivación auditadas y aislamiento RLS. Validar recorrido CRUD y aceptación por rol antes de certificar el punto. |
 | 15 | Onboarding topológico: edificios/apartamentos/casas | Corrección de topología [HAB-507 / #507](https://github.com/aragondaniel91/Habitta-app/issues/507) registrada; aceptación integral de todas las variantes pendiente. |
 | 16 | Casa única/sin torre y conjunto de casas sin apartamento falso | Base de navegación de casas documentada en [#507](https://github.com/aragondaniel91/Habitta-app/issues/507); certificación por escenario pendiente. |
 | 17 | Ajustes del residente limitados a rol/delegaciones | Pendiente de aceptación UX y pruebas RBAC específicas. |
@@ -39,8 +39,13 @@
 | 26 | Convenios: filtros de unidad/persona/estado/importe/período/fecha | Pendiente de validación completa del conjunto de filtros y paginación. |
 | 27 | Formularios simples centrados vs drawers interminables | Base parcial; aplicar coherentemente a la experiencia completa y accesibilidad. |
 | 28 | Asistente IA de administración, reportes auditables y RAG | Planificado [#520](https://github.com/aragondaniel91/Habitta-app/issues/520); requiere autorización servidor, presupuesto y controles de IA. |
-| 29 | Navegación profunda Personas ↔ Unidades ↔ CxC ↔ Pagos | Base parcial; falta cobertura bidireccional, estado de filtros y QA por rol. |
-| 30 | Workspace CxC: aging, deuda, crédito, saldos y cobranza | Base de CxC P5 citada como funcionalidad preexistente por [#515](https://github.com/aragondaniel91/Habitta-app/issues/515); la extensión del workspace [#519](https://github.com/aragondaniel91/Habitta-app/issues/519) sigue abierta y no tiene aceptación individual del punto #30. |
+| 29 | Navegación profunda Personas ↔ Unidades ↔ CxC ↔ Pagos | **IMPLEMENTED_MAIN parcial:** PR #588 agrega vínculos y filtros contextuales; faltan recorrido bidireccional completo, roles y aceptación. |
+| 30 | Workspace CxC: aging, deuda, crédito, saldos y cobranza | **IMPLEMENTED_MAIN parcial:** #587 añade crédito autorizado y drilldown al estado de cuenta; aging/cobranza/conciliación y aceptación siguen pendientes. |
+
+## Integración de sprint #585 — 2026-10-28
+
+- **#586/#587/#588/#589 MERGED** con evidencia funcional parcial (no aceptación completa). #589 HEAD `cf40bcef0c63be88d141b785647c771218bf0e74` obtuvo los cuatro checks SUCCESS: CI 40766261988, pgTAP 40766262234, Playwright 40766261949, Financial E2E 40766262013; merge `961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb`.
+- **#18 y #28 (IA)** pospuestos por decisión Founder; 28 ítems activos con fecha objetivo 30 oct. Ninguno se marca RELEASED_VERIFIED por estos merges. Auditoría humana #571 y Release #573 siguen bloqueando promoción a producción.
 
 ## Frente de entrega y evidencias
 
@@ -55,8 +60,8 @@
 | “Informacional” | [#521](https://github.com/aragondaniel91/Habitta-app/issues/521) | Reproducción pendiente. |
 
 ## Baseline técnico verificado (no confundir con 30 puntos certificados)
-- **GitHub main:** [`8a9c7044b4602e516fb41a5ba1b2c5eee9ee5cc8`](https://github.com/aragondaniel91/Habitta-app/commit/8a9c7044b4602e516fb41a5ba1b2c5eee9ee5cc8) (#583 merged; código integrado ≠ desplegado).
-- **Cuatro workflows de main, mismo SHA, SUCCESS:** [CI run 40752725714](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725714), [Supabase DB / pgTAP 40752725856](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725856), [Financial E2E 40752726258](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752726258) y [Playwright 40752725491](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725491).
+- **GitHub main (última conciliación):** [`961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb`](https://github.com/aragondaniel91/Habitta-app/commit/961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb) (#589 merged; incluye #586–#588). Código integrado ≠ desplegado.
+- **Cuatro workflows históricos de main sobre SHA #583 (NO sobre el HEAD actual):** [CI run 40752725714](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725714), [Supabase DB / pgTAP 40752725856](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725856), [Financial E2E 40752726258](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752726258) y [Playwright 40752725491](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725491).
 - **Pruebas de seguridad:** PR #582, #583 añadieron aislamiento real con Auth y Worker locales entre condominios de una organización y entre organizaciones distintas; la suite Financial E2E [run 40751849179](https://github.com/aragondaniel91/Habitta-app/actions/runs/40751849179) en HEAD del PR #583 reportó 33 passed / 20 skipped **en toda la suite**, con dos casos cross-org nuevos obligatorios, no 33 puntos del piloto. La fuente agregada de 20 skips no prueba cobertura de todos los escenarios del epic. Esta cifra **no es** progreso de 33/30 puntos.
 - **API producción /health:** commit `9ae959d77f702f27cfa8ee52c6c095ad83744677` (2026-10-24). [Production Release run 40117141200](https://github.com/aragondaniel91/Habitta-app/actions/runs/40117141200) SUCCESS sobre ese commit; el endpoint productivo confirmó el mismo SHA el 28-oct. No se verificó nuevo deploy ni versión exacta de Cloudflare Pages.
 - **RELEASE A BLOCKED:** [#573](https://github.com/aragondaniel91/Habitta-app/issues/573) y [#571](https://github.com/aragondaniel91/Habitta-app/issues/571) abiertos por auditoría independiente humana y revisión [#569](https://github.com/aragondaniel91/Habitta-app/pull/569) de funciones privilegiadas. No saltarse gates.
