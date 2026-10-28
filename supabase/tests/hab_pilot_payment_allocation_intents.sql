@@ -450,20 +450,23 @@ select is(
   'another resident cannot see confidential proof metadata'
 );
 
--- Pending-proof versioning preserves the previous document and excludes unrelated residents.
+-- Submitted/under-review proof stays immutable until a correction is requested.
 select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000002', true);
 select is(public.can_upload_payment_proof(
   '87700000-0000-0000-0000-000000000001','87770000-0000-0000-0000-000000000001'
-),true,'resident may replace proof on own submitted payment');
+),false,'resident cannot replace proof on own submitted payment');
 
-select lives_ok(
-  $$select public.record_payment_proof(
+select throws_ok(
+  $proof$select public.record_payment_proof(
     '87700000-0000-0000-0000-000000000001',
     '87770000-0000-0000-0000-000000000001',
     '87780000-0000-0000-0000-000000000003',
     'payments/87780000-0000-0000-0000-000000000003',
     'initial.png','image/png',68,'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
-  )$$, 'submitting new proof on pending payment is permitted');
+  )$proof$,
+  'P0001', 'proof upload denied',
+  'submitting new proof on pending payment is denied'
+);
 
 reset role;
 update public.payments set status='under_review'
@@ -472,22 +475,25 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000002', true);
 select is(public.can_upload_payment_proof(
   '87700000-0000-0000-0000-000000000001','87770000-0000-0000-0000-000000000001'
-),true,'resident may replace proof while payment is under review');
+),false,'resident cannot replace proof while payment is under review');
 
-select lives_ok(
-  $$select public.record_payment_proof(
+select throws_ok(
+  $proof$select public.record_payment_proof(
     '87700000-0000-0000-0000-000000000001',
     '87770000-0000-0000-0000-000000000001',
     '87780000-0000-0000-0000-000000000004',
     'payments/87780000-0000-0000-0000-000000000004',
     'corrected.png','image/png',68,'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'
-  )$$, 'replacing the proof while under review succeeds');
+  )$proof$,
+  'P0001', 'proof upload denied',
+  'replacing the proof while under review is denied'
+);
 
 select is(
   (select count(*) from public.payment_proofs
     where payment_id='87770000-0000-0000-0000-000000000001'
-    and superseded_at is not null),1::bigint,
-  'earlier proof is superseded but retained for audit'
+    and superseded_at is not null),0::bigint,
+  'no proof was superseded during immutable submitted/under-review phases'
 );
 
 select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000003', true);

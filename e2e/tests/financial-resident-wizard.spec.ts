@@ -175,23 +175,11 @@ test.describe('Asistente de pagos de residente — navegador autenticado', () =>
     await expect(detailDialog.getByRole('columnheader', { name: 'Propuesto' })).toBeVisible();
     await page.screenshot({ path: screenshotPath('resident-detail-desktop.png'), fullPage: true });
     await expect(page.getByRole('button', { name: /Aprobar pago|Rechazar pago/ })).toHaveCount(0);
-    await detailDialog.getByLabel('Nuevo comprobante').setInputFiles({
-      name: 'comprobante-corregido.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL3iwAAAABJRU5ErkJggg==',
-        'base64',
-      ),
-    });
-    await detailDialog.getByRole('button', { name: 'Guardar nuevo comprobante' }).click();
-    await expect(detailDialog.getByText(/Se conservó la versión anterior/)).toBeVisible();
-    await expect(detailDialog.getByText(/se reemplazó 1 vez/)).toBeVisible();
-    if (process.env.E2E_VISUAL_EVIDENCE_DIR) {
-      await page.screenshot({
-        path: join(process.env.E2E_VISUAL_EVIDENCE_DIR, 'resident-proof-replaced-desktop.png'),
-        fullPage: true,
-      });
-    }
+    // Once submitted, the proof is read-only until the reviewer explicitly requests correction.
+    await expect(detailDialog.getByLabel('Nuevo comprobante')).toHaveCount(0);
+    await expect(
+      detailDialog.getByRole('button', { name: 'Guardar nuevo comprobante' }),
+    ).toHaveCount(0);
     const payerSession = await request.post(`${authUrl}/auth/v1/token?grant_type=password`, {
       headers: { apikey: key },
       data: { email: 'habitta-e2e-payer@example.invalid', password },
@@ -211,32 +199,22 @@ test.describe('Asistente de pagos de residente — navegador autenticado', () =>
         async () => {
           const result = await request.get(
             `${API}/v1/condominiums/${condominium}/payments/${createdPayment.id}/proof/history`,
-            {
-              headers: { Authorization: `Bearer ${payerToken}` },
-            },
+            { headers: { Authorization: `Bearer ${payerToken}` } },
           );
           if (!result.ok()) return `HTTP ${result.status()}`;
           const versions = (await result.json()) as Array<{
             original_filename: string;
             superseded_at: string | null;
           }>;
-          if (versions.length !== 2) return `versions=${versions.length}`;
-          return versions.some(
-            (version) =>
-              version.original_filename === 'comprobante-piloto.png' &&
-              version.superseded_at !== null,
-          ) &&
-            versions.some(
-              (version) =>
-                version.original_filename === 'comprobante-corregido.png' &&
-                version.superseded_at === null,
-            )
-            ? 'versioned'
+          return versions.length === 1 &&
+            versions[0]?.original_filename === 'comprobante-piloto.png' &&
+            versions[0]?.superseded_at === null
+            ? 'immutable'
             : 'metadata-mismatch';
         },
         { timeout: 10000 },
       )
-      .toBe('versioned');
+      .toBe('immutable');
     const deniedProofHistory = await request.get(
       `${API}/v1/condominiums/${condominium}/payments/${createdPayment.id}/proof/history`,
     );

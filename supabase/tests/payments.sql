@@ -1,5 +1,5 @@
 begin;
-select plan(162);
+select plan(164);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('80000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@pay.test','x',now(),now()),
@@ -170,8 +170,8 @@ select ok((select count(*) from public.payment_events where payment_id=(select o
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000005',true);
 select is((select count(*) from public.payment_events where payment_id=(select owner_draft_payment_id from payment_test_fixture)),0::bigint,'tenant cannot read resident payment events after submission');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004',true);
-select lives_ok($$select public.record_payment_proof('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'81150000-0000-0000-0000-000000000003','payments/81150000-0000-0000-0000-000000000003','three.pdf','application/pdf',12,'ghi')$$,'owner can replace proof while payment is submitted');
-select is((select count(*) from public.payment_proofs where payment_id=(select id from public.payments where idempotency_key='owner-proof')),3::bigint,'submitted replacement retains all three proof versions');
+select throws_ok($$select public.record_payment_proof('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'),'81150000-0000-0000-0000-000000000003','payments/81150000-0000-0000-0000-000000000003','three.pdf','application/pdf',12,'ghi')$$,'P0001','proof upload denied','owner cannot replace proof once payment is submitted (detail must stay immutable until correction_requested)');
+select is((select count(*) from public.payment_proofs where payment_id=(select id from public.payments where idempotency_key='owner-proof')),2::bigint,'submitted payment keeps only the two proof versions recorded before submission');
 select is((select count(*) from public.receivable_ledger_entries where payment_id=(select id from public.payments where idempotency_key='owner-proof')),0::bigint,'creating and submitting payment does not change ledger');
 
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000007',true);
@@ -184,6 +184,8 @@ select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000007'
 select lives_ok($$select public.update_payment_draft('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'81130000-0000-0000-0000-000000000004',current_date,4,'USD','Assistant corrected',null,'Corrected details')$$,'submitter can save a returned payment');
 select is((select status::text from public.payments where idempotency_key='assistant'),'correction_requested','saving a returned payment preserves correction status');
 select is((select correction_reason from public.payments where idempotency_key='assistant'),'fix','saving a returned payment preserves the correction instruction');
+select lives_ok($$select public.record_payment_proof('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'),'81150000-0000-0000-0000-000000000005','payments/81150000-0000-0000-0000-000000000005','corrected.pdf','application/pdf',9,'mno')$$,'submitter can replace proof while status is correction_requested');
+select is((select count(*) from public.payment_proofs where payment_id=(select id from public.payments where idempotency_key='assistant') and superseded_at is null),1::bigint,'correction_requested proof replacement leaves exactly one active version');
 select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='assistant'));
 select is((select status::text from public.payments where idempotency_key='assistant'),'submitted','explicit resubmission moves the returned payment to submitted');
 select is((select correction_reason from public.payments where idempotency_key='assistant'),null,'resubmission clears the active correction instruction');

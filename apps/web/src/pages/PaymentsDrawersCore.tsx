@@ -4,8 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useDialogBehavior } from '../components/Drawer';
 import { PaymentsIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
-import { paymentApi, paymentProof } from '../features/payments/api';
-import { paymentProofFileError } from '../features/payments/proof-file';
+import { paymentApi } from '../features/payments/api';
 import { PaymentAllocationEditor } from '../features/payments/components/PaymentAllocationEditor';
 import { resolveResidentProposal } from '../features/payments/resident-proposal-approval';
 import { moneyValueString } from '../features/payments/allocation-amounts';
@@ -331,10 +330,6 @@ export function ReviewPayment({
       superseded_at: string | null;
     }>
   >([]);
-  const [proofVersion, setProofVersion] = useState(0);
-  const [replacementFile, setReplacementFile] = useState<File | null>(null);
-  const [replacementBusy, setReplacementBusy] = useState(false);
-  const [replacementMessage, setReplacementMessage] = useState('');
   const [selectedTreasuryAccountId, setSelectedTreasuryAccountId] = useState(
     payment.treasury_account_id ?? '',
   );
@@ -342,29 +337,6 @@ export function ReviewPayment({
   const canApprove = payment.can_approve === true;
   const independentApprovalTitle = 'Requiere aprobaci\u00f3n de otro revisor';
   const method = methods.find((item) => item.id === payment.payment_method_id);
-  const mayReplaceProof =
-    readOnly &&
-    payment.submitted_by_user_id === session.user.id &&
-    ['submitted', 'under_review'].includes(payment.status);
-  const replaceProof = async () => {
-    if (!mayReplaceProof || !replacementFile || replacementBusy) return;
-    setReplacementBusy(true);
-    setReplacementMessage('');
-    try {
-      await paymentProof(`${endpoint}/proof`, session, replacementFile);
-      setProofVersion((revision) => revision + 1);
-      setReplacementFile(null);
-      setReplacementMessage(
-        'Comprobante actualizado. Se conservó la versión anterior en el historial.',
-      );
-    } catch (cause) {
-      setReplacementMessage(
-        cause instanceof Error ? cause.message : 'No se pudo reemplazar el comprobante.',
-      );
-    } finally {
-      setReplacementBusy(false);
-    }
-  };
 
   useEffect(() => {
     let active = true;
@@ -379,7 +351,7 @@ export function ReviewPayment({
     return () => {
       active = false;
     };
-  }, [endpoint, session, proofVersion]);
+  }, [endpoint, session]);
 
   useEffect(() => {
     let active = true;
@@ -606,7 +578,6 @@ export function ReviewPayment({
             <h3>Comprobante</h3>
           </div>
           <PaymentProofPreview
-            key={proofVersion}
             condominiumId={condominiumId}
             paymentId={payment.id}
             session={session}
@@ -616,43 +587,6 @@ export function ReviewPayment({
               Este comprobante se reemplazó {proofHistory.length - 1}{' '}
               {proofHistory.length === 2 ? 'vez' : 'veces'}. Se conserva el historial.
             </p>
-          ) : null}
-          {mayReplaceProof ? (
-            <div className="payments-detail__proof-replace">
-              <Field label="Reemplazar comprobante">
-                <label className="payments-detail__proof-dropzone">
-                  <input
-                    aria-label="Nuevo comprobante"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    type="file"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      const error = file ? paymentProofFileError(file) : null;
-                      setReplacementFile(error ? null : (file ?? null));
-                      event.currentTarget.value = '';
-                      setReplacementMessage(error ?? '');
-                    }}
-                  />
-                  <span>
-                    {replacementFile ? 'Cambiar archivo elegido' : 'Seleccionar imagen o PDF'}
-                  </span>
-                </label>
-              </Field>
-              {replacementFile ? <small>Nuevo archivo: {replacementFile.name}</small> : null}
-              <Button
-                disabled={!replacementFile || replacementBusy}
-                onClick={() => void replaceProof()}
-                type="button"
-                variant="secondary"
-              >
-                {replacementBusy ? 'Guardando…' : 'Guardar nuevo comprobante'}
-              </Button>
-              <small>
-                La versión anterior queda guardada para auditoría; el pago continúa pendiente de
-                revisión.
-              </small>
-              {replacementMessage ? <p role="status">{replacementMessage}</p> : null}
-            </div>
           ) : null}
         </section>
         <footer className="payments-detail__footer">
