@@ -3,9 +3,8 @@
 -- with no `receivable_item_id` -- without an admin first knowing which unit to open the account
 -- statement for. Today that balance only becomes visible one unit at a time, inside
 -- `get_unit_statement`. This adds the condominium-wide aggregate the collections list needs,
--- built on the same ledger rows and the same authorization predicates as
--- `get_receivables_summary`, so it can never show a balance the caller could not already see
--- there.
+-- built on the same ledger rows but restricted to can_read_financial_unit.
+-- Board aggregate permissions must never reveal per-unit credit details.
 --
 -- A reversed payment's remainder nets to zero automatically: the reversal entry shares the same
 -- unit, currency and null `receivable_item_id` as the credit it offsets, so summing signed
@@ -29,21 +28,18 @@ as $$
     e.currency_code,
     to_char(sum(case e.direction when 'credit' then e.amount else -e.amount end),'FM999999999999990.00'),
     count(*) filter(where e.direction = 'credit'),
-    min(e.effective_date),
-    max(e.effective_date)
+    min(e.effective_date) filter (where e.direction = 'credit'),
+    max(e.effective_date) filter (where e.direction = 'credit')
   from public.receivable_ledger_entries e
   where e.condominium_id = target
     and e.receivable_item_id is null
-    and (
-      public.can_read_board_aggregates(target)
-      or public.can_read_financial_unit(e.unit_id)
-    )
+    and public.can_read_financial_unit(e.unit_id)
   group by e.unit_id, e.currency_code
   having sum(case e.direction when 'credit' then e.amount else -e.amount end) > 0
 $$;
 
 comment on function public.get_unit_credit_balances(uuid) is
-  'Authorized credit available per unit and currency: payment overpayments and other unapplied credits, net of their reversals. Reuses the same read predicates as get_receivables_summary.';
+  'Authorized credit available per unit and currency: payment overpayments and other unapplied credits, net of their reversals. Authorized only per-unit with can_read_financial_unit; board aggregate access is insufficient.';
 
-revoke all on function public.get_unit_credit_balances(uuid) from public;
+revoke all on function public.get_unit_credit_balances(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.get_unit_credit_balances(uuid) to authenticated, service_role;
