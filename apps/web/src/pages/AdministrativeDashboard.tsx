@@ -617,7 +617,10 @@ export function AdministrativeDashboard({
     .slice(0, 3);
   const latestOpenRequest = openRequests[0];
   const paymentsAwaitingReview = dashboardData.reviewQueue.filter(
-    (payment) => payment.status === 'submitted',
+    (payment) => payment.status === 'submitted' && payment.can_approve === true,
+  );
+  const paymentsAwaitingOtherReviewer = dashboardData.reviewQueue.filter(
+    (payment) => payment.status === 'submitted' && payment.can_approve !== true,
   );
   const paymentsInReview = dashboardData.reviewQueue.filter(
     (payment) => payment.status === 'under_review',
@@ -871,7 +874,9 @@ export function AdministrativeDashboard({
                   <div>
                     <div className="dashboard-priority-state">
                       <Badge tone={paymentsAwaitingReview.length ? 'warning' : 'success'}>
-                        Acción requerida
+                        {paymentsAwaitingReview.length
+                          ? 'Acción requerida'
+                          : 'Sin acción de aprobación'}
                       </Badge>
                     </div>
                     <strong>
@@ -889,6 +894,14 @@ export function AdministrativeDashboard({
                         ? paymentAttentionState(paymentsAwaitingReview[0])
                         : 'La validación administrativa comienza cuando el residente envía el pago.'}
                     </small>
+                    {paymentsAwaitingOtherReviewer.length ? (
+                      <small>
+                        {paymentsAwaitingOtherReviewer.length}{' '}
+                        {paymentsAwaitingOtherReviewer.length === 1
+                          ? 'pago enviado espera otro revisor autorizado.'
+                          : 'pagos enviados esperan otro revisor autorizado.'}
+                      </small>
+                    ) : null}
                   </div>
                   <ArrowRightIcon aria-hidden="true" size={17} />
                 </button>

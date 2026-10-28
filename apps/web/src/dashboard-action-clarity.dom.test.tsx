@@ -32,12 +32,20 @@ function responseFor(path: string) {
   if (path.endsWith('/resident-financial-units')) return [];
   if (path.endsWith('/payments/review-queue')) {
     return [
-      payment({ charge_concept_name: 'Cuota octubre' }),
+      payment({ charge_concept_name: 'Cuota octubre', can_approve: true }),
       payment({
         id: 'payment-2',
         status: 'under_review',
         payer_name: 'Bruno Residente',
         charge_concept_name: undefined,
+      }),
+      payment({
+        id: 'payment-self-blocked',
+        status: 'submitted',
+        payer_name: 'El propio registrador',
+        can_approve: false,
+        original_amount: '99.99',
+        charge_concept_name: 'Pago propio pendiente de otro revisor',
       }),
     ];
   }
@@ -49,6 +57,7 @@ function responseFor(path: string) {
         id: 'other-draft',
         status: 'draft',
         submitted_by_user_id: 'other-tenant',
+        original_amount: '91.99',
         charge_concept_name: 'BORRADOR PRIVADO',
       }),
     ];
@@ -115,6 +124,7 @@ describe('dashboard payment action clarity', () => {
     expect(element.textContent).toContain('Unidad: A-101 · Tu pago');
     expect(element.textContent).toContain('Concepto aplicado: Cuota octubre');
     expect(element.textContent).not.toContain('BORRADOR PRIVADO');
+    expect(element.textContent).not.toContain('USD\u00a091,99');
     await act(async () => root.unmount());
   });
 
@@ -164,6 +174,8 @@ describe('dashboard payment action clarity', () => {
     expect(element.textContent).toContain('Unidad: A-101 · Presentado por: Ana Propietaria');
     expect(element.textContent).toContain('Estado: Enviado · Concepto aplicado: Cuota octubre');
     expect(element.textContent).toContain('Estado: En revisión · Concepto: aún no aplicado.');
+    expect(element.textContent).toContain('1 pago enviado espera otro revisor autorizado.');
+    expect(element.textContent).not.toContain('USD\u00a099,99');
     await act(async () => root.unmount());
   });
 });

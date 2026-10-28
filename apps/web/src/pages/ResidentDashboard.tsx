@@ -323,7 +323,6 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         ),
     [currentData?.payments, activeUnitId],
   );
-  const recentPayments = visiblePayments.slice(0, 4);
   // The payments endpoint is the authorization boundary. This extra check is presentation
   // defense-in-depth: an attention card can only ever call something "your action" when this
   // session submitted it. In particular, a same-unit resident's draft must never be promoted as
@@ -332,6 +331,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
     () => visiblePayments.filter((payment) => payment.submitted_by_user_id === session.user.id),
     [session.user.id, visiblePayments],
   );
+  const recentPayments = ownPayments.slice(0, 4);
   const paymentNeedingAction = useMemo(
     () => ownPayments.find((payment) => ['draft', 'correction_requested'].includes(payment.status)),
     [ownPayments],
