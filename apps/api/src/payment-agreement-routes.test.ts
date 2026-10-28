@@ -21,18 +21,19 @@ const app = () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('payment agreement routes', () => {
-  it('validates filters and returns a paginated, filtered read without changing authorization scope', async () => {
-    const requests: string[] = [];
+  it('uses one database-side exact-numeric page query, then fetches only that page', async () => {
+    const requests: { url: string; body: unknown }[] = [];
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        requests.push(url);
+      vi.fn(async (url: string, init?: RequestInit) => {
+        requests.push({ url, body: init?.body ? JSON.parse(String(init.body)) : null });
+        if (url.includes('rpc/list_payment_agreement_ids'))
+          return new Response(JSON.stringify([{ agreement_id: 'agreement-1', total_count: 1 }]));
         if (url.includes('payment_agreements?'))
           return new Response(
             JSON.stringify([
               {
                 id: 'agreement-1',
-                schedule: [{ due_date: '2026-12-01', amount: '120.00' }],
                 updated_at: '2026-10-20T10:00:00.000Z',
               },
             ]),
@@ -41,7 +42,7 @@ describe('payment agreement routes', () => {
       }),
     );
     const response = await app().request(
-      `/${condominiumId}/payment-agreements?page=1&pageSize=10&unitId=${unitId}&status=accepted&minAmount=100&periodFrom=2026-11-01&sort=amountDesc`,
+      `/${condominiumId}/payment-agreements?page=1&pageSize=10&unitId=${unitId}&status=accepted&minAmount=${(0.1 + 0.2).toFixed(2)}&maxAmount=0.30&periodFrom=2026-11-01&sort=amountDesc`,
       {},
       env,
     );
@@ -52,9 +53,21 @@ describe('payment agreement routes', () => {
       total: 1,
       items: [{ id: 'agreement-1' }],
     });
-    expect(requests[0]).toContain(`condominium_id=eq.${condominiumId}`);
-    expect(requests[0]).toContain(`unit_id=eq.${unitId}`);
-    expect(requests[0]).toContain('status=eq.accepted');
+    expect(requests).toHaveLength(5);
+    expect(requests[0]).toEqual({
+      url: `${env.SUPABASE_URL}/rest/v1/rpc/list_payment_agreement_ids`,
+      body: expect.objectContaining({
+        target_condominium: condominiumId,
+        target_unit: unitId,
+        target_status: 'accepted',
+        target_min_amount: '0.30',
+        target_max_amount: '0.30',
+        target_page: 1,
+        target_page_size: 10,
+        target_sort: 'amountDesc',
+      }),
+    });
+    expect(requests.every((request) => !request.url.includes('offset='))).toBe(true);
 
     const invalid = await app().request(
       `/${condominiumId}/payment-agreements?minAmount=20&maxAmount=10`,
@@ -62,6 +75,18 @@ describe('payment agreement routes', () => {
       env,
     );
     expect(invalid.status).toBe(400);
+  });
+
+  it('rejects malformed money filter values before making an upstream request', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const response = await app().request(
+      `/${condominiumId}/payment-agreements?minAmount=0.30000000000000004`,
+      {},
+      env,
+    );
+    expect(response.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('sends only schedule metadata to the agreement RPC', async () => {

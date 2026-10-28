@@ -19,8 +19,16 @@ const agreementQuerySchema = z
     unitId: uuidSchema.optional(),
     personId: uuidSchema.optional(),
     status: z.enum(agreementStatuses).optional(),
-    minAmount: z.coerce.number().finite().min(0).optional(),
-    maxAmount: z.coerce.number().finite().min(0).optional(),
+    // Keep money as its URL decimal representation. Converting it to Number before
+    // JSON serialization can turn 0.30 into 0.30000000000000004.
+    minAmount: z
+      .string()
+      .regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/)
+      .optional(),
+    maxAmount: z
+      .string()
+      .regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/)
+      .optional(),
     periodFrom: z.string().date().optional(),
     periodTo: z.string().date().optional(),
     dateFrom: z.string().date().optional(),
@@ -33,7 +41,7 @@ const agreementQuerySchema = z
     if (
       value.minAmount !== undefined &&
       value.maxAmount !== undefined &&
-      value.minAmount > value.maxAmount
+      decimalToCents(value.minAmount) > decimalToCents(value.maxAmount)
     )
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -56,28 +64,14 @@ const agreementQuerySchema = z
 
 type AgreementRecord = {
   id: string;
-  schedule: { due_date: string; amount: string }[];
-  updated_at: string;
   [key: string]: unknown;
 };
 
-const AGREEMENT_READ_PAGE_SIZE = 500;
-const AGREEMENT_READ_MAX_ROWS = 50_000;
-const scheduleFacts = (agreement: AgreementRecord) => {
-  const dueDates = agreement.schedule
-    .map((item) => item.due_date)
-    .filter(Boolean)
-    .sort();
-  return {
-    amount: agreement.schedule.reduce((total, item) => total + Number(item.amount || 0), 0),
-    firstDueDate: dueDates[0] ?? '',
-    lastDueDate: dueDates.at(-1) ?? '',
-  };
-};
-const nextDay = (date: string) => {
-  const value = new Date(`${date}T00:00:00.000Z`);
-  value.setUTCDate(value.getUTCDate() + 1);
-  return value.toISOString().slice(0, 10);
+const LEGACY_AGREEMENT_READ_CAP = 100;
+type AgreementSearchRow = { agreement_id: string | null; total_count: number | string };
+const decimalToCents = (value: string) => {
+  const [whole, fraction = ''] = value.split('.');
+  return BigInt(whole ?? '0') * 100n + BigInt(fraction.padEnd(2, '0'));
 };
 
 const rest = (c: AppContext, path: string, init: RequestInit = {}) =>
@@ -140,59 +134,28 @@ export function registerPaymentAgreementRoutes(router: Hono<Environment>) {
     });
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const query = parsed.data;
-    const filters = [
-      `condominium_id=eq.${condominiumId}`,
-      ...(query.unitId ? [`unit_id=eq.${query.unitId}`] : []),
-      ...(query.personId ? [`legal_obligor_person_id=eq.${query.personId}`] : []),
-      ...(query.status ? [`status=eq.${query.status}`] : []),
-      ...(query.dateFrom ? [`updated_at=gte.${query.dateFrom}T00:00:00.000Z`] : []),
-      ...(query.dateTo ? [`updated_at=lt.${nextDay(query.dateTo)}T00:00:00.000Z`] : []),
-    ];
-    const items: AgreementRecord[] = [];
-    for (let offset = 0; ; offset += AGREEMENT_READ_PAGE_SIZE) {
-      const agreements = await rest(
-        c,
-        `payment_agreements?${filters.join('&')}&select=*&order=updated_at.desc,id.desc&limit=${AGREEMENT_READ_PAGE_SIZE}&offset=${offset}`,
-      );
-      if (!agreements.ok) return failure(c, agreements);
-      const page = (await agreements.json()) as AgreementRecord[];
-      items.push(...page);
-      if (items.length > AGREEMENT_READ_MAX_ROWS)
-        return c.json({ error: 'Agreement history requires narrower filters' }, 413);
-      if (page.length < AGREEMENT_READ_PAGE_SIZE) break;
-    }
-    const filtered = items
-      .map((item) => ({ item, facts: scheduleFacts(item) }))
-      .filter(({ facts }) => {
-        if (query.minAmount !== undefined && facts.amount < query.minAmount) return false;
-        if (query.maxAmount !== undefined && facts.amount > query.maxAmount) return false;
-        if (query.periodFrom && (!facts.firstDueDate || facts.firstDueDate < query.periodFrom))
-          return false;
-        if (query.periodTo && (!facts.lastDueDate || facts.lastDueDate > query.periodTo))
-          return false;
-        return true;
-      })
-      .sort((left, right) => {
-        const direction = query.sort.endsWith('Asc') ? 1 : -1;
-        const leftValue = query.sort.startsWith('amount')
-          ? left.facts.amount
-          : query.sort.startsWith('period')
-            ? left.facts.firstDueDate
-            : left.item.updated_at;
-        const rightValue = query.sort.startsWith('amount')
-          ? right.facts.amount
-          : query.sort.startsWith('period')
-            ? right.facts.firstDueDate
-            : right.item.updated_at;
-        return leftValue < rightValue ? -direction : leftValue > rightValue ? direction : 0;
-      });
-    const total = filtered.length;
-    const pageItems = explicitPagination
-      ? filtered
-          .slice((query.page - 1) * query.pageSize, query.page * query.pageSize)
-          .map(({ item }) => item)
-      : filtered.map(({ item }) => item);
-    if (!pageItems.length) {
+    // The unpaginated compatibility response is intentionally capped. New callers receive
+    // pagination metadata; neither shape causes the Worker to enumerate a condominium.
+    const search = await rpc(c, 'list_payment_agreement_ids', {
+      target_condominium: condominiumId,
+      target_page: explicitPagination ? query.page : 1,
+      target_page_size: explicitPagination ? query.pageSize : LEGACY_AGREEMENT_READ_CAP,
+      target_unit: query.unitId ?? null,
+      target_person: query.personId ?? null,
+      target_status: query.status ?? null,
+      target_min_amount: query.minAmount ?? null,
+      target_max_amount: query.maxAmount ?? null,
+      target_period_from: query.periodFrom ?? null,
+      target_period_to: query.periodTo ?? null,
+      target_date_from: query.dateFrom ?? null,
+      target_date_to: query.dateTo ?? null,
+      target_sort: query.sort,
+    });
+    if (!search.ok) return failure(c, search);
+    const searchRows = (await search.json()) as AgreementSearchRow[];
+    const total = Number(searchRows[0]?.total_count ?? 0);
+    const pageItemIds = searchRows.flatMap((row) => (row.agreement_id ? [row.agreement_id] : []));
+    if (!pageItemIds.length) {
       return c.json(
         explicitPagination
           ? {
@@ -207,9 +170,9 @@ export function registerPaymentAgreementRoutes(router: Hono<Environment>) {
           : [],
       );
     }
-    const pageItemIds = pageItems.map((item) => item.id);
     const ids = pageItemIds.join(',');
-    const [sources, events, progress] = await Promise.all([
+    const [agreements, sources, events, progress] = await Promise.all([
+      rest(c, `payment_agreements?id=in.(${ids})&select=*`),
       rest(c, `payment_agreement_receivables?agreement_id=in.(${ids})&select=*`),
       rest(
         c,
@@ -217,6 +180,7 @@ export function registerPaymentAgreementRoutes(router: Hono<Environment>) {
       ),
       rest(c, `payment_agreement_progress?agreement_id=in.(${ids})&select=*`),
     ]);
+    if (!agreements.ok) return failure(c, agreements);
     if (!sources.ok) return failure(c, sources);
     if (!events.ok) return failure(c, events);
     if (!progress.ok) return failure(c, progress);
@@ -237,12 +201,21 @@ export function registerPaymentAgreementRoutes(router: Hono<Environment>) {
     const progressByAgreement = new Map<string, unknown>();
     for (const item of (await progress.json()) as { agreement_id: string }[])
       progressByAgreement.set(item.agreement_id, item);
-    const enriched = pageItems.map((item) => ({
-      ...item,
-      receivables: sourcesByAgreement.get(item.id) ?? [],
-      events: eventsByAgreement.get(item.id) ?? [],
-      progress: progressByAgreement.get(item.id) ?? null,
-    }));
+    const agreementsById = new Map(
+      ((await agreements.json()) as AgreementRecord[]).map((item) => [item.id, item]),
+    );
+    const enriched = pageItemIds.flatMap((id) => {
+      const item = agreementsById.get(id);
+      if (!item) return [];
+      return [
+        {
+          ...item,
+          receivables: sourcesByAgreement.get(item.id) ?? [],
+          events: eventsByAgreement.get(item.id) ?? [],
+          progress: progressByAgreement.get(item.id) ?? null,
+        },
+      ];
+    });
     return c.json(
       explicitPagination
         ? {
