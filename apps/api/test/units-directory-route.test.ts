@@ -255,15 +255,23 @@ describe('units directory aggregate', () => {
   });
 
   it('accepts a canonical tenant ID from PostgREST when the route UUID uses uppercase', async () => {
-    const { fetchMock } = withDirectoryResponses();
+    const canonicalId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/auth/v1/user')) return json({ id: personA });
+      if (url.includes('/rest/v1/units?')) return json([unit(unitA, canonicalId, 'Torre A')]);
+      return json([]);
+    });
     try {
       const response = await app.request(
-        `/v1/condominiums/${condominiumA.toUpperCase()}/units-directory`,
+        `/v1/condominiums/${canonicalId.toUpperCase()}/units-directory`,
         { headers: { Authorization: 'Bearer caller-token' } },
         environment,
       );
       expect(response.status).toBe(200);
-      await expect(response.json()).resolves.toMatchObject({ units: [{ condominiumId: condominiumA }] });
+      await expect(response.json()).resolves.toMatchObject({
+        units: [{ condominiumId: canonicalId }],
+      });
     } finally {
       fetchMock.mockRestore();
     }
