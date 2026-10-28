@@ -446,11 +446,10 @@
 }
 
 .resident-dashboard__payment-attention-card small {
-  overflow: hidden;
   color: var(--hq-muted);
   font-size: 0.74rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .resident-dashboard__payment-attention-icon {

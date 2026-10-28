@@ -60,6 +60,8 @@ export type DashboardPayment = {
   id: string;
   unit_id: string;
   payer_name: string;
+  /** Used only to avoid presenting another resident's private in-progress action. */
+  submitted_by_user_id?: string;
   status: string;
   original_amount: string;
   original_currency_code: string;

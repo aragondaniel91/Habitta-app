@@ -85,6 +85,15 @@ type MetricIcon = (props: IconProps) => ReactNode;
 
 const routeByKey = (key: AppRoute['key']) => APP_ROUTES.find((route) => route.key === key);
 
+const paymentUnitLabel = (units: DashboardUnit[], unitId: string) =>
+  units.find((unit) => unit.id === unitId)?.code ?? 'Unidad autorizada';
+
+const paymentAttentionSubject = (payment: DashboardPayment, units: DashboardUnit[]) =>
+  `${formatDashboardAmount(payment.original_amount, payment.original_currency_code)} · Unidad: ${paymentUnitLabel(units, payment.unit_id)} · Presentado por: ${payment.payer_name || 'Persona autorizada'}`;
+
+const paymentAttentionState = (payment: DashboardPayment) =>
+  `Estado: ${paymentStatusLabels[payment.status] ?? payment.status} · ${payment.charge_concept_name ? `Concepto aplicado: ${payment.charge_concept_name}` : 'Concepto: aún no aplicado.'}`;
+
 const paymentStatusLabels: Record<string, string> = {
   draft: 'Borrador',
   submitted: 'Enviado',
@@ -872,12 +881,14 @@ export function AdministrativeDashboard({
                     </strong>
                     <small>
                       {paymentsAwaitingReview[0]
-                        ? `${formatDashboardAmount(paymentsAwaitingReview[0].original_amount, paymentsAwaitingReview[0].original_currency_code)} · ${paymentsAwaitingReview[0].payer_name}`
+                        ? paymentAttentionSubject(paymentsAwaitingReview[0], dashboardData.units)
                         : 'Los pagos recién enviados por residentes aparecerán aquí.'}
                     </small>
-                    {paymentsAwaitingReview[0]?.charge_concept_name ? (
-                      <small>Cargo aplicado: {paymentsAwaitingReview[0].charge_concept_name}</small>
-                    ) : null}
+                    <small>
+                      {paymentsAwaitingReview[0]
+                        ? paymentAttentionState(paymentsAwaitingReview[0])
+                        : 'La validación administrativa comienza cuando el residente envía el pago.'}
+                    </small>
                   </div>
                   <ArrowRightIcon aria-hidden="true" size={17} />
                 </button>
@@ -906,12 +917,14 @@ export function AdministrativeDashboard({
                     </strong>
                     <small>
                       {paymentsInReview[0]
-                        ? `${formatDashboardAmount(paymentsInReview[0].original_amount, paymentsInReview[0].original_currency_code)} · ${paymentsInReview[0].payer_name}`
+                        ? paymentAttentionSubject(paymentsInReview[0], dashboardData.units)
                         : 'Pagos que ya tomó un revisor, sin acción pendiente del administrador.'}
                     </small>
-                    {paymentsInReview[0]?.charge_concept_name ? (
-                      <small>Cargo aplicado: {paymentsInReview[0].charge_concept_name}</small>
-                    ) : null}
+                    <small>
+                      {paymentsInReview[0]
+                        ? paymentAttentionState(paymentsInReview[0])
+                        : 'Un revisor ya tomó estos pagos; no requieren una nueva acción inicial.'}
+                    </small>
                   </div>
                   <ArrowRightIcon aria-hidden="true" size={17} />
                 </button>

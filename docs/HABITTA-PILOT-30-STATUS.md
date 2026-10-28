@@ -12,8 +12,8 @@
 | Nº | Entregable original del piloto | Estado comprobable / brecha inmediata |
 | --- | --- | --- |
 | 1 | KPIs del dashboard con navegación a listados filtrados | **IMPLEMENTED_MAIN parcial:** PR #588 integra enlaces KPI y filtros contextuales; falta recorrido/aceptación por rol y verificación productiva. |
-| 2 | Dashboard: monto, concepto, sujeto y estado visible | Base parcial; pendiente aceptación específica de detalle contextual. |
-| 3 | Diferenciar “requiere tu acción” de revisión administrativa | Base parcial; pendiente evaluación por roles en pantalla y contenido. |
+| 2 | Dashboard: monto, concepto, sujeto y estado visible | **Candidato en PR #585:** tarjetas residentes/administrativas enriquecidas con monto, concepto, unidad y estado desde datos autorizados; falta merge/QA por rol/produccion. |
+| 3 | Diferenciar acciones del usuario y validacion administrativa | **Candidato en PR #585:** separacion de borrador/correccion propio de residente versus revision pendiente administrativa; pendiente merge/QA por rol/produccion. |
 | 4 | Borradores residentes privados de admin hasta enviar | **Candidato aislado R6** [#522](https://github.com/aragondaniel91/Habitta-app/issues/522). SQL/RLS de pagos y eventos de auditoría, pgTAP y visual no certificados ni publicados como entrega del piloto. |
 | 5 | Detalle inmutable de pago enviado, soporte/estado/comprobante | **IMPLEMENTED_MAIN / TESTED parcial:** PR #589 MERGED en `961f2f5`, comprobante inmutable tras envío, tests DB/Browser/Financial E2E GREEN; falta aceptación integral del detalle por rol y producción. |
 | 6 | Rendimiento Pagos/Cuotas/Gastos p75/p95 y waterfall | Pendiente de medición reproducible y mejora cuantificada. |
