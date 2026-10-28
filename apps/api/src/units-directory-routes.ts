@@ -167,7 +167,8 @@ unitsDirectoryRoutes.get('/:id/units-directory', async (c) => {
   // an upstream filter or policy is misconfigured. Reject partial/ambiguous directories.
   const allowedUnitIds = new Set(units.map((unit) => unit.id));
   if (
-    units.some((unit) => unit.condominium_id?.toLowerCase() !== condominiumId.toLowerCase()) ||
+    units.some((unit) => typeof unit.condominium_id !== 'string' ||
+    unit.condominium_id.toLowerCase() !== condominiumId.toLowerCase()) ||
     owners.some((row) => !allowedUnitIds.has(row.unit_id)) ||
     occupancies.some((row) => !allowedUnitIds.has(row.unit_id))
   ) {
