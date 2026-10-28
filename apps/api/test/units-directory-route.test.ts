@@ -233,12 +233,78 @@ describe('units directory aggregate', () => {
     }
   });
 
+  it('fails closed if upstream returns a unit belonging to another condominium', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/auth/v1/user')) return json({ id: personA });
+      if (url.includes('/rest/v1/units?')) return json([unit(unitB, condominiumB, 'Torre B')]);
+      if (url.includes('/rest/v1/unit_owners?')) return json([]);
+      return json([]);
+    });
+    try {
+      const response = await app.request(
+        `/v1/condominiums/${condominiumA}/units-directory`,
+        { headers: { Authorization: 'Bearer caller-token' } },
+        environment,
+      );
+      expect(response.status).toBe(502);
+      await expect(response.json()).resolves.toEqual({ error: 'Units directory is unavailable' });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('accepts a canonical tenant ID from PostgREST when the route UUID uses uppercase', async () => {
+    const canonicalId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/auth/v1/user')) return json({ id: personA });
+      if (url.includes('/rest/v1/units?')) return json([unit(unitA, canonicalId, 'Torre A')]);
+      return json([]);
+    });
+    try {
+      const response = await app.request(
+        `/v1/condominiums/${canonicalId.toUpperCase()}/units-directory`,
+        { headers: { Authorization: 'Bearer caller-token' } },
+        environment,
+      );
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        units: [{ condominiumId: canonicalId }],
+      });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('fails closed if an upstream assignment references a unit outside the directory', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/auth/v1/user')) return json({ id: personA });
+      if (url.includes('/rest/v1/units?')) return json([unit(unitA, condominiumA, 'Torre A')]);
+      if (url.includes('/rest/v1/unit_owners?')) return json([{ ...owner, unit_id: unitB }]);
+      return json([occupancy]);
+    });
+    try {
+      const response = await app.request(
+        `/v1/condominiums/${condominiumA}/units-directory`,
+        { headers: { Authorization: 'Bearer caller-token' } },
+        environment,
+      );
+      expect(response.status).toBe(502);
+      await expect(response.json()).resolves.toEqual({ error: 'Units directory is unavailable' });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   it('requires active, tenant-scoped joins and does not request private fields', async () => {
     const source = await readFile(
       new URL('../src/units-directory-routes.ts', import.meta.url),
       'utf8',
     );
     expect(source).toContain("uuidSchema.parse(c.req.param('id'))");
+    expect(source).toContain('select=id,condominium_id,building_id');
     expect(source.match(/ends_at=is.null/g)).toHaveLength(2);
     expect(source.match(/units\.condominium_id=eq\.\$\{condominiumId\}/g)).toHaveLength(2);
     expect(source.match(/units!inner\(\)/g)).toHaveLength(2);
