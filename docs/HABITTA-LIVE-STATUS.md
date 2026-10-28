@@ -5,6 +5,13 @@
 
 ## Sprint #585 — checkpoint de integración verificado (2026-10-28)
 
+### PR #592 — dashboard de acciones (candidato de desarrollo, no desplegado)
+
+- Puntos piloto #2/#3: tarjetas financieras residentes y administrativas con monto, concepto, unidad y estado comprensibles, separando correcciones propias de revisión administrativa.
+- Revisión SDP halló privacidad transversal en lista de movimientos recientes y falsa señal de aprobación propia. Se corrigió filtrando los movimientos recientes del residente por autor y computando aprobaciones administrativas exclusivamente con `can_approve === true`; los pagos bloqueados por independencia se muestran como pendientes de otro revisor.
+- Pruebas focales locales 17/17 PASS y web typecheck PASS en el candidato corregido. Aún requiere cuatro pipelines GREEN del nuevo HEAD, revisión y merge. #571/#573 no autorizan producción.
+
+
 - **Main HEAD luego de PR #589:** `961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb` ([merge #589](https://github.com/aragondaniel91/Habitta-app/pull/589)); incluye #586 (archivado auditado), #587 (crédito a favor visible) y #588 (KPI y vínculos contextuales). Se debe volver a consultar GitHub al retomar.
 - **#589:** código SQL/UX y pruebas corregidas para que un comprobante enviado (`submitted`/`under_review`) sea inmutable; reemplazo únicamente en `draft`/`correction_requested`. HEAD `cf40bcef0c63be88d141b785647c771218bf0e74` con CI run 40766261988 SUCCESS, Supabase DB run 40766262234 SUCCESS, Playwright run 40766261949 SUCCESS y Financial E2E run 40766262013 SUCCESS. Revisión estática adicional en worktree separado; esto **NO** reemplaza auditoría humana #571.
 - **Evidencia por ítem**: #1/#29 reciben navegación parcial (#588); #5/#9 endurecimiento del comprobante (#589); #13/#30 visualización de crédito parcial (#587); #14 auditoría de archivado parcial (#586). No declarar ninguno `ACCEPTED` o `RELEASED_VERIFIED` sin pruebas/aceptación individual.

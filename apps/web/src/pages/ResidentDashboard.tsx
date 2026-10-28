@@ -312,7 +312,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
         .sort((left, right) => dueTime(left) - dueTime(right))[0],
     [currentData?.receivables, activeUnitId],
   );
-  const recentPayments = useMemo(
+  const visiblePayments = useMemo(
     () =>
       [...(currentData?.payments ?? [])]
         .filter((payment) => !activeUnitId || payment.unit_id === activeUnitId)
@@ -320,18 +320,25 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
           (right.payment_date || right.created_at || '').localeCompare(
             left.payment_date || left.created_at || '',
           ),
-        )
-        .slice(0, 4),
+        ),
     [currentData?.payments, activeUnitId],
   );
+  // The payments endpoint is the authorization boundary. This extra check is presentation
+  // defense-in-depth: an attention card can only ever call something "your action" when this
+  // session submitted it. In particular, a same-unit resident's draft must never be promoted as
+  // an action for the current resident if an upstream response is unexpectedly broadened.
+  const ownPayments = useMemo(
+    () => visiblePayments.filter((payment) => payment.submitted_by_user_id === session.user.id),
+    [session.user.id, visiblePayments],
+  );
+  const recentPayments = ownPayments.slice(0, 4);
   const paymentNeedingAction = useMemo(
-    () =>
-      recentPayments.find((payment) => ['draft', 'correction_requested'].includes(payment.status)),
-    [recentPayments],
+    () => ownPayments.find((payment) => ['draft', 'correction_requested'].includes(payment.status)),
+    [ownPayments],
   );
   const paymentAwaitingReview = useMemo(
-    () => recentPayments.find((payment) => ['submitted', 'under_review'].includes(payment.status)),
-    [recentPayments],
+    () => ownPayments.find((payment) => ['submitted', 'under_review'].includes(payment.status)),
+    [ownPayments],
   );
   const importantAnnouncements = useMemo(
     () =>
@@ -636,7 +643,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
                     <PaymentsIcon size={19} />
                   </span>
                   <span>
-                    <strong>Acción pendiente</strong>
+                    <strong>Requiere tu acción</strong>
                     <small>
                       {formatDashboardAmount(
                         paymentNeedingAction.original_amount,
@@ -645,9 +652,14 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
                       · {paymentStatusLabels[paymentNeedingAction.status]}
                     </small>
                     <small>
+                      {residentUnitLabel(unitLabels, paymentNeedingAction.unit_id)
+                        ? `Unidad: ${residentUnitLabel(unitLabels, paymentNeedingAction.unit_id)} · Tu pago`
+                        : 'Tu pago'}
+                    </small>
+                    <small>
                       {paymentNeedingAction.charge_concept_name
-                        ? `Cargo aplicado: ${paymentNeedingAction.charge_concept_name}`
-                        : 'Aún no hay un cargo aplicado a este pago.'}
+                        ? `Concepto aplicado: ${paymentNeedingAction.charge_concept_name}`
+                        : 'Concepto: aún no aplicado.'}
                     </small>
                   </span>
                   <ArrowRightIcon aria-hidden="true" size={17} />
@@ -663,7 +675,7 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
                     <PaymentsIcon size={19} />
                   </span>
                   <span>
-                    <strong>En espera de revisión</strong>
+                    <strong>Validación administrativa pendiente</strong>
                     <small>
                       {formatDashboardAmount(
                         paymentAwaitingReview.original_amount,
@@ -672,9 +684,14 @@ export function ResidentDashboard({ condominiumId, condominiumName, session, onN
                       · {paymentStatusLabels[paymentAwaitingReview.status]}
                     </small>
                     <small>
+                      {residentUnitLabel(unitLabels, paymentAwaitingReview.unit_id)
+                        ? `Unidad: ${residentUnitLabel(unitLabels, paymentAwaitingReview.unit_id)} · Tu pago`
+                        : 'Tu pago'}
+                    </small>
+                    <small>
                       {paymentAwaitingReview.charge_concept_name
-                        ? `Cargo aplicado: ${paymentAwaitingReview.charge_concept_name}`
-                        : 'Se mostrará un cargo solo si se aprueba y aplica el pago.'}
+                        ? `Concepto aplicado: ${paymentAwaitingReview.charge_concept_name}`
+                        : 'Concepto: se confirmará al aprobar y aplicar el pago.'}
                     </small>
                   </span>
                   <ArrowRightIcon aria-hidden="true" size={17} />
