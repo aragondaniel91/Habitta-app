@@ -294,7 +294,9 @@ test.describe('Release A - real authenticated tenant boundaries (isolated local)
           const restored = await api(c, unitPath(ids.c, ids.unitC), 'PATCH', {
             code: originalC,
           });
-          expect(restored.status(), 'Cross-organization fixture restoration is mandatory').toBe(200);
+          expect(restored.status(), 'Cross-organization fixture restoration is mandatory').toBe(
+            200,
+          );
         }
       } catch (error) {
         cleanupFailures.push(error);

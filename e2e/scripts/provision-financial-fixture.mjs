@@ -49,7 +49,9 @@ const ids = {
 };
 
 const organizationForCondominium = (key) => {
-  const organization = fixture.condominiums.find((condominium) => condominium.key === key)?.organization;
+  const organization = fixture.condominiums.find(
+    (condominium) => condominium.key === key,
+  )?.organization;
   if (organization === 'primary') return ids.organization;
   if (organization === 'external') return ids.crossOrganization;
   fail(`Unknown E2E organization for condominium ${key}`);
