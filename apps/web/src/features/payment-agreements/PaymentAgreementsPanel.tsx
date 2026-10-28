@@ -17,14 +17,76 @@ type Row = { dueDate: string; amount: string };
 type Agreement = {
   id: string;
   unit_id: string;
+  legal_obligor_person_id: string;
   currency_code: string;
   status: string;
   initiated_by: 'resident' | 'administrator';
   proposing_actor_kind: 'resident' | 'administrator';
   version: number;
   schedule: { due_date: string; amount: string }[];
+  updated_at: string;
   progress: { posted_amount: string; current_source_outstanding: string } | null;
   events: { event_type: string; created_at: string }[];
+};
+type AgreementFilters = {
+  unitId: string;
+  personId: string;
+  status: string;
+  minAmount: string;
+  maxAmount: string;
+  periodFrom: string;
+  periodTo: string;
+  dateFrom: string;
+  dateTo: string;
+  sort: string;
+};
+type AgreementPage = PaginatedResponse<Agreement>;
+const agreementFilterKeys = [
+  'unitId',
+  'personId',
+  'status',
+  'minAmount',
+  'maxAmount',
+  'periodFrom',
+  'periodTo',
+  'dateFrom',
+  'dateTo',
+  'sort',
+] as const;
+const defaultFilters: AgreementFilters = {
+  unitId: '',
+  personId: '',
+  status: '',
+  minAmount: '',
+  maxAmount: '',
+  periodFrom: '',
+  periodTo: '',
+  dateFrom: '',
+  dateTo: '',
+  sort: 'updatedAtDesc',
+};
+const filterUrl = (filters: AgreementFilters, page: number) => {
+  const params = new URLSearchParams();
+  for (const key of agreementFilterKeys)
+    if (filters[key] && filters[key] !== defaultFilters[key]) params.set(key, filters[key]);
+  if (page > 1) params.set('agreementPage', String(page));
+  return params;
+};
+const readFilters = (): { filters: AgreementFilters; page: number } => {
+  const params = new URLSearchParams(window.location.search);
+  const filters = { ...defaultFilters };
+  for (const key of agreementFilterKeys) filters[key] = params.get(key) ?? defaultFilters[key];
+  const requestedPage = Number(params.get('agreementPage'));
+  return {
+    filters,
+    page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+  };
+};
+const agreementPath = (condominiumId: string, filters: AgreementFilters, page: number) => {
+  const params = filterUrl(filters, page);
+  params.set('page', String(page));
+  params.set('pageSize', '25');
+  return `/v1/condominiums/${condominiumId}/payment-agreements?${params.toString()}`;
 };
 const labels: Record<string, string> = {
   pending: 'Pendiente de respuesta',
@@ -177,31 +239,69 @@ export function PaymentAgreementsPanel({
   canManage: boolean;
   unitLabel?: (unitId: string) => string;
 }) {
+  const initial = readFilters();
   const [items, setItems] = useState<Agreement[]>([]),
     [error, setError] = useState(''),
     [selected, setSelected] = useState(''),
     [rows, setRows] = useState<Row[]>([{ amount: '', dueDate: iso(new Date()) }]),
-    [tab, setTab] = useState<'active' | 'history'>('active'),
-    [query, setQuery] = useState(''),
+    [draftFilters, setDraftFilters] = useState<AgreementFilters>(initial.filters),
+    [filters, setFilters] = useState<AgreementFilters>(initial.filters),
+    [page, setPage] = useState(initial.page),
+    [pageInfo, setPageInfo] = useState<AgreementPage>({
+      items: [],
+      page: initial.page,
+      pageSize: 25,
+      total: 0,
+      totalPages: 0,
+      hasNextPage: false,
+      hasPreviousPage: initial.page > 1,
+    }),
+    [loading, setLoading] = useState(true),
     [detail, setDetail] = useState<Agreement | null>(null);
   const [receivables, setReceivables] = useState<Receivable[]>([]);
   const [loadingReceivables, setLoadingReceivables] = useState(true);
   const load = useCallback(async () => {
+    setLoading(true);
     try {
-      setItems(
-        await apiRequest<Agreement[]>(
-          `/v1/condominiums/${condominiumId}/payment-agreements`,
-          session,
-        ),
+      const result = await apiRequest<AgreementPage | Agreement[]>(
+        agreementPath(condominiumId, filters, page),
+        session,
       );
+      const normalized = Array.isArray(result)
+        ? {
+            items: result,
+            page: 1,
+            pageSize: result.length || 25,
+            total: result.length,
+            totalPages: result.length ? 1 : 0,
+            hasNextPage: false,
+            hasPreviousPage: false,
+          }
+        : result;
+      setItems(normalized.items);
+      setPageInfo(normalized);
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los acuerdos.');
+    } finally {
+      setLoading(false);
     }
-  }, [condominiumId, session]);
+  }, [condominiumId, filters, page, session]);
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const next = filterUrl(filters, page);
+    for (const key of agreementFilterKeys) url.searchParams.delete(key);
+    url.searchParams.delete('agreementPage');
+    next.forEach((value, key) => url.searchParams.set(key, value));
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [filters, page]);
   useEffect(() => {
     let active = true;
     void collectAllPages((page) =>
@@ -235,16 +335,18 @@ export function PaymentAgreementsPanel({
     rows.every((row) => row.amount && row.dueDate) &&
     rows.every((row, index) => index === 0 || row.dueDate > (rows[index - 1]?.dueDate ?? '')) &&
     rows.reduce((sum, row) => sum + cents(row.amount), 0) === cents(total);
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const visible = items.filter((item) => {
-    const searchText =
-      `${unitLabel?.(item.unit_id) ?? item.unit_id} ${labels[item.status] ?? item.status}`.toLocaleLowerCase();
-    return (
-      (tab === 'active'
-        ? ['pending', 'accepted'].includes(item.status)
-        : !['pending', 'accepted'].includes(item.status)) && searchText.includes(normalizedQuery)
-    );
-  });
+  const updateFilter = (key: keyof AgreementFilters, value: string) => {
+    setDraftFilters((current) => ({ ...current, [key]: value }));
+  };
+  const applyFilters = () => {
+    setFilters(draftFilters);
+    setPage(1);
+  };
+  const resetFilters = () => {
+    setDraftFilters(defaultFilters);
+    setFilters(defaultFilters);
+    setPage(1);
+  };
   const propose = async () => {
     if (!debt || !valid(target)) return;
     try {
@@ -378,33 +480,134 @@ export function PaymentAgreementsPanel({
           Enviar propuesta
         </Button>
       </Surface>
-      <div className="payment-agreements-toolbar">
-        <div role="tablist">
-          <button
-            aria-selected={tab === 'active'}
-            onClick={() => setTab('active')}
-            role="tab"
-            type="button"
-          >
-            Activos
-          </button>
-          <button
-            aria-selected={tab === 'history'}
-            onClick={() => setTab('history')}
-            role="tab"
-            type="button"
-          >
-            Historial
-          </button>
+      <Surface className="payment-agreements-filters">
+        <div>
+          <h3>Filtrar convenios</h3>
+          <p id="agreement-filter-help">
+            Los filtros se aplican a los convenios que ya puede consultar.
+          </p>
         </div>
-        <input
-          aria-label="Buscar acuerdos"
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por unidad o estado"
-          type="search"
-          value={query}
-        />
-      </div>
+        <div className="payment-agreements-filters__grid" aria-describedby="agreement-filter-help">
+          <label>
+            Unidad (ID)
+            <input
+              aria-label="Unidad"
+              onChange={(event) => updateFilter('unitId', event.target.value)}
+              placeholder="UUID de unidad"
+              value={draftFilters.unitId}
+            />
+          </label>
+          <label>
+            Persona responsable (ID)
+            <input
+              aria-label="Persona responsable"
+              onChange={(event) => updateFilter('personId', event.target.value)}
+              placeholder="UUID de persona"
+              value={draftFilters.personId}
+            />
+          </label>
+          <label>
+            Estado
+            <select
+              aria-label="Estado"
+              onChange={(event) => updateFilter('status', event.target.value)}
+              value={draftFilters.status}
+            >
+              <option value="">Todos</option>
+              {Object.entries(labels)
+                .filter(([value]) =>
+                  ['pending', 'accepted', 'rejected', 'cancelled'].includes(value),
+                )
+                .map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            Importe mínimo
+            <input
+              aria-label="Importe mínimo"
+              min="0"
+              onChange={(event) => updateFilter('minAmount', event.target.value)}
+              step="0.01"
+              type="number"
+              value={draftFilters.minAmount}
+            />
+          </label>
+          <label>
+            Importe máximo
+            <input
+              aria-label="Importe máximo"
+              min="0"
+              onChange={(event) => updateFilter('maxAmount', event.target.value)}
+              step="0.01"
+              type="number"
+              value={draftFilters.maxAmount}
+            />
+          </label>
+          <label>
+            Período desde
+            <input
+              aria-label="Período desde"
+              onChange={(event) => updateFilter('periodFrom', event.target.value)}
+              type="date"
+              value={draftFilters.periodFrom}
+            />
+          </label>
+          <label>
+            Período hasta
+            <input
+              aria-label="Período hasta"
+              onChange={(event) => updateFilter('periodTo', event.target.value)}
+              type="date"
+              value={draftFilters.periodTo}
+            />
+          </label>
+          <label>
+            Actualizado desde
+            <input
+              aria-label="Actualizado desde"
+              onChange={(event) => updateFilter('dateFrom', event.target.value)}
+              type="date"
+              value={draftFilters.dateFrom}
+            />
+          </label>
+          <label>
+            Actualizado hasta
+            <input
+              aria-label="Actualizado hasta"
+              onChange={(event) => updateFilter('dateTo', event.target.value)}
+              type="date"
+              value={draftFilters.dateTo}
+            />
+          </label>
+          <label>
+            Ordenar por
+            <select
+              aria-label="Ordenar acuerdos"
+              onChange={(event) => updateFilter('sort', event.target.value)}
+              value={draftFilters.sort}
+            >
+              <option value="updatedAtDesc">Actualización: reciente primero</option>
+              <option value="updatedAtAsc">Actualización: antigua primero</option>
+              <option value="amountDesc">Importe: mayor primero</option>
+              <option value="amountAsc">Importe: menor primero</option>
+              <option value="periodAsc">Primer vencimiento: próximo primero</option>
+              <option value="periodDesc">Primer vencimiento: lejano primero</option>
+            </select>
+          </label>
+        </div>
+        <div className="payment-agreements-filters__actions">
+          <Button onClick={applyFilters} size="sm" type="button">
+            Aplicar filtros
+          </Button>
+          <Button onClick={resetFilters} size="sm" type="button" variant="secondary">
+            Restablecer filtros
+          </Button>
+        </div>
+      </Surface>
       <Surface className="payment-agreements-list">
         <div className="payment-agreements-list__header">
           <span>Unidad</span>
@@ -413,7 +616,7 @@ export function PaymentAgreementsPanel({
           <span>Estado</span>
           <span />
         </div>
-        {visible.map((agreement) => (
+        {items.map((agreement) => (
           <article key={agreement.id}>
             <strong>{unitLabel?.(agreement.unit_id) ?? agreement.unit_id}</strong>
             <span>
@@ -441,8 +644,42 @@ export function PaymentAgreementsPanel({
             </Button>
           </article>
         ))}
-        {!visible.length ? <p>No hay acuerdos en esta vista.</p> : null}
+        {loading ? (
+          <p aria-live="polite" role="status">
+            Cargando convenios…
+          </p>
+        ) : null}
+        {!loading && !items.length ? (
+          <p role="status">
+            No hay convenios que coincidan con los filtros. Ajusta los filtros o restablécelos.
+          </p>
+        ) : null}
       </Surface>
+      <nav aria-label="Paginación de convenios" className="payment-agreements-pagination">
+        <span aria-live="polite">
+          {pageInfo.total
+            ? `Mostrando ${(pageInfo.page - 1) * pageInfo.pageSize + 1}–${Math.min(pageInfo.page * pageInfo.pageSize, pageInfo.total)} de ${pageInfo.total}`
+            : '0 convenios'}
+        </span>
+        <Button
+          disabled={!pageInfo.hasPreviousPage || loading}
+          onClick={() => setPage((current) => current - 1)}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          Anterior
+        </Button>
+        <Button
+          disabled={!pageInfo.hasNextPage || loading}
+          onClick={() => setPage((current) => current + 1)}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          Siguiente
+        </Button>
+      </nav>
       {detail ? (
         <Surface className="payment-agreements-detail" role="dialog">
           <div>

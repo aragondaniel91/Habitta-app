@@ -11,6 +11,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 afterEach(() => {
   document.body.innerHTML = '';
+  window.history.replaceState({}, '', '/');
   vi.restoreAllMocks();
 });
 
@@ -123,7 +124,7 @@ describe('PaymentAgreementsPanel', () => {
     await act(async () => root.unmount());
   });
 
-  it('searches agreements by the displayed unit code and Spanish status', async () => {
+  it('persists the status filter in the URL and can reset it', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input) =>
@@ -170,17 +171,28 @@ describe('PaymentAgreementsPanel', () => {
         />,
       ),
     );
-    const search = element.querySelector('input[type="search"]') as HTMLInputElement;
+    const status = element.querySelector('select[aria-label="Estado"]') as HTMLSelectElement;
     await act(async () => {
-      search.value = 'aceptado';
-      search.dispatchEvent(new Event('input', { bubbles: true }));
+      status.value = 'accepted';
+      status.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
     });
+    await act(async () => {
+      Array.from(element.querySelectorAll('button'))
+        .find((button) => button.textContent === 'Aplicar filtros')
+        ?.click();
+      await Promise.resolve();
+    });
+    expect(window.location.search).toContain('status=accepted');
     expect(element.textContent).toContain('A-1');
+    const reset = Array.from(element.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Restablecer filtros',
+    );
     await act(async () => {
-      search.value = 'A-1';
-      search.dispatchEvent(new Event('input', { bubbles: true }));
+      reset?.click();
+      await Promise.resolve();
     });
-    expect(element.textContent).toContain('Aceptado');
+    expect(window.location.search).not.toContain('status=accepted');
     await act(async () => root.unmount());
   });
 
