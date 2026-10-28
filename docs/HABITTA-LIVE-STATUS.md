@@ -188,6 +188,12 @@ Los estados anteriores son **etiquetas de evidencia acumulativas**, no niveles e
 - **Seguridad operacional**: exclusivamente Supabase y Worker locales, identidades ficticias; reset de fixture local al final del workflow; sin secrets de producción y sin artifacts de trazas autenticadas. No se crean migraciones ni se modifican grants/RLS de producción.
 - **Estado**: IN_REVIEW / NO ACEPTADO hasta éxito real de pruebas, cuatro checks, revisión independiente y merge. La revisión humana integral #571 y PR #569 sobre funciones privilegiadas siguen bloqueando producción; cobertura E2E no los sustituye.
 
+### Candidato local — filtros de convenios #585 (2026-10-28)
+
+- **Estado:** DEVELOPMENT_CANDIDATE solamente. Implementación local de filtros validados de unidad, persona responsable, estado, importe, período y fecha; orden, paginación, persistencia de URL y estados accesibles de carga, vacío y restablecimiento.
+- **Límites preservados:** no modifica ledger financiero, grants, RLS ni RBAC; es una mejora de lectura del workspace de convenios.
+- **No producción:** no hay PR integrado, CI remoto, aceptación Founder ni despliegue verificado. No declarar RELEASED_VERIFIED ni usarlo como evidencia de producción hasta superar esos gates.
+
 ### Matriz de los 30 puntos del piloto — 2026-10-28
 
 La conciliación individual con estados de evidencia (base parcial, candidato aislado, pendiente, investigación, planificado), gates pendientes de Founder y publicación está en [`docs/HABITTA-PILOT-30-STATUS.md`](./HABITTA-PILOT-30-STATUS.md), ligada a [#515](https://github.com/aragondaniel91/Habitta-app/issues/515). **Ninguno de los 30 puntos tiene constancia individual RELEASED_VERIFIED en el epic al corte**, aunque hay productos y módulos base ya existentes. `main` integra #583 SHA `8a9c7044b4602e516fb41a5ba1b2c5eee9ee5cc8` con los cuatro workflows SUCCESS, pero la API productiva permanece en `9ae959d77f702f27cfa8ee52c6c095ad83744677` y los gates de Release A [#573](https://github.com/aragondaniel91/Habitta-app/issues/573), auditoría humana [#571](https://github.com/aragondaniel91/Habitta-app/issues/571) y revisión privilegiada [#569](https://github.com/aragondaniel91/Habitta-app/pull/569) siguen abiertos. La versión exacta desplegada de Cloudflare Pages no está verificada. No solicitar revisión visual de candidatas R6/P1 sin pgTAP autenticado, revisión y entregable navegable.

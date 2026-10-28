@@ -36,7 +36,7 @@
 | 23 | Fin de vínculo revoca acceso actual sin borrar historia | Pendiente de pruebas negativas de revocación y conservación histórica. |
 | 24 | Estándar visual de Gastos en Finanzas y Personas | Base parcial; barrido coherente y aceptación visual final pendientes. |
 | 25 | Tesorería: conciliaciones por período, extracto y libro auxiliar | Base de Tesorería existente; ampliación y conciliación exhaustiva pendientes. |
-| 26 | Convenios: filtros de unidad/persona/estado/importe/período/fecha | Pendiente de validación completa del conjunto de filtros y paginación. |
+| 26 | Convenios: filtros de unidad/persona/estado/importe/período/fecha | **Candidato de desarrollo local #585**: filtros validados y paginados de unidad, persona responsable, estado, importe programado, período y fecha de actualización; orden, URL persistente y estados accesibles. Se añadieron pruebas automatizadas; su ejecución local/CI y revisión siguen pendientes. No integrado, no desplegado ni certificado para producción. |
 | 27 | Formularios simples centrados vs drawers interminables | Base parcial; aplicar coherentemente a la experiencia completa y accesibilidad. |
 | 28 | Asistente IA de administración, reportes auditables y RAG | Planificado [#520](https://github.com/aragondaniel91/Habitta-app/issues/520); requiere autorización servidor, presupuesto y controles de IA. |
 | 29 | Navegación profunda Personas ↔ Unidades ↔ CxC ↔ Pagos | **IMPLEMENTED_MAIN parcial:** PR #588 agrega vínculos y filtros contextuales; faltan recorrido bidireccional completo, roles y aceptación. |
