@@ -9,11 +9,12 @@ import { apiRequest } from '../lib/api';
 import { canManage, useCondominiumRoles } from '../lib/roles';
 import { unitReferenceLabel } from '../lib/unit-domain';
 import { formatDashboardAmount, formatDashboardDate } from '../lib/dashboard';
-import type { ReceivableAging, ReceivableSummary } from '../lib/dashboard';
+import type { ReceivableAging, ReceivableSummary, UnitCreditBalance } from '../lib/dashboard';
 import { collectAllPages, financialPagePath, mergePageItems, pageInfo } from '../lib/pagination';
 import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
   filterReceivables,
+  filterUnitCreditBalances,
   getAgingForCurrency,
   getAgingSegments,
   getConceptName,
@@ -22,8 +23,10 @@ import {
   getReceivableDueState,
   getReceivableStatusCounts,
   getSummaryForCurrency,
+  getTotalCreditBalance,
   receivableStatusLabels,
   sortReceivables,
+  sortUnitCreditBalances,
 } from '../lib/receivables';
 import type {
   ChargeConcept,
@@ -51,6 +54,7 @@ type ReceivablesData = {
   itemsPage: PageInfo;
   summaries: ReceivableSummary[];
   aging: ReceivableAging[];
+  creditBalances: UnitCreditBalance[];
 };
 type Building = { id: string; name: string };
 
@@ -160,6 +164,8 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
   const [filters, setFilters] = useState<ReceivableFilters>(initialFilters);
   const [drawer, setDrawer] = useState<ReceivablesDrawerMode>(null);
   const [selectedReceivableId, setSelectedReceivableId] = useState('');
+  const [statementUnitId, setStatementUnitId] = useState('');
+  const [creditQuery, setCreditQuery] = useState('');
   const [lateFeeDrawerOpen, setLateFeeDrawerOpen] = useState(false);
   const [chargeChooserOpen, setChargeChooserOpen] = useState(false);
   const [chargePlanOpen, setChargePlanOpen] = useState(false);
@@ -179,27 +185,32 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
             session,
           ),
         );
-        const [units, buildings, concepts, itemsPage, summaries, aging] = await Promise.all([
-          apiRequest<ReceivableUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
-          apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
-          conceptsPromise,
-          apiRequest<PaginatedResponse<ReceivableItem>>(
-            financialPagePath(
-              `/v1/condominiums/${condominiumId}/receivables`,
-              1,
-              RECEIVABLES_PAGE_SIZE,
+        const [units, buildings, concepts, itemsPage, summaries, aging, creditBalances] =
+          await Promise.all([
+            apiRequest<ReceivableUnit[]>(`/v1/condominiums/${condominiumId}/units`, session),
+            apiRequest<Building[]>(`/v1/condominiums/${condominiumId}/buildings`, session),
+            conceptsPromise,
+            apiRequest<PaginatedResponse<ReceivableItem>>(
+              financialPagePath(
+                `/v1/condominiums/${condominiumId}/receivables`,
+                1,
+                RECEIVABLES_PAGE_SIZE,
+              ),
+              session,
             ),
-            session,
-          ),
-          apiRequest<ReceivableSummary[]>(
-            `/v1/condominiums/${condominiumId}/receivables/summary`,
-            session,
-          ),
-          apiRequest<ReceivableAging[]>(
-            `/v1/condominiums/${condominiumId}/receivables/aging`,
-            session,
-          ),
-        ]);
+            apiRequest<ReceivableSummary[]>(
+              `/v1/condominiums/${condominiumId}/receivables/summary`,
+              session,
+            ),
+            apiRequest<ReceivableAging[]>(
+              `/v1/condominiums/${condominiumId}/receivables/aging`,
+              session,
+            ),
+            apiRequest<UnitCreditBalance[]>(
+              `/v1/condominiums/${condominiumId}/receivables/credit-balances`,
+              session,
+            ),
+          ]);
         setData({
           units,
           buildings,
@@ -208,6 +219,7 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
           itemsPage: pageInfo(itemsPage),
           summaries,
           aging,
+          creditBalances,
         });
       } catch (requestError) {
         setError(
@@ -230,6 +242,8 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
     setDrawer(null);
     setFilters(initialFilters);
     setSelectedReceivableId('');
+    setStatementUnitId('');
+    setCreditQuery('');
     setChargeChooserOpen(false);
     setLoadingMoreItems(false);
   }, [condominiumId]);
@@ -272,6 +286,18 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       }),
     );
   }, [data, filters, selectedCurrency]);
+
+  const visibleCreditBalances = useMemo(() => {
+    if (!data) return [];
+    return sortUnitCreditBalances(
+      filterUnitCreditBalances(data.creditBalances, data.units, creditQuery, selectedCurrency),
+    );
+  }, [data, creditQuery, selectedCurrency]);
+
+  const openUnitStatement = useCallback((unitId: string) => {
+    setStatementUnitId(unitId);
+    setDrawer('statement');
+  }, []);
 
   const loadMoreItems = useCallback(async () => {
     if (!data?.itemsPage.hasNextPage || loadingMoreItems) return;
@@ -356,7 +382,14 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
       <PageHeader
         actions={
           <>
-            <Button onClick={() => openDrawer('statement')} size="sm" variant="secondary">
+            <Button
+              onClick={() => {
+                setStatementUnitId('');
+                openDrawer('statement');
+              }}
+              size="sm"
+              variant="secondary"
+            >
               Estado de cuenta
             </Button>
             {manage ? (
@@ -557,6 +590,87 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
           </div>
         </Surface>
       </section>
+
+      <Surface className="receivables-panel receivables-credit-panel">
+        <div className="receivables-section-heading">
+          <div>
+            <span className="receivables-kicker">Cobranza</span>
+            <h2>
+              Créditos autorizados disponibles
+              <InfoHint label="Más información sobre créditos autorizados">
+                Dinero ya recibido y registrado para la unidad que todavía no se aplicó a ningún
+                cargo. No es un estado de cuenta; abre el estado de cuenta de la unidad para ver el
+                detalle completo.
+              </InfoHint>
+            </h2>
+          </div>
+          <Badge tone="info">
+            {formatDashboardAmount(
+              getTotalCreditBalance(data.creditBalances, selectedCurrency),
+              selectedCurrency || 'USD',
+            )}
+          </Badge>
+        </div>
+
+        <label className="receivables-search">
+          <span>Buscar por unidad</span>
+          <input
+            onChange={(event) => setCreditQuery(event.target.value)}
+            placeholder="Código de unidad"
+            type="search"
+            value={creditQuery}
+          />
+        </label>
+
+        {visibleCreditBalances.length ? (
+          <div className="receivables-table-wrap">
+            <table className="receivables-table">
+              <thead>
+                <tr>
+                  <th>Unidad</th>
+                  <th>Crédito disponible</th>
+                  <th>Movimientos</th>
+                  <th>Desde</th>
+                  <th aria-label="Acciones" />
+                </tr>
+              </thead>
+              <tbody>
+                {visibleCreditBalances.map((row) => (
+                  <tr key={`${row.unit_id}-${row.currency_code}`}>
+                    <td data-label="Unidad">
+                      <strong>{unitLabel(row.unit_id)}</strong>
+                    </td>
+                    <td data-label="Crédito disponible">
+                      <strong>
+                        {formatDashboardAmount(row.credit_balance, row.currency_code)}
+                      </strong>
+                    </td>
+                    <td data-label="Movimientos">{row.credit_entry_count}</td>
+                    <td data-label="Desde">
+                      {row.oldest_credit_date ? formatDashboardDate(row.oldest_credit_date) : '—'}
+                    </td>
+                    <td>
+                      <button
+                        aria-label={`Ver estado de cuenta de ${unitLabel(row.unit_id)}`}
+                        onClick={() => openUnitStatement(row.unit_id)}
+                        type="button"
+                      >
+                        <ArrowRightIcon size={17} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            description="Ninguna unidad visible tiene crédito sin aplicar en esta moneda."
+            icon={<CheckCircleIcon size={27} />}
+            title="Sin créditos pendientes de aplicar"
+          />
+        )}
+      </Surface>
 
       <Surface className="receivables-workspace">
         <div className="receivables-workspace__heading">
@@ -797,12 +911,14 @@ export function ReceivablesPage({ condominiumId, condominiumName, session }: Pro
         buildingNameById={buildingNameById}
         concepts={data.concepts}
         condominiumId={condominiumId}
+        key={`${drawer ?? 'closed'}-${statementUnitId}`}
         mode={drawer}
         onClose={() => setDrawer(null)}
         onRefresh={() => load(true)}
         selectedCurrency={selectedCurrency}
         selectedReceivable={selectedReceivable}
         session={session}
+        statementUnitId={statementUnitId}
         units={data.units}
       />
 

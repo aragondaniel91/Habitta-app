@@ -96,6 +96,8 @@ type Props = {
   units: ReceivableUnit[];
   buildingNameById: Record<string, string>;
   onClose: () => void;
+  /** Pre-selects a unit, e.g. a drilldown from the collections workspace. */
+  initialUnitId?: string | undefined;
 };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -259,11 +261,12 @@ export function AccountStatementDrawer({
   units,
   buildingNameById,
   onClose,
+  initialUnitId,
 }: Props) {
   const roles = useCondominiumRoles();
   const manage = canManage(roles);
   const activeUnits = units.filter((unit) => unit.status !== 'inactive');
-  const [unitId, setUnitId] = useState('');
+  const [unitId, setUnitId] = useState(initialUnitId ?? '');
   const [periodFrom, setPeriodFrom] = useState('');
   const [periodTo, setPeriodTo] = useState(todayIso());
   const [statement, setStatement] = useState<AccountStatement | null>(null);
@@ -328,6 +331,11 @@ export function AccountStatementDrawer({
     setCertificates([]);
     setMessage('');
   }, [condominiumId]);
+
+  // Only on mount: a drilldown opens a fresh drawer instance, it never swaps units underneath it.
+  useEffect(() => {
+    if (initialUnitId) void load(initialUnitId);
+  }, []);
 
   const issueCertificate = async () => {
     if (!unitId || !solvency?.eligible) return;

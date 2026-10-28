@@ -65,4 +65,25 @@ describe('Receivables write affordances', () => {
     expect(markup).not.toContain('Configurar política financiera');
     expect(markup).not.toContain('Emitir solvencia');
   });
+
+  it('pre-selects the drilldown unit when a collections credit row opens the statement', () => {
+    const markup = renderToStaticMarkup(
+      <RolesProvider value={['accountant']}>
+        <ReceivablesDrawerHost
+          buildingNameById={{}}
+          concepts={[]}
+          condominiumId="condominium-1"
+          mode="statement"
+          onClose={() => undefined}
+          onRefresh={async () => undefined}
+          selectedCurrency="USD"
+          selectedReceivable={undefined}
+          session={{} as never}
+          statementUnitId="unit-1"
+          units={[{ id: 'unit-1', code: 'A-101', building_id: null }]}
+        />
+      </RolesProvider>,
+    );
+    expect(markup).toMatch(/<option value="unit-1" selected="?">A-101<\/option>/);
+  });
 });

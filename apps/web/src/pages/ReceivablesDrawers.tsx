@@ -9,6 +9,8 @@ export type { ReceivablesDrawerMode } from './ReceivablesDrawersImpl';
 
 type Props = Omit<ComponentProps<typeof ReceivablesDrawerHostImpl>, 'selectedReceivable'> & {
   selectedReceivable: ComponentProps<typeof ReceivablesDrawerHostImpl>['selectedReceivable'];
+  /** Pre-selects a unit when opening the statement drawer, e.g. a collections drilldown. */
+  statementUnitId?: string;
 };
 
 export function ReceivablesDrawerHost({
@@ -18,6 +20,7 @@ export function ReceivablesDrawerHost({
   units,
   selectedReceivable,
   onClose,
+  statementUnitId,
   ...props
 }: Props) {
   const manage = canManage(useCondominiumRoles());
@@ -27,6 +30,7 @@ export function ReceivablesDrawerHost({
       <AccountStatementDrawer
         buildingNameById={props.buildingNameById}
         condominiumId={condominiumId}
+        initialUnitId={statementUnitId}
         onClose={onClose}
         session={session}
         units={units}

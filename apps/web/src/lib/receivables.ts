@@ -1,4 +1,9 @@
-import type { DashboardReceivable, ReceivableAging, ReceivableSummary } from './dashboard';
+import type {
+  DashboardReceivable,
+  ReceivableAging,
+  ReceivableSummary,
+  UnitCreditBalance,
+} from './dashboard';
 
 export type ReceivableUnit = {
   id: string;
@@ -202,6 +207,33 @@ export function sortReceivables(items: ReceivableItem[]) {
     const rightDate = right.due_date ?? right.issue_date ?? right.created_at ?? '';
     return rightDate.localeCompare(leftDate) || left.description.localeCompare(right.description);
   });
+}
+
+export function filterUnitCreditBalances(
+  rows: UnitCreditBalance[],
+  units: ReceivableUnit[],
+  query: string,
+  currencyCode: string,
+) {
+  const queryTokens = normalized(query).split(/\s+/).filter(Boolean);
+
+  return rows.filter((row) => {
+    const unitCode = getUnitCode(row.unit_id, units);
+    const matchesQuery = queryTokens.every((token) => normalized(unitCode).includes(token));
+    return matchesQuery && (!currencyCode || row.currency_code === currencyCode);
+  });
+}
+
+export function sortUnitCreditBalances(rows: UnitCreditBalance[]) {
+  return [...rows].sort(
+    (left, right) => numericAmount(right.credit_balance) - numericAmount(left.credit_balance),
+  );
+}
+
+export function getTotalCreditBalance(rows: UnitCreditBalance[], currencyCode: string) {
+  return rows
+    .filter((row) => !currencyCode || row.currency_code === currencyCode)
+    .reduce((total, row) => total + numericAmount(row.credit_balance), 0);
 }
 
 export function parseOpeningBalancesCsv(csv: string) {
