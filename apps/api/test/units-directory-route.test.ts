@@ -254,6 +254,21 @@ describe('units directory aggregate', () => {
     }
   });
 
+  it('accepts a canonical tenant ID from PostgREST when the route UUID uses uppercase', async () => {
+    const { fetchMock } = withDirectoryResponses();
+    try {
+      const response = await app.request(
+        `/v1/condominiums/${condominiumA.toUpperCase()}/units-directory`,
+        { headers: { Authorization: 'Bearer caller-token' } },
+        environment,
+      );
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({ units: [{ condominiumId: condominiumA }] });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   it('fails closed if an upstream assignment references a unit outside the directory', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input);
@@ -281,6 +296,7 @@ describe('units directory aggregate', () => {
       'utf8',
     );
     expect(source).toContain("uuidSchema.parse(c.req.param('id'))");
+    expect(source).toContain('select=id,condominium_id,building_id');
     expect(source.match(/ends_at=is.null/g)).toHaveLength(2);
     expect(source.match(/units\.condominium_id=eq\.\$\{condominiumId\}/g)).toHaveLength(2);
     expect(source.match(/units!inner\(\)/g)).toHaveLength(2);
