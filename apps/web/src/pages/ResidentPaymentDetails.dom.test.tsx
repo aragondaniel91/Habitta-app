@@ -203,6 +203,8 @@ describe('resident submitted payment details', () => {
       expect(host.textContent).not.toContain('Solicitar corrección');
       expect(host.textContent).not.toContain('Rechazar');
       expect(host.textContent).not.toContain('Aprobar');
+      expect(host.querySelector('[aria-label="Nuevo comprobante"]')).toBeNull();
+      expect(host.textContent).not.toContain('Reemplazar comprobante');
 
       act(() => root.unmount());
     },
