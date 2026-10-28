@@ -454,16 +454,16 @@ select is(
 select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000002', true);
 select is(public.can_upload_payment_proof(
   '87700000-0000-0000-0000-000000000001','87770000-0000-0000-0000-000000000001'
-),true,'resident may replace proof on own submitted payment');
+),false,'submitted payment proof is immutable until correction is requested');
 
-select lives_ok(
-  $$select public.record_payment_proof(
+select throws_ok(
+  $select public.record_payment_proof(
     '87700000-0000-0000-0000-000000000001',
     '87770000-0000-0000-0000-000000000001',
     '87780000-0000-0000-0000-000000000003',
     'payments/87780000-0000-0000-0000-000000000003',
     'initial.png','image/png',68,'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
-  )$$, 'submitting new proof on pending payment is permitted');
+  )$, 'P0001', 'proof upload denied', 'submitted payment cannot add another proof');
 
 reset role;
 update public.payments set status='under_review'
@@ -472,7 +472,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000002', true);
 select is(public.can_upload_payment_proof(
   '87700000-0000-0000-0000-000000000001','87770000-0000-0000-0000-000000000001'
-),true,'resident may replace proof while payment is under review');
+),false,'under-review payment proof is immutable until correction is requested');
 
 select lives_ok(
   $$select public.record_payment_proof(
@@ -481,13 +481,13 @@ select lives_ok(
     '87780000-0000-0000-0000-000000000004',
     'payments/87780000-0000-0000-0000-000000000004',
     'corrected.png','image/png',68,'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'
-  )$$, 'replacing the proof while under review succeeds');
+  )$, 'P0001', 'proof upload denied', 'under-review payment cannot replace proof');
 
 select is(
   (select count(*) from public.payment_proofs
     where payment_id='87770000-0000-0000-0000-000000000001'
-    and superseded_at is not null),1::bigint,
-  'earlier proof is superseded but retained for audit'
+    and superseded_at is not null),0::bigint,
+  'under-review denial preserves original proof without superseding it'
 );
 
 select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000003', true);
