@@ -177,7 +177,9 @@ test.describe('Asistente de pagos de residente — navegador autenticado', () =>
     await expect(page.getByRole('button', { name: /Aprobar pago|Rechazar pago/ })).toHaveCount(0);
     // Once submitted, the proof is read-only until the reviewer explicitly requests correction.
     await expect(detailDialog.getByLabel('Nuevo comprobante')).toHaveCount(0);
-    await expect(detailDialog.getByRole('button', { name: 'Guardar nuevo comprobante' })).toHaveCount(0);
+    await expect(
+      detailDialog.getByRole('button', { name: 'Guardar nuevo comprobante' }),
+    ).toHaveCount(0);
     const payerSession = await request.post(`${authUrl}/auth/v1/token?grant_type=password`, {
       headers: { apikey: key },
       data: { email: 'habitta-e2e-payer@example.invalid', password },
@@ -193,22 +195,25 @@ test.describe('Asistente de pagos de residente — navegador autenticado', () =>
     expect(savedProof.status(), await savedProof.text()).toBe(200);
     expect(savedProof.headers()['content-type']).toContain('image/png');
     await expect
-      .poll(async () => {
-        const result = await request.get(
-          `${API}/v1/condominiums/${condominium}/payments/${createdPayment.id}/proof/history`,
-          { headers: { Authorization: `Bearer ${payerToken}` } },
-        );
-        if (!result.ok()) return `HTTP ${result.status()}`;
-        const versions = (await result.json()) as Array<{
-          original_filename: string;
-          superseded_at: string | null;
-        }>;
-        return versions.length === 1 &&
-          versions[0]?.original_filename === 'comprobante-piloto.png' &&
-          versions[0]?.superseded_at === null
-          ? 'immutable'
-          : 'metadata-mismatch';
-      }, { timeout: 10000 })
+      .poll(
+        async () => {
+          const result = await request.get(
+            `${API}/v1/condominiums/${condominium}/payments/${createdPayment.id}/proof/history`,
+            { headers: { Authorization: `Bearer ${payerToken}` } },
+          );
+          if (!result.ok()) return `HTTP ${result.status()}`;
+          const versions = (await result.json()) as Array<{
+            original_filename: string;
+            superseded_at: string | null;
+          }>;
+          return versions.length === 1 &&
+            versions[0]?.original_filename === 'comprobante-piloto.png' &&
+            versions[0]?.superseded_at === null
+            ? 'immutable'
+            : 'metadata-mismatch';
+        },
+        { timeout: 10000 },
+      )
       .toBe('immutable');
     const deniedProofHistory = await request.get(
       `${API}/v1/condominiums/${condominium}/payments/${createdPayment.id}/proof/history`,
