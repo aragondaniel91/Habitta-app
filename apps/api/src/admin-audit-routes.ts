@@ -10,7 +10,15 @@ type AppContext = Context<AppEnvironment>;
 const uuid = z.string().uuid();
 const querySchema = z.object({
   module: z
-    .enum(['payments', 'expenses', 'treasury', 'maintenance', 'governance', 'assemblies'])
+    .enum([
+      'payments',
+      'expenses',
+      'treasury',
+      'maintenance',
+      'governance',
+      'assemblies',
+      'structure',
+    ])
     .optional(),
   actor: uuid.optional(),
   entityType: z.string().trim().min(1).max(80).optional(),

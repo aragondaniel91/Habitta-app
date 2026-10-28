@@ -166,16 +166,16 @@ select is(
   (select count(*) from public.list_admin_audit_events(
     (select (payload #>> '{condominium,id}')::uuid from hab172_workspace_a)
   )),
-  6::bigint,
-  'administrator feed normalizes one event from each supported module'
+  7::bigint,
+  'administrator feed includes all seven supported modules with unit creation audit'
 );
 
 select is(
   (select count(distinct module) from public.list_admin_audit_events(
     (select (payload #>> '{condominium,id}')::uuid from hab172_workspace_a)
   )),
-  6::bigint,
-  'all six supported audit modules are represented'
+  7::bigint,
+  'all seven supported audit modules are represented'
 );
 
 select is(
@@ -246,10 +246,10 @@ select is(
 select is(
   (select count(*) from public.list_admin_audit_events(
     (select (payload #>> '{condominium,id}')::uuid from hab172_workspace_a),
-    null, null, null, null, null, 100, 6
+    null, null, null, null, null, 100, 7
   )),
   0::bigint,
-  'result offset advances beyond the six-event fixture'
+  'result offset advances beyond the seven-event fixture'
 );
 
 select throws_ok(
