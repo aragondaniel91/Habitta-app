@@ -166,6 +166,13 @@ Los estados anteriores son **etiquetas de evidencia acumulativas**, no niveles e
 - **P0 BLOCKED**: issue #571 abierto; requiere pruebas adversariales autenticadas de rol/tenant en staging autorizado con datos sintéticos y aprobación de profesional humano independiente; PR #569 de inventario privileged RPC sigue draft y no debe utilizarse como si estuviera aprobado.
 - **Próximo trabajo real**: clasificar controles aún sin evidencia, ejecutar los negativos autenticados entre tenant A/B en entorno aislado y cerrar hallazgos con PR independientes. Promoción protegida sólo con gates y signoff completos. No etiquetar ningún ítem de #515 como RELEASED sin evidencia de producción.
 
+### Release A — autenticación real en entorno aislado (28-oct-2026)
+
+- **Trabajo propuesto**: PR de pruebas E2E autenticadas en `e2e/tests/financial-release-a-tenant-isolation.spec.ts`: Supabase Auth local, dos administradores de condominios y un residente restringido de la fixture financiera existente; peticiones por el Worker local; controles de lectura `units` y `units-directory` en ambos sentidos y PATCH ajeno con verificación posterior de invariancia.
+- **Entorno de ejecución**: GitHub Actions `Financial E2E` con Supabase `localhost:54321` y Worker `localhost:8787`, datos sintéticos que se eliminan después. No usar llaves de producción, no incluir tokens ni rastros autenticados en artifacts.
+- **Estado**: IN_REVIEW / NO APROBADO hasta que el run realmente ejecute los nuevos casos, pase los cuatro controles, revisión independiente y merge; registrar evidencia exacta en #571/#573.
+- **Alcance no cubierto**: ambos condominios son de la misma organización; faltan cruces entre organizaciones, storage/documentos, otros roles y pruebas adversariales externas. Auditoría humana independiente #571 y revisión de RPC #569 siguen bloqueando producción. Un CI verde no cambia estos estados por sí solo.
+
 ### Registro de entregas
 
 | Fecha | Tarea | Resultado y siguiente acción |
