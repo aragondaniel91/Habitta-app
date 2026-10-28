@@ -74,7 +74,7 @@ test.describe('Release A: authenticated tenant isolation through real local Work
     for (const [token, ownCondo, ownUnit, foreignCondo, foreignUnit] of [
       [adminA, ids.condominiumA, ids.unitA, ids.condominiumB, ids.unitB],
       [adminB, ids.condominiumB, ids.unitB, ids.condominiumA, ids.unitA],
-    ]) {
+    ] as const) {
       const own = await callWorker(request, token, directoryPath(ownCondo));
       expect(own.status(), 'Owner should be able to read their condominium directory').toBe(200);
       const ownData = (await own.json()) as Directory;
@@ -97,7 +97,7 @@ test.describe('Release A: authenticated tenant isolation through real local Work
     for (const [token, ownCondo, ownUnit, foreignCondo, foreignUnit] of [
       [adminA, ids.condominiumA, ids.unitA, ids.condominiumB, ids.unitB],
       [adminB, ids.condominiumB, ids.unitB, ids.condominiumA, ids.unitA],
-    ]) {
+    ] as const) {
       const own = await callWorker(request, token, unitsPath(ownCondo));
       expect(own.status()).toBe(200);
       const ownUnits = (await own.json()) as Unit[];
@@ -131,7 +131,7 @@ test.describe('Release A: authenticated tenant isolation through real local Work
       [adminA, ids.condominiumB, ids.unitB],
       [adminB, ids.condominiumA, ids.unitA],
       [familyA, ids.condominiumA, ids.unitA],
-    ]) {
+    ] as const) {
       const rejected = await callWorker(
         request,
         token,
