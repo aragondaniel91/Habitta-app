@@ -1,0 +1,73 @@
+# HABITTA — Matriz verificable del piloto (30 puntos)
+**Fecha de corte:** 2026-10-28 · **Epic:** [#515](https://github.com/aragondaniel91/Habitta-app/issues/515) · **Fuente de verdad:** issues, PRs, main, pipelines y despliegues.
+
+## Regla de estado
+- **Base parcial**: ya existe infraestructura o UX relacionada, pero **NO** equivale a aceptación del punto completo.
+- **Candidato aislado**: trabajo local descrito en issue, sin confirmación de merge ni publicación.
+- **Pendiente**: falta implementación completa y/o verificación específica.
+- **Investigación**: falta caso reproducible y alcance para certificar.
+- **Planificado**: especificación aprobada como necesidad, no implementación productiva.
+- **RELEASED_VERIFIED** requiere SHA y entorno reales, smoke por rol, aceptación y evidencia. **Ninguno de los 30 puntos del epic tiene a la fecha esa evidencia individual completa**; esto no significa que HABITTA carezca de funcionalidades en producción.
+
+| Nº | Entregable original del piloto | Estado comprobable / brecha inmediata |
+| --- | --- | --- |
+| 1 | KPIs del dashboard con navegación a listados filtrados | Base parcial; no hay cierre de enlaces/filtros/retorno para este punto. |
+| 2 | Dashboard: monto, concepto, sujeto y estado visible | Base parcial; pendiente aceptación específica de detalle contextual. |
+| 3 | Diferenciar “requiere tu acción” de revisión administrativa | Base parcial; pendiente evaluación por roles en pantalla y contenido. |
+| 4 | Borradores residentes privados de admin hasta enviar | **Candidato aislado R6** [#522](https://github.com/aragondaniel91/Habitta-app/issues/522). SQL/RLS de pagos y eventos de auditoría, pgTAP y visual no certificados ni publicados como entrega del piloto. |
+| 5 | Detalle inmutable de pago enviado, soporte/estado/comprobante | Candidato aislado R6 y mejora vinculada a [#516](https://github.com/aragondaniel91/Habitta-app/issues/516); sin aceptación final del escenario piloto. |
+| 6 | Rendimiento Pagos/Cuotas/Gastos p75/p95 y waterfall | Pendiente de medición reproducible y mejora cuantificada. |
+| 7 | Referencia de operación vs descripción opcional | Base parcial de formularios; falta conformidad del nuevo flujo y validación por método. |
+| 8 | “Informacional” que no ve el administrador | **Investigación abierta** [#521](https://github.com/aragondaniel91/Habitta-app/issues/521); falta objeto, pantalla, rol y caso reproducible. |
+| 9 | Asistente multi-cargo de pago residente; administrador revisa desglose; corrección | **Candidato aislado P1/P2B** [#516](https://github.com/aragondaniel91/Habitta-app/issues/516); sin pgTAP integrado ni aceptación visual y sin sobrepago resuelto. Mantener reversos auditados para pagos aprobados. |
+| 10 | Modales centrados, páginas para flujos largos y tabs | Base parcial de UX; pendiente revisión global de Finanzas/Personas. |
+| 11 | Operación de cuotas mensuales con estética Gastos | Pendiente de rediseño integral y verificación financiera. |
+| 12 | Saldo por obligación calculado del ledger (12–5=7) | Base financiera existente, pero **falta caso piloto E2E/aceptación específica**. |
+| 13 | Sobrepago 5–4.50 y crédito 0.50 aplicado bajo reglas | Base de crédito no aplicado en backend; faltan UX, aplicación futura gobernada y aceptación de política. |
+| 14 | CRUD de unidades, desactivar/archivar con historial/auditoría | Base parcial de estructura/unidades integrada; archivado seguro y control integral pendientes de certificar. |
+| 15 | Onboarding topológico: edificios/apartamentos/casas | Base parcial de topología HAB-507; aceptación de todas las variantes pendiente. |
+| 16 | Casa única/sin torre y conjunto de casas sin apartamento falso | Base parcial HAB-507; certificación por escenario pendiente. |
+| 17 | Ajustes del residente limitados a rol/delegaciones | Pendiente de aceptación UX y pruebas RBAC específicas. |
+| 18 | Asistente IA contextual para residente | **Planificado** [#520](https://github.com/aragondaniel91/Habitta-app/issues/520); sin autorización de acceso a datos o mutación autónoma. |
+| 19 | Propiedad patrimonial y ocupación en entidades separadas | Base de tablas y roles existente; revisión de vigencias, sumas y reglas completa pendiente. |
+| 20 | Personas y vínculos por topología | Base parcial; cerrar cobertura de roles, altas/bajas y autorizaciones. |
+| 21 | Junta/comité o responsable de hogar configurable | Base parcial/preview de Junta, flag de demo **OFF**; no marcar visual ni producción definitiva sin verificación. |
+| 22 | Membresías con períodos, roles y capacidades | Base parcial; catálogo, períodos, auditoría y autorización integral pendientes. |
+| 23 | Fin de vínculo revoca acceso actual sin borrar historia | Pendiente de pruebas negativas de revocación y conservación histórica. |
+| 24 | Estándar visual de Gastos en Finanzas y Personas | Base parcial; barrido coherente y aceptación visual final pendientes. |
+| 25 | Tesorería: conciliaciones por período, extracto y libro auxiliar | Base de Tesorería existente; ampliación y conciliación exhaustiva pendientes. |
+| 26 | Convenios: filtros de unidad/persona/estado/importe/período/fecha | Pendiente de validación completa del conjunto de filtros y paginación. |
+| 27 | Formularios simples centrados vs drawers interminables | Base parcial; aplicar coherentemente a la experiencia completa y accesibilidad. |
+| 28 | Asistente IA de administración, reportes auditables y RAG | Planificado [#520](https://github.com/aragondaniel91/Habitta-app/issues/520); requiere autorización servidor, presupuesto y controles de IA. |
+| 29 | Navegación profunda Personas ↔ Unidades ↔ CxC ↔ Pagos | Base parcial; falta cobertura bidireccional, estado de filtros y QA por rol. |
+| 30 | Workspace CxC: aging, deuda, crédito, saldos y cobranza | Base P5 previamente aceptada visualmente; extensión especializada [#519](https://github.com/aragondaniel91/Habitta-app/issues/519) sigue abierta. |
+
+## Frente de entrega y evidencias
+
+| Frente | Seguimiento | Estado al corte |
+| --- | --- | --- |
+| Seguridad pagos/drafts/auditoría | [#522](https://github.com/aragondaniel91/Habitta-app/issues/522) | R6 local READY_FOR_FOUNDER **NO aceptable para merge** sin pgTAP real, auditoría de políticas efectiva y visual autenticado. No confundir READY_FOR_FOUNDER con listo para producción. |
+| Multi-cargo y corrección | [#516](https://github.com/aragondaniel91/Habitta-app/issues/516) | Candidato local no certificado; el punto #13 de sobrepago no está implementado en el primer wizard. |
+| UX/rendimiento | [#517](https://github.com/aragondaniel91/Habitta-app/issues/517) | Abierto, sin baseline p75/p95 verificado. |
+| Topología/unidades/personas/junta | [#518](https://github.com/aragondaniel91/Habitta-app/issues/518) | Abierto. Existen capacidades base y cambios integrados, pero no entrega formal completa. |
+| CxC/Tesorería | [#519](https://github.com/aragondaniel91/Habitta-app/issues/519) | Abierto. No sustituir con aceptación visual previa de módulos P4/P5/P6. |
+| IA | [#520](https://github.com/aragondaniel91/Habitta-app/issues/520) | Planificado, sin prometer integración ni costos. |
+| “Informacional” | [#521](https://github.com/aragondaniel91/Habitta-app/issues/521) | Reproducción pendiente. |
+
+## Baseline técnico verificado (no confundir con 30 puntos certificados)
+- **GitHub main:** `8a9c7044b4602e516fb41a5ba1b2c5eee9ee5cc8` (#583 merged).
+- **Cuatro workflows de main:** CI, Supabase DB / pgTAP, Financial E2E, Playwright **SUCCESS** en el mismo SHA.
+- **Pruebas de seguridad:** PR #582, #583 añadieron aislamiento real con Auth y Worker locales entre condominios de una organización y entre organizaciones distintas; la suite Financial E2E exact-head #583 reportó 33 passed/20 skipped. Esta cifra **no es** progreso de 33/30 puntos.
+- **API producción /health:** commit `9ae959d77f702f27cfa8ee52c6c095ad83744677` (2026-10-24). Last Production Release SUCCESS sobre ese commit. No se verificó nuevo deploy, ni versión exacta de Cloudflare Pages.
+- **RELEASE A BLOCKED:** [#573](https://github.com/aragondaniel91/Habitta-app/issues/573) y [#571](https://github.com/aragondaniel91/Habitta-app/issues/571) abiertos por auditoría independiente humana y revisión [#569](https://github.com/aragondaniel91/Habitta-app/pull/569) de funciones privilegiadas. No saltarse gates.
+- **Aprobación visual Founder requerida sólo cuando exista candidato reproducible** que haya pasado pruebas reales, revisión y esté marcado READY_FOR_FOUNDER con URL/pantallas/casos. No pedir revisión de prototipos bloqueados. El despliegue protegido requiere auditoría y preflight antes de lanzamiento.
+
+## Siguiente secuencia sin loops
+
+1. Preparar paquete de evidencia y revisión **humana** de seguridad #571, especialmente #569; no ejecutar cambios SQL privilegiados en producción.
+2. Confirmar diff y candidato SHA para Release A, rollback, backup/restore, flag Junta OFF y pruebas por roles sobre release candidate; solo deploy al pasar gates.
+3. Retomar **P0 del piloto**, primero privacidad RLS/auditoría #4 y detalle #5; ejecutar pgTAP de R6 en CI aislado, resolver, luego Founder visual específico si es necesario.
+4. Cerrar asistente multi-cargo #9 + conciliación #12/#13 (requiere política real para crédito futuro), UX/rendimiento #1–3/#6 y dominio #14–23 según dependencias; después CxC/tesorería e IA.
+5. Actualizar cada fila con evidencia `SPEC/BUILD/REVIEW/FOUNDER_ACCEPT/MERGED/RELEASED_VERIFIED` y SHA + aceptación; no usar “0/30 implementado” ni “30/30 terminado” sin soporte.
+
+**Esta matriz es un estado de evidencia, no una afirmación de que todas las funcionalidades deban reconstruirse.**
