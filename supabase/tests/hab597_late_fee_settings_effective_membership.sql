@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(24);
 
 select ok(
   (select prosecdef from pg_proc where oid = 'public.can_read_late_fee_settings(uuid)'::regprocedure),
@@ -69,6 +69,16 @@ insert into public.unit_occupancies (id, unit_id, person_id, occupancy_type, sta
   ('59760000-0000-4000-8000-000000000004', '59730000-0000-4000-8000-000000000001', '59740000-0000-4000-8000-000000000006', 'authorized_occupant', current_date - 10, null, '59700000-0000-4000-8000-000000000001'),
   ('59760000-0000-4000-8000-000000000005', '59730000-0000-4000-8000-000000000001', '59740000-0000-4000-8000-000000000007', 'family_member', current_date - 10, null, '59700000-0000-4000-8000-000000000001');
 
+-- A membership with a future tenancy must not grant early financial settings access.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, created_at, updated_at) values
+  ('59700000-0000-4000-8000-000000000013', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'future-tenant@hab597.test', 'x', now(), now());
+insert into public.people (id, condominium_id, auth_user_id, first_name, last_name, status, created_by) values
+  ('59740000-0000-4000-8000-000000000008', '59720000-0000-4000-8000-000000000001', '59700000-0000-4000-8000-000000000013', 'Future', 'Tenant', 'active', '59700000-0000-4000-8000-000000000001');
+insert into public.condominium_memberships (condominium_id, user_id, role) values
+  ('59720000-0000-4000-8000-000000000001', '59700000-0000-4000-8000-000000000013', 'tenant');
+insert into public.unit_occupancies (id, unit_id, person_id, occupancy_type, starts_at, ends_at, created_by) values
+  ('59760000-0000-4000-8000-000000000006', '59730000-0000-4000-8000-000000000001', '59740000-0000-4000-8000-000000000008', 'tenant', current_date + 1, null, '59700000-0000-4000-8000-000000000001');
+
 insert into public.community_documents (id, condominium_id, title, audience, status, latest_version_number, created_by) values
   ('59770000-0000-4000-8000-000000000001', '59720000-0000-4000-8000-000000000001', 'Owner document', 'owners', 'active', 1, '59700000-0000-4000-8000-000000000001');
 insert into public.community_document_versions (id, document_id, condominium_id, version_number, storage_key, original_filename, content_type, size_bytes, sha256, uploaded_by) values
@@ -100,6 +110,8 @@ select is((select count(*)::integer from public.condominium_late_fee_settings wh
 select set_config('request.jwt.claim.sub', '59700000-0000-4000-8000-000000000010', true);
 select ok(not public.can_read_late_fee_settings('59720000-0000-4000-8000-000000000001'), 'active tenant of another condominium cannot read late-fee settings');
 select is((select count(*)::integer from public.condominium_late_fee_settings where condominium_id = '59720000-0000-4000-8000-000000000001'), 0, 'other-condominium tenant is denied late-fee settings by RLS');
+select set_config('request.jwt.claim.sub', '59700000-0000-4000-8000-000000000013', true);
+select ok(not public.can_read_late_fee_settings('59720000-0000-4000-8000-000000000001'), 'future-dated tenancy is not yet an effective late-fee settings grant');
 select set_config('request.jwt.claim.sub', '59700000-0000-4000-8000-000000000011', true);
 select ok(not public.can_read_late_fee_settings('59720000-0000-4000-8000-000000000001'), 'authorized occupant cannot read late-fee settings');
 select set_config('request.jwt.claim.sub', '59700000-0000-4000-8000-000000000012', true);

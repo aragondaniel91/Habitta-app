@@ -20,7 +20,23 @@ as $$
         and (
           cm.role = 'board_member'
           or (cm.role = 'owner' and public.has_active_owner_relationship(target))
-          or (cm.role = 'tenant' and public.has_active_tenant_occupancy(target))
+          or (
+            cm.role = 'tenant'
+            and exists (
+              select 1
+              from public.people p
+              join public.unit_occupancies uo on uo.person_id = p.id
+              join public.units u on u.id = uo.unit_id
+              where p.auth_user_id = auth.uid()
+                and p.condominium_id = target
+                and p.status = 'active'
+                and u.condominium_id = target
+                and u.status = 'active'
+                and uo.occupancy_type = 'tenant'
+                and uo.starts_at <= current_date
+                and (uo.ends_at is null or uo.ends_at >= current_date)
+            )
+          )
         )
     );
 $$;
