@@ -17,6 +17,8 @@
     "notifications:infra:apply": "node scripts/cloudflare/provision-notifications-dev.mjs --apply",
     "notifications:dlq:diagnose": "node scripts/cloudflare/notifications-dlq-diagnostics.mjs",
     "release:dev:validate": "node scripts/release/validate-development-release.mjs",
+    "release:pilot:preflight": "node scripts/release/pilot-a-readiness.mjs",
+    "release:pilot:preflight:test": "node --test scripts/release/pilot-a-readiness.test.mjs",
     "release:dev:resources:plan": "node scripts/release/provision-development-resources.mjs",
     "release:dev:resources:apply": "node scripts/release/provision-development-resources.mjs --apply",
     "release:dev:smoke": "node scripts/release/development-smoke.mjs",

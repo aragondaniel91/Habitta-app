@@ -1,6 +1,6 @@
 # HABITTA — Estado vivo del proyecto / SDP
 
-> **Release-readiness evaluado 2026-10-29 (NO GO):** [matriz de 28 puntos y gates por lotes](release/HABITTA-PILOT-28-READINESS-20261029.md) — `main` 5cd7148, 4/4 push SUCCESS; Worker live `9ae959d` (2026-10-24), 53 commits de diferencia, Pages SHA no acreditado; **BD productiva: 202 migraciones, incluidas las diez `20261028*`, verificadas por consulta read-only**. Lote A **CANDIDATO / NO-GO** hasta revisión humana #571 y preflight #573.
+> **Release-readiness actualizado 2026-10-29 — NO GO:** [matriz 28 puntos](release/HABITTA-PILOT-28-READINESS-20261029.md) y [preflight de solo lectura](release/HABITTA-PILOT-A-READONLY-PREFLIGHT.md). Base de esta validación `main` `78bc6948fcf2d42289eddfd8c4bae69fb6f5d890`, 4/4 workflows de main SUCCESS; Worker productivo `9ae959d77f702f27cfa8ee52c6c095ad83744677` (24-oct), **55 commits** por detrás; Pages SHA no acreditado. Supabase productivo **203 migraciones registradas** (incluida `20261029134919`) = 203 versiones locales; paridad de historial **no** es auditoría de esquema. Preflight local **18/18 PASS**, smoke HTTP público positivo pero Worker SHA `BLOCK`; aún requieren #612 auto SQL deploy controlado, #569 clasificación privilegiada, #571 dictamen humano independiente y #573 restore/rollback/aceptación del lote. **No hay publicación nueva de Worker/Pages.**
 
 
 **Revisado manualmente:** 2026-10-28. **Repositorio:** `aragondaniel91/Habitta-app`.
