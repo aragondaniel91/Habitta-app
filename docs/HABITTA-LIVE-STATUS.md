@@ -106,7 +106,7 @@ Los estados anteriores son **etiquetas de evidencia acumulativas**, no niveles e
 | 4 | Borradores privados del residente | PARCIAL; revalidar RLS | #515 #522 |
 | 5 | Detalle enviado inmutable para residente | PARCIAL; revalidar estados | #516 |
 | 6 | Latencia Pagos/Cuotas/Gastos | POR MEDIR | #517 |
-| 7 | Referencia y descripción en pagos | POR VERIFICAR | #516 |
+| 7 | Referencia y descripción en pagos | CANDIDATO LOCAL: referencia de operación condicional por método y comentario separado; pendiente pruebas/aceptación | #516 |
 | 8 | Informacional invisible al admin | POR REPRODUCIR | #521 |
 | 9 | Wizard multicuota y revisión/corrección | PARCIAL | #516 |
 | 10 | Modales centrados y páginas para flujos largos | POR VERIFICAR | #517 |

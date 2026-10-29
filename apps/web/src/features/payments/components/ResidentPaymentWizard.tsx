@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { Dialog, DialogBody, DialogFooter } from '../../../components/Dialog';
 import { Button, Field, Select } from '../../../components/ui';
 import { paymentApi, paymentProof } from '../api';
+import { paymentNotesCopy, paymentReferenceCopy } from '../payment-field-copy';
 import { paymentProofFileError } from '../proof-file';
 import { PaymentProofPreview } from './PaymentProofPreview';
 import type {
@@ -396,8 +397,12 @@ export function ResidentPaymentWizard({
         ) : null}
         {step === 1 ? (
           <div className="resident-payment-wizard__grid">
-            <Field label={context === 'administrator' ? 'Unidad del pago' : 'Unidad autorizada'}>
+            <Field
+              hint={payment ? 'La unidad se conserva durante una corrección.' : undefined}
+              label={context === 'administrator' ? 'Unidad del pago' : 'Unidad autorizada'}
+            >
               <Select
+                disabled={Boolean(payment)}
                 onChange={(event) => {
                   setUnitId(event.target.value);
                   setCurrency('');
@@ -409,7 +414,7 @@ export function ResidentPaymentWizard({
                   setCustomAmount('');
                   setPerChargeAmounts({});
                   setMethodId('');
-                  setReference('');
+                  if (!payment) setReference('');
                   setProof(undefined);
                 }}
                 value={unitId}
@@ -738,13 +743,11 @@ export function ResidentPaymentWizard({
                 value={payerName}
               />
             </Field>
-            <Field
-              hint="Número de confirmación de la transferencia u operación bancaria. No es el número interno del pago en Habitta."
-              label={`Referencia${selectedMethod?.requires_reference ? ' (obligatoria)' : ' (opcional)'}`}
-            >
+            <Field {...paymentReferenceCopy(selectedMethod)}>
               <input
                 className="input"
                 onChange={(event) => setReference(event.target.value)}
+                required={selectedMethod?.requires_reference}
                 value={reference}
               />
             </Field>
@@ -796,14 +799,7 @@ export function ResidentPaymentWizard({
                 ) : null}
               </div>
             </Field>
-            <Field
-              hint={
-                context === 'administrator'
-                  ? 'Información adicional para el equipo revisor; no reemplaza el comprobante ni la referencia bancaria.'
-                  : 'Descripción opcional para explicar tu pago; la administración podrá verla.'
-              }
-              label="Información adicional (opcional)"
-            >
+            <Field {...paymentNotesCopy}>
               <textarea
                 className="input"
                 onChange={(event) => setNotes(event.target.value)}

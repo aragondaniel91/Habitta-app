@@ -5,6 +5,7 @@ import { useDialogBehavior } from '../components/Drawer';
 import { PaymentsIcon } from '../components/icons';
 import { Badge, Button, Field, Select } from '../components/ui';
 import { paymentApi } from '../features/payments/api';
+import { paymentNotesCopy, paymentReferenceCopy } from '../features/payments/payment-field-copy';
 import { PaymentAllocationEditor } from '../features/payments/components/PaymentAllocationEditor';
 import { resolveResidentProposal } from '../features/payments/resident-proposal-approval';
 import { moneyValueString } from '../features/payments/allocation-amounts';
@@ -264,10 +265,7 @@ function PaymentForm({
           required
         />
       </Field>
-      <Field
-        label="Referencia"
-        hint={selectedMethod?.requires_reference ? 'Obligatoria para este método.' : 'Opcional.'}
-      >
+      <Field {...paymentReferenceCopy(selectedMethod)}>
         <input
           className="input"
           defaultValue={payment?.reference}
@@ -275,7 +273,7 @@ function PaymentForm({
           required={selectedMethod?.requires_reference}
         />
       </Field>
-      <Field label="Notas internas">
+      <Field {...paymentNotesCopy}>
         <textarea
           className="payments-textarea"
           defaultValue={payment?.notes}
@@ -485,7 +483,10 @@ export function ReviewPayment({
     const summary = [
       { label: 'Unidad', value: unitLabel ?? 'Unidad registrada' },
       { label: 'Método', value: method?.display_name ?? 'Método registrado' },
-      { label: 'Referencia', value: payment.reference || 'Sin referencia' },
+      {
+        label: 'Referencia de la operación',
+        value: payment.reference || 'Sin referencia registrada',
+      },
       { label: 'Fecha', value: formatDashboardDate(payment.payment_date) },
       { label: 'Pagador', value: payment.payer_name },
       {
@@ -508,14 +509,15 @@ export function ReviewPayment({
             </div>
           ))}
         </div>
-        {payment.notes?.trim() ? (
-          <section className="payments-detail__section" aria-label="Información adicional del pago">
-            <div className="payments-detail__heading">
-              <h3>Información adicional</h3>
-            </div>
-            <p>{payment.notes}</p>
-          </section>
-        ) : null}
+        <section
+          className="payments-detail__section"
+          aria-label="Comentario para revisión del pago"
+        >
+          <div className="payments-detail__heading">
+            <h3>Comentario para revisión</h3>
+          </div>
+          <p>{payment.notes?.trim() || 'No agregó un comentario.'}</p>
+        </section>
         <section className="payments-detail__section" aria-label="Propuesta del residente">
           <div className="payments-detail__heading">
             <h3>Propuesta del residente</h3>
@@ -647,12 +649,12 @@ export function ReviewPayment({
               <strong>{method?.display_name ?? 'Método de pago registrado'}</strong>
             </div>
             <div>
-              <span>Referencia del pago</span>
+              <span>Referencia de la operación</span>
               <strong>{payment.reference?.trim() || 'Sin referencia registrada'}</strong>
             </div>
             <div>
-              <span>Comentarios del pagador</span>
-              <p>{payment.notes?.trim() || 'No agregó comentarios.'}</p>
+              <span>Comentario para revisión</span>
+              <p>{payment.notes?.trim() || 'No agregó un comentario.'}</p>
             </div>
           </div>
           <div className="payments-review__submitted-proof">

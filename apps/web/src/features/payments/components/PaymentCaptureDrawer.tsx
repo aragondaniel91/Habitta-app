@@ -6,6 +6,7 @@ import { FormActions, FormGrid } from '../../../components/FormLayout';
 import { Button, Field, Select } from '../../../components/ui';
 import '../../../financial-capture.css';
 import { paymentApi } from '../api';
+import { paymentNotesCopy, paymentReferenceCopy } from '../payment-field-copy';
 import { paymentActorLabel, type Payment, type PaymentMethod } from '../types';
 
 /**
@@ -250,12 +251,7 @@ export function PaymentCaptureDrawer({
               required
             />
           </Field>
-          <Field
-            hint={
-              selectedMethod?.requires_reference ? 'Obligatoria para este método.' : 'Opcional.'
-            }
-            label="Referencia"
-          >
+          <Field {...paymentReferenceCopy(selectedMethod)}>
             <input
               className="input"
               defaultValue={payment?.reference}
@@ -263,10 +259,7 @@ export function PaymentCaptureDrawer({
               required={selectedMethod?.requires_reference}
             />
           </Field>
-          <Field
-            label="Información adicional"
-            hint="Opcional. La administración podrá verla al revisar."
-          >
+          <Field {...paymentNotesCopy}>
             <textarea
               className="payments-textarea"
               defaultValue={payment?.notes}

@@ -62,7 +62,7 @@ test('administrador envía pago por cuota mediante asistente compartido', async 
   await dialog.getByLabel('Nombre del pagador').fill('Administrador QA');
   await dialog.getByLabel(/Referencia/).fill(bankReference);
   await dialog
-    .getByLabel('Información adicional (opcional)')
+    .getByLabel('Comentario para revisión (opcional)')
     .fill('Recibido en la oficina de administración.');
   await dialog.getByLabel('Seleccionar comprobante').setInputFiles({
     name: 'comprobante-admin.png',
@@ -94,7 +94,7 @@ test('administrador envía pago por cuota mediante asistente compartido', async 
   await row.getByRole('button', { name: 'Revisar' }).click();
   const review = page.getByRole('dialog', { name: 'Revisar pago' });
   await expect(review).toBeVisible();
-  await expect(review.getByText('Comentarios del pagador', { exact: true })).toBeVisible();
+  await expect(review.getByText('Comentario para revisión', { exact: true })).toBeVisible();
   await expect(review.getByText('Comprobante adjunto', { exact: true })).toBeVisible();
   await expect(review.getByText('Recibido en la oficina de administración.')).toBeVisible();
   await expect(review.getByText(chargeName, { exact: true })).toBeVisible();

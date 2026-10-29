@@ -41,6 +41,25 @@ describe('manual payment validation', () => {
         idempotencyKey: 'x',
       }).success,
     ).toBe(false));
+  it('accepts optional operation reference and review comment fields', () => {
+    const draft = {
+      unitId: condo,
+      paymentMethodId: payment,
+      paymentDate: '2026-07-01',
+      originalAmount: '10.00',
+      originalCurrencyCode: 'USD',
+      payerName: 'A',
+      idempotencyKey: 'x',
+    };
+    expect(paymentDraftSchema.safeParse(draft).success).toBe(true);
+    expect(
+      paymentDraftSchema.parse({
+        ...draft,
+        reference: 'TRF-554433',
+        notes: 'Pago realizado por tercero.',
+      }),
+    ).toMatchObject({ reference: 'TRF-554433', notes: 'Pago realizado por tercero.' });
+  });
   it('validates same and cross-currency relationships', () => {
     expect(
       allocationSchema.safeParse({
