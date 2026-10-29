@@ -220,10 +220,22 @@ ownershipFinanceRoutes.get('/:id/units/:unitId/account-statement', async (c) => 
   const response = await rpc(c, 'get_unit_account_statement', {
     target: condominiumId,
     target_unit: unitId,
-    period_from: parsed.data.from ?? null,
-    period_to: parsed.data.to ?? new Date().toISOString().slice(0, 10),
+    ...(parsed.data.from ? { period_from: parsed.data.from } : {}),
+    ...(parsed.data.to ? { period_to: parsed.data.to } : {}),
   });
-  return jsonResponse(c, response);
+  const payload = await response.json().catch(() => null);
+  if (response.ok) return c.json(payload, 200);
+  const failure = payload as { code?: string; message?: string } | null;
+  if (
+    response.status === 401 ||
+    response.status === 403 ||
+    failure?.code === '42501' ||
+    failure?.message === 'permission denied'
+  ) {
+    return c.json({ error: 'statement_forbidden' }, 403);
+  }
+  if (response.status >= 500) return c.json({ error: 'statement_unavailable' }, 502);
+  return c.json({ error: 'statement_request_failed' }, 400);
 });
 
 ownershipFinanceRoutes.get('/:id/units/:unitId/solvency', async (c) => {

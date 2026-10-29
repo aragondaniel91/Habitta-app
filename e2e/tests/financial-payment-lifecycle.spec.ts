@@ -302,6 +302,23 @@ test.describe('Ciclo financiero autenticado', () => {
     const reviewer = await authenticate(request, emails.reviewer);
     const isolation = await authenticate(request, emails.isolation);
     const run = crypto.randomUUID();
+    const workerUrl = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:8787';
+    const workerHeaders = (token: string) => ({ Authorization: `Bearer ${token}` });
+    const toCents = (value: string) => {
+      const [whole, fraction = ''] = value.split('.');
+      return BigInt(whole ?? '0') * 100n + BigInt(fraction.padEnd(2, '0'));
+    };
+    const initialCreditsResponse = await request.get(
+      `${workerUrl}/v1/condominiums/${ids.primaryCondominium}/receivables/credit-balances`,
+      { headers: workerHeaders(administrator.access_token) },
+    );
+    expect(initialCreditsResponse.ok(), await initialCreditsResponse.text()).toBe(true);
+    const initialCredits = (await initialCreditsResponse.json()) as UnitCreditBalance[];
+    const initialCreditCents = toCents(
+      initialCredits.find(
+        (item) => item.unit_id === ids.primaryUnit && item.currency_code === 'USD',
+      )?.credit_balance ?? '0.00',
+    );
     const createCharge = async (description: string, amount: string) =>
       rpc<unknown>(request, administrator.access_token, 'create_receivable_item', {
         target: ids.primaryCondominium,
@@ -375,21 +392,19 @@ test.describe('Ciclo financiero autenticado', () => {
     await submitAndApprove('5.00', '4.50', overpayment.id, `pilot-overpayment-${run}`);
     expect((await findCharge(overpaymentDescription)).outstanding_amount).toBe('0.00');
 
-    const workerUrl = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:8787';
-    const workerHeaders = (token: string) => ({ Authorization: `Bearer ${token}` });
     const cxc = await request.get(
       `${workerUrl}/v1/condominiums/${ids.primaryCondominium}/receivables/credit-balances`,
       { headers: workerHeaders(administrator.access_token) },
     );
     expect(cxc.ok(), await cxc.text()).toBe(true);
     const credits = (await cxc.json()) as UnitCreditBalance[];
-    expect(credits).toContainEqual(
-      expect.objectContaining({
-        unit_id: ids.primaryUnit,
-        currency_code: 'USD',
-        credit_balance: '0.50',
-      }),
+    const currentCredit = credits.find(
+      (item) => item.unit_id === ids.primaryUnit && item.currency_code === 'USD',
     );
+    expect(currentCredit).toBeDefined();
+    // Financial E2E retries share a fixture until the workflow reset. Verify this payment
+    // created exactly 0.50 new credit, even when a previous attempt left its own credit.
+    expect(toCents(currentCredit!.credit_balance) - initialCreditCents).toBe(50n);
 
     const statement = await request.get(
       `${workerUrl}/v1/condominiums/${ids.primaryCondominium}/units/${ids.primaryUnit}/account-statement?from=2026-10-28&to=2026-10-28`,
