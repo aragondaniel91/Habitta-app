@@ -42,6 +42,7 @@ import type {
   ReceivableSummary,
 } from '../lib/dashboard';
 import { APP_ROUTES } from '../navigation';
+import { canAccessRoute, useCondominiumRoles } from '../lib/roles';
 import type { AppRoute } from '../navigation';
 import { buildDashboardSourceWarning, settleDashboardSource } from '../lib/dashboard-sources';
 import { paymentsDeepLinkSearch, receivablesDeepLinkSearch } from '../lib/dashboard-deep-links';
@@ -381,6 +382,7 @@ export function AdministrativeDashboard({
   onNavigate,
   onNavigateFiltered,
 }: Props) {
+  const roles = useCondominiumRoles();
   // The scope deliberately excludes the access token. A token refresh for the same person may
   // retain the last useful view; a condominium or user change may never render it.
   const scope = `${condominiumId}:${session.user.id}`;
@@ -588,13 +590,19 @@ export function AdministrativeDashboard({
   const activePeople = dashboardData.people.filter((person) => person.status !== 'inactive').length;
   const summaries = sortReceivableSummaries(dashboardData.summaries);
   const selectedAging = dashboardData.aging.find((row) => row.currency_code === selectedCurrency);
-  const feesRoute = routeByKey('fees');
-  const paymentsRoute = routeByKey('payments');
-  const unitsRoute = routeByKey('units');
-  const peopleRoute = routeByKey('people');
-  const announcementsRoute = routeByKey('announcements');
-  const reportsRoute = routeByKey('reports');
-  const requestsRoute = routeByKey('requests');
+  // Match the App router's presentation capability check to avoid links that bounce to the dashboard.
+  // Server authorization / RLS remains authoritative; this only controls navigation affordances.
+  const allowedDashboardRoute = (key: AppRoute['key']) => {
+    const route = routeByKey(key);
+    return route && canAccessRoute(route, roles) ? route : undefined;
+  };
+  const feesRoute = allowedDashboardRoute('fees');
+  const paymentsRoute = allowedDashboardRoute('payments');
+  const unitsRoute = allowedDashboardRoute('units');
+  const peopleRoute = allowedDashboardRoute('people');
+  const announcementsRoute = allowedDashboardRoute('announcements');
+  const reportsRoute = allowedDashboardRoute('reports');
+  const requestsRoute = allowedDashboardRoute('requests');
 
   const pendingRows = summaries.map((summary) => ({
     currencyCode: summary.currency_code,
@@ -690,7 +698,7 @@ export function AdministrativeDashboard({
           <CurrencyValues emptyLabel="Sin cobros" rows={collectionRows} />
         </MetricCard>
         <MetricCard
-          footer={`${dashboardData.units.length} ${dashboardData.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total. Clic para ver las unidades.`}
+          footer={`${dashboardData.units.length} ${dashboardData.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total.${unitsRoute ? ' Clic para ver las unidades.' : ''}`}
           icon={(props) => <UnitsIcon {...props} />}
           label="Unidades activas"
           onClick={unitsRoute ? () => onNavigate(unitsRoute) : undefined}
@@ -1042,12 +1050,20 @@ export function AdministrativeDashboard({
             </div>
           </div>
           <div className="dashboard-community-stats">
-            <button onClick={() => unitsRoute && onNavigate(unitsRoute)} type="button">
+            <button
+              disabled={!unitsRoute}
+              onClick={() => unitsRoute && onNavigate(unitsRoute)}
+              type="button"
+            >
               <UnitsIcon size={21} />
               <span>Unidades</span>
               <strong>{dashboardData.units.length}</strong>
             </button>
-            <button onClick={() => peopleRoute && onNavigate(peopleRoute)} type="button">
+            <button
+              disabled={!peopleRoute}
+              onClick={() => peopleRoute && onNavigate(peopleRoute)}
+              type="button"
+            >
               <PeopleIcon size={21} />
               <span>Personas activas</span>
               <strong>{activePeople}</strong>
@@ -1063,22 +1079,35 @@ export function AdministrativeDashboard({
             </div>
           </div>
           <div className="dashboard-action-grid">
-            <button onClick={() => feesRoute && onNavigate(feesRoute)} type="button">
+            <button
+              disabled={!feesRoute}
+              onClick={() => feesRoute && onNavigate(feesRoute)}
+              type="button"
+            >
               <FeesIcon size={22} />
               <span>Crear cuota</span>
             </button>
-            <button onClick={() => paymentsRoute && onNavigate(paymentsRoute)} type="button">
+            <button
+              disabled={!paymentsRoute}
+              onClick={() => paymentsRoute && onNavigate(paymentsRoute)}
+              type="button"
+            >
               <PaymentsIcon size={22} />
               <span>Registrar pago</span>
             </button>
             <button
+              disabled={!announcementsRoute}
               onClick={() => announcementsRoute && onNavigate(announcementsRoute)}
               type="button"
             >
               <AnnouncementsIcon size={22} />
               <span>Enviar anuncio</span>
             </button>
-            <button onClick={() => reportsRoute && onNavigate(reportsRoute)} type="button">
+            <button
+              disabled={!reportsRoute}
+              onClick={() => reportsRoute && onNavigate(reportsRoute)}
+              type="button"
+            >
               <ReportsIcon size={22} />
               <span>Generar reporte</span>
             </button>

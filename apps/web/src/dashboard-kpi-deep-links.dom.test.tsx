@@ -4,6 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AdministrativeDashboard } from './pages/AdministrativeDashboard';
+import { RolesProvider } from './lib/roles';
 import type { AppRoute } from './navigation';
 
 declare global {
@@ -89,13 +90,15 @@ describe('Dashboard KPI deep links preserve filter context (pilot #1 + #3)', () 
 
     await act(async () => {
       root.render(
-        <AdministrativeDashboard
-          condominiumId="condo-1"
-          condominiumName="Condominio Demo"
-          onNavigate={() => {}}
-          onNavigateFiltered={onNavigateFiltered}
-          session={session}
-        />,
+        <RolesProvider value={['condominium_admin']}>
+          <AdministrativeDashboard
+            condominiumId="condo-1"
+            condominiumName="Condominio Demo"
+            onNavigate={() => {}}
+            onNavigateFiltered={onNavigateFiltered}
+            session={session}
+          />
+        </RolesProvider>,
       );
     });
     // Flush the pending microtasks from Promise.all in the load effect.
@@ -135,13 +138,15 @@ describe('Dashboard KPI deep links preserve filter context (pilot #1 + #3)', () 
 
     await act(async () => {
       root.render(
-        <AdministrativeDashboard
-          condominiumId="condo-1"
-          condominiumName="Condominio Demo"
-          onNavigate={onNavigate}
-          onNavigateFiltered={onNavigateFiltered}
-          session={session}
-        />,
+        <RolesProvider value={['condominium_admin']}>
+          <AdministrativeDashboard
+            condominiumId="condo-1"
+            condominiumName="Condominio Demo"
+            onNavigate={onNavigate}
+            onNavigateFiltered={onNavigateFiltered}
+            session={session}
+          />
+        </RolesProvider>,
       );
     });
     await act(async () => {
@@ -184,13 +189,15 @@ describe('Dashboard KPI deep links preserve filter context (pilot #1 + #3)', () 
 
     await act(async () => {
       root.render(
-        <AdministrativeDashboard
-          condominiumId="condo-2"
-          condominiumName="Condominio Demo"
-          onNavigate={() => {}}
-          onNavigateFiltered={onNavigateFiltered}
-          session={session}
-        />,
+        <RolesProvider value={['condominium_admin']}>
+          <AdministrativeDashboard
+            condominiumId="condo-2"
+            condominiumName="Condominio Demo"
+            onNavigate={() => {}}
+            onNavigateFiltered={onNavigateFiltered}
+            session={session}
+          />
+        </RolesProvider>,
       );
     });
     await act(async () => {
@@ -217,5 +224,96 @@ describe('Dashboard KPI deep links preserve filter context (pilot #1 + #3)', () 
     });
     const [, underReviewSearch] = onNavigateFiltered.mock.calls[1] as [AppRoute, string];
     expect(underReviewSearch).toBe('status=under_review');
+    await act(async () => root.unmount());
+  });
+
+  it('preserves the selected USD currency on dashboard financial KPI and list links', async () => {
+    installFetch('USD');
+    const { element, root } = mount();
+    const onNavigateFiltered = vi.fn();
+    await act(async () => {
+      root.render(
+        <RolesProvider value={['condominium_admin']}>
+          <AdministrativeDashboard
+            condominiumId="condo-usd"
+            condominiumName="Condominio Demo"
+            onNavigate={() => {}}
+            onNavigateFiltered={onNavigateFiltered}
+            session={session}
+          />
+        </RolesProvider>,
+      );
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const clickLabel = async (label: string) => {
+      const target = Array.from(element.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes(label),
+      );
+      expect(target, label).toBeDefined();
+      await act(async () => {
+        target!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
+    };
+
+    await clickLabel('Saldo total pendiente');
+    await clickLabel('Cobrado este mes');
+    await clickLabel('Morosidad');
+    await clickLabel('Ver cuentas por cobrar');
+    await clickLabel('Ver todos');
+
+    expect(
+      onNavigateFiltered.mock.calls.map((call) => {
+        const [route, search] = call as [AppRoute, string];
+        return [route.key, search];
+      }),
+    ).toEqual([
+      ['fees', 'currency=USD'],
+      ['payments', 'status=approved&currency=USD'],
+      ['fees', 'currency=USD&due=overdue'],
+      ['fees', 'currency=USD'],
+      ['payments', 'currency=USD'],
+    ]);
+    await act(async () => root.unmount());
+  });
+
+  it('does not offer Units or People navigation to a payment reviewer without those routes', async () => {
+    installFetch();
+    const { element, root } = mount();
+    const onNavigate = vi.fn();
+    await act(async () => {
+      root.render(
+        <RolesProvider value={['payment_reviewer']}>
+          <AdministrativeDashboard
+            condominiumId="condo-reviewer"
+            condominiumName="Condominio Demo"
+            onNavigate={onNavigate}
+            onNavigateFiltered={() => {}}
+            session={session}
+          />
+        </RolesProvider>,
+      );
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const unitsCard = Array.from(element.querySelectorAll('.dashboard-metric-card')).find((card) =>
+      card.textContent?.includes('Unidades activas'),
+    );
+    expect(unitsCard).toBeDefined();
+    expect(unitsCard!.tagName).not.toBe('BUTTON');
+    expect(unitsCard!.textContent).not.toContain('Clic para ver las unidades');
+
+    const communityButtons = Array.from(
+      element.querySelectorAll<HTMLButtonElement>('.dashboard-community-stats button'),
+    );
+    expect(communityButtons).toHaveLength(2);
+    expect(communityButtons.every((button) => button.disabled)).toBe(true);
+    expect(onNavigate).not.toHaveBeenCalled();
+    await act(async () => root.unmount());
   });
 });
