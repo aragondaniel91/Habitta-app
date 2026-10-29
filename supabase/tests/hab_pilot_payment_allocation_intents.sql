@@ -1,5 +1,5 @@
 begin;
-select plan(49);
+select plan(55);
 
 -- Regression for an explicit anon EXECUTE grant that survived the original
 -- PUBLIC-only revoke. This is a function ACL boundary, not a claim about
@@ -21,6 +21,44 @@ select is(
     'public.save_payment_allocation_intent(uuid,uuid,jsonb)', 'EXECUTE'),
   true,
   'server role retains the reviewed RPC permission'
+);
+-- Read-only production checks found the same legacy anon grant on the
+-- sibling allocation-reader and payment-proof eligibility RPCs.
+select is(
+  has_function_privilege('anon',
+    'public.get_payment_allocation_intent(uuid,uuid)', 'EXECUTE'),
+  false,
+  'anonymous callers cannot execute payment allocation reader RPC'
+);
+select is(
+  has_function_privilege('authenticated',
+    'public.get_payment_allocation_intent(uuid,uuid)', 'EXECUTE'),
+  true,
+  'authenticated callers retain payment allocation reader RPC'
+);
+select is(
+  has_function_privilege('service_role',
+    'public.get_payment_allocation_intent(uuid,uuid)', 'EXECUTE'),
+  true,
+  'server retains payment allocation reader RPC'
+);
+select is(
+  has_function_privilege('anon',
+    'public.can_upload_payment_proof(uuid,uuid)', 'EXECUTE'),
+  false,
+  'anonymous callers cannot execute payment proof eligibility RPC'
+);
+select is(
+  has_function_privilege('authenticated',
+    'public.can_upload_payment_proof(uuid,uuid)', 'EXECUTE'),
+  true,
+  'authenticated callers retain payment proof eligibility RPC'
+);
+select is(
+  has_function_privilege('service_role',
+    'public.can_upload_payment_proof(uuid,uuid)', 'EXECUTE'),
+  true,
+  'server retains payment proof eligibility RPC'
 );
 
 -- HAB-PILOT-002-P2B: Comprehensive database and RLS validation for resident payment allocation intents.
