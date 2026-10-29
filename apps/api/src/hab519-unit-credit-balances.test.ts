@@ -33,4 +33,16 @@ describe('HAB-519 unit credit balances (pilot point #30 authorized credit)', () 
     expect(route.slice(0, 320)).toContain('rpc/get_unit_credit_balances');
     expect(route.slice(0, 320)).toContain('r.ok ? 200 : 403');
   });
+
+  it('keeps the single canonical account-statement route authorized and sanitizes denied reads', () => {
+    const ownershipRoutes = source('./ownership-finance-routes.ts');
+    const route = ownershipRoutes.slice(
+      ownershipRoutes.indexOf("get('/:id/units/:unitId/account-statement'"),
+    );
+    expect(route.slice(0, 1300)).toContain("rpc(c, 'get_unit_account_statement'");
+    expect(route.slice(0, 1300)).toContain('period_from');
+    expect(route.slice(0, 1300)).toContain('period_to');
+    expect(route.slice(0, 1300)).toContain("error: 'statement_forbidden'");
+    expect(api).not.toContain("'/v1/condominiums/:id/units/:unitId/account-statement'");
+  });
 });

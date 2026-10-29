@@ -3,6 +3,12 @@
 **Revisado manualmente:** 2026-10-28. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
+## Checkpoint local piloto #12/#13 (#516/#519) — 2026-10-28
+
+- **Estado: CANDIDATE parcial, no aceptado ni liberado.** Desde el SHA base `151ee9b701da6789f810e04c1172ba9026021804`, se conectó el drawer existente de estado de cuenta al RPC autorizado `get_unit_account_statement`; no se creó un ledger, crédito, aplicación futura ni conversión nuevos.
+- **Prueba prevista (solo Supabase/Worker local):** residente presenta USD 5.00 contra cargo USD 12.00 y revisor independiente aprueba: CxC conserva USD 7.00. Luego USD 5.00 contra USD 4.50: CxC administrativo y estado de cuenta del residente muestran USD 0.50 sin aplicar, separado por moneda. El caso niega al administrador de otro condominio el estado de cuenta y no le enumera créditos.
+- **Límites:** la prueba usa aprobación normal, RLS y token del llamante; no hay bypass de `approve_payment`, RLS/grants nuevos, minting, aplicación silenciosa ni FX. Ejecución, CI, revisión humana y Founder Accept siguen pendientes; producción no fue consultada ni modificada.
+
 ## Integración consolidada sprint #585 — 2026-10-28 (último merge #591)
 
 - **Main luego de #591:** `5a5c0297d9b2556b8b49ff5ad1a9836af1a06b03` (squash; incluye #592 `afc304c6f9a5b04b433777c497119875caee3d4a`, #590 `d44002ec1ad8ee312a01db29e02510f613e55275`, #589 `961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb`). Reconsultar HEAD al retomar.
