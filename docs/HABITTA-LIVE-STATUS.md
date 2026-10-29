@@ -9,6 +9,14 @@
 - **Prueba prevista (solo Supabase/Worker local):** residente presenta USD 5.00 contra cargo USD 12.00 y revisor independiente aprueba: CxC conserva USD 7.00. Luego USD 5.00 contra USD 4.50: CxC administrativo y estado de cuenta del residente muestran USD 0.50 sin aplicar, separado por moneda. El caso niega al administrador de otro condominio el estado de cuenta y no le enumera créditos.
 - **Límites:** la prueba usa aprobación normal, RLS y token del llamante; no hay bypass de `approve_payment`, RLS/grants nuevos, minting, aplicación silenciosa ni FX. Ejecución, CI, revisión humana y Founder Accept siguen pendientes; producción no fue consultada ni modificada.
 
+## Sprint #585 — evidencias integradas (2026-10-28, PRs #595/#596)
+
+- **Main comprobado tras merge #595:** `40f6c9a1862900bb7bcbdc75bcc813c46f2e619c`. Incluye PR #596 merge `ec3b9241a2366c0b7c985f5e62a7657eeca4a8cd` (campos de pagos) y PR #595 merge `40f6c9a1862900bb7bcbdc75bcc813c46f2e619c` (saldos y créditos). Reconsultar GitHub al retomar.
+- **#596 / punto #7:** HEAD `d5b546bed387adf7b0c2a031424e474784316e7b`, 4/4 pipelines SUCCESS (CI 40794238997, pgTAP 40794238821, Playwright 40794239001, Financial E2E 40794238990), 13 web/33 API pruebas focales PASS. Referencia requerida u opcional según método de pago, comentario siempre opcional; recepción y revisión muestran valores sin modificar ledger.
+- **#595 / puntos #12/#13:** HEAD `26a9eca5c5cc430d6d7da0dbd1dd990c1a95fb2d`, 4/4 SUCCESS (CI 40795264552, pgTAP 40795266245, Playwright 40795264739, Financial E2E 40795264555). Estado de cuenta con autorización y mensajes saneados; E2E: $12 - $5 = $7 deuda y $5 - $4,50 = $0,50 incremento de crédito a favor autorizado por unidad/moneda, con aislamiento entre condominios. No aplica automáticamente créditos futuros.
+- **Seguridad / punto #23:** PR #594 candidato separado; sigue sin certificar aplicación de reglas para miembros históricos y sin resolver el modelo de votación/fin de vigencia intradía. Riesgos residuales documentados en [#597](https://github.com/aragondaniel91/Habitta-app/issues/597).
+- **Release:** integración en main **no implica deploy**. Último Worker productivo confirmado por /health en esta sesión: `9ae959d77f702f27cfa8ee52c6c095ad83744677` (2026-10-24). SHA productivo de Pages no comprobado. #571 revisión humana independiente y #573 preflight siguen bloqueando promoción; 28/28 no se declaran ACCEPTED o RELEASED_VERIFIED.
+
 ## Integración consolidada sprint #585 — 2026-10-28 (último merge #591)
 
 - **Main luego de #591:** `5a5c0297d9b2556b8b49ff5ad1a9836af1a06b03` (squash; incluye #592 `afc304c6f9a5b04b433777c497119875caee3d4a`, #590 `d44002ec1ad8ee312a01db29e02510f613e55275`, #589 `961f2f5e1c84dd4734e5cf3cf14bec9853a1b6fb`). Reconsultar HEAD al retomar.
