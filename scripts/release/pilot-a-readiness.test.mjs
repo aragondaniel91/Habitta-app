@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import {
   compareMigrationVersions,
   evaluateReadiness,
   migrationVersions,
+  readCloudflareControlPlane,
+  readRepositoryVersions,
   runPublicSmoke,
+  validateCLIArgs,
 } from './pilot-a-readiness.mjs';
 
 const main = '78bc6948fcf2d42289eddfd8c4bae69fb6f5d890';
@@ -155,4 +160,146 @@ test('public probe is GET/HEAD only and captures HTTP guards without auth secret
     ['GET', 'GET', 'GET', 'HEAD', 'HEAD'],
   );
   assert.ok(seen.every((x) => x[2] === null || x[2] === 'https://app.mihabitta.com'));
+});
+
+test('readRepositoryVersions takes exact committed tree, not untracked local files', () => {
+  let invocation = null;
+  const versions = readRepositoryVersions('/an/isolated/repo', (...args) => {
+    invocation = args;
+    return (
+      'supabase/migrations/20261028230000_example.sql\n' +
+      'supabase/migrations/20261029134919_second.sql\n'
+    );
+  });
+  assert.deepEqual(versions, ['20261028230000', '20261029134919']);
+  assert.deepEqual(invocation[1], [
+    'ls-tree',
+    '-r',
+    '--name-only',
+    'HEAD',
+    '--',
+    'supabase/migrations',
+  ]);
+});
+
+test('strict CLI accepts pnpm separator, denies waiver flags and missing values', () => {
+  assert.deepEqual(validateCLIArgs(['--', '--online', '--migration-history', 'x.json']), [
+    '--online',
+    '--migration-history',
+    'x.json',
+  ]);
+  assert.throws(() => validateCLIArgs(['--waive-571']), /unknown_argument/);
+  assert.throws(() => validateCLIArgs(['--approve']), /unknown_argument/);
+  assert.throws(() => validateCLIArgs(['--migration-history']), /missing_argument/);
+  assert.throws(() => validateCLIArgs(['--pages-control-plane', '--online']), /missing_argument/);
+});
+
+test('explicitly attempted but unreachable worker blocks, not unknown', () => {
+  const result = evaluateReadiness({
+    candidateSha: main,
+    workerHealth: null,
+    workerProbeAttempted: true,
+    migrationStatus: { status: 'pass' },
+  });
+  assert.equal(find(result, 'worker_health').status, 'block');
+  assert.equal(find(result, 'worker_commit_matches_candidate').status, 'block');
+});
+
+test('even ALL automated PASS checks cannot produce a release approval', () => {
+  const pages = {
+    project: {
+      canonical_deployment: {
+        id: 'example',
+        environment: 'production',
+        latest_stage: { status: 'success' },
+        deployment_trigger: { metadata: { commit_hash: main } },
+      },
+    },
+    domain: { name: 'app.mihabitta.com', status: 'active' },
+  };
+  const report = evaluateReadiness({
+    candidateSha: main,
+    candidateTreeClean: true,
+    workerHealth: healthy(main),
+    workerProbeAttempted: true,
+    protectedStatus: { organizations: 401, notFound: 404, app: 200, admin: 200 },
+    migrationStatus: { status: 'pass' },
+    pagesControlPlane: pages,
+    pagesControlPlaneAuthenticated: true,
+  });
+  assert.equal(report.checks.filter((x) => x.status === 'human_required').length, 5);
+  assert.equal(report.checks.filter((x) => x.status === 'block').length, 0);
+  assert.equal(report.releaseDecision, 'NO_GO');
+  assert.match(find(report, 'migration_history_parity').detail, /not_schema_drift_proof/);
+});
+
+test('Cloudflare live probe only GETs API and never includes token in errors', async () => {
+  const token = 'FAKE-SECRET-MUST-NOT-APPEAR';
+  const authEnv = { CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: 'safeaccount123' };
+  const requests = [];
+  const stub = async (url, options) => {
+    requests.push({ url, options });
+    return { ok: true, status: 200, json: async () => ({ success: true, result: { name: 'ok' } }) };
+  };
+  const actual = await readCloudflareControlPlane(stub, authEnv);
+  assert.deepEqual(Object.keys(actual), ['project', 'domain']);
+  assert.equal(JSON.stringify(actual).includes(token), false);
+  assert.equal(requests.length, 2);
+  assert.ok(
+    requests.every(
+      (x) =>
+        x.options.method === 'GET' &&
+        x.options.redirect === 'error' &&
+        x.url.startsWith('https://api.cloudflare.com/'),
+    ),
+  );
+  assert.ok(requests.every((x) => x.options.headers.Authorization === 'Bearer ' + token));
+  await assert.rejects(
+    () => readCloudflareControlPlane(async () => ({ ok: false, status: 403 }), authEnv),
+    /cloudflare_control_plane_http_403/,
+  );
+  await assert.rejects(
+    () =>
+      readCloudflareControlPlane(
+        async () => ({ ok: true, json: async () => ({ success: false }) }),
+        authEnv,
+      ),
+    /cloudflare_control_plane_error/,
+  );
+  await assert.rejects(
+    () => readCloudflareControlPlane(stub, { ...authEnv, CLOUDFLARE_ACCOUNT_ID: '../unsafe' }),
+    /cloudflare_account_id_invalid/,
+  );
+  await assert.rejects(
+    () => readCloudflareControlPlane(stub, {}),
+    /cloudflare_read_credentials_missing/,
+  );
+});
+
+test('production HTML redirect is not mistaken for successful HTTP 200', () => {
+  const report = evaluateReadiness({
+    candidateSha: main,
+    workerHealth: healthy(old),
+    protectedStatus: { organizations: 401, notFound: 404, app: 302, admin: 200 },
+    migrationStatus: { status: 'pass' },
+  });
+  assert.equal(find(report, 'public_route_guards').status, 'block');
+});
+
+test('CLI shell exit code 2 deliberately prevents NO_GO from being chained to deploy', () => {
+  const script = fileURLToPath(new URL('./pilot-a-readiness.mjs', import.meta.url));
+  const result = spawnSync(process.execPath, [script, '--json'], { encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.equal(JSON.parse(result.stdout).releaseDecision, 'NO_GO');
+});
+
+test('dirty candidate worktree blocks evidence even with matching SHA metadata', () => {
+  const report = evaluateReadiness({
+    candidateSha: main,
+    candidateTreeClean: false,
+    workerHealth: healthy(main),
+    migrationStatus: { status: 'pass' },
+  });
+  assert.equal(find(report, 'candidate_commit_tree_clean').status, 'block');
+  assert.equal(report.releaseDecision, 'NO_GO');
 });

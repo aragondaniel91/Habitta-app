@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Engineering-only, read-only Release A assessment. It NEVER authorizes production deployment.
 import { execFileSync } from 'node:child_process';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateProductionPagesState } from './verify-production-pages-control-plane.mjs';
@@ -52,7 +52,9 @@ export function compareMigrationVersions(localVersions, remoteVersions) {
 
 export function evaluateReadiness({
   candidateSha,
+  candidateTreeClean = null,
   workerHealth = null,
+  workerProbeAttempted = false,
   protectedStatus = null,
   migrationStatus,
   pagesControlPlane = null,
@@ -61,6 +63,15 @@ export function evaluateReadiness({
   const checks = [];
   const add = (id, status, detail) => checks.push({ id, status, detail });
   if (!SHA.test(candidateSha ?? '')) throw new Error('candidate_sha_must_be_exact');
+  add(
+    'candidate_commit_tree_clean',
+    candidateTreeClean === null ? 'unknown' : candidateTreeClean ? 'pass' : 'block',
+    candidateTreeClean === null
+      ? 'candidate_tree_not_checked'
+      : candidateTreeClean
+        ? 'committed_candidate_tree'
+        : 'local_modifications_not_part_of_candidate_sha',
+  );
   const workerSha = workerHealth?.commit;
   const healthy =
     workerHealth?.status === 'ok' &&
@@ -68,12 +79,28 @@ export function evaluateReadiness({
     SHA.test(workerSha ?? '');
   add(
     'worker_health',
-    workerHealth === null ? 'unknown' : healthy ? 'pass' : 'block',
-    healthy ? workerSha : 'production_worker_health_unverified',
+    workerHealth === null
+      ? workerProbeAttempted
+        ? 'block'
+        : 'unknown'
+      : healthy
+        ? 'pass'
+        : 'block',
+    healthy
+      ? workerSha
+      : workerProbeAttempted
+        ? 'production_worker_health_unreachable_or_invalid'
+        : 'production_worker_health_unverified',
   );
   add(
     'worker_commit_matches_candidate',
-    !healthy ? 'unknown' : workerSha === candidateSha ? 'pass' : 'block',
+    !healthy
+      ? workerProbeAttempted
+        ? 'block'
+        : 'unknown'
+      : workerSha === candidateSha
+        ? 'pass'
+        : 'block',
     healthy ? 'worker=' + workerSha : 'worker_sha_not_proven',
   );
 
@@ -144,12 +171,22 @@ export function evaluateReadiness({
   };
 }
 
-async function readRepositoryVersions(repositoryRoot) {
-  const files = await readdir(resolve(repositoryRoot, 'supabase', 'migrations'));
-  const entries = files
+export function readRepositoryVersions(repositoryRoot, readGit = execFileSync) {
+  // Read from the candidate COMMIT, not the possibly dirty working directory.
+  const tracked = readGit(
+    'git',
+    ['ls-tree', '-r', '--name-only', 'HEAD', '--', 'supabase/migrations'],
+    {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+    },
+  );
+  const entries = String(tracked)
+    .split(/\r?\n/)
+    .filter(Boolean)
     .filter((name) => name.endsWith('.sql'))
     .map((name) => {
-      const match = /^(\d{14})_[^.]+\.sql$/.exec(name);
+      const match = /^supabase\/migrations\/(\d{14})_[^.]+\.sql$/.exec(name);
       if (!match) throw new Error('unrecognized_migration_filename');
       return match[1];
     });
@@ -192,6 +229,7 @@ export async function runPublicSmoke(fetcher = fetch) {
   }
   return {
     workerHealth,
+    workerProbeAttempted: true,
     protectedStatus: {
       organizations: organizations?.status ?? null,
       notFound: notFound?.status ?? null,
@@ -201,9 +239,9 @@ export async function runPublicSmoke(fetcher = fetch) {
   };
 }
 
-async function readCloudflareControlPlane(fetcher = fetch) {
-  const token = process.env.CLOUDFLARE_API_TOKEN;
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+export async function readCloudflareControlPlane(fetcher = fetch, env = process.env) {
+  const token = env.CLOUDFLARE_API_TOKEN;
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID;
   if (!token || !accountId) throw new Error('cloudflare_read_credentials_missing');
   if (!/^[a-z0-9_-]+$/i.test(accountId)) throw new Error('cloudflare_account_id_invalid');
   const base =
@@ -235,7 +273,8 @@ function argValue(args, key) {
   return args[idx + 1];
 }
 
-export async function runCLI(args = process.argv.slice(2)) {
+export function validateCLIArgs(rawArgs) {
+  const args = rawArgs[0] === '--' ? rawArgs.slice(1) : rawArgs;
   const allowed = [
     '--online',
     '--json',
@@ -245,14 +284,28 @@ export async function runCLI(args = process.argv.slice(2)) {
   ];
   for (let i = 0; i < args.length; i++) {
     if (!allowed.includes(args[i])) throw new Error('unknown_argument');
-    if (args[i] === '--migration-history' || args[i] === '--pages-control-plane') i++;
+    if (args[i] === '--migration-history' || args[i] === '--pages-control-plane') {
+      if (!args[i + 1] || args[i + 1].startsWith('--'))
+        throw new Error('missing_argument_' + args[i]);
+      i++;
+    }
   }
+  return args;
+}
+
+export async function runCLI(rawArgs = process.argv.slice(2)) {
+  const args = validateCLIArgs(rawArgs);
   const repoRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
   const candidateSha = execFileSync('git', ['rev-parse', 'HEAD'], {
     cwd: repoRoot,
     encoding: 'utf8',
   }).trim();
-  const localVersions = await readRepositoryVersions(repoRoot);
+  const candidateTreeClean =
+    execFileSync('git', ['status', '--porcelain'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    }).trim().length === 0;
+  const localVersions = readRepositoryVersions(repoRoot);
   let remoteVersions = null;
   const history = argValue(args, '--migration-history');
   if (history) {
@@ -276,6 +329,7 @@ export async function runCLI(args = process.argv.slice(2)) {
   const smoke = args.includes('--online') ? await runPublicSmoke() : {};
   const report = evaluateReadiness({
     candidateSha,
+    candidateTreeClean,
     ...smoke,
     migrationStatus: compareMigrationVersions(localVersions, remoteVersions),
     pagesControlPlane,
@@ -294,8 +348,12 @@ export async function runCLI(args = process.argv.slice(2)) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  runCLI().catch((error) => {
-    console.error('preflight_failed:' + error.message);
-    process.exitCode = 1;
-  });
+  runCLI()
+    .then(() => {
+      process.exitCode = 2;
+    }) // NO_GO must not be mistaken for shell success.
+    .catch((error) => {
+      console.error('preflight_failed:' + error.message);
+      process.exitCode = 1;
+    });
 }
