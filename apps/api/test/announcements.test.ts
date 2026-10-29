@@ -171,4 +171,23 @@ describe('announcement HTTP routes', () => {
       expected_version: 3,
     });
   });
+
+  it('does not fetch an attachment object when metadata RLS denies the announcement', async () => {
+    const get = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) =>
+        String(input).includes('/auth/v1/user') ? auth() : Response.json([]),
+      ),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/announcements/${announcementId}/attachments/00000000-0000-0000-0000-000000000105/file`,
+      { headers: token },
+      { ...env(), PAYMENT_PROOFS: { get } as unknown as R2Bucket },
+    );
+
+    expect(response.status).toBe(404);
+    expect(get).not.toHaveBeenCalled();
+  });
 });

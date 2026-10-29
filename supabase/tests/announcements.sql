@@ -1,5 +1,6 @@
 begin;
-select plan(39);
+select plan(51);
+select ok(not has_function_privilege('authenticated', 'public.is_current_announcement_recipient(uuid,uuid)'::regprocedure, 'EXECUTE'), 'authenticated users cannot probe a different user announcement eligibility');
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -8,7 +9,10 @@ values
   ('a0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'tenant@announcements.test', 'x', now(), now()),
   ('a0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'assistant@announcements.test', 'x', now(), now()),
   ('a0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'board@announcements.test', 'x', now(), now()),
-  ('a0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'other@announcements.test', 'x', now(), now());
+  ('a0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'other@announcements.test', 'x', now(), now()),
+  ('a0000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'authorized@announcements.test', 'x', now(), now()),
+  ('a0000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'former@announcements.test', 'x', now(), now()),
+  ('a0000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'stale@announcements.test', 'x', now(), now());
 
 insert into public.organizations (id, name, created_by) values
   ('a1000000-0000-0000-0000-000000000001', 'Announcements A', 'a0000000-0000-0000-0000-000000000001'),
@@ -22,6 +26,9 @@ insert into public.condominium_memberships (condominium_id, user_id, role) value
   ('a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000003', 'tenant'),
   ('a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000004', 'assistant'),
   ('a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000005', 'board_member'),
+  ('a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000007', 'authorized_occupant'),
+  ('a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000008', 'owner'),
+  ('a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000009', 'tenant'),
   ('a2200000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000006', 'condominium_admin');
 insert into public.buildings (id, condominium_id, name, created_by) values
   ('a1110000-0000-0000-0000-000000000001', 'a1100000-0000-0000-0000-000000000001', 'Torre Norte', 'a0000000-0000-0000-0000-000000000001');
@@ -29,11 +36,18 @@ insert into public.units (id, condominium_id, building_id, code, type, created_b
   ('a1120000-0000-0000-0000-000000000001', 'a1100000-0000-0000-0000-000000000001', 'a1110000-0000-0000-0000-000000000001', 'A-1', 'apartment', 'a0000000-0000-0000-0000-000000000001');
 insert into public.people (id, condominium_id, auth_user_id, first_name, last_name, email, created_by) values
   ('a1130000-0000-0000-0000-000000000001', 'a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002', 'Olivia', 'Owner', 'owner@announcements.test', 'a0000000-0000-0000-0000-000000000001'),
-  ('a1130000-0000-0000-0000-000000000002', 'a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000003', 'Tomás', 'Tenant', 'tenant@announcements.test', 'a0000000-0000-0000-0000-000000000001');
-insert into public.unit_owners (unit_id, person_id, is_primary_contact, created_by) values
-  ('a1120000-0000-0000-0000-000000000001', 'a1130000-0000-0000-0000-000000000001', true, 'a0000000-0000-0000-0000-000000000001');
+  ('a1130000-0000-0000-0000-000000000002', 'a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000003', 'Tomás', 'Tenant', 'tenant@announcements.test', 'a0000000-0000-0000-0000-000000000001'),
+  ('a1130000-0000-0000-0000-000000000003', 'a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000007', 'Ari', 'Authorized', 'authorized@announcements.test', 'a0000000-0000-0000-0000-000000000001'),
+  ('a1130000-0000-0000-0000-000000000004', 'a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000008', 'Fran', 'Former', 'former@announcements.test', 'a0000000-0000-0000-0000-000000000001'),
+  ('a1130000-0000-0000-0000-000000000005', 'a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000009', 'Sam', 'Stale', 'stale@announcements.test', 'a0000000-0000-0000-0000-000000000001');
+insert into public.unit_owners (unit_id, person_id, is_primary_contact, starts_at, created_by) values
+  ('a1120000-0000-0000-0000-000000000001', 'a1130000-0000-0000-0000-000000000001', true, current_date - 5, 'a0000000-0000-0000-0000-000000000001'),
+  ('a1120000-0000-0000-0000-000000000001', 'a1130000-0000-0000-0000-000000000004', false, current_date - 5, 'a0000000-0000-0000-0000-000000000001');
 insert into public.unit_occupancies (unit_id, person_id, occupancy_type, is_primary_contact, created_by) values
-  ('a1120000-0000-0000-0000-000000000001', 'a1130000-0000-0000-0000-000000000002', 'tenant', true, 'a0000000-0000-0000-0000-000000000001');
+  ('a1120000-0000-0000-0000-000000000001', 'a1130000-0000-0000-0000-000000000002', 'tenant', true, 'a0000000-0000-0000-0000-000000000001'),
+  ('a1120000-0000-0000-0000-000000000001', 'a1130000-0000-0000-0000-000000000003', 'authorized_occupant', false, 'a0000000-0000-0000-0000-000000000001');
+insert into public.unit_occupancies (unit_id, person_id, occupancy_type, is_primary_contact, starts_at, ends_at, created_by) values
+  ('a1120000-0000-0000-0000-000000000001', 'a1130000-0000-0000-0000-000000000005', 'tenant', false, current_date - 2, current_date - 1, 'a0000000-0000-0000-0000-000000000001');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', true);
@@ -86,9 +100,9 @@ select lives_ok(
 );
 select is((select status::text from public.announcements where title='Mantenimiento de ascensores'), 'published', 'publication changes status');
 reset role;
-select is((select count(*) from public.announcement_recipients where announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores')), 5::bigint, 'publication snapshots the five audience members');
-select is((select count(*) from public.notifications where notification_type='announcement_published'), 5::bigint, 'publication creates in-app notifications');
-select is((select count(*) from public.notification_deliveries where template_key='announcement_published'), 5::bigint, 'publication creates email deliveries');
+select is((select count(*) from public.announcement_recipients where announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores')), 7::bigint, 'publication snapshots only current relationship and staff recipients');
+select is((select count(*) from public.notifications where notification_type='announcement_published'), 7::bigint, 'publication creates in-app notifications');
+select is((select count(*) from public.notification_deliveries where template_key='announcement_published'), 7::bigint, 'publication creates email deliveries');
 select is((select count(*) from public.announcement_events where event_type='published'), 1::bigint, 'publication is audited');
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000001', true);
@@ -129,6 +143,10 @@ select ok((select acknowledged_at is not null from public.announcement_recipient
 
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000003', true);
 select is((select count(*) from public.announcements where title='Mantenimiento de ascensores'), 1::bigint, 'tenant reads an everyone announcement');
+
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000007', true);
+select is((select count(*) from public.announcements where title='Mantenimiento de ascensores'), 1::bigint, 'authorized occupant with an active relationship reads an everyone announcement');
+select is((select count(*) from public.announcement_recipients where user_id='a0000000-0000-0000-0000-000000000009'), 0::bigint, 'expired tenant relationship is excluded at publication despite its membership row');
 
 select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000005', true);
 select cmp_ok((select count(*) from public.announcement_events where announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores')), '>=', 6::bigint, 'board member reads the full audit timeline');
@@ -215,6 +233,36 @@ select throws_ok(
   'announcement_attachments records are immutable',
   'announcement attachments are append-only'
 );
+
+update public.unit_owners
+set ends_at = current_date - 1
+where person_id = 'a1130000-0000-0000-0000-000000000004';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000008', true);
+select is((select count(*) from public.announcements where title='Mantenimiento de ascensores'), 0::bigint, 'former owner loses announcement access when the relationship expires');
+select is((select count(*) from public.announcement_recipients where announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores')), 0::bigint, 'former recipient cannot read their historical recipient row');
+select is((select count(*) from public.announcement_attachments where announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores')), 0::bigint, 'former recipient cannot pass attachment metadata RLS used by the download route');
+select throws_ok(
+  $$select public.mark_announcement_read('a1100000-0000-0000-0000-000000000001', (select id from public.announcements where title='Mantenimiento de ascensores'))$$,
+  null, 'announcement unavailable', 'former recipient cannot create a read receipt'
+);
+select throws_ok(
+  $$select public.acknowledge_announcement('a1100000-0000-0000-0000-000000000001', (select id from public.announcements where title='Mantenimiento de ascensores'))$$,
+  null, 'announcement unavailable', 'former recipient cannot acknowledge a historical announcement'
+);
+
+reset role;
+select is((select count(*) from public.announcement_recipients where user_id='a0000000-0000-0000-0000-000000000008' and announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores')), 1::bigint, 'historical recipient row is retained for audit after relationship expiry');
+select is((select count(*) from public.announcement_recipients where user_id='a0000000-0000-0000-0000-000000000008' and announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores') and read_at is null and acknowledged_at is null), 1::bigint, 'denied former recipient receipt fields remain unchanged');
+insert into public.condominium_memberships (condominium_id, user_id, role) values
+  ('a1100000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002', 'assistant');
+update public.unit_owners set ends_at = current_date - 1 where person_id = 'a1130000-0000-0000-0000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a0000000-0000-0000-0000-000000000002', true);
+select is((select count(*) from public.announcements where title='Mantenimiento de ascensores'), 1::bigint, 'valid staff role overlap retains announcement access after owner relationship expiry');
+select is((select count(*) from public.announcement_attachments where announcement_id=(select id from public.announcements where title='Mantenimiento de ascensores')), 1::bigint, 'valid staff role overlap retains attachment download metadata access');
+reset role;
 select is(public.publish_due_announcements(now() + interval '2 hours'), 1, 'scheduler publishes one due announcement');
 select is((select status::text from public.announcements where title='Publicación automática'), 'published', 'scheduled announcement is published by the scheduler');
 
