@@ -3,6 +3,15 @@
 **Revisado manualmente:** 2026-10-28. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
+## SDP — seguridad de vínculos #597 integrada en main (2026-10-28)
+
+- **GitHub main comprobado:** `fdbef1be2f5c540bce72e700f10aedaa14d3baee` (último merge #601), incluyendo PR #600 merge `f21052524a3efa62fd0376835dd1c74aa761d36c`. Reconsultar GitHub al retomar; código integrado **NO** significa publicado.
+- **#600, acceso a configuración de mora y documentos:** HEAD `b6e97c9cab7855a829390c1c69cc80a77c20a503` con 4/4 workflows SUCCESS (CI 40800776078, pgTAP 40800776251, Playwright 40800776096, Financial E2E 40800776273), **24/24 pgTAP local** bajo rollback con migraciones #594. Rechaza propietario/inquilino con vínculo caducado, inquilino con fecha de inicio futura, lectura cross-tenant; conserva acceso staff/board e incluye pruebas de versiones/descarga de documentos de expropietarios. Revisión independiente inicial P2 de inicio futuro, reparado y revisado en segundo commit.
+- **#601, Anuncios y adjuntos:** HEAD `ae0d8d7242c253d68976b042bba64754a2d6210f` con 4/4 SUCCESS (CI 40801177541, pgTAP 40801177554, Playwright 40801177576, Financial E2E 40801177552). **51/51 pgTAP local** y 6/6 API tests; protege envíos, lecturas, destinatarios históricos, adjuntos y acuses con relaciones vigentes, con snapshot de destinatarios preservado para auditoría. Revisión independiente sin hallazgos accionables. SQL probado en DB sintética local con rollback; se aisló temporalmente un fixture antiguo expirado ajeno al suite.
+- **Integración posterior a los merges:** worktree limpio en `fdbef1b`, 5/5 paquetes TypeScript y 49/49 pruebas API focales PASS.
+- **Brechas por decidir antes de cerrar #23:** [issue #597](https://github.com/aragondaniel91/Habitta-app/issues/597): voto congelado tras transferencia de la última unidad y revocación intradía (actual `ends_at` es date inclusivo; requiere política temporal); aceptación de UX y roles; #571 firma humana independiente sigue requerida.
+- **Producción no promovida:** Worker /health verificado nuevamente en `9ae959d77f702f27cfa8ee52c6c095ad83744677` (build 2026-10-24), SHA Pages no acreditado. #571 auditoría humana de ciberseguridad y #573 release preflight son gates bloqueantes. No declarar 28/28 ni #23 RELEASED_VERIFIED; IA #18/#28 diferidos.
+
 ## Checkpoint local piloto #12/#13 (#516/#519) — 2026-10-28
 
 - **Estado: CANDIDATE parcial, no aceptado ni liberado.** Desde el SHA base `151ee9b701da6789f810e04c1172ba9026021804`, se conectó el drawer existente de estado de cuenta al RPC autorizado `get_unit_account_statement`; no se creó un ledger, crédito, aplicación futura ni conversión nuevos.
