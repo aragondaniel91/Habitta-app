@@ -1,5 +1,23 @@
 begin;
-select plan(22);
+select plan(24);
+
+-- Regression: scope of financial concept metadata must NOT be widened to
+-- family/authorized occupants by using the generic can_read_condominium helper.
+select ok(
+  position('has_active_owner_relationship' in
+    (select qual from pg_policies
+     where schemaname = 'public' and tablename = 'charge_concepts' and policyname = 'concepts_read')) > 0,
+  'owner concept access requires effective-dated active ownership'
+);
+select ok(
+  position('has_active_tenant_occupancy' in
+    (select qual from pg_policies
+     where schemaname = 'public' and tablename = 'charge_concepts' and policyname = 'concepts_read')) > 0
+  and position('can_read_condominium' in
+    (select qual from pg_policies
+     where schemaname = 'public' and tablename = 'charge_concepts' and policyname = 'concepts_read')) = 0,
+  'concept policy retains owner/tenant/board audience without broad resident roles'
+);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, created_at, updated_at) values
   ('23000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'operator@hab23.test', 'x', now(), now()),

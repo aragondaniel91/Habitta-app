@@ -122,12 +122,26 @@ as $$
   end;
 $$;
 
--- Charge-concept metadata is rendered beside protected receivables.  Do not
--- let a stale owner membership expose it after the associated unit link ends.
+-- Preserve the original owner/tenant/board audience for charge concepts.
+-- A generic condominium-read check would accidentally grant financial metadata
+-- to family members and authorized occupants. Date-check ownership/tenancy instead.
 drop policy if exists concepts_read on public.charge_concepts;
 create policy concepts_read on public.charge_concepts
 for select
-using (public.can_read_receivables(condominium_id) or public.can_read_condominium(condominium_id));
+using (
+  public.can_read_receivables(condominium_id)
+  or exists (
+    select 1
+    from public.condominium_memberships cm
+    where cm.condominium_id = charge_concepts.condominium_id
+      and cm.user_id = auth.uid()
+      and (
+        (cm.role = 'owner' and public.has_active_owner_relationship(charge_concepts.condominium_id))
+        or (cm.role = 'tenant' and public.has_active_tenant_occupancy(charge_concepts.condominium_id))
+        or cm.role = 'board_member'
+      )
+  )
+);
 
 -- Explicit ACL reset for every replaced callable signature.  Helpers invoked
 -- by RLS/SECURITY DEFINER are deliberately available only to authenticated
