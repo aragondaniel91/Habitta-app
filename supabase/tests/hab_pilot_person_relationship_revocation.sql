@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(22);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, created_at, updated_at) values
   ('23000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'operator@hab23.test', 'x', now(), now()),
@@ -24,6 +24,10 @@ insert into public.condominium_memberships(condominium_id, user_id, role) values
 insert into public.unit_owners(id, unit_id, person_id, starts_at, created_by) values
   ('23500000-0000-4000-8000-000000000001', '23300000-0000-4000-8000-000000000001', '23400000-0000-4000-8000-000000000001', current_date - 10, '23000000-0000-4000-8000-000000000001');
 
+insert into public.community_documents(id, condominium_id, title, audience, status, created_by) values
+  ('23700000-0000-4000-8000-000000000001', '23200000-0000-4000-8000-000000000001', 'Private A owner document', 'owners', 'active', '23000000-0000-4000-8000-000000000001'),
+  ('23700000-0000-4000-8000-000000000002', '23200000-0000-4000-8000-000000000002', 'Private B owner document', 'owners', 'active', '23000000-0000-4000-8000-000000000001');
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '23000000-0000-4000-8000-000000000002', true);
 select ok(public.can_read_unit('23300000-0000-4000-8000-000000000001'), 'active owner reads their real house unit');
@@ -33,6 +37,8 @@ reset role;
 
 update public.unit_owners set ends_at = current_date - 1 where id = '23500000-0000-4000-8000-000000000001';
 
+select is((select count(*)::integer from public.condominium_memberships where condominium_id = '23200000-0000-4000-8000-000000000001' and user_id = '23000000-0000-4000-8000-000000000002' and role = 'owner'), 1, 'scheduled ownership expiration preserves the historical owner membership after the effective date');
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '23000000-0000-4000-8000-000000000002', true);
 select ok(not public.can_read_unit('23300000-0000-4000-8000-000000000001'), 'expired same-unit owner link immediately denies the authenticated unit read');
@@ -40,9 +46,10 @@ select ok(not public.can_read_financial_unit('23300000-0000-4000-8000-0000000000
 select ok(not public.can_read_condominium('23200000-0000-4000-8000-000000000001'), 'expired owner membership cannot retain condominium access');
 select is((select count(*)::integer from public.units where id = '23300000-0000-4000-8000-000000000001'), 0, 'the authenticated units RLS read is revoked');
 select is((select count(*)::integer from public.units where id = '23300000-0000-4000-8000-000000000002'), 0, 'former owner cannot cross tenant isolation');
+select is((select count(*)::integer from public.community_documents where id = '23700000-0000-4000-8000-000000000001'), 0, 'former owner cannot read owner-audience documents after the effective date');
+select is((select count(*)::integer from public.community_documents where id = '23700000-0000-4000-8000-000000000002'), 0, 'former owner cannot read owner-audience documents in another tenant');
 reset role;
 
-select is((select count(*)::integer from public.condominium_memberships where condominium_id = '23200000-0000-4000-8000-000000000001' and user_id = '23000000-0000-4000-8000-000000000002' and role = 'owner'), 0, 'ending the last effective owner link removes only owner membership');
 insert into public.condominium_memberships(condominium_id, user_id, role) values
   ('23200000-0000-4000-8000-000000000001', '23000000-0000-4000-8000-000000000002', 'board_member');
 select is((select count(*)::integer from public.condominium_memberships where condominium_id = '23200000-0000-4000-8000-000000000001' and user_id = '23000000-0000-4000-8000-000000000002' and role = 'board_member'), 1, 'ending owner link preserves unrelated board membership');
@@ -52,7 +59,24 @@ select ok(public.can_read_unit('23300000-0000-4000-8000-000000000001'), 'a curre
 reset role;
 delete from public.condominium_memberships where condominium_id = '23200000-0000-4000-8000-000000000001' and user_id = '23000000-0000-4000-8000-000000000002' and role = 'board_member';
 select is((select count(*)::integer from public.unit_owners where id = '23500000-0000-4000-8000-000000000001' and ends_at = current_date - 1), 1, 'ended ownership remains an auditable historic record');
-select ok(not has_table_privilege('authenticated', 'public.unit_owners', 'DELETE'), 'authenticated users cannot hard-delete ownership history');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '23000000-0000-4000-8000-000000000002', true);
+do $$
+begin
+  delete from public.unit_owners
+  where id = '23500000-0000-4000-8000-000000000001';
+exception when insufficient_privilege then
+  null; -- Explicit GRANT and RLS variants both deny destructive access.
+end;
+$$;
+reset role;
+select is(
+  (select count(*)::integer from public.unit_owners
+   where id = '23500000-0000-4000-8000-000000000001'),
+  1,
+  'authenticated former owner cannot delete ownership history through RLS'
+);
+reset role;
 
 insert into public.unit_occupancies(id, unit_id, person_id, occupancy_type, starts_at, created_by) values
   ('23600000-0000-4000-8000-000000000001', '23300000-0000-4000-8000-000000000001', '23400000-0000-4000-8000-000000000001', 'authorized_occupant', current_date - 5, '23000000-0000-4000-8000-000000000001');
