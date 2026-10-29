@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   plan:
+    # Development credentials live in the development environment only; production's are never in scope here.
+    environment: development
     runs-on: ubuntu-latest
     env:
       APP_ENV: development
@@ -51,6 +53,7 @@ jobs:
           test -n "$SUPABASE_PROJECT_REF"
           test -n "$INPUT_CONFIRM_PROJECT_REF"
           test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
+          node scripts/release/assert-development-isolation.mjs
       - run: pnpm notifications:config:check
       - run: pnpm release:dev:validate
       - run: pnpm format:check

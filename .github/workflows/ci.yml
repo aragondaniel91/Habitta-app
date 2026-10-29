@@ -53,6 +53,8 @@ jobs:
             formatted-files
           if-no-files-found: ignore
       - run: pnpm release:dev:validate
+      - name: Verify development cannot reach production credentials or database
+        run: pnpm release:isolation:test
       - name: Verify read-only production preflight safety rules
         run: pnpm release:pilot:preflight:test
       - run: pnpm lint
