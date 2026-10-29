@@ -1,5 +1,5 @@
 begin;
-select plan(164);
+select plan(170);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('80000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','admin@pay.test','x',now(),now()),
@@ -77,6 +77,9 @@ create temporary table payment_test_fixture (
 insert into payment_test_fixture(owner_draft_payment_id)
 select id from public.payments where idempotency_key='owner-proof';
 select ok((select owner_draft_payment_id is not null from payment_test_fixture),'resident draft fixture captures an ID before cross-role checks');
+select ok(not has_function_privilege('authenticated', 'public.can_manage_payment_draft(uuid,uuid)', 'EXECUTE'),'arbitrary-owner draft helper is not executable by authenticated callers');
+select ok(not has_function_privilege('authenticated', 'public.is_payment_staff_owner(uuid,uuid)', 'EXECUTE'),'arbitrary-owner staff-membership helper is not executable by authenticated callers');
+select lives_ok($$select public.save_payment_allocation_intent('81100000-0000-0000-0000-000000000001',(select owner_draft_payment_id from payment_test_fixture),jsonb_build_array(jsonb_build_object('receivable_item_id',(select id from public.receivable_items where description='USD due'),'payment_amount','10.00','payment_currency_code','USD','receivable_amount','10.00','receivable_currency_code','USD','receivable_per_payment_rate','1')))$$,'resident can save a proposal on own draft');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000002',true);
 select lives_ok($$select public.create_payment_draft('81100000-0000-0000-0000-000000000001','81110000-0000-0000-0000-000000000001','81130000-0000-0000-0000-000000000004',null,current_date,10,'USD','Staff path',null,null,'staff-path')$$,'accountant creates staff-owned payment draft');
 select is((select count(*) from public.payments where idempotency_key='staff-path'),1::bigint,'staff-path payment is stored once');
@@ -115,6 +118,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000001',true);
 select is((select count(*) from public.payments where id=(select owner_draft_payment_id from payment_test_fixture)),0::bigint,'admin cannot read the pre-captured ID of an unsubmitted resident draft');
 select is((select count(*) from public.payment_events where payment_id=(select owner_draft_payment_id from payment_test_fixture)),0::bigint,'admin cannot read event metadata for an unsubmitted resident draft');
+select is((select count(*) from public.payment_allocation_intents where payment_id=(select owner_draft_payment_id from payment_test_fixture)),0::bigint,'admin cannot read an unsubmitted resident allocation proposal');
 select lives_ok(
   $$select * from public.list_admin_audit_events('81100000-0000-0000-0000-000000000001','payments',null,'payment',null,null,10,0,'info')$$,
   'payment audit CTE aliases support module, entity, severity filters and ordered event output'
@@ -134,6 +138,7 @@ select is((select count(*) from public.payment_events where payment_id=(select o
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000011',true);
 select is((select count(*) from public.payments where id=(select owner_draft_payment_id from payment_test_fixture)),0::bigint,'other-condominium admin cannot read a resident draft across tenants');
 select is((select count(*) from public.payment_events where payment_id=(select owner_draft_payment_id from payment_test_fixture)),0::bigint,'other-condominium admin cannot read resident draft event metadata across tenants');
+select is((select count(*) from public.payment_allocation_intents where payment_id=(select owner_draft_payment_id from payment_test_fixture)),0::bigint,'other-condominium admin cannot read resident allocation proposal across tenants');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004',true);
 select is((select count(*) from public.payments where id=(select owner_draft_payment_id from payment_test_fixture)),1::bigint,'resident can still read own pre-captured draft');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000005',true);
@@ -167,6 +172,7 @@ select is((select count(*) from public.payment_proofs where superseded_at is nul
 select lives_ok($$select public.submit_payment('81100000-0000-0000-0000-000000000001',(select id from public.payments where idempotency_key='owner-proof'))$$,'valid payment is submitted');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000003',true);
 select ok((select count(*) from public.payment_events where payment_id=(select owner_draft_payment_id from payment_test_fixture))>0,'payment reviewer can read resident payment events after submission');
+select is((select count(*) from public.payment_allocation_intents where payment_id=(select owner_draft_payment_id from payment_test_fixture)),1::bigint,'payment reviewer can read resident allocation proposal after submission');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000005',true);
 select is((select count(*) from public.payment_events where payment_id=(select owner_draft_payment_id from payment_test_fixture)),0::bigint,'tenant cannot read resident payment events after submission');
 select set_config('request.jwt.claim.sub','80000000-0000-0000-0000-000000000004',true);

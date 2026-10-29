@@ -81,6 +81,18 @@ describe('resident payment allocation intent', () => {
     expect(api).toContain("'get_payment_allocation_intent'");
   });
 
+  it('keeps the draft-owner authorization primitive out of the authenticated RPC surface', async () => {
+    const migration = await source(
+      '../../../supabase/migrations/20261028221000_hab_pilot_payment_draft_helper_acl.sql',
+    );
+    expect(migration).toContain('can_manage_payment_draft_by_id');
+    expect(migration).toContain(
+      'revoke all on function public.can_manage_payment_draft(uuid, uuid)',
+    );
+    expect(migration).toContain('to service_role');
+    expect(migration).toContain('payment_allocation_intents_read');
+  });
+
   it('routes PUT allocation-intent to RPC with caller token and validated proposals', async () => {
     const requests: Array<{ url: string; init: RequestInit | undefined }> = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
