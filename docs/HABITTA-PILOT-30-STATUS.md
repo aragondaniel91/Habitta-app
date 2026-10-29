@@ -33,7 +33,7 @@
 | 20 | Personas y vínculos por topología | Base parcial; cerrar cobertura de roles, altas/bajas y autorizaciones. |
 | 21 | Junta/comité o responsable de hogar configurable | Base parcial/preview de Junta; el flag debe mantenerse **OFF en el release** y su configuración real debe verificarse, no declararse apagada sin evidencia del entorno. |
 | 22 | Membresías con períodos, roles y capacidades | Base parcial; catálogo, períodos, auditoría y autorización integral pendientes. |
-| 23 | Fin de vínculo revoca acceso actual sin borrar historia | **IMPLEMENTED_MAIN / TESTED parcial:** PR #594 MERGED `8e8ddcd`; lectura por propietario/ocupante basada en vínculo vigente, conservación histórica de membresía/relaciones y protección de documentos; `charge_concepts` mantiene audiencia original con fechas vigentes. 24/24 pgTAP local, 4/4 workflows GREEN. No certifica revocación intradía (`ends_at` inclusivo), acceso a anuncios/attachments de antiguos miembros, mora y snapshot de voto: seguimiento [#597](https://github.com/aragondaniel91/Habitta-app/issues/597). Pendiente cierre/aceptación #23 y producción. |
+| 23 | Fin de vínculo revoca acceso actual sin borrar historia | **IMPLEMENTED_MAIN / TESTED parcial:** #594 (`8e8ddcd`) protege relación vigente, documentos e historial; **#600 MERGED** `f210525` cierra lectura de mora para owner/tenant vencido o futuro (24/24 pgTAP local, 4/4 GREEN), **#601 MERGED** `fdbef1b` protege envío/lectura de anuncios, adjuntos, acuses y mantiene histórico (51/51 pgTAP local, API6 y 4/4 GREEN). Aún requiere decisión del Founder para snapshot de voto al vender última unidad y revocación intradía con `ends_at` inclusivo (ver [#597](https://github.com/aragondaniel91/Habitta-app/issues/597)), aceptación por rol/UX y producción con auditoría humana #571 y gate #573. **NO RELEASED_VERIFIED.** |
 | 24 | Estándar visual de Gastos en Finanzas y Personas | Base parcial; barrido coherente y aceptación visual final pendientes. |
 | 25 | Tesorería: conciliaciones por período, extracto y libro auxiliar | Base de Tesorería existente; ampliación y conciliación exhaustiva pendientes. |
 | 26 | Convenios: filtros de unidad/persona/estado/importe/período/fecha | **IMPLEMENTED_MAIN / TESTED parcial:** #591 MERGED `5a5c029`; filtros/orden/URL, paginación SQL RLS, importe exacto `numeric`, 8/8 pgTAP local, API516/web1057, 4/4 workflows GREEN. Pendiente visual, perfiles, latencia real y release. |
@@ -43,6 +43,11 @@
 | 30 | Workspace CxC: aging, deuda, crédito, saldos y cobranza | **IMPLEMENTED_MAIN parcial:** #587 añade crédito autorizado y drilldown al estado de cuenta; aging/cobranza/conciliación y aceptación siguen pendientes. |
 
 ## Integración de sprint #585 — 2026-10-28
+
+- **#600 MERGED:** `f21052524a3efa62fd0376835dd1c74aa761d36c`, HEAD `b6e97c9cab7855a829390c1c69cc80a77c20a503` 4/4 SUCCESS (CI 40800776078, pgTAP 40800776251, Playwright 40800776096, Financial E2E 40800776273); SQL local 24/24 pgTAP.
+- **#601 MERGED:** `fdbef1be2f5c540bce72e700f10aedaa14d3baee`, HEAD `ae0d8d7242c253d68976b042bba64754a2d6210f` 4/4 SUCCESS (CI 40801177541, pgTAP 40801177554, Playwright 40801177576, Financial E2E 40801177552); SQL local 51/51 pgTAP, API6/6.
+- **Riesgos #23 restantes:** [#597](https://github.com/aragondaniel91/Habitta-app/issues/597): snapshot de voto de expropietario y revocación intradía, además de aceptación UI/roles. No se ha actualizado producción; #571/#573 bloquean release.
+
 
 - **#594 MERGED:** `8e8ddcdf9fac063f62e7857dfd4dddbd6706507d`, PR HEAD `5a572cfe890fc694741b4e8788fcb3ef9e3378df` 4/4 SUCCESS: CI 40796127866, DB/pgTAP 40796127832, Playwright 40796127831, Financial E2E 40796128113; seguridad de vínculos y documentos implementada parcialmente, P2 residuales [#597](https://github.com/aragondaniel91/Habitta-app/issues/597).
 
@@ -71,7 +76,7 @@
 | “Informacional” | [#521](https://github.com/aragondaniel91/Habitta-app/issues/521) | Reproducción pendiente. |
 
 ## Baseline técnico verificado (no confundir con 30 puntos certificados)
-- **GitHub main (última conciliación):** [`8e8ddcdf9fac063f62e7857dfd4dddbd6706507d`](https://github.com/aragondaniel91/Habitta-app/commit/8e8ddcdf9fac063f62e7857dfd4dddbd6706507d) (#594/#595/#596/#598 integrados). Código integrado ≠ desplegado.
+- **GitHub main (última conciliación):** [`fdbef1be2f5c540bce72e700f10aedaa14d3baee`](https://github.com/aragondaniel91/Habitta-app/commit/fdbef1be2f5c540bce72e700f10aedaa14d3baee) (#594/#595/#596/#598/#599/#600/#601 integrados). Código integrado ≠ desplegado.
 - **Cuatro workflows históricos de main sobre SHA #583 (NO sobre el HEAD actual):** [CI run 40752725714](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725714), [Supabase DB / pgTAP 40752725856](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725856), [Financial E2E 40752726258](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752726258) y [Playwright 40752725491](https://github.com/aragondaniel91/Habitta-app/actions/runs/40752725491).
 - **Pruebas de seguridad:** PR #582, #583 añadieron aislamiento real con Auth y Worker locales entre condominios de una organización y entre organizaciones distintas; la suite Financial E2E [run 40751849179](https://github.com/aragondaniel91/Habitta-app/actions/runs/40751849179) en HEAD del PR #583 reportó 33 passed / 20 skipped **en toda la suite**, con dos casos cross-org nuevos obligatorios, no 33 puntos del piloto. La fuente agregada de 20 skips no prueba cobertura de todos los escenarios del epic. Esta cifra **no es** progreso de 33/30 puntos.
 - **API producción /health:** commit `9ae959d77f702f27cfa8ee52c6c095ad83744677` (2026-10-24). [Production Release run 40117141200](https://github.com/aragondaniel91/Habitta-app/actions/runs/40117141200) SUCCESS sobre ese commit; el endpoint productivo confirmó el mismo SHA el 28-oct. No se verificó nuevo deploy ni versión exacta de Cloudflare Pages.
