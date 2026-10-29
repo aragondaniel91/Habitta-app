@@ -53,6 +53,8 @@ jobs:
             formatted-files
           if-no-files-found: ignore
       - run: pnpm release:dev:validate
+      - name: Verify read-only production preflight safety rules
+        run: pnpm release:pilot:preflight:test
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
