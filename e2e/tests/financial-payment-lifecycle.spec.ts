@@ -39,6 +39,16 @@ type LedgerEntry = {
   entry_type: string;
   reversal_of_entry_id: string | null;
 };
+type ReceivableBalance = { id: string; outstanding_amount: string; status: string };
+type UnitCreditBalance = { unit_id: string; currency_code: string; credit_balance: string };
+type AccountStatement = {
+  movements: {
+    receivable_item_id: string | null;
+    debit: number | null;
+    credit: number | null;
+    currency_code: string;
+  }[];
+};
 
 const authenticate = async (request: APIRequestContext, email: string) => {
   const response = await request.post(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
@@ -282,5 +292,130 @@ test.describe('Ciclo financiero autenticado', () => {
     expect(receipts).toEqual([
       expect.objectContaining({ payment_id: payment.id, receipt_number: approval.receipt_number }),
     ]);
+  });
+
+  test('keeps partial due and unapplied credit exact, visible, and tenant-scoped', async ({
+    request,
+  }) => {
+    const administrator = await authenticate(request, emails.administrator);
+    const payer = await authenticate(request, emails.payer);
+    const reviewer = await authenticate(request, emails.reviewer);
+    const isolation = await authenticate(request, emails.isolation);
+    const run = crypto.randomUUID();
+    const createCharge = async (description: string, amount: string) =>
+      rpc<unknown>(request, administrator.access_token, 'create_receivable_item', {
+        target: ids.primaryCondominium,
+        target_unit: ids.primaryUnit,
+        target_concept: '66666666-6666-4666-8666-666666666661',
+        item_description: description,
+        item_amount: amount,
+        item_currency: 'USD',
+        item_issue: '2026-10-28',
+        item_due: '2026-10-28',
+      });
+    const findCharge = async (description: string) => {
+      const response = await request.get(
+        `${supabaseUrl}/rest/v1/receivable_balances?condominium_id=eq.${ids.primaryCondominium}&description=eq.${encodeURIComponent(description)}&select=id,outstanding_amount,status`,
+        {
+          headers: { apikey: anonKey ?? '', Authorization: `Bearer ${administrator.access_token}` },
+        },
+      );
+      expect(response.ok(), await response.text()).toBe(true);
+      const rows = (await response.json()) as ReceivableBalance[];
+      expect(rows).toHaveLength(1);
+      return rows[0]!;
+    };
+    const submitAndApprove = async (
+      paymentAmount: string,
+      allocatedAmount: string,
+      itemId: string,
+      key: string,
+    ) => {
+      const payment = await rpc<Payment>(request, payer.access_token, 'create_payment_draft', {
+        target: ids.primaryCondominium,
+        target_unit: ids.primaryUnit,
+        target_method: ids.paymentMethod,
+        submitted_for: null,
+        payment_on: '2026-10-28',
+        amount: paymentAmount,
+        currency: 'USD',
+        payer: 'Habitta E2E Payer',
+        reference_value: key,
+        notes_value: 'Pilot #12/#13 exact money scenario',
+        key,
+      });
+      await rpc<Payment>(request, payer.access_token, 'submit_payment', {
+        target: ids.primaryCondominium,
+        target_payment: payment.id,
+      });
+      await rpc<{ payment_id: string }>(request, reviewer.access_token, 'approve_payment', {
+        target: ids.primaryCondominium,
+        target_payment: payment.id,
+        allocations: [
+          {
+            receivable_item_id: itemId,
+            payment_amount: allocatedAmount,
+            receivable_amount: allocatedAmount,
+            payment_currency_code: 'USD',
+            receivable_currency_code: 'USD',
+          },
+        ],
+      });
+    };
+
+    const underpaymentDescription = `E2E pilot 12 minus 5 ${run}`;
+    await createCharge(underpaymentDescription, '12.00');
+    const underpayment = await findCharge(underpaymentDescription);
+    await submitAndApprove('5.00', '5.00', underpayment.id, `pilot-underpayment-${run}`);
+    expect((await findCharge(underpaymentDescription)).outstanding_amount).toBe('7.00');
+
+    const overpaymentDescription = `E2E pilot 4.50 from 5 ${run}`;
+    await createCharge(overpaymentDescription, '4.50');
+    const overpayment = await findCharge(overpaymentDescription);
+    await submitAndApprove('5.00', '4.50', overpayment.id, `pilot-overpayment-${run}`);
+    expect((await findCharge(overpaymentDescription)).outstanding_amount).toBe('0.00');
+
+    const workerUrl = 'http://127.0.0.1:8787';
+    const workerHeaders = (token: string) => ({ Authorization: `Bearer ${token}` });
+    const cxc = await request.get(
+      `${workerUrl}/v1/condominiums/${ids.primaryCondominium}/receivables/credit-balances`,
+      { headers: workerHeaders(administrator.access_token) },
+    );
+    expect(cxc.ok(), await cxc.text()).toBe(true);
+    const credits = (await cxc.json()) as UnitCreditBalance[];
+    expect(credits).toContainEqual(
+      expect.objectContaining({
+        unit_id: ids.primaryUnit,
+        currency_code: 'USD',
+        credit_balance: '0.50',
+      }),
+    );
+
+    const statement = await request.get(
+      `${workerUrl}/v1/condominiums/${ids.primaryCondominium}/units/${ids.primaryUnit}/account-statement?from=2026-10-28&to=2026-10-28`,
+      { headers: workerHeaders(payer.access_token) },
+    );
+    expect(statement.ok(), await statement.text()).toBe(true);
+    const residentStatement = (await statement.json()) as AccountStatement;
+    expect(residentStatement.movements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ receivable_item_id: underpayment.id, debit: 12 }),
+        expect.objectContaining({ receivable_item_id: underpayment.id, credit: 5 }),
+        expect.objectContaining({ receivable_item_id: overpayment.id, debit: 4.5 }),
+        expect.objectContaining({ receivable_item_id: null, credit: 0.5, currency_code: 'USD' }),
+      ]),
+    );
+
+    const isolatedCredits = await request.get(
+      `${workerUrl}/v1/condominiums/${ids.primaryCondominium}/receivables/credit-balances`,
+      { headers: workerHeaders(isolation.access_token) },
+    );
+    expect(isolatedCredits.ok(), await isolatedCredits.text()).toBe(true);
+    await expect(isolatedCredits.json()).resolves.toEqual([]);
+    const isolatedStatement = await request.get(
+      `${workerUrl}/v1/condominiums/${ids.primaryCondominium}/units/${ids.primaryUnit}/account-statement`,
+      { headers: workerHeaders(isolation.access_token) },
+    );
+    expect(isolatedStatement.status()).toBe(403);
   });
 });

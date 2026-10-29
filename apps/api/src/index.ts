@@ -768,6 +768,23 @@ app.get('/v1/condominiums/:id/units/:unitId/statement', async (c) => {
   });
   return c.json(await r.json(), r.ok ? 200 : 400);
 });
+// The account-statement drawer needs the structured, RLS-authorized statement rather than a
+// browser-side reconstruction of ledger movements. Keep optional dates absent when unspecified:
+// PostgREST then uses the database function defaults (including current_date) exactly once.
+app.get('/v1/condominiums/:id/units/:unitId/account-statement', async (c) => {
+  const periodFrom = c.req.query('from');
+  const periodTo = c.req.query('to');
+  const r = await rest(c, 'rpc/get_unit_account_statement', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: uuidSchema.parse(c.req.param('id')),
+      target_unit: uuidSchema.parse(c.req.param('unitId')),
+      ...(periodFrom ? { period_from: z.string().date().parse(periodFrom) } : {}),
+      ...(periodTo ? { period_to: z.string().date().parse(periodTo) } : {}),
+    }),
+  });
+  return c.json(await r.json(), r.ok ? 200 : 403);
+});
 app.get('/v1/condominiums/:id/receivables/summary', async (c) => {
   const r = await rest(c, 'rpc/get_receivables_summary', {
     method: 'POST',

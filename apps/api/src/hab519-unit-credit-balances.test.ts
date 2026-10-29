@@ -33,4 +33,12 @@ describe('HAB-519 unit credit balances (pilot point #30 authorized credit)', () 
     expect(route.slice(0, 320)).toContain('rpc/get_unit_credit_balances');
     expect(route.slice(0, 320)).toContain('r.ok ? 200 : 403');
   });
+
+  it('connects the resident account-statement drawer to its authoritative structured ledger RPC', () => {
+    const route = api.slice(api.indexOf("'/v1/condominiums/:id/units/:unitId/account-statement'"));
+    expect(route.slice(0, 900)).toContain('rpc/get_unit_account_statement');
+    expect(route.slice(0, 900)).toContain('period_from');
+    expect(route.slice(0, 900)).toContain('period_to');
+    expect(route.slice(0, 900)).toContain('r.ok ? 200 : 403');
+  });
 });
