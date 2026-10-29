@@ -690,9 +690,10 @@ export function AdministrativeDashboard({
           <CurrencyValues emptyLabel="Sin cobros" rows={collectionRows} />
         </MetricCard>
         <MetricCard
-          footer={`${dashboardData.units.length} ${dashboardData.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total.`}
+          footer={`${dashboardData.units.length} ${dashboardData.units.length === 1 ? 'unidad registrada' : 'unidades registradas'} en total. Clic para ver las unidades.`}
           icon={(props) => <UnitsIcon {...props} />}
           label="Unidades activas"
+          onClick={unitsRoute ? () => onNavigate(unitsRoute) : undefined}
           tone="navy"
         >
           <strong className="dashboard-single-value">{activeUnits}</strong>
@@ -791,7 +792,16 @@ export function AdministrativeDashboard({
           </div>
           <PortfolioDonut row={selectedAging} />
           {feesRoute ? (
-            <Button onClick={() => onNavigate(feesRoute)} size="sm" variant="ghost">
+            <Button
+              onClick={() =>
+                onNavigateFiltered(
+                  feesRoute,
+                  receivablesDeepLinkSearch({ currencyCode: selectedCurrency || undefined }),
+                )
+              }
+              size="sm"
+              variant="ghost"
+            >
               Ver cuentas por cobrar
               <ArrowRightIcon size={16} />
             </Button>
@@ -807,7 +817,16 @@ export function AdministrativeDashboard({
               <h2>Pagos recientes</h2>
             </div>
             {paymentsRoute ? (
-              <Button onClick={() => onNavigate(paymentsRoute)} size="sm" variant="ghost">
+              <Button
+                onClick={() =>
+                  onNavigateFiltered(
+                    paymentsRoute,
+                    paymentsDeepLinkSearch({ currencyCode: selectedCurrency || undefined }),
+                  )
+                }
+                size="sm"
+                variant="ghost"
+              >
                 Ver todos
               </Button>
             ) : null}

@@ -24,14 +24,28 @@ function jsonResponse(body: unknown) {
   });
 }
 
-function installFetch() {
+function installFetch(currencyCode?: string) {
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string) => {
       const path = new URL(url).pathname;
       if (path.endsWith('/units')) return Promise.resolve(jsonResponse([]));
       if (path.endsWith('/people')) return Promise.resolve(jsonResponse([]));
-      if (path.endsWith('/receivables/summary')) return Promise.resolve(jsonResponse([]));
+      if (path.endsWith('/receivables/summary'))
+        return Promise.resolve(
+          jsonResponse(
+            currencyCode
+              ? [
+                  {
+                    currency_code: currencyCode,
+                    net_outstanding: '12.00',
+                    total_debits: '12.00',
+                    total_credits: '0.00',
+                  },
+                ]
+              : [],
+          ),
+        );
       if (path.endsWith('/receivables/aging')) return Promise.resolve(jsonResponse([]));
       if (path.endsWith('/receivables')) return Promise.resolve(jsonResponse([]));
       if (path.endsWith('/payments')) return Promise.resolve(jsonResponse([]));
@@ -111,6 +125,56 @@ describe('Dashboard KPI deep links preserve filter context (pilot #1 + #3)', () 
     const [paymentsRoute, paymentsSearch] = onNavigateFiltered.mock.calls[1] as [AppRoute, string];
     expect(paymentsRoute.key).toBe('payments');
     expect(paymentsSearch).toBe('status=approved');
+  });
+
+  it('makes active units and financial list CTAs genuine, scoped navigation actions', async () => {
+    installFetch();
+    const { element, root } = mount();
+    const onNavigateFiltered = vi.fn();
+    const onNavigate = vi.fn();
+
+    await act(async () => {
+      root.render(
+        <AdministrativeDashboard
+          condominiumId="condo-1"
+          condominiumName="Condominio Demo"
+          onNavigate={onNavigate}
+          onNavigateFiltered={onNavigateFiltered}
+          session={session}
+        />,
+      );
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const buttons = Array.from(element.querySelectorAll('button'));
+    const activeUnits = buttons.find((button) => button.textContent?.includes('Unidades activas'));
+    expect(activeUnits).toBeDefined();
+    await act(async () => {
+      activeUnits!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({ key: 'units' }));
+
+    const allReceivables = buttons.find((button) =>
+      button.textContent?.includes('Ver cuentas por cobrar'),
+    );
+    expect(allReceivables).toBeDefined();
+    await act(async () => {
+      allReceivables!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(onNavigateFiltered).toHaveBeenCalledWith(expect.objectContaining({ key: 'fees' }), '');
+
+    const allPayments = buttons.find((button) => button.textContent?.includes('Ver todos'));
+    expect(allPayments).toBeDefined();
+    await act(async () => {
+      allPayments!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(onNavigateFiltered).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'payments' }),
+      '',
+    );
+    await act(async () => root.unmount());
   });
 
   it('routes "Acción requerida" to submitted and "En revisión administrativa" to under_review, as two distinct states', async () => {
