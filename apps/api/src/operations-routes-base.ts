@@ -23,6 +23,15 @@ const optionalText = (maximum: number) => z.string().trim().max(maximum).optiona
 const nullableOptionalText = (maximum: number) =>
   z.string().trim().max(maximum).nullable().optional();
 const optionalUrl = z.string().trim().url().max(1000).optional();
+const expenseListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(100_000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const parseExactTotal = (contentRange: string | null) => {
+  const match = contentRange?.match(/\/(\d+)$/);
+  return match ? Number.parseInt(match[1]!, 10) : null;
+};
 
 const expenseCategorySchema = z.object({
   code: z
@@ -323,6 +332,11 @@ operationsRoutes.get('/:id/expenses/summary', async (c) => {
 
 operationsRoutes.get('/:id/expenses', async (c) => {
   const condominiumId = uuid.parse(c.req.param('id'));
+  const pagination = expenseListQuerySchema.safeParse({
+    page: c.req.query('page') || undefined,
+    pageSize: c.req.query('pageSize') || undefined,
+  });
+  if (!pagination.success) return c.json({ error: pagination.error.flatten() }, 400);
   const status = c.req.query('status');
   const currencyCode = c.req.query('currency');
   const statusFilter = status
@@ -334,11 +348,36 @@ operationsRoutes.get('/:id/expenses', async (c) => {
     statusFilter ? `status=eq.${statusFilter}` : '',
     currencyFilter ? `currency_code=eq.${currencyFilter}` : '',
   ].filter(Boolean);
+  // Backward compatibility: MaintenanceFinancialWorkspace still consumes an array.
+  // The Expenses workspace opts into the bounded paginated response explicitly.
+  if (c.req.query('page') === undefined && c.req.query('pageSize') === undefined) {
+    const legacy = await rest(
+      c,
+      `expenses?${filters.join('&')}&select=*&order=expense_date.desc,created_at.desc`,
+    );
+    return c.json(await legacy.json(), legacy.ok ? 200 : 403);
+  }
+  const { page, pageSize } = pagination.data;
+  const offset = (page - 1) * pageSize;
   const response = await rest(
     c,
-    `expenses?${filters.join('&')}&select=*&order=expense_date.desc,created_at.desc`,
+    `expenses?${filters.join('&')}&select=*&order=expense_date.desc,created_at.desc,id.desc&limit=${pageSize}&offset=${offset}`,
+    { headers: { Prefer: 'count=exact' } },
   );
-  return c.json(await response.json(), response.ok ? 200 : 403);
+  if (!response.ok) return c.json(await response.json(), response.status === 403 ? 403 : 400);
+  const items = await response.json();
+  const total = parseExactTotal(response.headers.get('content-range'));
+  if (total === null) return c.json({ error: 'Pagination metadata unavailable' }, 502);
+  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+  return c.json({
+    items: Array.isArray(items) ? items : [],
+    page,
+    pageSize,
+    total,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  });
 });
 
 operationsRoutes.post('/:id/expenses', async (c) => {
