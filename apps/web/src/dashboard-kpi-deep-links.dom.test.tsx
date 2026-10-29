@@ -313,7 +313,22 @@ describe('Dashboard KPI deep links preserve filter context (pilot #1 + #3)', () 
     );
     expect(communityButtons).toHaveLength(2);
     expect(communityButtons.every((button) => button.disabled)).toBe(true);
+
+    const quickActions = Array.from(
+      element.querySelectorAll<HTMLButtonElement>('.dashboard-action-grid button'),
+    );
+    const findAction = (label: string) =>
+      quickActions.find((button) => button.textContent?.includes(label));
+    expect(findAction('Generar reporte')?.disabled).toBe(true);
+    expect(findAction('Enviar anuncio')?.disabled).toBe(false);
+    expect(findAction('Crear cuota')?.disabled).toBe(false);
+    const registerPayment = findAction('Registrar pago');
+    expect(registerPayment?.disabled).toBe(false);
     expect(onNavigate).not.toHaveBeenCalled();
+    await act(async () => {
+      registerPayment!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({ key: 'payments' }));
     await act(async () => root.unmount());
   });
 });
