@@ -1,6 +1,6 @@
 # HABITTA — Matriz verificable del piloto (30 puntos)
 
-> **Release-readiness verificado 2026-10-29:** [matriz de 28 puntos y gates por lotes](release/HABITTA-PILOT-28-READINESS-20261029.md) — `main` 5cd7148, 4/4 push SUCCESS; Worker live `9ae959d` (2026-10-24), 53 commits de diferencia, Pages SHA/migraciones no acreditados. Lote A **CANDIDATO / NO-GO** hasta revisión humana #571 y preflight #573. Este enlace es relativo desde `docs`.
+> **Release-readiness verificado 2026-10-29:** [matriz de 28 puntos y gates por lotes](release/HABITTA-PILOT-28-READINESS-20261029.md) — `main` 5cd7148, 4/4 push SUCCESS; Worker live `9ae959d` (2026-10-24), 53 commits de diferencia, Pages SHA no acreditado; **BD productiva: 202 migraciones, incluidas las diez 20261028*, verificadas por consulta read-only**. Lote A **CANDIDATO / NO-GO** hasta revisión humana #571 y preflight #573. Este enlace es relativo desde `docs`.
 
 **Fecha de corte:** 2026-10-28 (conciliación tras PRs #591 y #592) · **Epic:** [#515](https://github.com/aragondaniel91/Habitta-app/issues/515) · **Fuente de verdad:** issues, PRs, main, pipelines y despliegues.
 
