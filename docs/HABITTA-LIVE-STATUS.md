@@ -1,5 +1,8 @@
 # HABITTA — Estado vivo del proyecto / SDP
 
+> **Release-readiness evaluado 2026-10-29 (NO GO):** [matriz de 28 puntos y gates por lotes](release/HABITTA-PILOT-28-READINESS-20261029.md) — `main` 5cd7148, 4/4 push SUCCESS; Worker live `9ae959d` (2026-10-24), 53 commits de diferencia, Pages SHA no acreditado; **BD productiva: 202 migraciones, incluidas las diez `20261028*`, verificadas por consulta read-only**. Lote A **CANDIDATO / NO-GO** hasta revisión humana #571 y preflight #573.
+
+
 **Revisado manualmente:** 2026-10-28. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
