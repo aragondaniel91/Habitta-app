@@ -9,6 +9,13 @@
 - **Prueba prevista (solo Supabase/Worker local):** residente presenta USD 5.00 contra cargo USD 12.00 y revisor independiente aprueba: CxC conserva USD 7.00. Luego USD 5.00 contra USD 4.50: CxC administrativo y estado de cuenta del residente muestran USD 0.50 sin aplicar, separado por moneda. El caso niega al administrador de otro condominio el estado de cuenta y no le enumera créditos.
 - **Límites:** la prueba usa aprobación normal, RLS y token del llamante; no hay bypass de `approve_payment`, RLS/grants nuevos, minting, aplicación silenciosa ni FX. Ejecución, CI, revisión humana y Founder Accept siguen pendientes; producción no fue consultada ni modificada.
 
+## Sprint #585 — cierre de integración #594 (2026-10-28)
+
+- **GitHub main HEAD:** `8e8ddcdf9fac063f62e7857dfd4dddbd6706507d`, PR #594 MERGED (seguridad de roles por vínculo vigente). También incluye #595 `40f6c9a1862900bb7bcbdc75bcc813c46f2e619c`, #596 `ec3b9241a2366c0b7c985f5e62a7657eeca4a8cd` y #598 `2f09b506f0081f5e8a7f929ee8b10cf4a440115c`. Reconsultar GitHub al retomar.
+- **#594 exact-HEAD:** `5a572cfe890fc694741b4e8788fcb3ef9e3378df` con CI 40796127866, Supabase DB 40796127832, Playwright 40796127831 y Financial E2E 40796128113 — 4/4 SUCCESS. Local PostgreSQL **24/24 pgTAP** con rollback, incluyendo salvaguarda de acceso a conceptos financieros sin ampliar audiencia; suites heredadas de documentos/governance validadas. Claude Code en revisión independiente estática previa aprobó merge sin P0/P1 y dio seguimientos P2, registrados en [#597](https://github.com/aragondaniel91/Habitta-app/issues/597). **No equivale a cierre integral del punto #23**.
+- **Integración combinada de main** comprobada en worktree limpio sobre `8e8ddcd`: 5/5 TypeScript packages, 43/43 tests API focales, 13/13 tests web focales, `git diff --check` PASS.
+- **Producción NO promovida:** Worker `/health` verificado nuevamente en `9ae959d77f702f27cfa8ee52c6c095ad83744677` (build 2026-10-24); Pages SHA no certificado. #571 (aprobación humana de seguridad) y #573 (release preflight) siguen bloqueando deployment. Puntos #18/#28 (IA) siguen pospuestos.
+
 ## Sprint #585 — evidencias integradas (2026-10-28, PRs #595/#596)
 
 - **Main comprobado tras merge #595:** `40f6c9a1862900bb7bcbdc75bcc813c46f2e619c`. Incluye PR #596 merge `ec3b9241a2366c0b7c985f5e62a7657eeca4a8cd` (campos de pagos) y PR #595 merge `40f6c9a1862900bb7bcbdc75bcc813c46f2e619c` (saldos y créditos). Reconsultar GitHub al retomar.
