@@ -1525,7 +1525,18 @@ app.put('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
     target_payment: payment,
   });
   if (!allowed.ok || (await allowed.json()) !== true) return c.json({ error: 'Forbidden' }, 403);
-  await c.env.PAYMENT_PROOFS.put(key, bytes, { httpMetadata: { contentType: type } });
+  await c.env.PAYMENT_PROOFS.put(key, bytes, {
+    httpMetadata: { contentType: type },
+    // This bucket is shared by several private-document features. Keep enough
+    // server-only scope on the object to make an orphaned object auditable
+    // without making a client-controlled storage key part of this route.
+    customMetadata: {
+      condominiumId: id,
+      paymentId: payment,
+      proofId,
+      scope: 'payment-proof',
+    },
+  });
   const r = await rpc(c, 'record_payment_proof', {
     target: id,
     target_payment: payment,
@@ -1563,6 +1574,8 @@ app.get('/v1/condominiums/:id/payments/:paymentId/proof', async (c) => {
     headers: {
       'Content-Type': rows[0].content_type,
       'Content-Disposition': `attachment; filename="${safeName(rows[0].original_filename)}"`,
+      'Cache-Control': 'private, no-store, max-age=0',
+      'X-Content-Type-Options': 'nosniff',
     },
   });
 });
