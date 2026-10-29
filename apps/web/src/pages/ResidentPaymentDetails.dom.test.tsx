@@ -178,6 +178,10 @@ describe('resident submitted payment details', () => {
       expect(host.querySelector('.payments-drawer--centered')).not.toBeNull();
       expect(host.textContent).toContain('Unidad');
       expect(host.textContent).toContain('Transferencia bancaria');
+      expect(host.textContent).toContain('Referencia de la operación');
+      expect(host.textContent).toContain('REF-125');
+      expect(host.textContent).toContain('Comentario para revisión');
+      expect(host.textContent).toContain('No agregó un comentario.');
       expect(host.textContent).toContain('Total enviado');
       if (hasProposal) {
         expect(host.querySelector('table thead')?.textContent).toContain('Pendiente actual');
@@ -205,6 +209,7 @@ describe('resident submitted payment details', () => {
       expect(host.textContent).not.toContain('Aprobar');
       expect(host.querySelector('[aria-label="Nuevo comprobante"]')).toBeNull();
       expect(host.textContent).not.toContain('Reemplazar comprobante');
+      expect(host.querySelectorAll('input, textarea, select')).toHaveLength(0);
 
       act(() => root.unmount());
     },

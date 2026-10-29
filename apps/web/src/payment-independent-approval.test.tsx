@@ -87,9 +87,9 @@ describe('independent payment approval review DOM', () => {
     );
 
     expect(html).toContain('Datos y comprobante');
-    expect(html).toContain('Referencia del pago');
+    expect(html).toContain('Referencia de la operación');
     expect(html).toContain('TRANSFER-REF-4839');
-    expect(html).toContain('Comentarios del pagador');
+    expect(html).toContain('Comentario para revisión');
     expect(html).toContain('Abono para cuota extraordinaria y condominio.');
     expect(html).toContain('Comprobante adjunto');
     expect(html.match(/payments-proof-preview/g)?.length).toBe(1);
@@ -102,7 +102,7 @@ describe('independent payment approval review DOM', () => {
   it('explicitly tells the reviewer when reference or comments were not provided', () => {
     const html = renderReview(true);
     expect(html).toContain('Sin referencia registrada');
-    expect(html).toContain('No agregó comentarios.');
+    expect(html).toContain('No agregó un comentario.');
     expect(html).toContain('Cargando comprobante');
   });
 

@@ -80,9 +80,9 @@ test('administrator sees real submitted proof, payer comments and reference in r
   const dialog = page.getByRole('dialog', { name: 'Revisar pago' });
   const evidence = dialog.getByRole('region', { name: 'Datos y comprobante del pago' });
   await expect(evidence).toBeVisible();
-  await expect(evidence.getByText('Referencia del pago')).toBeVisible();
+  await expect(evidence.getByText('Referencia de la operación')).toBeVisible();
   await expect(evidence.getByText(unique, { exact: true })).toBeVisible();
-  await expect(evidence.getByText('Comentarios del pagador')).toBeVisible();
+  await expect(evidence.getByText('Comentario para revisión')).toBeVisible();
   await expect(evidence.getByText(note, { exact: true })).toBeVisible();
   const preview = evidence.locator('img[alt="Comprobante del pago"]');
   await expect(preview).toBeVisible();
