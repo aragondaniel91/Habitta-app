@@ -402,6 +402,7 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     setVoidDialogOpen(false);
     setVoidReason('');
     setFilters({ query: '', status: '', currency: '' });
+    setDebouncedSearch('');
     setExpensesPage(1);
   }, [condominiumId]);
 
