@@ -3,6 +3,13 @@
 **Revisado manualmente:** 2026-10-28. **Repositorio:** `aragondaniel91/Habitta-app`.
 **Lectura obligatoria** al iniciar una sesión nueva de ChatGPT, Claude o Codex. Este Markdown **no se sincroniza solo**: cada entrega debe actualizarlo mediante PR; el estado en GitHub (checks, issue, commit y deploy) es la fuente de verdad y debe reconsultarse. Prohibido inventar completitud.
 
+## SDP — Pagos #4 y multicargo #9 (2026-10-28)
+
+- **Main técnico verificado:** PR #603 merge `f96981ae1f7f55f6b89169176bb734f527094dfb`, HEAD `6e59754ba2a8e1ddd5441dc7929a0435619a776f` con CI 40809429598, DB 40809429583, Playwright 40809429596 y Financial E2E 40809429599 **4/4 SUCCESS**. Protege la escritura directa del RPC de propuestas multicargo; 46/46 pgTAP local en transacción reversible, 6/6 API focales y typecheck 5/5.
+- **Privacidad #4:** PR #604 merge `ffd2e2ac18d6bc7cc159b9a2325ce41942b44e85`, HEAD `6e7dd96586ef847f2c41f40df62d92a5ea586e8b` con CI 40809994849, DB 40809994889, Playwright 40809994902 y Financial E2E 40809994699 **4/4 SUCCESS**. Revoca funciones con owner-ID arbitrario para clients, expone sólo un guard por payment ID autorizado, protege borradores, comprobantes y propuestas, restringe recibos internos. 170/170 payments pgTAP y 5/5 staff helper pgTAP locales, 40/40 API tests, 5/5 TS, revisión independiente favorable. La primera ejecución remota detectó un test obsoleto que exigía exposición insegura; se corrigió el test sin reabrir permisos y se repitieron los cuatro gates.
+- **UX #9:** el código existente ya reabre wizard en borrador/corrección y entrega detalles al residente y revisor. Candidato `sprint/pilot9-visual-proof-20261028` agrega 3 tests DOM de página real y revisión administrativa para comprobar comprobante/referencia/comentario/desglose sin aprobar ni tocar ledger; 3/3 tests locales y 5/5 typechecks PASS. No declarar integración de estos tests hasta que su PR tenga 4/4.
+- **Estado comercial:** #4/#9 `IMPLEMENTED_MAIN / TESTED parcial`, no `RELEASED_VERIFIED`. Falta QA autenticado/visual con Founder y entorno real. Se excluye la IA #18/#28. La API productiva sigue en `9ae959d77f702f27cfa8ee52c6c095ad83744677` (última verificación 2026-10-28); #571 auditoría humana independiente y #573 preflight bloquean cualquier deploy.
+
 ## SDP — seguridad de vínculos #597 integrada en main (2026-10-28)
 
 - **GitHub main comprobado:** `fdbef1be2f5c540bce72e700f10aedaa14d3baee` (último merge #601), incluyendo PR #600 merge `f21052524a3efa62fd0376835dd1c74aa761d36c`. Reconsultar GitHub al retomar; código integrado **NO** significa publicado.
