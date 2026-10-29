@@ -375,7 +375,7 @@ test.describe('Ciclo financiero autenticado', () => {
     await submitAndApprove('5.00', '4.50', overpayment.id, `pilot-overpayment-${run}`);
     expect((await findCharge(overpaymentDescription)).outstanding_amount).toBe('0.00');
 
-    const workerUrl = 'http://127.0.0.1:8787';
+    const workerUrl = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:8787';
     const workerHeaders = (token: string) => ({ Authorization: `Bearer ${token}` });
     const cxc = await request.get(
       `${workerUrl}/v1/condominiums/${ids.primaryCondominium}/receivables/credit-balances`,
