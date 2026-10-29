@@ -51,10 +51,17 @@ insert into public.units(id, condominium_id, code, type, status, created_by)
 values ('19330000-0000-4000-8000-000000000001', '19320000-0000-4000-8000-000000000001', 'A-193', 'apartment', 'active', '19300000-0000-4000-8000-000000000001');
 
 insert into public.people(id, condominium_id, auth_user_id, first_name, last_name, email, status, created_by)
-values ('19340000-0000-4000-8000-000000000001', '19320000-0000-4000-8000-000000000001', '19300000-0000-4000-8000-000000000004', 'Tenant', 'HAB193', 'hab193-tenant@example.com', 'active', '19300000-0000-4000-8000-000000000001');
+values
+  ('19340000-0000-4000-8000-000000000001', '19320000-0000-4000-8000-000000000001', '19300000-0000-4000-8000-000000000004', 'Tenant', 'HAB193', 'hab193-tenant@example.com', 'active', '19300000-0000-4000-8000-000000000001'),
+  ('19340000-0000-4000-8000-000000000002', '19320000-0000-4000-8000-000000000001', '19300000-0000-4000-8000-000000000003', 'Owner', 'HAB193', 'hab193-owner@example.com', 'active', '19300000-0000-4000-8000-000000000001');
 
 insert into public.unit_occupancies(id, unit_id, person_id, occupancy_type, is_primary_contact, starts_at, created_by)
 values ('19350000-0000-4000-8000-000000000001', '19330000-0000-4000-8000-000000000001', '19340000-0000-4000-8000-000000000001', 'tenant', true, current_date - 30, '19300000-0000-4000-8000-000000000001');
+
+-- Owner membership is historical/account state; document access additionally requires
+-- this effective ownership relationship.
+insert into public.unit_owners(id, unit_id, person_id, starts_at, created_by)
+values ('19360000-0000-4000-8000-000000000001', '19330000-0000-4000-8000-000000000001', '19340000-0000-4000-8000-000000000002', current_date - 30, '19300000-0000-4000-8000-000000000001');
 
 insert into public.governance_proposals(id, condominium_id, title, description, closes_at, created_by)
 values

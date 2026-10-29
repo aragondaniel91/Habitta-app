@@ -28,6 +28,17 @@ values (
   'A-01', 'apartment', 'active', '20000000-0000-0000-0000-000000000001'
 );
 
+-- The original voter remains a current owner in this condominium after the
+-- A-01 transfer. This keeps the snapshot test about frozen electorate state,
+-- rather than treating a retained historical owner membership as live access.
+insert into public.units (id, condominium_id, building_id, code, type, status, created_by)
+values (
+  '20000000-0000-0000-0000-000000000022',
+  (select (payload #>> '{condominium,id}')::uuid from hab200_workspace),
+  (select (payload #>> '{building,id}')::uuid from hab200_workspace),
+  'A-02', 'apartment', 'active', '20000000-0000-0000-0000-000000000001'
+);
+
 insert into public.people (
   id, condominium_id, auth_user_id, first_name, last_name, email, status, created_by
 )
@@ -40,6 +51,15 @@ insert into public.unit_owners (
 )
 values (
   '20000000-0000-0000-0000-000000000021',
+  '20000000-0000-0000-0000-000000000031',
+  100, true, current_date - 30, '20000000-0000-0000-0000-000000000001'
+);
+
+insert into public.unit_owners (
+  unit_id, person_id, ownership_percentage, is_primary_contact, starts_at, created_by
+)
+values (
+  '20000000-0000-0000-0000-000000000022',
   '20000000-0000-0000-0000-000000000031',
   100, true, current_date - 30, '20000000-0000-0000-0000-000000000001'
 );
@@ -86,14 +106,14 @@ select is(
 select is(
   (select count(*) from public.governance_eligibility_snapshots
    where proposal_id = (select (proposal).id from hab200_proposal)),
-  1::bigint,
-  'one eligible unit creates one snapshot entitlement'
+  2::bigint,
+  'two eligible units create two snapshot entitlements'
 );
 
 select is(
   (select eligibility_count from public.governance_proposals
    where id = (select (proposal).id from hab200_proposal)),
-  1,
+  2,
   'proposal stores the frozen eligible entity count'
 );
 
@@ -137,7 +157,7 @@ select is(
     (select (payload #>> '{condominium,id}')::uuid from hab200_workspace),
     (select (proposal).id from hab200_proposal)
   ) -> 'units'),
-  1,
+  2,
   'original voter still sees the snapshotted unit after transfer'
 );
 
@@ -186,7 +206,7 @@ select is(
     (select (payload #>> '{condominium,id}')::uuid from hab200_workspace),
     (select (proposal).id from hab200_proposal)
   ) ->> 'eligible_count')::integer,
-  1,
+  2,
   'ownership transfer cannot change the frozen quorum denominator'
 );
 
@@ -256,7 +276,7 @@ select is(
   (select (decision_snapshot ->> 'eligible_count')::integer
    from public.governance_proposals
    where id = (select (proposal).id from hab200_proposal)),
-  1,
+  2,
   'final certification preserves the frozen eligible count'
 );
 
