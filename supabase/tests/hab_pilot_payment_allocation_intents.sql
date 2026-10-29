@@ -1,5 +1,5 @@
 begin;
-select plan(43);
+select plan(46);
 
 -- HAB-PILOT-002-P2B: Comprehensive database and RLS validation for resident payment allocation intents.
 -- Tests save_payment_allocation_intent, get_payment_allocation_intent, payment_allocation_intents_read RLS,
@@ -494,6 +494,49 @@ select is(
     where payment_id='87770000-0000-0000-0000-000000000001'
     and superseded_at is not null),0::bigint,
   'no proof was superseded during immutable submitted/under-review phases'
+);
+
+-- Direct RPC callers bypass the HTTP Zod schema. The database must reject absent
+-- and sub-cent fields before an intent can be persisted for reviewer consumption.
+reset role;
+update public.payments set status='draft'
+  where id='87770000-0000-0000-0000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000002', true);
+select throws_ok(
+  $$select public.save_payment_allocation_intent(
+    '87700000-0000-0000-0000-000000000001',
+    '87770000-0000-0000-0000-000000000001',
+    '[{"receivable_item_id":"87760000-0000-0000-0000-000000000001","payment_amount":"1.001","receivable_amount":"1.001","payment_currency_code":"USD","receivable_currency_code":"USD"}]'::jsonb
+  )$$,
+  'P0001', 'invalid payment allocations',
+  'direct RPC rejects proposal values below a currency minor unit'
+);
+
+select throws_ok(
+  $$select public.save_payment_allocation_intent(
+    '87700000-0000-0000-0000-000000000001',
+    '87770000-0000-0000-0000-000000000001',
+    '[{"receivable_item_id":"87760000-0000-0000-0000-000000000001","receivable_amount":"1.00","payment_currency_code":"USD","receivable_currency_code":"USD"}]'::jsonb
+  )$$,
+  'P0001', 'invalid payment allocations',
+  'direct RPC rejects a proposal with a missing payment amount'
+);
+
+-- A correction reopens exactly the editable boundary: its proposal can be
+-- replaced, while the submitted/under-review checks above remain immutable.
+reset role;
+update public.payments set status='correction_requested'
+  where id='87770000-0000-0000-0000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000002', true);
+select lives_ok(
+  $$select public.save_payment_allocation_intent(
+    '87700000-0000-0000-0000-000000000001',
+    '87770000-0000-0000-0000-000000000001',
+    '[{"receivable_item_id":"87760000-0000-0000-0000-000000000001","payment_amount":"70.00","receivable_amount":"70.00","payment_currency_code":"USD","receivable_currency_code":"USD"},{"receivable_item_id":"87760000-0000-0000-0000-000000000002","payment_amount":"50.00","receivable_amount":"50.00","payment_currency_code":"USD","receivable_currency_code":"USD"}]'::jsonb
+  )$$,
+  'correction-requested payment reopens and preserves a replaceable multi-charge proposal'
 );
 
 select set_config('request.jwt.claim.sub', '87710000-0000-0000-0000-000000000003', true);
