@@ -339,6 +339,7 @@ operationsRoutes.get('/:id/expenses', async (c) => {
   if (!pagination.success) return c.json({ error: pagination.error.flatten() }, 400);
   const status = c.req.query('status');
   const currencyCode = c.req.query('currency');
+  const search = z.string().trim().max(120).optional().parse(c.req.query('search'));
   const statusFilter = status
     ? z.enum(['draft', 'pending_approval', 'approved', 'paid', 'void']).parse(status)
     : '';
@@ -348,6 +349,16 @@ operationsRoutes.get('/:id/expenses', async (c) => {
     statusFilter ? `status=eq.${statusFilter}` : '',
     currencyFilter ? `currency_code=eq.${currencyFilter}` : '',
   ].filter(Boolean);
+  if (search) {
+    // PostgREST logical operators have reserved delimiters. Quote and escape
+    // the caller's literal search text before URL-encoding it as a single value.
+    const literal = search.replace(/[\\"%_*]/g, (character) => `\\${character}`);
+    const match = `"%${literal}%"`;
+    const or = ['description', 'invoice_number', 'payment_reference']
+      .map((column) => `${column}.ilike.${match}`)
+      .join(',');
+    filters.push(new URLSearchParams({ or: `(${or})` }).toString());
+  }
   // Backward compatibility: MaintenanceFinancialWorkspace still consumes an array.
   // The Expenses workspace opts into the bounded paginated response explicitly.
   if (c.req.query('page') === undefined && c.req.query('pageSize') === undefined) {

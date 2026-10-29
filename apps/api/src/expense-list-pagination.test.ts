@@ -80,4 +80,22 @@ describe('expense list pagination', () => {
     expect(upstream[0]!.url).not.toContain('limit=');
     expect(upstream[0]!.headers.get('Prefer')).not.toContain('count=exact');
   });
+
+  it('searches all tenant expenses before paging with quoted PostgREST predicates', async () => {
+    const { app, upstream } = buildApp();
+    const response = await app.request(
+      `/${condominiumId}/expenses?page=1&pageSize=10&search=${encodeURIComponent('Factura A,1')}`,
+      {},
+      env,
+    );
+    expect(response.status).toBe(200);
+    expect(upstream).toHaveLength(1);
+    const upstreamQuery = new URL(upstream[0]!.url).searchParams;
+    expect(upstreamQuery.get('condominium_id')).toBe(`eq.${condominiumId}`);
+    expect(upstreamQuery.get('or')).toBe(
+      '(description.ilike."%Factura A,1%",invoice_number.ilike."%Factura A,1%",payment_reference.ilike."%Factura A,1%")',
+    );
+    expect(upstreamQuery.get('limit')).toBe('10');
+    expect(upstreamQuery.get('offset')).toBe('0');
+  });
 });

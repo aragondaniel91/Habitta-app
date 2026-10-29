@@ -293,14 +293,12 @@ function CatalogsPanel({
   condominiumId,
   session,
   categories,
-  expenses,
   onChanged,
   onOpenDirectory,
 }: {
   condominiumId: string;
   session: Session;
   categories: ExpenseCategory[];
-  expenses: ExpenseRecord[];
   onChanged: () => void;
   onOpenDirectory: () => void;
 }) {
@@ -309,13 +307,6 @@ function CatalogsPanel({
       <ExpenseCategoryManager
         categories={categories}
         condominiumId={condominiumId}
-        expenseCounts={expenses.reduce<Record<string, number>>(
-          (counts, expense) => ({
-            ...counts,
-            [expense.category_id]: (counts[expense.category_id] ?? 0) + 1,
-          }),
-          {},
-        )}
         onChanged={onChanged}
         onOpenDirectory={onOpenDirectory}
         session={session}
@@ -339,6 +330,12 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
   const [voidReason, setVoidReason] = useState('');
   const [filters, setFilters] = useState({ query: '', status: '', currency: '' });
   const [expensesPage, setExpensesPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(filters.query.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [filters.query]);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -352,6 +349,7 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
         const requestInit = signal ? { signal } : undefined;
         if (filters.status) expenseQuery.set('status', filters.status);
         if (filters.currency) expenseQuery.set('currency', filters.currency);
+        if (debouncedSearch) expenseQuery.set('search', debouncedSearch);
         const [expenses, categories, vendors, summary] = await Promise.all([
           apiRequest<PaginatedResponse<ExpenseRecord>>(
             `/v1/condominiums/${condominiumId}/expenses?${expenseQuery}`,
@@ -386,7 +384,7 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [condominiumId, expensesPage, filters.currency, filters.status, session],
+    [condominiumId, debouncedSearch, expensesPage, filters.currency, filters.status, session],
   );
 
   useEffect(() => {
@@ -409,8 +407,8 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
 
   const selectedExpense = data?.expenses.find((expense) => expense.id === selectedExpenseId);
   const filteredExpenses = useMemo(
-    () => filterExpenses(data?.expenses ?? [], filters),
-    [data?.expenses, filters],
+    () => filterExpenses(data?.expenses ?? [], { ...filters, query: debouncedSearch }),
+    [data?.expenses, debouncedSearch, filters],
   );
   const currencies = useMemo(
     () => data?.summary.totals_by_currency.map((row) => row.currency_code).sort() ?? [],
@@ -583,9 +581,10 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             <input
               aria-label="Buscar gastos"
               className="input expenses-search"
-              onChange={(event) =>
-                setFilters((current) => ({ ...current, query: event.target.value }))
-              }
+              onChange={(event) => {
+                setExpensesPage(1);
+                setFilters((current) => ({ ...current, query: event.target.value }));
+              }}
               placeholder="Buscar descripción, factura o referencia…"
               value={filters.query}
             />
@@ -737,7 +736,6 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             <CatalogsPanel
               categories={data.categories}
               condominiumId={condominiumId}
-              expenses={data.expenses}
               onChanged={() => void load()}
               onOpenDirectory={() => setDrawer('vendors')}
               session={session}

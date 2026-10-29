@@ -16,9 +16,13 @@ Expenses path rather than changing ledger, role, or RLS behavior.
   **Compatibility:** `GET /expenses` without either pagination parameter preserves the original
   array response for `MaintenanceFinancialWorkspace`. That legacy consumer remains unbounded;
   #6 cannot be considered fully closed until it is migrated separately.
-- The Expenses UI requests that bounded page, passes status/currency filters to the Worker, keeps
-  the existing server summary for all-catalog financial totals, and provides previous/next page
-  controls. It continues to show the existing loading skeleton.
+- The Expenses UI requests that bounded page, passes status/currency and a **debounced
+  300 ms description/invoice/reference search** to PostgREST before pagination (search is across
+  the authorized tenant's full dataset, not only the first 50), keeps the existing server summary
+  for all-catalog financial totals, and provides previous/next page controls. It retains the
+  loading skeleton and cancels superseded fetches. Category-editor linked-expense counts are
+  temporarily hidden rather than showing incorrect current-page-only totals; a true aggregate
+  count is a separately tracked follow-up.
 - No SQL migration was required. The request is still made with the authenticated caller token,
   so the existing Supabase RLS policies remain the tenant authorization boundary.
 
