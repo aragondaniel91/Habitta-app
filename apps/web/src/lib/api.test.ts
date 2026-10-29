@@ -108,4 +108,18 @@ describe('apiRequest safe error messages', () => {
       message: expect.not.stringContaining('unique constraint'),
     });
   });
+
+  it('forwards an AbortSignal so superseded financial list loads can be cancelled', async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      expect(init.signal).toBe(controller.signal);
+      return new Response(JSON.stringify({ items: [] }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiRequest('/v1/condominiums/condo/expenses?page=1&pageSize=50', session, {
+      signal: controller.signal,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

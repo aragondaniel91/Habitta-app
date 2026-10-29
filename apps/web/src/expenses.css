@@ -278,6 +278,19 @@
   text-align: right;
 }
 
+.expenses-pagination {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.expenses-pagination span {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
 .expenses-drawer-layer {
   position: fixed;
   inset: 0;

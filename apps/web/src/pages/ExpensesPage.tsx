@@ -12,6 +12,7 @@ import { VendorDirectoryDrawer } from '../features/expenses/VendorDirectoryDrawe
 import { PrivateDocumentUploader } from '../features/documents/PrivateDocumentUploader';
 import { downloadPrivateDocument } from '../features/documents/api';
 import { apiRequest } from '../lib/api';
+import type { PageInfo, PaginatedResponse } from '../lib/pagination';
 import {
   expenseEventLabels,
   expenseStatusLabels,
@@ -40,6 +41,7 @@ type Props = {
 
 type WorkspaceData = {
   expenses: ExpenseRecord[];
+  expensesPage: PageInfo;
   categories: ExpenseCategory[];
   vendors: ExpenseVendor[];
   summary: ExpenseSummary;
@@ -59,6 +61,7 @@ const emptySummary: ExpenseSummary = {
   pending_approval_count: 0,
   active_vendor_count: 0,
 };
+const EXPENSES_PAGE_SIZE = 50;
 
 const statusTone = (status: ExpenseStatus) => {
   if (status === 'paid') return 'success' as const;
@@ -170,6 +173,10 @@ export function ExpenseFinancialSummary({
   onStatusSelect: (status: ExpenseStatus) => void;
 }) {
   const counts = getExpenseStatusCounts(expenses);
+  const totalExpenses = summary.totals_by_currency.reduce(
+    (total, currency) => total + currency.expense_count,
+    0,
+  );
 
   return (
     <section
@@ -184,7 +191,9 @@ export function ExpenseFinancialSummary({
             monedas.
           </p>
         </div>
-        <span>{expenses.length} registros en el condominio</span>
+        <span>
+          {expenses.length} cargados en esta página · {totalExpenses} registros en el condominio
+        </span>
       </div>
       <div className="expenses-metrics-grid">
         {lifecycleRows.map((row) => (
@@ -284,14 +293,12 @@ function CatalogsPanel({
   condominiumId,
   session,
   categories,
-  expenses,
   onChanged,
   onOpenDirectory,
 }: {
   condominiumId: string;
   session: Session;
   categories: ExpenseCategory[];
-  expenses: ExpenseRecord[];
   onChanged: () => void;
   onOpenDirectory: () => void;
 }) {
@@ -300,13 +307,6 @@ function CatalogsPanel({
       <ExpenseCategoryManager
         categories={categories}
         condominiumId={condominiumId}
-        expenseCounts={expenses.reduce<Record<string, number>>(
-          (counts, expense) => ({
-            ...counts,
-            [expense.category_id]: (counts[expense.category_id] ?? 0) + 1,
-          }),
-          {},
-        )}
         onChanged={onChanged}
         onOpenDirectory={onOpenDirectory}
         session={session}
@@ -329,35 +329,68 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [voidReason, setVoidReason] = useState('');
   const [filters, setFilters] = useState({ query: '', status: '', currency: '' });
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [expenses, categories, vendors, summary] = await Promise.all([
-        apiRequest<ExpenseRecord[]>(`/v1/condominiums/${condominiumId}/expenses`, session),
-        apiRequest<ExpenseCategory[]>(
-          `/v1/condominiums/${condominiumId}/expense-categories`,
-          session,
-        ),
-        apiRequest<ExpenseVendor[]>(`/v1/condominiums/${condominiumId}/vendors`, session),
-        apiRequest<ExpenseSummary>(
-          `/v1/condominiums/${condominiumId}/expenses/summary`,
-          session,
-        ).catch(() => emptySummary),
-      ]);
-      setData({ expenses, categories, vendors, summary });
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error ? requestError.message : 'No se pudieron cargar los gastos.',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [condominiumId, session]);
+  const [expensesPage, setExpensesPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
-    void load();
+    const timeout = window.setTimeout(() => setDebouncedSearch(filters.query.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [filters.query]);
+
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError('');
+      try {
+        const expenseQuery = new URLSearchParams({
+          page: String(expensesPage),
+          pageSize: String(EXPENSES_PAGE_SIZE),
+        });
+        const requestInit = signal ? { signal } : undefined;
+        if (filters.status) expenseQuery.set('status', filters.status);
+        if (filters.currency) expenseQuery.set('currency', filters.currency);
+        if (debouncedSearch) expenseQuery.set('search', debouncedSearch);
+        const [expenses, categories, vendors, summary] = await Promise.all([
+          apiRequest<PaginatedResponse<ExpenseRecord>>(
+            `/v1/condominiums/${condominiumId}/expenses?${expenseQuery}`,
+            session,
+            requestInit,
+          ),
+          apiRequest<ExpenseCategory[]>(
+            `/v1/condominiums/${condominiumId}/expense-categories`,
+            session,
+            requestInit,
+          ),
+          apiRequest<ExpenseVendor[]>(
+            `/v1/condominiums/${condominiumId}/vendors`,
+            session,
+            requestInit,
+          ),
+          apiRequest<ExpenseSummary>(
+            `/v1/condominiums/${condominiumId}/expenses/summary`,
+            session,
+            requestInit,
+          ).catch(() => emptySummary),
+        ]);
+        setData({ expenses: expenses.items, expensesPage: expenses, categories, vendors, summary });
+      } catch (requestError) {
+        if (signal?.aborted) return;
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'No se pudieron cargar los gastos.',
+        );
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [condominiumId, debouncedSearch, expensesPage, filters.currency, filters.status, session],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   useEffect(() => {
@@ -369,16 +402,18 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
     setVoidDialogOpen(false);
     setVoidReason('');
     setFilters({ query: '', status: '', currency: '' });
+    setDebouncedSearch('');
+    setExpensesPage(1);
   }, [condominiumId]);
 
   const selectedExpense = data?.expenses.find((expense) => expense.id === selectedExpenseId);
   const filteredExpenses = useMemo(
-    () => filterExpenses(data?.expenses ?? [], filters),
-    [data?.expenses, filters],
+    () => filterExpenses(data?.expenses ?? [], { ...filters, query: debouncedSearch }),
+    [data?.expenses, debouncedSearch, filters],
   );
   const currencies = useMemo(
-    () => [...new Set((data?.expenses ?? []).map((expense) => expense.currency_code))].sort(),
-    [data?.expenses],
+    () => data?.summary.totals_by_currency.map((row) => row.currency_code).sort() ?? [],
+    [data?.summary.totals_by_currency],
   );
 
   const latestAttachmentsRequest = useRef(0);
@@ -532,12 +567,13 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
         <ExpenseFinancialSummary
           activeStatus={filters.status}
           expenses={data.expenses}
-          onStatusSelect={(status) =>
+          onStatusSelect={(status) => {
+            setExpensesPage(1);
             setFilters((current) => ({
               ...current,
               status: current.status === status ? '' : status,
-            }))
-          }
+            }));
+          }}
           summary={data.summary}
         />
 
@@ -546,17 +582,19 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             <input
               aria-label="Buscar gastos"
               className="input expenses-search"
-              onChange={(event) =>
-                setFilters((current) => ({ ...current, query: event.target.value }))
-              }
+              onChange={(event) => {
+                setExpensesPage(1);
+                setFilters((current) => ({ ...current, query: event.target.value }));
+              }}
               placeholder="Buscar descripción, factura o referencia…"
               value={filters.query}
             />
             <Select
               aria-label="Filtrar por estado"
-              onChange={(event) =>
-                setFilters((current) => ({ ...current, status: event.target.value }))
-              }
+              onChange={(event) => {
+                setExpensesPage(1);
+                setFilters((current) => ({ ...current, status: event.target.value }));
+              }}
               value={filters.status}
             >
               <option value="">Todos los estados</option>
@@ -568,9 +606,10 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             </Select>
             <Select
               aria-label="Filtrar por moneda"
-              onChange={(event) =>
-                setFilters((current) => ({ ...current, currency: event.target.value }))
-              }
+              onChange={(event) => {
+                setExpensesPage(1);
+                setFilters((current) => ({ ...current, currency: event.target.value }));
+              }}
               value={filters.currency}
             >
               <option value="">Todas las monedas</option>
@@ -631,6 +670,30 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
               title="No hay gastos para mostrar"
             />
           )}
+          {data.expensesPage.totalPages > 1 ? (
+            <div aria-label="Paginación de gastos" className="expenses-pagination">
+              <Button
+                disabled={!data.expensesPage.hasPreviousPage || loading}
+                onClick={() => setExpensesPage((current) => current - 1)}
+                size="sm"
+                variant="secondary"
+              >
+                Anterior
+              </Button>
+              <span>
+                Página {data.expensesPage.page} de {data.expensesPage.totalPages} ·{' '}
+                {data.expensesPage.total} gastos
+              </span>
+              <Button
+                disabled={!data.expensesPage.hasNextPage || loading}
+                onClick={() => setExpensesPage((current) => current + 1)}
+                size="sm"
+                variant="secondary"
+              >
+                Siguiente
+              </Button>
+            </div>
+          ) : null}
         </Surface>
 
         {drawer === 'create' ? (
@@ -674,7 +737,6 @@ export function ExpensesPage({ condominiumId, condominiumName, session }: Props)
             <CatalogsPanel
               categories={data.categories}
               condominiumId={condominiumId}
-              expenses={data.expenses}
               onChanged={() => void load()}
               onOpenDirectory={() => setDrawer('vendors')}
               session={session}
