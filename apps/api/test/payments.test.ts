@@ -563,6 +563,43 @@ describe('payment HTTP routes', () => {
     expect(put).toHaveBeenCalledOnce();
     expect(remove).toHaveBeenCalledOnce();
   });
+  it('stores a proof under a server-generated key with private payment metadata', async () => {
+    const put = vi.fn(async () => ({}));
+    const proofId = '00000000-0000-0000-0000-000000000004';
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue(proofId);
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        if (calls === 1) return auth();
+        if (calls === 2) return Response.json(true);
+        return Response.json({ id: proofId });
+      }),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}/proof`,
+      {
+        method: 'PUT',
+        headers: { ...token, 'Content-Type': 'image/png', 'X-Filename': 'proof.png' },
+        body: 'proof',
+      },
+      env({ put }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ id: proofId });
+    expect(put).toHaveBeenCalledWith(`payments/${proofId}`, expect.any(ArrayBuffer), {
+      httpMetadata: { contentType: 'image/png' },
+      customMetadata: {
+        condominiumId: condo,
+        paymentId: payment,
+        proofId,
+        scope: 'payment-proof',
+      },
+    });
+  });
   it('treats a payment with no stored proof as a 204 empty state, without querying R2', async () => {
     const get = vi.fn();
     vi.stubGlobal(
@@ -596,6 +633,33 @@ describe('payment HTTP routes', () => {
     );
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: 'Forbidden' });
+  });
+
+  it('returns an authorized existing proof from its server-derived key with private response headers', async () => {
+    const get = vi.fn(async () => ({ body: new Response('proof bytes').body }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) =>
+        String(input).includes('/auth/v1/user')
+          ? auth()
+          : Response.json([
+              { id: payment, original_filename: 'transfer.png', content_type: 'image/png' },
+            ]),
+      ),
+    );
+
+    const response = await app.request(
+      `/v1/condominiums/${condo}/payments/${payment}/proof`,
+      { headers: token },
+      env({ get }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('proof bytes');
+    expect(get).toHaveBeenCalledWith(`payments/${payment}`);
+    expect(response.headers.get('Content-Type')).toBe('image/png');
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store, max-age=0');
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
   });
 
   it('returns the scoped proof version history without revealing R2 paths or digests', async () => {
