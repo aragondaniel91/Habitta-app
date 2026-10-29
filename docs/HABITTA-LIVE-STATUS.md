@@ -122,7 +122,7 @@ Los estados anteriores son **etiquetas de evidencia acumulativas**, no niveles e
 | 20 | Personas: junta de edificios y familia casas | POR VERIFICAR | #518 |
 | 21 | Módulo junta/comité de condominio | POR VERIFICAR | #518 |
 | 22 | Opciones de ocupación en vínculos | POR VERIFICAR | #518 |
-| 23 | Fin de vínculo revoca activo, conserva historia | POR VERIFICAR | #518 |
+| 23 | Fin de vínculo revoca activo, conserva historia | CANDIDATO PARCIAL LOCAL; pgTAP pendiente de ejecución. El cierre efectivo de propiedad/ocupación conserva historia y revoca accesos derivados; no hay aceptación, merge ni despliegue. Junta/representante de directorio no es grant de `board_member`, y `ends_at` es inclusivo hasta fin de día: requieren decisión de enlace/granularidad para revocación de junta y cierre intradía. | #518 |
 | 24 | Patrón visual de Gastos para otros módulos | POR VERIFICAR | #517 |
 | 25 | Tesorería conciliaciones, extractos, libros | PARCIAL | #519 |
 | 26 | Filtrar convenios como cartera de cargos | POR VERIFICAR | #517 |
