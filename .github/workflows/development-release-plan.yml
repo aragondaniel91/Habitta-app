@@ -47,13 +47,15 @@ jobs:
           version: 2.84.2
       - run: pnpm install --frozen-lockfile
       - name: Validate protected release inputs
+        env:
+          SUPABASE_ACCESS_TOKEN: '${{ secrets.SUPABASE_ACCESS_TOKEN }}'
         run: |
           test "$APP_ENV" = development
           test "$NOTIFICATIONS_EMAIL_MODE" = disabled
           test -n "$SUPABASE_PROJECT_REF"
           test -n "$INPUT_CONFIRM_PROJECT_REF"
           test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
-          node scripts/release/assert-development-isolation.mjs
+          node scripts/release/assert-development-isolation.mjs --mode plan
       - run: pnpm notifications:config:check
       - run: pnpm release:dev:validate
       - run: pnpm format:check

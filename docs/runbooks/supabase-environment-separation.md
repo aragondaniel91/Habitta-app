@@ -18,24 +18,66 @@ Development can no longer reach production through a workflow:
 
 Until the steps below are done, development releases cannot run at all. That is the intended fail-closed state.
 
-## Founder steps (not executed; each needs explicit approval)
+## What the isolation guard proves
 
-Order matters: production must keep working at every step.
+`assert-development-isolation.mjs --mode plan|apply` runs inside both development workflows before
+any credential is used for real work. It fails closed: a missing setting, an unknown key format or a
+check that cannot be completed is a refusal.
 
-1. **Protect the `production` environment.** Settings → Environments → `production`: required reviewer (founder) and deployment branches limited to `main`.
-2. **Move production credentials into `production`.** Get the values from the Supabase dashboard of `kgsfaahixbcwcmykmhat` (they cannot be read back from GitHub), then:
+- **Static checks:** every critical setting must be present. The project ref must be a development
+  ref, and both URLs must be exactly `https://<that ref>.supabase.co`. JWT keys must name that ref and
+  the expected role, and non-JWT keys must carry the expected prefix (`sb_publishable_`, `sb_secret_`).
+- **Live checks:**
+  - every key must be **accepted** by the development project and **refused** (401/403) by production;
+  - the access token must see the development project and must not see production.
+  This is what covers the non-JWT keys, which carry no project ref.
+
+Consequence: a Supabase personal access token belongs to an account, not to a project. A token from
+the account that owns production can always see production, so it is refused. A cloud development
+project needs a Supabase account (or organization member) that has no access to production.
+Otherwise, use local Supabase for development.
+
+## Founder procedure: protect production without breaking any workflow (not executed)
+
+GitHub gives a job its environment's secrets **plus** the repository's, and the environment value
+wins when both define a name. That is what makes this order safe: nothing breaks at any step, and
+each step can be checked before the next.
+
+1. **Merge this PR.** The nightly backup moves to its own environment, `production-backup`: no
+   reviewers, so a required approval never stops it. Until step 3, both `production` and
+   `production-backup` keep reading the repository secrets as they do today.
+2. **Configure the environments** (Settings → Environments):
+   - `production-backup`: deployment branches limited to `main`, no required reviewers.
+   - `production`: required reviewer = founder, deployment branches limited to `main`. Production
+     Release, Stripe verification and the restore drill will wait for your approval. The backup will
+     not.
+3. **Copy the credentials into the environments.** Use values from the Supabase and Cloudflare
+   dashboards; GitHub cannot show the current ones. Each command prompts for the value, so it never
+   appears on a command line:
    ```
-   gh secret set SUPABASE_SERVICE_ROLE_KEY --env production -R aragondaniel91/Habitta-app
-   gh secret set SUPABASE_DB_PASSWORD      --env production -R aragondaniel91/Habitta-app
-   gh secret set SUPABASE_ACCESS_TOKEN     --env production -R aragondaniel91/Habitta-app
-   gh secret set SUPABASE_ANON_KEY         --env production -R aragondaniel91/Habitta-app
+   # production: everything a release needs
+   for s in SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_PASSWORD SUPABASE_ACCESS_TOKEN SUPABASE_ANON_KEY CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ZEPTOMAIL_SEND_TOKEN; do
+     gh secret set "$s" --env production -R aragondaniel91/Habitta-app; done
+   # production-backup: only what the backup needs
+   for s in SUPABASE_DB_PASSWORD SUPABASE_ACCESS_TOKEN CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+     gh secret set "$s" --env production-backup -R aragondaniel91/Habitta-app; done
    gh variable set SUPABASE_PROJECT_REF --env production --body kgsfaahixbcwcmykmhat -R aragondaniel91/Habitta-app
+   gh variable set SUPABASE_PROJECT_REF --env production-backup --body kgsfaahixbcwcmykmhat -R aragondaniel91/Habitta-app
    ```
-   Each command prompts for the value, so the value never appears on a command line. Do the same for `SUPABASE_URL` and `VITE_SUPABASE_URL` as environment variables.
-3. **Prove production still works** by dispatching `Production Database Backup`. It reads the environment-scoped secrets and must succeed.
-4. **Delete the repository-level copies**: `gh secret delete <NAME> -R aragondaniel91/Habitta-app` for the four secrets, and `gh variable delete` for the three repository variables.
-5. **Create the development database**: either a new Supabase project or Supabase local only. Then set its own `SUPABASE_*` values in the `development` environment.
-6. **Delete `habitta-api-dev`** (containment B) and redeploy development only through `Development Release Apply` once step 5 exists.
+   Do the same for `SUPABASE_URL` and `VITE_SUPABASE_URL` in `production`.
+   **`BACKUP_ENCRYPTION_PASSPHRASE`:** copy it only if you have the current value stored outside
+   GitHub. Every existing backup was encrypted with it. If you do not have it, leave the repository
+   copy in place; it is the only key to those backups.
+4. **Prove both paths still work:**
+   - Dispatch `Production Database Backup`; it must succeed without asking for approval.
+   - Dispatch `Database Restore Drill` on that backup; it must ask for your approval, then pass.
+5. **Delete the repository-level copies** of the Supabase, Cloudflare and ZeptoMail secrets
+   (`gh secret delete <NAME> -R aragondaniel91/Habitta-app`) and of the three repository variables.
+   Then repeat step 4. Any workflow that silently depended on a repository copy fails here,
+   visibly, instead of later.
+6. **Development** gets its own project and credentials in the `development` environment. The
+   isolation guard proves them before every development release.
+7. **Delete `habitta-api-dev`** (containment B) once its removal is approved.
 
 ## Mandatory separation trigger
 

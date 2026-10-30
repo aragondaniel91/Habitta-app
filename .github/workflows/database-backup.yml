@@ -21,7 +21,9 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: production
+    # Scheduled nightly: its own environment, restricted to main, without reviewers, so a required
+    # approval on `production` never stops the backup.
+    environment: production-backup
     steps:
       - uses: actions/checkout@v4
 
