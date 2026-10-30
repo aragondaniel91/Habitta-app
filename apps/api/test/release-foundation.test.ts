@@ -156,7 +156,8 @@ describe('development release safeguards', () => {
       readFile(new URL('.github/workflows/development-release-plan.yml', root), 'utf8'),
       readFile(new URL('.github/workflows/development-release-apply.yml', root), 'utf8'),
     ]);
-    expect(plan).not.toContain('environment: development');
+    // Both run in the development environment, so neither can see production credentials.
+    expect(plan).toContain('environment: development');
     expect(apply).toContain('environment: development');
     expect(plan).toContain('SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}');
     expect(apply).toContain('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');

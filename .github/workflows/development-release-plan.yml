@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   plan:
+    # Development credentials live in the development environment only; production's are never in scope here.
+    environment: development
     runs-on: ubuntu-latest
     env:
       APP_ENV: development
@@ -45,12 +47,15 @@ jobs:
           version: 2.84.2
       - run: pnpm install --frozen-lockfile
       - name: Validate protected release inputs
+        env:
+          SUPABASE_ACCESS_TOKEN: '${{ secrets.SUPABASE_ACCESS_TOKEN }}'
         run: |
           test "$APP_ENV" = development
           test "$NOTIFICATIONS_EMAIL_MODE" = disabled
           test -n "$SUPABASE_PROJECT_REF"
           test -n "$INPUT_CONFIRM_PROJECT_REF"
           test "$INPUT_CONFIRM_PROJECT_REF" = "$SUPABASE_PROJECT_REF"
+          node scripts/release/assert-development-isolation.mjs --mode plan
       - run: pnpm notifications:config:check
       - run: pnpm release:dev:validate
       - run: pnpm format:check
