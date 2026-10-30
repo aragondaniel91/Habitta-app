@@ -1,5 +1,12 @@
 # HABITTA — Estado vivo del proyecto / SDP
 
+## 2026-10-30
+
+- PR #615 "security: development cannot reach production credentials or database", integrado en `main` el 2026-10-30.
+- PR #616 "ops(HAB-418): rehearse the pre-launch reset end to end (no production deletion)", integrado en `main` el 2026-10-30.
+- PR #619 "Corregir docs/PROJECT-DECISIONS.md: sitio comercial es HTML/CSS/JS estático, no Astro": cerrado sin fusionar el 2026-10-30; su corrección quedó incorporada en #620.
+- PR #620 "Actualizar correo y aislamiento en PROJECT-DECISIONS": borrador; CI en verde (quality, pgtap, financial-e2e y public-browser). Alcance: correo ZeptoMail, aislamiento entre entornos y sitio estático. Describe configuración declarada en el repositorio, no estado productivo verificado.
+
 > **Release-readiness actualizado 2026-10-29 — NO GO:** [matriz 28 puntos](release/HABITTA-PILOT-28-READINESS-20261029.md) y [preflight de solo lectura](release/HABITTA-PILOT-A-READONLY-PREFLIGHT.md). Base de esta validación `main` `78bc6948fcf2d42289eddfd8c4bae69fb6f5d890`, 4/4 workflows de main SUCCESS; Worker productivo `9ae959d77f702f27cfa8ee52c6c095ad83744677` (24-oct), **55 commits** por detrás; Pages SHA no acreditado. Supabase productivo **203 migraciones registradas** (incluida `20261029134919`) = 203 versiones locales; paridad de historial **no** es auditoría de esquema. Preflight local **18/18 PASS**, smoke HTTP público positivo pero Worker SHA `BLOCK`; aún requieren #612 auto SQL deploy controlado, #569 clasificación privilegiada, #571 dictamen humano independiente y #573 restore/rollback/aceptación del lote. **No hay publicación nueva de Worker/Pages.**
 
 
