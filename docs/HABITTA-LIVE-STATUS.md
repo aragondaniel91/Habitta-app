@@ -1,3 +1,11 @@
+## PRs integrados a main (2026-10-29)
+
+- #614 'Sprint/pilot1 dashboard navigation 20261029' (`2d65974`)
+- #613 'release: fail-closed, read-only preflight for pilot Release A' (`e90f1a5`)
+- #611 'fix(security): deny anonymous EXECUTE on multicargo proposal RPC' (`78bc694`)
+- #609 'docs(release): 28-point go/no-go evidence and scoped Release A preflight' (`2d14391`)
+- #608 'docs(sdp): reconcile verified #606/#607 and partial pilot #5/#6' (`5cd7148`)
+
 # HABITTA — Estado vivo del proyecto / SDP
 
 > **Release-readiness actualizado 2026-10-29 — NO GO:** [matriz 28 puntos](release/HABITTA-PILOT-28-READINESS-20261029.md) y [preflight de solo lectura](release/HABITTA-PILOT-A-READONLY-PREFLIGHT.md). Base de esta validación `main` `78bc6948fcf2d42289eddfd8c4bae69fb6f5d890`, 4/4 workflows de main SUCCESS; Worker productivo `9ae959d77f702f27cfa8ee52c6c095ad83744677` (24-oct), **55 commits** por detrás; Pages SHA no acreditado. Supabase productivo **203 migraciones registradas** (incluida `20261029134919`) = 203 versiones locales; paridad de historial **no** es auditoría de esquema. Preflight local **18/18 PASS**, smoke HTTP público positivo pero Worker SHA `BLOCK`; aún requieren #612 auto SQL deploy controlado, #569 clasificación privilegiada, #571 dictamen humano independiente y #573 restore/rollback/aceptación del lote. **No hay publicación nueva de Worker/Pages.**
