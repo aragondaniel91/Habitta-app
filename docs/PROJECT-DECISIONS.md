@@ -32,7 +32,7 @@ Desarrollo y producción no deben compartir proyecto ni credenciales de Supabase
 
 El valor local predeterminado de la API es `SUPABASE_URL=http://127.0.0.1:54321` en `apps/api/wrangler.jsonc`; `supabase/config.toml` configura el servicio API local en el puerto `54321`. El flujo `.github/workflows/financial-e2e.yml` inicia Supabase local y usa esa misma URL. Esto confirma el uso local para la configuración base y las pruebas financieras, pero no documenta que exista actualmente un proyecto Supabase remoto de desarrollo.
 
-La configuración declarada en `apps/api/wrangler.jsonc` es:
+La configuración **declarada en el repositorio** (`apps/api/wrangler.jsonc`) es la siguiente. Describe lo que el código pide desplegar; el estado realmente desplegado en Cloudflare, Supabase y ZeptoMail no se verifica en este documento y requiere una auditoría de solo lectura en esos servicios.
 
 1. `env.dev.vars.NOTIFICATIONS_EMAIL_MODE` es `disabled` y `env.dev.vars.NOTIFICATIONS_EMAIL_PROVIDER` es `zeptomail`; `env.dev.triggers.crons` es una lista vacía.
 2. `env.prod.vars.NOTIFICATIONS_EMAIL_MODE` es `live` y `env.prod.vars.NOTIFICATIONS_EMAIL_PROVIDER` es `zeptomail`; `env.prod.triggers.crons` declara `*/5 * * * *`.
