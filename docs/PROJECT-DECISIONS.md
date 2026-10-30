@@ -30,6 +30,8 @@ La infraestructura comenzará gratuita. Los planes se ampliarán cuando Habitta 
 
 Desarrollo y producción usan el mismo proyecto Supabase mientras Habitta no tenga ingresos. Es una decisión deliberada de costo, no un descuido.
 
+**2026-10-29:** El PR #615, "security: development cannot reach production credentials or database" (rama `security/env-isolation-dev-prod`), está en borrador con CI pendiente y trabaja activamente en separar los entornos de desarrollo y producción.
+
 Mientras la base sea compartida se aplican dos restricciones obligatorias:
 
 1. **El correo de producción permanece en `disabled`.** Activarlo enviaría mensajes reales a las direcciones que aparezcan en datos de prueba.
