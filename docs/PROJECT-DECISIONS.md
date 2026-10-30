@@ -1,6 +1,6 @@
 # Habitta — Decisiones aprobadas
 
-**Última actualización:** 23 de julio de 2026
+**Última actualización:** 30 de octubre de 2026
 
 ## Producto
 
@@ -21,25 +21,23 @@ Habitta será una plataforma SaaS multi-condominio para administradoras, condomi
 
 - Cloudflare para frontend, API, R2, Queues, seguridad y despliegue.
 - Supabase Free para PostgreSQL y autenticación.
-- Resend Free para correo transaccional.
+- ZeptoMail para correo transaccional.
 - GitHub para código, migraciones, documentación y CI.
 
 La infraestructura comenzará gratuita. Los planes se ampliarán cuando Habitta tenga clientes o uso real, sin cambiar arquitectura ni reescribir la aplicación.
 
-## Base de datos compartida entre desarrollo y producción
+## Aislamiento entre desarrollo y producción
 
-Desarrollo y producción usan el mismo proyecto Supabase mientras Habitta no tenga ingresos. Es una decisión deliberada de costo, no un descuido.
+Desarrollo y producción no deben compartir proyecto ni credenciales de Supabase. El guardarraíl de #615, implementado en `scripts/release/assert-development-isolation.mjs`, rechaza una entrega de desarrollo si `SUPABASE_PROJECT_REF`, `SUPABASE_URL`, `VITE_SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` o `SUPABASE_ACCESS_TOKEN` pueden pertenecer o acceder a producción; exige que las comprobaciones estáticas y en vivo prueben el aislamiento. `scripts/release/validate-development-release.mjs` también prohíbe que `env.dev.vars.SUPABASE_URL` quede fijada en `apps/api/wrangler.jsonc`: esa URL se entrega en tiempo de ejecución y debe pasar el guardarraíl.
 
-Mientras la base sea compartida se aplican dos restricciones obligatorias:
+El valor local predeterminado de la API es `SUPABASE_URL=http://127.0.0.1:54321` en `apps/api/wrangler.jsonc`; `supabase/config.toml` configura el servicio API local en el puerto `54321`. El flujo `.github/workflows/financial-e2e.yml` inicia Supabase local y usa esa misma URL. Esto confirma el uso local para la configuración base y las pruebas financieras, pero no documenta que exista actualmente un proyecto Supabase remoto de desarrollo.
 
-1. **El correo de producción permanece en `disabled`.** Activarlo enviaría mensajes reales a las direcciones que aparezcan en datos de prueba.
-2. **El entorno `prod` no declara cron.** `claim_due_notification_deliveries` filtra solo por estado y fecha de vencimiento, sin columna de entorno. Dos Workers programados sobre la misma base competirían por las mismas entregas: el de producción las reclamaría y, al estar el correo desactivado, las descartaría como `skipped`, dejando sin enviar las que desarrollo necesita en su bandeja sandbox.
+La configuración declarada en `apps/api/wrangler.jsonc` es:
 
-`scripts/cloudflare/validate-notifications-config.mjs` hace cumplir la segunda restricción y corre en CI y en el release de producción. El guardarraíl es condicional: compara `env.dev.vars.SUPABASE_URL` con `env.prod.vars.SUPABASE_URL` y, en cuanto dejen de coincidir, vuelve a **exigir** el cron en producción. No hay que acordarse de revertirlo.
+1. `env.dev.vars.NOTIFICATIONS_EMAIL_MODE` es `disabled` y `env.dev.vars.NOTIFICATIONS_EMAIL_PROVIDER` es `zeptomail`; `env.dev.triggers.crons` es una lista vacía.
+2. `env.prod.vars.NOTIFICATIONS_EMAIL_MODE` es `live` y `env.prod.vars.NOTIFICATIONS_EMAIL_PROVIDER` es `zeptomail`; `env.prod.triggers.crons` declara `*/5 * * * *`.
 
-**Condición para separar los entornos:** el primer condominio real con datos de personas y pagos verdaderos. La vía sin costo adicional es mover el desarrollo diario a Supabase local — `supabase/config.toml` ya existe y `financial-e2e.yml` ya lo usa — dejando el proyecto en la nube como exclusivo de producción.
-
-Al separar, ambas restricciones se levantan juntas: se activa el correo de producción y se restaura `"triggers": { "crons": ["*/5 * * * *"] }` en el entorno `prod`.
+Por tanto, la antigua afirmación de que producción debía permanecer con correo desactivado y sin cron no coincide con la configuración vigente. Existe una diferencia adicional que debe conservarse visible: `.github/workflows/development-release-apply.yml` entrega al Worker de desarrollo `NOTIFICATIONS_EMAIL_MODE=sandbox`; no debe confundirse esa sustitución de despliegue con el valor `disabled` declarado en `apps/api/wrangler.jsonc`.
 
 > Nota para quien edite `apps/api/wrangler.jsonc`: pese a la extensión `.jsonc`, el archivo **no admite comentarios**. Los dos validadores que lo leen (`validate-notifications-config.mjs` y `validate-development-release.mjs`) solo eliminan comas finales antes de `JSON.parse`, así que un comentario `//` rompe CI.
 
@@ -52,7 +50,7 @@ Al separar, ambas restricciones se levantan juntas: se activa el correo de produ
 - Autenticación: Supabase Auth
 - Documentos privados: Cloudflare R2
 - Procesos asíncronos: Cloudflare Queues
-- Correo: Resend
+- Correo: ZeptoMail
 - Aplicación móvil futura: React Native + Expo
 
 ## Módulos prioritarios
