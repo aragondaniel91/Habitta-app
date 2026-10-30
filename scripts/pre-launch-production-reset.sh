@@ -114,6 +114,20 @@ ok_if() { [ "$1" -eq 0 ] && echo ok || echo fail; }
 
 q() { psql -X -qAt -v ON_ERROR_STOP=1 -c "$1"; }
 
+# Platform-wide access as the account itself experiences it: a signed-in session (role
+# authenticated, its own subject), going through RLS and the same functions the admin app calls.
+# Never service_role. Prints "yes" only when the access really works.
+admin_access_as() {
+  psql -X -qAt -v ON_ERROR_STOP=1 2>/dev/null <<SQL | tail -n1 || echo no
+begin;
+select set_config('request.jwt.claims', json_build_object('sub','$1','role','authenticated')::text, true);
+set local role authenticated;
+select count(*) from public.get_platform_condominium_overview();
+select case when public.is_platform_admin() then 'yes' else 'no' end;
+rollback;
+SQL
+}
+
 abort() {
   say ''; say "ABORT: $*"
   record ''; record "ABORT: $*"
@@ -353,8 +367,9 @@ for survivor in "${survivors[@]}"; do
   condo_roles="$(q "select count(*) from public.condominium_memberships where user_id = '$survivor'")"
   both "  survivor ${survivor:0:8}...  platform_admin=$([ "$is_admin" -eq 1 ] && echo yes || echo no)  tenant memberships removed with the tenants: $((org_roles + condo_roles))"
   if [ "${REQUIRE_SURVIVOR_PLATFORM_ADMIN:-false}" = 'true' ]; then
-    if [ "$is_admin" -eq 1 ]; then check "survivor ${survivor:0:8}... is a platform admin" ok
-    else check "survivor ${survivor:0:8}... is a platform admin" fail \
+    if [ "$is_admin" -eq 1 ] && [ "$(admin_access_as "$survivor")" = 'yes' ]; then
+      check "survivor ${survivor:0:8}... is a platform admin and its access works" ok 'as itself, through RLS'
+    else check "survivor ${survivor:0:8}... is a platform admin and its access works" fail \
       'register it in public.platform_admins before the reset, as a separate approved change'; fi
   fi
 done
@@ -903,6 +918,8 @@ for survivor in "${survivors[@]}"; do
   if [ "${REQUIRE_SURVIVOR_PLATFORM_ADMIN:-false}" = 'true' ]; then
     check "survivor ${survivor:0:8}... is still a platform admin" \
       "$( [ "$(q "select count(*) from public.platform_admins where user_id = '$survivor'")" -eq 1 ] && echo ok || echo fail )"
+    check "survivor ${survivor:0:8}... keeps working platform-wide access after the reset" \
+      "$( [ "$(admin_access_as "$survivor")" = 'yes' ] && echo ok || echo fail )" 'signed in as itself, never service_role'
   fi
 done
 

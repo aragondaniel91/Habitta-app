@@ -124,8 +124,10 @@ rehearsal can touch production:
 2. **On a restored copy of production.** Dispatch `Database Restore Drill` with the latest daily
    backup key, `rehearse_reset: true` and `survivor_email_sha256` set to the sha256 of the lower-cased
    Master Admin address (`printf '%s' 'address' | sha256sum`). The drill restores into its disposable
-   database, freezes the inventory, deletes every test tenant, removes the other Auth rows with SQL
-   (exactly what the Admin API does), and verifies that only the Master Admin remains, that schema,
+   database with `REQUIRE_SURVIVOR_PLATFORM_ADMIN=true`, so it refuses to go on unless the Master
+   Admin is already a platform admin whose access works, signed in as itself through RLS and never as
+   `service_role`. It then freezes the inventory, deletes every test tenant, removes the other Auth rows with SQL
+   (exactly what the Admin API does), and verifies that only the Master Admin remains and still has working platform-wide access, that schema,
    migrations, RLS, functions and catalogues are unchanged, and that no notification is left to send.
    The public log shows counts and check results only. The full reports, which name accounts, are
    uploaded encrypted with the backup passphrase (`reset-rehearsal-encrypted`, 3 days). To read them:

@@ -413,7 +413,9 @@ jobs:
           printf 'Master Admin account found: %s... (platform_admin=%s)\n' "${SURVIVOR:0:8}" \
             "$(psql -X -qAt -c "select case when exists(select 1 from public.platform_admins where user_id = '$SURVIVOR') then 'yes' else 'no' end")"
           printf '%s\n' "$SURVIVOR" > "$REPORTS/survivors.txt"
-          export SURVIVOR_ALLOWLIST="$REPORTS/survivors.txt" REHEARSAL=true REPORT_DIR="$REPORTS"
+          # The Master Admin must already be a platform admin in production and keep that access after
+          # the reset; the rehearsal refuses to proceed otherwise (founder decision, 29-oct).
+          export SURVIVOR_ALLOWLIST="$REPORTS/survivors.txt" REHEARSAL=true REPORT_DIR="$REPORTS" REQUIRE_SURVIVOR_PLATFORM_ADMIN=true
           # Counts and check results only; never the frozen plan, which lists people.
           public_view() {
             grep -E '^  (condominiums|organizations|customer invitations|profiles to delete|auth users|  to delete|  to survive|subscriptions|subscription terms|units|unit owners|receivable items|payments|deletion jobs already|  condominiums with live email|  deliveries|  distinct recipient|  of those|survivor |tenants deleted|R2 objects|auth accounts|new deletion jobs|inventory fingerprint)|\[(ok|FAIL|note)\]|^ABORT|All verifications passed' \
