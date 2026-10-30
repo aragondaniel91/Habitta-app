@@ -37,11 +37,12 @@ select is(
        'is_valid_maintenance_assignee',
        'is_valid_service_request_assignee',
        -- Verified by probe during the audit: each rejects a caller from another condominium
-       -- through a helper this pattern cannot see (governance manager required, review denied,
-       -- assembly not found).
+       -- through a helper this pattern cannot see (governance manager required, review denied).
+       -- capture_assembly_eligibility was listed here too, but that probe was wrong: an outsider
+       -- could freeze another condominium's roll. It is no longer reachable by client roles
+       -- (hab_sec_capture_assembly_eligibility.sql), so it needs no exemption.
        'create_governance_proposal_v2',
-       'preview_payment_allocation',
-       'capture_assembly_eligibility'
+       'preview_payment_allocation'
      )),
   '{}'::name[],
   'no RLS-bypassing function without its own authorization is reachable by anon or authenticated'
@@ -54,9 +55,8 @@ select is(
      'verify_solvency_certificate','get_public_plan_catalog','get_admin_invitation_preview',
      'get_resident_invitation_preview','get_customer_invitation_preview',
      'announcement_audience_valid','is_valid_assembly_action_assignee','is_valid_maintenance_assignee',
-     'is_valid_service_request_assignee','create_governance_proposal_v2','preview_payment_allocation',
-     'capture_assembly_eligibility')),
-  12::bigint,
+     'is_valid_service_request_assignee','create_governance_proposal_v2','preview_payment_allocation')),
+  11::bigint,
   'every allowlisted exemption still names a real function'
 );
 
