@@ -56,6 +56,33 @@ describe('production release workflow hardening', () => {
     expect(workflow).not.toContain('VERSION_LIST_FILE');
   });
 
+  it('applies and fail-closes production Worker cron triggers after deploying its version', async () => {
+    const workflow = await readFile(
+      new URL('.github/workflows/production-release.yml', root),
+      'utf8',
+    );
+
+    const workerDeploy = workflow.indexOf('Bootstrap or update production Worker');
+    const triggerDeploy = workflow.indexOf('Apply and verify production Worker cron triggers');
+    const pagesDeploy = workflow.indexOf('Deploy production Pages');
+
+    expect(triggerDeploy).toBeGreaterThan(workerDeploy);
+    expect(triggerDeploy).toBeLessThan(pagesDeploy);
+    expect(workflow).toContain('wrangler triggers deploy --env prod');
+    expect(workflow).toContain(
+      '/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/habitta-api-prod/schedules',
+    );
+    expect(workflow).toContain('.result.schedules[]?');
+    expect(workflow).toContain('*/5 * * * *');
+    expect(workflow).toContain(
+      'Deploying a Worker version does not guarantee its cron triggers are applied.',
+    );
+    expect(workflow).toContain('exit 1');
+    expect(workflow).toContain(
+      'wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env prod',
+    );
+  });
+
   it('surfaces Cloudflare Pages deployment errors without weakening the release fail-close', async () => {
     const workflow = await readFile(
       new URL('.github/workflows/production-release.yml', root),

@@ -230,6 +230,21 @@ jobs:
           test -n "$ACTIVE_VERSION_ID"
           echo "ACTIVE_WORKER_VERSION=$ACTIVE_VERSION_ID" >> "$GITHUB_ENV"
           echo 'WORKER_DEPLOYED=true' >> "$GITHUB_ENV"
+      - name: Apply and verify production Worker cron triggers
+        run: |
+          set -euo pipefail
+          # Deploying a Worker version does not guarantee its cron triggers are applied. Fail here
+          # so the standard release-failure rollback restores PREVIOUS_WORKER_VERSION when needed.
+          pnpm --filter @habitta/api exec wrangler triggers deploy --env prod
+          SCHEDULES=$(curl -fsS \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/habitta-api-prod/schedules")
+          if ! printf '%s' "$SCHEDULES" | jq -e \
+            '.success == true and ([.result.schedules[]? | select(.cron == "*/5 * * * *")] | length > 0)' \
+            >/dev/null; then
+            echo 'Expected active cron schedule */5 * * * * was not returned for habitta-api-prod.' >&2
+            exit 1
+          fi
       - name: Smoke production Worker
         run: |
           node --input-type=module <<'NODE'
