@@ -7,6 +7,16 @@ on:
         description: 'R2 object key under habitta-database-backups-prod (for example daily/2026/08/12/<id>.tar.gz.enc)'
         required: true
         type: string
+      rehearse_reset:
+        description: 'HAB-418: after the restore, rehearse the pre-launch reset on this disposable copy (production is never touched)'
+        required: false
+        default: false
+        type: boolean
+      survivor_email_sha256:
+        description: 'sha256 of the lower-cased email of the account that must survive (the Master Admin). The address itself is never an input, because this repository is public.'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -375,6 +385,62 @@ jobs:
           RESTORED_USERS="$(awk -F '\t' '$1 == "auth_users" { print $2 }' "$RESTORED")"
           printf 'Restore verified: %s public tables, %s Auth users, %s migrations; financial invariants and structural guarantees all pass.\n' \
             "$TABLE_COUNT" "$RESTORED_USERS" "$APPLIED_MIGRATIONS"
+      # HAB-418 rehearsal. Everything below acts on the disposable restored copy at 127.0.0.1; the
+      # reset script's production-only paths (Admin API, owner tokens, the worker) are never reached
+      # in rehearsal mode. This repository is public, so the job log carries counts and check
+      # results only. The full reports, which name accounts, leave the runner only encrypted with the
+      # backup passphrase.
+      - name: Rehearse the pre-launch reset on the restored copy
+        if: inputs.rehearse_reset
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '54322'
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: postgres
+          SURVIVOR_EMAIL_SHA256: ${{ inputs.survivor_email_sha256 }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$SURVIVOR_EMAIL_SHA256" | grep -Eq '^[0-9a-f]{64}$' || {
+            echo 'survivor_email_sha256 must be 64 lowercase hex characters' >&2; exit 1; }
+          REPORTS="$GITHUB_WORKSPACE/.restore/plain/reset-rehearsal"
+          mkdir -p "$REPORTS"
+          SURVIVOR="$(psql -X -qAt -v ON_ERROR_STOP=1 -c "select id from auth.users
+            where encode(extensions.digest(lower(email), 'sha256'), 'hex') = '$SURVIVOR_EMAIL_SHA256'")"
+          MATCHES="$(printf '%s' "$SURVIVOR" | grep -c . || true)"
+          test "$MATCHES" -eq 1 || { echo "Master Admin account: $MATCHES matching account(s); expected exactly 1" >&2; exit 1; }
+          printf 'Master Admin account found: %s... (platform_admin=%s)\n' "${SURVIVOR:0:8}" \
+            "$(psql -X -qAt -c "select case when exists(select 1 from public.platform_admins where user_id = '$SURVIVOR') then 'yes' else 'no' end")"
+          printf '%s\n' "$SURVIVOR" > "$REPORTS/survivors.txt"
+          export SURVIVOR_ALLOWLIST="$REPORTS/survivors.txt" REHEARSAL=true REPORT_DIR="$REPORTS"
+          # Counts and check results only; never the frozen plan, which lists people.
+          public_view() {
+            grep -E '^  (condominiums|organizations|customer invitations|profiles to delete|auth users|  to delete|  to survive|subscriptions|subscription terms|units|unit owners|receivable items|payments|deletion jobs already|  condominiums with live email|  deliveries|  distinct recipient|  of those|survivor |tenants deleted|R2 objects|auth accounts|new deletion jobs|inventory fingerprint)|\[(ok|FAIL|note)\]|^ABORT|All verifications passed' \
+              | grep -v 'tombstone for ' || true
+          }
+          bash scripts/pre-launch-production-reset.sh > "$REPORTS/inventory.log" 2>&1
+          public_view < "$REPORTS/inventory.log"
+          FINGERPRINT="$(sed -n 's/^  inventory fingerprint  //p' "$REPORTS/inventory.log")"
+          test -n "$FINGERPRINT"
+          status=0
+          REHEARSAL_EXECUTE=true EXPECTED_INVENTORY_FINGERPRINT="$FINGERPRINT" \
+            bash scripts/pre-launch-production-reset.sh > "$REPORTS/execute.log" 2>&1 || status=$?
+          echo '--- rehearsal execution ---'
+          public_view < "$REPORTS/execute.log"
+          tar -C "$REPORTS" -czf "$RUNNER_TEMP/reset-rehearsal.tar.gz" inventory.log execute.log
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
+            -in "$RUNNER_TEMP/reset-rehearsal.tar.gz" -out "$RUNNER_TEMP/reset-rehearsal.tar.gz.enc"
+          rm -f "$RUNNER_TEMP/reset-rehearsal.tar.gz"
+          exit "$status"
+      - name: Upload encrypted rehearsal reports
+        if: always() && inputs.rehearse_reset
+        uses: actions/upload-artifact@v4
+        with:
+          name: reset-rehearsal-encrypted
+          path: ${{ runner.temp }}/reset-rehearsal.tar.gz.enc
+          retention-days: 3
+          if-no-files-found: ignore
       - name: Remove restored plaintext and local database
         if: always()
         run: |
