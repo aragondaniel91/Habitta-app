@@ -45,7 +45,7 @@ Por tanto, la antigua afirmación de que producción debía permanecer con corre
 
 - Aplicación web: React + Vite + TypeScript
 - API: Hono sobre Cloudflare Workers
-- Website comercial: Astro
+- Website comercial: sitio estático servido con HTML/CSS/JS plano, sin framework ni paso de compilación de Astro, sin `package.json` propio y desplegado directamente en Cloudflare Pages. (Verificado contra el contenido de `apps/site` en el commit vigente de `main`: `2d659747`.)
 - Base de datos: PostgreSQL en Supabase
 - Autenticación: Supabase Auth
 - Documentos privados: Cloudflare R2
