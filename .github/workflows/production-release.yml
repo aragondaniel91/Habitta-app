@@ -156,6 +156,32 @@ jobs:
 
           echo "PREVIOUS_WORKER_VERSION=$PREVIOUS_WORKER_VERSION" >> "$GITHUB_ENV"
           echo "PREVIOUS_PAGES_DEPLOYMENT=$PREVIOUS_PAGES_DEPLOYMENT" >> "$GITHUB_ENV"
+      - name: Capture production Worker cron schedules
+        run: |
+          set -euo pipefail
+          # Cron triggers are not part of a Worker version, so rolling the version back never
+          # restores them. Record the exact schedules (an empty list included) before anything in
+          # this release can change them; the release-failure rollback puts them back.
+          SCHEDULES_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/habitta-api-prod/schedules"
+          PREVIOUS_SCHEDULES_FILE="$RUNNER_TEMP/production-worker-previous-schedules.json"
+          RESPONSE_FILE="$RUNNER_TEMP/production-worker-schedules-response.json"
+          HTTP_STATUS=$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$SCHEDULES_URL") || HTTP_STATUS=000
+          if [ "$HTTP_STATUS" = 404 ] && [ -z "${PREVIOUS_WORKER_VERSION:-}" ]; then
+            echo 'No production Worker exists yet: there are no previous cron schedules to restore.'
+            echo 'PREVIOUS_SCHEDULES_CAPTURED=false' >> "$GITHUB_ENV"
+            exit 0
+          fi
+          if [ "$HTTP_STATUS" != 200 ] || ! jq -e '.success == true and (.result.schedules | type == "array")' "$RESPONSE_FILE" >/dev/null; then
+            echo "Refusing to release: could not capture the current cron schedules of habitta-api-prod (HTTP $HTTP_STATUS)." >&2
+            exit 1
+          fi
+          jq -c '[.result.schedules[] | {cron}]' "$RESPONSE_FILE" >"$PREVIOUS_SCHEDULES_FILE"
+          rm -f "$RESPONSE_FILE"
+          echo "Previous production cron schedules: $(cat "$PREVIOUS_SCHEDULES_FILE")"
+          echo "PREVIOUS_SCHEDULES_FILE=$PREVIOUS_SCHEDULES_FILE" >> "$GITHUB_ENV"
+          echo 'PREVIOUS_SCHEDULES_CAPTURED=true' >> "$GITHUB_ENV"
       - name: Create encrypted pre-migration backup
         run: bash scripts/release/pre-migration-production-backup.sh
       - name: Apply reviewed Supabase migrations
@@ -234,7 +260,8 @@ jobs:
         run: |
           set -euo pipefail
           # Deploying a Worker version does not guarantee its cron triggers are applied. Fail here
-          # so the standard release-failure rollback restores PREVIOUS_WORKER_VERSION when needed.
+          # so the release-failure rollback restores PREVIOUS_WORKER_VERSION and the cron schedules
+          # captured before the release.
           pnpm --filter @habitta/api exec wrangler triggers deploy --env prod
           SCHEDULES=$(curl -fsS \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -365,9 +392,37 @@ jobs:
         if: ${{ failure() }}
         run: |
           set +e
+          RECOVERY_INCOMPLETE=false
           if [ "${WORKER_DEPLOYED:-false}" = true ] && [ -n "${PREVIOUS_WORKER_VERSION:-}" ]; then
             echo "Rolling Worker back to $PREVIOUS_WORKER_VERSION"
-            pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env prod --yes
+            if ! pnpm --filter @habitta/api exec wrangler versions deploy "$PREVIOUS_WORKER_VERSION@100%" --env prod --yes; then
+              echo "::error::RECOVERY INCOMPLETE: the production Worker could not be rolled back to $PREVIOUS_WORKER_VERSION."
+              RECOVERY_INCOMPLETE=true
+            fi
+          fi
+          if [ "${PREVIOUS_SCHEDULES_CAPTURED:-false}" = true ]; then
+            # Restored whenever they were captured, not only once the Worker step finished: a deploy
+            # can change them and fail before reporting success. PUT replaces the whole list with
+            # the captured one (possibly empty), so restoring unchanged schedules is harmless.
+            SCHEDULES_URL="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/habitta-api-prod/schedules"
+            EXPECTED_CRONS=$(jq -c '[.[].cron] | sort' "$PREVIOUS_SCHEDULES_FILE")
+            echo "Restoring production Worker cron schedules to $EXPECTED_CRONS"
+            ACTUAL_CRONS=''
+            if curl -fsS -X PUT \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data-binary "@$PREVIOUS_SCHEDULES_FILE" \
+              "$SCHEDULES_URL" | jq -e '.success == true' >/dev/null; then
+              ACTUAL_CRONS=$(curl -fsS \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                "$SCHEDULES_URL" | jq -c 'select(.success == true) | [.result.schedules[].cron] | sort')
+            fi
+            if [ -n "$ACTUAL_CRONS" ] && [ "$ACTUAL_CRONS" = "$EXPECTED_CRONS" ]; then
+              echo 'Production Worker cron schedules restored and verified.'
+            else
+              echo "::error::RECOVERY INCOMPLETE: the cron schedules of habitta-api-prod could not be restored and verified (expected $EXPECTED_CRONS, observed ${ACTUAL_CRONS:-unknown}). Restore them manually with PUT /workers/scripts/habitta-api-prod/schedules."
+              RECOVERY_INCOMPLETE=true
+            fi
           fi
           if [ "${PAGES_DEPLOYED:-false}" = true ] && [ -n "${PREVIOUS_PAGES_DEPLOYMENT:-}" ]; then
             echo "Rolling Pages back to $PREVIOUS_PAGES_DEPLOYMENT"
@@ -376,5 +431,12 @@ jobs:
               -H 'Content-Type: application/json' \
               --data '{}' \
               "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT_NAME/deployments/$PREVIOUS_PAGES_DEPLOYMENT/rollback" \
-              | jq -e '.success == true' >/dev/null
+              | jq -e '.success == true' >/dev/null || {
+              echo "::error::RECOVERY INCOMPLETE: production Pages could not be rolled back to $PREVIOUS_PAGES_DEPLOYMENT."
+              RECOVERY_INCOMPLETE=true
+            }
+          fi
+          if [ "$RECOVERY_INCOMPLETE" = true ]; then
+            echo 'Release rollback finished with an incomplete recovery.' >&2
+            exit 1
           fi
