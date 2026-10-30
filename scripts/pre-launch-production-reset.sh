@@ -114,6 +114,20 @@ ok_if() { [ "$1" -eq 0 ] && echo ok || echo fail; }
 
 q() { psql -X -qAt -v ON_ERROR_STOP=1 -c "$1"; }
 
+# Platform-wide access as the account itself experiences it: a signed-in session (role
+# authenticated, its own subject), going through RLS and the same functions the admin app calls.
+# Never service_role. Prints "yes" only when the access really works.
+admin_access_as() {
+  psql -X -qAt -v ON_ERROR_STOP=1 2>/dev/null <<SQL | tail -n1 || echo no
+begin;
+select set_config('request.jwt.claims', json_build_object('sub','$1','role','authenticated')::text, true);
+set local role authenticated;
+select count(*) from public.get_platform_condominium_overview();
+select case when public.is_platform_admin() then 'yes' else 'no' end;
+rollback;
+SQL
+}
+
 abort() {
   say ''; say "ABORT: $*"
   record ''; record "ABORT: $*"
@@ -344,6 +358,22 @@ if [ "$admin_total" -eq 0 ]; then
   note 'Registering the platform admin is a separate action after this reset.'
 fi
 
+# The accounts that survive keep platform-wide access only through public.platform_admins: an RLS
+# role, never a service key and never an exception in a policy. Their organization and condominium
+# memberships belong to the test tenants and disappear with them.
+for survivor in "${survivors[@]}"; do
+  is_admin="$(q "select count(*) from public.platform_admins where user_id = '$survivor'")"
+  org_roles="$(q "select count(*) from public.organization_memberships where user_id = '$survivor'")"
+  condo_roles="$(q "select count(*) from public.condominium_memberships where user_id = '$survivor'")"
+  both "  survivor ${survivor:0:8}...  platform_admin=$([ "$is_admin" -eq 1 ] && echo yes || echo no)  tenant memberships removed with the tenants: $((org_roles + condo_roles))"
+  if [ "${REQUIRE_SURVIVOR_PLATFORM_ADMIN:-false}" = 'true' ]; then
+    if [ "$is_admin" -eq 1 ] && [ "$(admin_access_as "$survivor")" = 'yes' ]; then
+      check "survivor ${survivor:0:8}... is a platform admin and its access works" ok 'as itself, through RLS'
+    else check "survivor ${survivor:0:8}... is a platform admin and its access works" fail \
+      'register it in public.platform_admins before the reset, as a separate approved change'; fi
+  fi
+done
+
 if [ "$failures" -gt 0 ]; then
   abort "$failures preflight check(s) failed. Nothing was written."
 fi
@@ -429,6 +459,14 @@ both "  unit owners           $(q 'select count(*) from public.unit_owners')"
 both "  receivable items      $(q 'select count(*) from public.receivable_items')"
 both "  payments              $(q 'select count(*) from public.payments')"
 both "  deletion jobs already $jobs_baseline"
+both ''
+both '  Notifications (test tenants must not mail real addresses during or after the reset):'
+both "    condominiums with live email     $(q 'select count(*) from public.condominium_notification_settings where live_email_enabled')"
+both "    deliveries waiting to send       $(q "select count(*) from public.notification_deliveries where status in ('pending','retry','queued','processing')")"
+both "    deliveries ever recorded         $(q 'select count(*) from public.notification_deliveries')"
+both "    distinct recipient addresses     $(q 'select count(distinct recipient_email) from public.notification_deliveries')"
+both "    of those, not a reserved test domain $(q "select count(distinct recipient_email) from public.notification_deliveries
+      where recipient_email !~ '[.@](invalid|test|example)(\\.|$)' and recipient_email !~ '@example\\.(com|org|net)$'")"
 
 # ------------------------------------------- owner credentials, one per frozen organization
 
@@ -671,6 +709,22 @@ fi
 
 # --------------------------------------------------------------------------------- phase 2
 
+heading "Phase 2a - silencing the frozen tenants' mail"
+
+# Between the first deletion and the last, the production cron keeps running every five minutes.
+# Nothing queued for a tenant that is about to disappear may reach a real inbox in that window, so
+# the frozen tenants lose live email and their waiting deliveries are skipped first. Scoped to the
+# frozen condominium ids; nothing outside the reviewed set is touched.
+condominiums_sql="$(id_array "$WORK/condominiums.tsv")"
+both "  live email turned off   $(q "with changed as (update public.condominium_notification_settings
+  set live_email_enabled = false, email_enabled = false
+  where condominium_id = any($condominiums_sql) and (live_email_enabled or email_enabled) returning 1)
+  select count(*) from changed")"
+both "  deliveries skipped      $(q "with changed as (update public.notification_deliveries
+  set status = 'skipped', last_error_code = 'pre_launch_reset', updated_at = now()
+  where condominium_id = any($condominiums_sql) and status in ('pending','retry','queued') returning 1)
+  select count(*) from changed")"
+
 heading "Phase 2 - deleting tenants through the official flow"
 
 both ''
@@ -789,7 +843,14 @@ for frozen_row in "${frozen_users[@]}"; do
   IFS=$'	' read -r user_id user_email <<< "$frozen_row"
   [ -n "$user_id" ] || continue
   if [ "$REHEARSAL_EXECUTE" = 'true' ]; then
-    both "    would delete $user_id ${user_email:-} (rehearsal makes no Auth call)"
+    # The Admin API deletes the auth.users row and lets the database cascade. Doing exactly that
+    # here, in the disposable copy, surfaces any foreign key that would refuse in production.
+    if ! q "delete from auth.users where id = '$user_id'" >/dev/null 2> "$WORK/auth-delete.err"; then
+      both "    $user_id -> refused: $(head -n1 "$WORK/auth-delete.err")"
+      abort 'An Auth account could not be deleted in the rehearsal. Production would fail the same way.'
+    fi
+    both "    deleted (rehearsal, SQL on the disposable copy) $user_id"
+    deleted_users=$((deleted_users + 1))
     continue
   fi
   response="$(api_call DELETE "$SUPABASE_URL/auth/v1/admin/users/$user_id" \
@@ -843,6 +904,24 @@ verify_zero 'attachment metadata'   "select (select count(*) from public.payment
                                           + (select count(*) from public.maintenance_attachments)
                                           + (select count(*) from public.service_request_attachments)"
 verify_zero 'frozen profiles'       "select count(*) from public.profiles where id = any($profiles_sql)"
+verify_zero 'notification deliveries' 'select count(*) from public.notification_deliveries'
+verify_zero 'notification events'   'select count(*) from public.notification_events'
+verify_zero 'in-app notifications'  'select count(*) from public.notifications'
+
+both ''
+both '  The surviving accounts:'
+for survivor in "${survivors[@]}"; do
+  check "survivor ${survivor:0:8}... still exists in Auth" \
+    "$( [ "$(q "select count(*) from auth.users where id = '$survivor'")" -eq 1 ] && echo ok || echo fail )"
+  check "survivor ${survivor:0:8}... keeps its profile" \
+    "$( [ "$(q "select count(*) from public.profiles where id = '$survivor'")" -le 1 ] && echo ok || echo fail )"
+  if [ "${REQUIRE_SURVIVOR_PLATFORM_ADMIN:-false}" = 'true' ]; then
+    check "survivor ${survivor:0:8}... is still a platform admin" \
+      "$( [ "$(q "select count(*) from public.platform_admins where user_id = '$survivor'")" -eq 1 ] && echo ok || echo fail )"
+    check "survivor ${survivor:0:8}... keeps working platform-wide access after the reset" \
+      "$( [ "$(admin_access_as "$survivor")" = 'yes' ] && echo ok || echo fail )" 'signed in as itself, never service_role'
+  fi
+done
 
 # A sweep over every condominium-scoped table, so one nobody thought to name cannot hide rows.
 verify_zero 'every condominium-scoped table' "
@@ -912,13 +991,9 @@ for pair in 'plans:5' 'capabilities:22'; do
 done
 
 auth_left="$(q 'select count(*) from auth.users')"
-if [ "$REHEARSAL_EXECUTE" = 'true' ]; then
-  note "auth accounts left $auth_left (rehearsal deletes none)"
-else
-  check 'exactly the allowlisted accounts remain' \
-    "$( [ "$auth_left" -eq "$survivor_count" ] && echo ok || echo fail )" \
-    "expected $survivor_count, found $auth_left"
-fi
+check 'exactly the allowlisted accounts remain' \
+  "$( [ "$auth_left" -eq "$survivor_count" ] && echo ok || echo fail )" \
+  "expected $survivor_count, found $auth_left"
 
 # --------------------------------------------------------------------------------- report
 

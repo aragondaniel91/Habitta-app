@@ -112,6 +112,38 @@ The drill never drops the local `auth` schema because its DDL is managed by the 
 
 A production recovery must use a Supabase-supported target and migration procedure appropriate to the target project's platform version. Do not blindly replay Auth schema DDL from a source project.
 
+## Pre-launch reset rehearsal (HAB-418)
+
+Before production is emptied of test tenants, the whole reset is rehearsed twice, and neither
+rehearsal can touch production:
+
+1. **Synthetic, on every relevant pull request.** `Supabase Database Tests` loads
+   `scripts/release/reset-rehearsal-fixture.sql` (reserved `.invalid` addresses only) and runs
+   `scripts/pre-launch-production-reset.sh` in `REHEARSAL` and `REHEARSAL_EXECUTE` mode. It must end
+   with `All verifications passed.`
+2. **On a restored copy of production.** Dispatch `Database Restore Drill` with the latest daily
+   backup key, `rehearse_reset: true` and `survivor_email_sha256` set to the sha256 of the lower-cased
+   Master Admin address (`printf '%s' 'address' | sha256sum`). The drill restores into its disposable
+   database with `REQUIRE_SURVIVOR_PLATFORM_ADMIN=true`, so it refuses to go on unless the Master
+   Admin is already a platform admin whose access works, signed in as itself through RLS and never as
+   `service_role`. It then freezes the inventory, deletes every test tenant, removes the other Auth rows with SQL
+   (exactly what the Admin API does), and verifies that only the Master Admin remains and still has working platform-wide access, that schema,
+   migrations, RLS, functions and catalogues are unchanged, and that no notification is left to send.
+   The public log shows counts and check results only. The full reports, which name accounts, are
+   uploaded encrypted with the backup passphrase (`reset-rehearsal-encrypted`, 3 days). To read them:
+   `openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 -in reset-rehearsal.tar.gz.enc | tar -xz`.
+
+The real reset still requires, separately and in this order: a fresh backup and a green drill of
+that exact backup, a production dry run whose fingerprint the founder reviews, and then
+`DRY_RUN=false CONFIRM=RESET-HABITTA-PRODUCTION EXPECTED_INVENTORY_FINGERPRINT=<reviewed>`.
+Before running it, the script silences live email and skips waiting deliveries for the frozen
+tenants (phase 2a), so no test notification reaches a real inbox during the reset.
+
+The surviving account keeps platform-wide access only through `public.platform_admins`, an RLS
+role. It never receives `service_role`, and no policy has an exception for it. Set
+`REQUIRE_SURVIVOR_PLATFORM_ADMIN=true` on the production run so that the reset refuses to start
+unless the Master Admin is already registered there.
+
 ## Incident recovery procedure
 
 For a real production database-loss incident:

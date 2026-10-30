@@ -28,7 +28,7 @@ jobs:
           fi
           git fetch --no-tags origin "$GITHUB_BASE_REF"
           CHANGED=$(git diff --name-only "origin/$GITHUB_BASE_REF"...HEAD)
-          if echo "$CHANGED" | grep -qE '^(supabase/|\.github/workflows/supabase-tests\.yml)'; then
+          if echo "$CHANGED" | grep -qE '^(supabase/|\.github/workflows/supabase-tests\.yml|scripts/pre-launch-production-reset\.sh|scripts/release/reset-rehearsal-fixture\.sql)'; then
             echo 'relevant=true' >> "$GITHUB_OUTPUT"
           else
             echo 'relevant=false' >> "$GITHUB_OUTPUT"
@@ -60,6 +60,28 @@ jobs:
           set -o pipefail
           bash supabase/tests/hab322_concurrency.sh 2>&1 | tee hab322-concurrency.log
 
+      # HAB-418: the pre-launch reset is rehearsed end to end against synthetic tenants on every
+      # relevant change, so the procedure that will empty production is proven on the current schema
+      # before anyone runs it there. Runs after pgTAP, whose tests all roll back.
+      - name: Rehearse the pre-launch production reset on synthetic tenants
+        if: steps.scope.outputs.relevant == 'true'
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '54322'
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: postgres
+        run: |
+          set -euo pipefail
+          psql -X -q -v ON_ERROR_STOP=1 -f scripts/release/reset-rehearsal-fixture.sql > /dev/null
+          printf '7e570000-0000-0000-0000-0000000000a1\n' > "$RUNNER_TEMP/survivors.txt"
+          export SURVIVOR_ALLOWLIST="$RUNNER_TEMP/survivors.txt" REHEARSAL=true REQUIRE_SURVIVOR_PLATFORM_ADMIN=true REPORT_DIR="$RUNNER_TEMP/reset-report"
+          FINGERPRINT="$(bash scripts/pre-launch-production-reset.sh | sed -n 's/^  inventory fingerprint  //p')"
+          test -n "$FINGERPRINT"
+          REHEARSAL_EXECUTE=true EXPECTED_INVENTORY_FINGERPRINT="$FINGERPRINT" \
+            bash scripts/pre-launch-production-reset.sh 2>&1 | tee reset-rehearsal.log
+          grep -q 'All verifications passed.' reset-rehearsal.log
+
       - name: Upload Supabase logs
         if: always() && steps.scope.outputs.relevant == 'true'
         uses: actions/upload-artifact@v4
@@ -69,6 +91,7 @@ jobs:
             supabase-db-start.log
             supabase-test-db.log
             hab322-concurrency.log
+            reset-rehearsal.log
           if-no-files-found: ignore
 
       - name: Stop local Supabase services
