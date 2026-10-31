@@ -108,7 +108,11 @@ test.describe('Dashboard de pagos — revisión independiente entre administrado
     await expect(page.getByText('Pago enviado a revisión.').first()).toBeVisible();
 
     await page.getByRole('tab', { name: 'Movimientos' }).click();
-    await page.getByPlaceholder('Buscar pago…').fill(bankReference);
+    await expect(page.getByRole('tab', { name: 'Movimientos' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await page.getByPlaceholder('Pagador o referencia').fill(bankReference);
     const authorRow = page.locator('.payments-table tbody tr').filter({ hasText: bankReference });
     await expect(authorRow).toHaveCount(1);
     await authorRow.getByRole('button', { name: 'Revisar' }).click();
@@ -143,7 +147,11 @@ test.describe('Dashboard de pagos — revisión independiente entre administrado
       ).toBeVisible();
 
       await reviewerPage.getByRole('tab', { name: 'Movimientos' }).click();
-      await reviewerPage.getByPlaceholder('Buscar pago…').fill(bankReference);
+      await expect(reviewerPage.getByRole('tab', { name: 'Movimientos' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      await reviewerPage.getByPlaceholder('Pagador o referencia').fill(bankReference);
       const approvedRow = reviewerPage
         .locator('.payments-table tbody tr')
         .filter({ hasText: bankReference });
