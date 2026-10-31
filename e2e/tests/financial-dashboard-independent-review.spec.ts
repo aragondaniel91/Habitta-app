@@ -102,7 +102,9 @@ test.describe('Dashboard de pagos — revisión independiente entre administrado
       ),
     });
     await capture.getByRole('button', { name: 'Continuar' }).click();
+    await expect(capture.getByText('Confirma tu propuesta')).toBeVisible();
     await capture.getByRole('button', { name: 'Enviar a revisión' }).click();
+    await expect(capture).toHaveCount(0);
     await expect(page.getByText('Pago enviado a revisión.').first()).toBeVisible();
 
     await page.getByRole('tab', { name: 'Movimientos' }).click();
