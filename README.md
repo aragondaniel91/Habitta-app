@@ -30,6 +30,7 @@ La infraestructura comenzará en planes gratuitos y se ampliará cuando Habitta 
 ## Documentación
 
 Consulta la carpeta `docs/` para el alcance funcional, arquitectura y backlog inicial.
+[Guía de la suite E2E financiera](docs/testing/E2E-FINANCIEROS.md)
 
 ## Seguridad
 
