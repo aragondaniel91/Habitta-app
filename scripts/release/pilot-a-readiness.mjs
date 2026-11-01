@@ -357,7 +357,9 @@ export async function runCLI(rawArgs = process.argv.slice(2)) {
     for (const check of report.checks) {
       console.log(check.status.toUpperCase().padEnd(15) + check.id + ': ' + check.detail);
     }
-    console.log('FINAL: NO_GO — evidence only; independent AI review, external obligations and Founder release gates remain unverified.');
+    console.log(
+      'FINAL: NO_GO — evidence only; independent AI review, external obligations and Founder release gates remain unverified.',
+    );
   }
   return report;
 }
