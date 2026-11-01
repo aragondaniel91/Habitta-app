@@ -38,7 +38,7 @@ async function login(page: Page, email: string) {
   await page.waitForURL(/\/app\/dashboard/);
 }
 
-test.describe('Dashboard de pagos — revisión independiente entre administradores', () => {
+test.describe('Dashboard de pagos — administrador autor y revisor independiente', () => {
   test.skip(
     missingEnvironment.length > 0,
     `Supabase local y fixture financiero requeridos: ${missingEnvironment.join(', ')}`,
