@@ -72,16 +72,20 @@ test('old healthy worker is BLOCKED against current commit', () => {
   assert.equal(result.releaseDecision, 'NO_GO');
 });
 
-test('matching worker does NOT waive independent human gates or prove Pages', () => {
+test('matching worker does NOT waive independent AI security evidence, external obligations or Founder release gates', () => {
   const result = evaluateReadiness({
     candidateSha: main,
     workerHealth: healthy(main),
     migrationStatus: { status: 'pass' },
   });
   assert.equal(find(result, 'worker_commit_matches_candidate').status, 'pass');
-  assert.equal(find(result, 'independent_human_appsec').status, 'human_required');
+  assert.equal(find(result, 'dual_ai_appsec_review').status, 'unknown');
+  assert.match(find(result, 'dual_ai_appsec_review').detail, /two_independent_ai_reviews/);
+  assert.equal(find(result, 'external_human_signoff_requirements').status, 'unknown');
+  assert.equal(find(result, 'privileged_rpc_assessment').status, 'unknown');
   assert.equal(find(result, 'sql_auto_deploy_control').status, 'human_required');
   assert.equal(find(result, 'restore_and_rollback_drill').status, 'human_required');
+  assert.equal(find(result, 'founder_release_approval').status, 'human_required');
   assert.equal(result.releaseDecision, 'NO_GO');
 });
 
@@ -227,7 +231,11 @@ test('even ALL automated PASS checks cannot produce a release approval', () => {
     pagesControlPlane: pages,
     pagesControlPlaneAuthenticated: true,
   });
-  assert.equal(report.checks.filter((x) => x.status === 'human_required').length, 5);
+  assert.equal(report.checks.filter((x) => x.status === 'human_required').length, 3);
+  assert.equal(report.checks.filter((x) => x.status === 'unknown').length, 3);
+  assert.equal(find(report, 'dual_ai_appsec_review').status, 'unknown');
+  assert.equal(find(report, 'external_human_signoff_requirements').status, 'unknown');
+  assert.equal(find(report, 'privileged_rpc_assessment').status, 'unknown');
   assert.equal(report.checks.filter((x) => x.status === 'block').length, 0);
   assert.equal(report.releaseDecision, 'NO_GO');
   assert.match(find(report, 'migration_history_parity').detail, /not_schema_drift_proof/);

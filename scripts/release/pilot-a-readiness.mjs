@@ -149,14 +149,29 @@ export function evaluateReadiness({
       : 'cloudflare_verified_commit_missing',
   );
 
-  // Human approvals MUST NOT be accepted from a local flag/fixture or inferred from CI.
+  // Security evidence is not inferred from CI, local flags or model self-attestation.
+  // Internal policy #571: two independent AI reviews + Founder risk acceptance.
+  // Neither a completed AI review nor exemption from external human requirements can be self-reported.
+  add(
+    'dual_ai_appsec_review',
+    'unknown',
+    'two_independent_ai_reviews_with_evidence_not_verified_issue_571',
+  );
+  add(
+    'external_human_signoff_requirements',
+    'unknown',
+    'legal_contractual_or_regulatory_requirement_not_assessed_issue_571',
+  );
+  add(
+    'privileged_rpc_assessment',
+    'unknown',
+    'signature_level_inventory_and_isolated_negative_tests_not_verified_pr_569',
+  );
   for (const [id, detail] of [
     [
       'sql_auto_deploy_control',
       'supabase_github_integration_setting_and_operator_not_verified_issue_612',
     ],
-    ['independent_human_appsec', 'qualified_independent_human_signoff_required_issue_571'],
-    ['privileged_rpc_assessment', 'sensitive_inventory_human_review_required_pr_569'],
     ['restore_and_rollback_drill', 'restore_drill_and_rollback_evidence_required_issue_573'],
     ['founder_release_approval', 'release_a_specific_human_approval_required_issue_573'],
   ])
@@ -342,7 +357,7 @@ export async function runCLI(rawArgs = process.argv.slice(2)) {
     for (const check of report.checks) {
       console.log(check.status.toUpperCase().padEnd(15) + check.id + ': ' + check.detail);
     }
-    console.log('FINAL: NO_GO — evidence only; independent human gates remain mandatory.');
+    console.log('FINAL: NO_GO — evidence only; independent AI review, external obligations and Founder release gates remain unverified.');
   }
   return report;
 }
