@@ -13,3 +13,5 @@
 - **Rechazado (`rejected`):** El pago no superó la revisión y no se aprueba; el rechazo conserva un motivo.
 
 - **Reversado (`reversed`):** Un pago previamente aprobado fue revertido con un motivo, deshaciendo su efecto en el registro financiero.
+
+Índice: README.md
