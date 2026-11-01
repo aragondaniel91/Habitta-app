@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(15);
 
 -- HAB-455 regression: an accountant can both register and review payments, but
 -- must not approve their own submission when a different payment_reviewer is
@@ -193,12 +193,60 @@ select ok(
 
 reset role;
 
+-- Founder-approved HAB-629: a sole condominium administrator can approve
+-- their own submission only when no distinct payment_reviewer is configured.
+-- Preserve accountant coverage above and verify the real admin role here.
+update public.condominium_memberships
+set role = 'condominium_admin'
+where condominium_id = '85520000-0000-0000-0000-000000000001'
+  and user_id = '85500000-0000-0000-0000-000000000001'
+  and role = 'accountant';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '85500000-0000-0000-0000-000000000001',
+  true
+);
+
+select ok(
+  public.can_review_payments('85520000-0000-0000-0000-000000000001'),
+  'sole condominium administrator has payment review capability'
+);
+
+select ok(
+  public.can_approve_payment(
+    '85520000-0000-0000-0000-000000000001',
+    '85550000-0000-0000-0000-000000000001'
+  ),
+  'sole administrator can approve their submitted payment without an independent reviewer'
+);
+
+reset role;
+
 insert into public.condominium_memberships(condominium_id, user_id, role)
 values (
   '85520000-0000-0000-0000-000000000001',
   '85500000-0000-0000-0000-000000000002',
   'payment_reviewer'
 );
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '85500000-0000-0000-0000-000000000001',
+  true
+);
+
+select ok(
+  not public.can_approve_payment(
+    '85520000-0000-0000-0000-000000000001',
+    '85550000-0000-0000-0000-000000000001'
+  ),
+  'administrator submitter cannot self-approve once a distinct payment reviewer exists'
+);
+
+reset role;
 
 select throws_ok(
   $$update public.payments
