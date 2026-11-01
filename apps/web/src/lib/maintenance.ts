@@ -138,13 +138,14 @@ export const workOrderStatusLabels: Record<MaintenanceWorkOrderStatus, string> =
 export function formatMaintenanceDate(value: string | null, includeTime = false) {
   if (!value) return 'Sin fecha';
   const parsed = new Date(includeTime ? value : `${value}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat('es-VE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
-  }).format(parsed);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : new Intl.DateTimeFormat('es-VE', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+      }).format(parsed);
 }
 
 export function maintenanceLocationLabel(

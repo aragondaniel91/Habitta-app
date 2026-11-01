@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   filterMaintenanceAssets,
   filterMaintenanceWorkOrders,
+  formatMaintenanceDate,
   getMaintenanceMetrics,
   maintenanceLocationLabel,
 } from './maintenance';
@@ -138,5 +139,31 @@ describe('maintenance workspace helpers', () => {
       ),
     ).toBe('Torre A · A-101');
     expect(maintenanceLocationLabel(asset(), [], [])).toBe('Cuarto de bombas');
+  });
+
+  it('formats empty, invalid, date-only, and timezone-aware date values consistently', () => {
+    expect(formatMaintenanceDate(null)).toBe('Sin fecha');
+    expect(formatMaintenanceDate('')).toBe('Sin fecha');
+    expect(formatMaintenanceDate('not-a-date')).toBe('not-a-date');
+
+    const dateOnly = '2026-02-28';
+    expect(formatMaintenanceDate(dateOnly)).toBe(
+      new Intl.DateTimeFormat('es-VE', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }).format(new Date(`${dateOnly}T12:00:00`)),
+    );
+
+    const zonedTimestamp = '2026-07-01T00:30:00+02:00';
+    expect(formatMaintenanceDate(zonedTimestamp, true)).toBe(
+      new Intl.DateTimeFormat('es-VE', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(zonedTimestamp)),
+    );
   });
 });
